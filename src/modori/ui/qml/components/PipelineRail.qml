@@ -9,6 +9,10 @@ Rectangle {
 
     signal rerunRequested()
 
+    function hasText(value) {
+        return String(value).trim().length > 0
+    }
+
     ColumnLayout {
         anchors.fill: parent
         anchors.leftMargin: 20
@@ -49,6 +53,7 @@ Rectangle {
             Button {
                 text: appBootstrap.text("pipeline.apply_reliability")
                 Accessible.name: appBootstrap.text("pipeline.apply_reliability")
+                enabled: root.hasText(reliabilityItemsField.text)
                 onClicked: uiController.configureReliabilityFromText(reliabilityItemsField.text)
             }
 
@@ -71,6 +76,7 @@ Rectangle {
             Button {
                 text: appBootstrap.text("pipeline.apply_comparison")
                 Accessible.name: appBootstrap.text("pipeline.apply_comparison")
+                enabled: root.hasText(comparisonOutcomeField.text) && root.hasText(comparisonGroupField.text)
                 onClicked: uiController.configureComparisonFromText(
                     comparisonOutcomeField.text,
                     comparisonGroupField.text
@@ -96,6 +102,7 @@ Rectangle {
             Button {
                 text: appBootstrap.text("pipeline.apply_regression")
                 Accessible.name: appBootstrap.text("pipeline.apply_regression")
+                enabled: root.hasText(regressionOutcomeField.text) && root.hasText(regressionPredictorsField.text)
                 onClicked: uiController.configureRegressionFromText(
                     regressionOutcomeField.text,
                     regressionPredictorsField.text

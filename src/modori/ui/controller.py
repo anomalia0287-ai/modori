@@ -52,6 +52,7 @@ class UiController(QObject):
         )
         self._mode = "guided"
         self._last_error = ""
+        self._last_message = ""
         self._result_state = UiResultState()
         self._report_path = ""
         self._pipeline_state = UiPipelineState.initial(
@@ -93,6 +94,10 @@ class UiController(QObject):
     @Property(str, notify=stateChanged)
     def lastError(self) -> str:
         return self._last_error
+
+    @Property(str, notify=stateChanged)
+    def lastMessage(self) -> str:
+        return self._last_message
 
     @Property(str, notify=stateChanged)
     def resultSummary(self) -> str:
@@ -144,13 +149,10 @@ class UiController(QObject):
 
     def setMode(self, mode: str) -> CommandResult:
         if mode not in {"guided", "standard"}:
-            return CommandResult(
-                ok=False,
-                message_ko="지원하지 않는 모드입니다.",
-                error_code="invalid_mode",
-                pipeline_version=self._pipeline_state.pipeline_version,
-            )
+            return self._command_error("지원하지 않는 모드입니다.", "invalid_mode")
         self._mode = mode
+        self._last_error = ""
+        self._last_message = "모드가 변경되었습니다."
         self.stateChanged.emit()
         return CommandResult(
             ok=True,
@@ -177,12 +179,7 @@ class UiController(QObject):
     def updateStep(self, step_id: str, patch: Mapping[str, Any]) -> CommandResult:
         kind = patch.get("kind") if isinstance(patch, Mapping) else None
         if not isinstance(kind, str):
-            return CommandResult(
-                ok=False,
-                message_ko="패치 종류가 필요합니다.",
-                error_code="invalid_step_patch",
-                pipeline_version=self._pipeline_state.pipeline_version,
-            )
+            return self._command_error("패치 종류가 필요합니다.", "invalid_step_patch")
         try:
             typed_patch = parse_step_patch(
                 kind,
@@ -190,12 +187,7 @@ class UiController(QObject):
                 variable_keys=self._services.pipeline_ops.variable_keys(),
             )
         except PatchValidationError as exc:
-            return CommandResult(
-                ok=False,
-                message_ko=exc.message_ko,
-                error_code=exc.error_code,
-                pipeline_version=self._pipeline_state.pipeline_version,
-            )
+            return self._command_error(exc.message_ko, exc.error_code)
 
         self._services.pipeline_ops.edit_params_if_available(step_id, typed_patch)
 
@@ -204,6 +196,8 @@ class UiController(QObject):
             fallback=self.stepsModel,
         )
         self.stepsModel = self._pipeline_state.steps_model
+        self._last_error = ""
+        self._last_message = "단계가 변경되었습니다."
         self.stateChanged.emit()
         return CommandResult(
             ok=True,
@@ -221,6 +215,7 @@ class UiController(QObject):
         )
         if not load_result.command.ok:
             self._last_error = load_result.command.message_ko
+            self._last_message = ""
             self._pipeline_state.mark_ready_unless_empty()
             self.stateChanged.emit()
             return load_result.command
@@ -236,6 +231,7 @@ class UiController(QObject):
         self._data_model = None
         self._variable_model = None
         self._last_error = ""
+        self._last_message = load_result.command.message_ko
         self._report_path = ""
         self.stateChanged.emit()
         return CommandResult(
@@ -266,6 +262,8 @@ class UiController(QObject):
         local_path = local_path_from_qml(path)
         ok = self._services.import_flow.preview(local_path)
         self._last_error = "" if ok else self._services.import_flow.preview_text
+        if not ok:
+            self._last_message = ""
         self.stateChanged.emit()
         return ok
 
@@ -274,6 +272,7 @@ class UiController(QObject):
         pending_path = self._services.import_flow.require_pending_path()
         if pending_path is None:
             self._last_error = self._services.import_flow.preview_text
+            self._last_message = ""
             self.stateChanged.emit()
             return False
         result = self.openDataFile(
@@ -299,6 +298,10 @@ class UiController(QObject):
             pipeline_version=self._pipeline_state.pipeline_version,
         )
         if not result.ok:
+            self._last_error = result.message_ko
+            self._last_message = ""
+            self._pipeline_state.mark_ready_unless_empty()
+            self.stateChanged.emit()
             return result
 
         self._pipeline_state.mark_step_changed(
@@ -307,6 +310,8 @@ class UiController(QObject):
         )
         self.stepsModel = self._pipeline_state.steps_model
         self._refresh_dataset_models()
+        self._last_error = ""
+        self._last_message = result.message_ko
         self.stateChanged.emit()
         return CommandResult(
             ok=True,
@@ -368,6 +373,8 @@ class UiController(QObject):
             emit_result=self.workerResultReady.emit,
         )
         self._pipeline_state.mark_running()
+        self._last_error = ""
+        self._last_message = "다시 실행을 시작했습니다."
         self.stateChanged.emit()
         return CommandResult(
             ok=True,
@@ -390,11 +397,13 @@ class UiController(QObject):
         )
         if not result.ok:
             self._last_error = result.message_ko
+            self._last_message = ""
             self._pipeline_state.mark_ready_unless_empty()
             self.stateChanged.emit()
             return result
         self._report_path = result.result_ids[0]
         self._last_error = ""
+        self._last_message = result.message_ko
         self.stateChanged.emit()
         return result
 
@@ -464,6 +473,7 @@ class UiController(QObject):
         if not result.ok:
             self._pipeline_state.mark_error()
             self._last_error = result.message_ko
+            self._last_message = ""
             self.stateChanged.emit()
             return True
         self._refresh_dataset_models()
@@ -478,6 +488,7 @@ class UiController(QObject):
         )
         self._pipeline_state.mark_ready_fresh()
         self._last_error = ""
+        self._last_message = "분석 결과가 업데이트되었습니다."
         self.stateChanged.emit()
         return True
 
@@ -498,6 +509,7 @@ class UiController(QObject):
             fallback=self.stepsModel,
         )
         self._last_error = ""
+        self._last_message = result.message_ko
         self.stepsModel = self._pipeline_state.steps_model
         self._refresh_dataset_models()
         self.stateChanged.emit()
@@ -510,6 +522,7 @@ class UiController(QObject):
 
     def _command_error(self, message_ko: str, error_code: str) -> CommandResult:
         self._last_error = message_ko
+        self._last_message = ""
         self._pipeline_state.mark_ready_unless_empty()
         self.stateChanged.emit()
         return CommandResult(

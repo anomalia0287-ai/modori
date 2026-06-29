@@ -72,6 +72,15 @@ Dialog {
         }
 
         Label {
+            text: appBootstrap.text("results.error_prefix") + uiController.lastError
+            visible: uiController.lastError.length > 0
+            color: "#B00020"
+            font.bold: true
+            wrapMode: Text.WordWrap
+            Layout.fillWidth: true
+        }
+
+        Label {
             text: uiController.reportPath
             visible: uiController.reportPath.length > 0
             color: "#0B4A43"

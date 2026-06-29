@@ -43,6 +43,15 @@ Rectangle {
         }
 
         Label {
+            text: uiController.lastMessage
+            visible: uiController.lastMessage.length > 0
+            color: "#0B4A43"
+            font.bold: true
+            wrapMode: Text.WordWrap
+            Layout.fillWidth: true
+        }
+
+        Label {
             text: uiController.resultSummary.length > 0
                 ? uiController.resultSummary
                 : "분석을 실행하면 결과가 여기에 표시됩니다."

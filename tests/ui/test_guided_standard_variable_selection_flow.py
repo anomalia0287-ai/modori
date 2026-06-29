@@ -104,3 +104,23 @@ def test_guide_and_standard_rails_commit_variable_selections() -> None:
     assert "uiController.configureRegressionFromText" in guide
     assert "uiController.configureReliabilityFromText" in rail
     assert "uiController.configureComparisonFromText" in rail
+
+
+def test_guided_and_standard_apply_buttons_require_complete_fields() -> None:
+    guide = Path("src/modori/ui/qml/components/GuideRail.qml").read_text(encoding="utf-8")
+    rail = Path("src/modori/ui/qml/components/PipelineRail.qml").read_text(encoding="utf-8")
+
+    assert "property bool canCommitSelection" in guide
+    assert "enabled: root.canCommitSelection" in guide
+    assert "root.hasText(reliabilityItemsField.text)" in guide
+    assert "root.hasText(outcomeKeyField.text) && root.hasText(groupKeyField.text)" in guide
+    assert "root.hasText(outcomeKeyField.text) && root.hasText(predictorKeysField.text)" in guide
+    assert "enabled: root.hasText(reliabilityItemsField.text)" in rail
+    assert (
+        "enabled: root.hasText(comparisonOutcomeField.text) "
+        "&& root.hasText(comparisonGroupField.text)"
+    ) in rail
+    assert (
+        "enabled: root.hasText(regressionOutcomeField.text) "
+        "&& root.hasText(regressionPredictorsField.text)"
+    ) in rail

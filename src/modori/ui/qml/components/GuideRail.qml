@@ -7,6 +7,13 @@ Rectangle {
     color: "#EFF7F3"
     property string guideNote: ""
     property string selectedIntent: ""
+    property bool canCommitSelection: root.selectedIntent === "reliability" && root.hasText(reliabilityItemsField.text)
+        || root.selectedIntent === "comparison" && root.hasText(outcomeKeyField.text) && root.hasText(groupKeyField.text)
+        || root.selectedIntent === "regression" && root.hasText(outcomeKeyField.text) && root.hasText(predictorKeysField.text)
+
+    function hasText(value) {
+        return String(value).trim().length > 0
+    }
 
     function commitSelectedIntent() {
         if (root.selectedIntent === "reliability") {
@@ -72,7 +79,7 @@ Rectangle {
         Button {
             text: appBootstrap.text("guide.run_recommended")
             Accessible.name: appBootstrap.text("guide.run_recommended")
-            enabled: root.selectedIntent.length > 0
+            enabled: root.canCommitSelection
             Layout.fillWidth: true
             onClicked: {
                 if (root.commitSelectedIntent()) {
@@ -120,7 +127,7 @@ Rectangle {
         Button {
             text: appBootstrap.text("guide.apply_selection")
             Accessible.name: appBootstrap.text("guide.apply_selection")
-            enabled: root.selectedIntent.length > 0
+            enabled: root.canCommitSelection
             Layout.fillWidth: true
             onClicked: root.commitSelectedIntent()
         }
