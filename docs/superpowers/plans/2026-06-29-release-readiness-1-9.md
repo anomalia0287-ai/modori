@@ -244,11 +244,11 @@ Expected: pip-audit runs only when explicitly requested.
 - Test: `tests/test_reliability_step.py`
 - Test: `tests/test_regression_step.py`
 
-- [ ] **Step 1: Record R dependency prerequisites**
+- [x] **Step 1: Record R dependency prerequisites**
 
 Document exact R packages needed: `psych` for omega and `sandwich` for robust regression reference checks.
 
-- [ ] **Step 2: Run R-gated tests in an environment where prerequisites exist**
+- [x] **Step 2: Run R-gated tests in an environment where prerequisites exist**
 
 Expected: R-gated tests pass rather than skip.
 

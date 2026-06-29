@@ -48,3 +48,17 @@ Run the packaged executable gate before shipping a Windows artifact:
 
 The packaged launch smoke must start `dist\Modori\Modori.exe` from outside the
 repository and keep the event loop alive for the configured timeout.
+
+## Statistical Reference Gate
+
+Before claiming statistical-reference readiness on this Windows workspace, run
+the R-gated reference tests with `MODORI_RSCRIPT` pointing at the local R runtime:
+
+```powershell
+$env:MODORI_RSCRIPT = ".tools\r-env\Scripts\Rscript.exe"
+.\.venv\Scripts\python.exe -m pytest -q -rs -p no:cacheprovider tests\test_reliability_step.py::test_mcdonald_omega_matches_r_psych_when_r_is_available tests\test_regression_step.py::test_regression_matches_committed_r_reference_when_r_is_available
+```
+
+The required R packages are documented in
+`docs/specs/statistical-reference-environment.md`: `psych` for omega and
+`sandwich` for HC3 robust covariance.
