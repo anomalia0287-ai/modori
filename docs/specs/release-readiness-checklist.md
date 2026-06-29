@@ -38,6 +38,13 @@ The `.pip-audit-cache` directory is intentionally local to the workspace and is
 ignored by git. A failed advisory scan blocks release unless the finding is
 triaged and documented with an accepted risk decision.
 
+Current evidence from this workspace:
+
+- `scripts\quality_gate.py --with-pip-audit` passed on 2026-06-29.
+- `pip-audit --local` reported no known vulnerabilities.
+- Local packages `modori` and `tongtong` were skipped because they are not
+  published PyPI packages and cannot be advisory-audited by package name.
+
 ## Packaging Gate
 
 Run the packaged executable gate before shipping a Windows artifact:
@@ -96,4 +103,6 @@ Current evidence from this workspace:
 
 - CSV and XLSX at 50 rows x 9 columns: all operations passed.
 - CSV and XLSX at 500 rows x 9 columns: all operations passed.
-- Slowest recorded operation: CSV 50-row `report_export`, 0.669728 seconds.
+- Latest JSON evidence: `.stress-matrix\results-2026-06-29-latest.json`.
+- Slowest recorded operation in the latest run: XLSX 50-row `report_export`,
+  1.121492 seconds.

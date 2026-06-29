@@ -51,7 +51,7 @@ $env:MODORI_RSCRIPT = ".tools\r-env\Scripts\Rscript.exe"
 Current evidence:
 
 ```text
-2 passed in 6.80s
+2 passed in 8.51s
 ```
 
 These tests must pass rather than skip before claiming the statistical reference
