@@ -62,7 +62,10 @@ class TablePreviewResult(TableReadResult):
 
 @dataclass(frozen=True)
 class PreviewReadLimits:
+    max_file_bytes: int | None = None
     max_rows: int = 30
+    max_columns: int | None = 50
+    max_cells: int | None = 1_500
 
 
 @dataclass(frozen=True)
@@ -171,47 +174,98 @@ def read_preview(
     *,
     limits: PreviewReadLimits = DEFAULT_PREVIEW_READ_LIMITS,
 ) -> TablePreviewResult:
-    if limits.max_rows < 1:
-        raise ValueError("Preview max_rows must be at least 1")
+    _validate_preview_limits(limits)
     normalized = normalize_file_type(path, file_type)
     if normalized == "csv":
-        frame = pd.read_csv(path, nrows=limits.max_rows)
+        _enforce_file_size(path, limits.max_file_bytes)
+        frame, warnings = _read_csv_preview(path, limits)
         return _preview_result(
             frame,
             None,
             _table_source(path, normalized),
-            preview_limit=limits.max_rows,
+            preview_limit=_preview_row_limit(limits),
+            warnings=warnings,
         )
     if normalized == "xlsx":
-        frame, source = _read_xlsx_preview(path, limits.max_rows)
-        return _preview_result(frame, None, source, preview_limit=limits.max_rows)
+        _enforce_file_size(path, limits.max_file_bytes)
+        frame, source, warnings = _read_xlsx_preview(path, limits)
+        return _preview_result(
+            frame,
+            None,
+            source,
+            preview_limit=_preview_row_limit(limits),
+            warnings=warnings,
+        )
     if normalized == "xls":
-        frame = pd.read_excel(path, nrows=limits.max_rows)
+        _enforce_file_size(path, limits.max_file_bytes)
+        frame, warnings = _read_excel_preview(path, limits)
         return _preview_result(
             frame,
             None,
             _table_source(path, normalized),
-            preview_limit=limits.max_rows,
+            preview_limit=_preview_row_limit(limits),
+            warnings=warnings,
         )
     if normalized == "sav":
         import pyreadstat
 
+        _enforce_file_size(path, limits.max_file_bytes)
+        _, preview_metadata = pyreadstat.read_sav(
+            path,
+            metadataonly=True,
+            user_missing=True,
+        )
+        columns = tuple(str(column) for column in getattr(preview_metadata, "column_names", ()))
+        selected_columns, warnings = _limited_preview_columns(columns, limits)
+        read_kwargs: dict[str, Any] = {
+            "row_limit": _preview_row_limit(limits),
+            "user_missing": True,
+        }
+        if selected_columns is not None:
+            read_kwargs["usecols"] = list(selected_columns)
         frame, metadata = pyreadstat.read_sav(
             path,
-            row_limit=limits.max_rows,
-            user_missing=True,
+            **read_kwargs,
         )
         return _preview_result(
             frame,
             metadata,
             _table_source(path, normalized),
-            preview_limit=limits.max_rows,
+            preview_limit=_preview_row_limit(limits),
+            warnings=warnings,
         )
     raise ValueError(f"Unsupported table file type: {normalized}")
 
 
-def _read_xlsx_preview(path: Path, max_rows: int) -> tuple[pd.DataFrame, TableReadSource]:
-    return _read_xlsx_rows(path, max_rows)
+def _read_csv_preview(path: Path, limits: PreviewReadLimits) -> tuple[pd.DataFrame, tuple[str, ...]]:
+    header = pd.read_csv(path, nrows=0)
+    selected_columns, warnings = _limited_preview_columns(
+        tuple(str(column) for column in header.columns),
+        limits,
+    )
+    read_kwargs: dict[str, Any] = {"nrows": _preview_row_limit(limits)}
+    if selected_columns is not None:
+        read_kwargs["usecols"] = list(selected_columns)
+    return pd.read_csv(path, **read_kwargs), warnings
+
+
+def _read_excel_preview(path: Path, limits: PreviewReadLimits) -> tuple[pd.DataFrame, tuple[str, ...]]:
+    header = pd.read_excel(path, nrows=0)
+    selected_columns, warnings = _limited_preview_columns(
+        tuple(str(column) for column in header.columns),
+        limits,
+    )
+    read_kwargs: dict[str, Any] = {"nrows": _preview_row_limit(limits)}
+    if selected_columns is not None:
+        read_kwargs["usecols"] = list(selected_columns)
+    return pd.read_excel(path, **read_kwargs), warnings
+
+
+def _read_xlsx_preview(
+    path: Path,
+    limits: PreviewReadLimits,
+) -> tuple[pd.DataFrame, TableReadSource, tuple[str, ...]]:
+    return _read_xlsx_rows(path, _preview_row_limit(limits), _preview_column_limit(limits))
 
 
 def _read_xlsx_limited(path: Path, limits: FullReadLimits) -> tuple[pd.DataFrame, TableReadSource]:
@@ -236,7 +290,11 @@ def _read_xlsx_limited(path: Path, limits: FullReadLimits) -> tuple[pd.DataFrame
         workbook.close()
 
 
-def _read_xlsx_rows(path: Path, max_rows: int) -> tuple[pd.DataFrame, TableReadSource]:
+def _read_xlsx_rows(
+    path: Path,
+    max_rows: int,
+    max_columns: int | None = None,
+) -> tuple[pd.DataFrame, TableReadSource, tuple[str, ...]]:
     workbook = _load_xlsx_workbook(path)
     try:
         worksheet = workbook.active
@@ -245,12 +303,15 @@ def _read_xlsx_rows(path: Path, max_rows: int) -> tuple[pd.DataFrame, TableReadS
         try:
             header = next(iterator)
         except StopIteration:
-            return pd.DataFrame(), source
+            return pd.DataFrame(), source, ()
         columns = _xlsx_columns(header)
+        selected_columns, warnings = _limited_preview_columns(tuple(columns), max_columns)
+        if selected_columns is not None:
+            columns = list(selected_columns)
         rows = []
         for _, row in zip(range(max_rows), iterator, strict=False):
-            rows.append(list(row))
-        return pd.DataFrame(rows, columns=columns), source
+            rows.append(list(row[: len(columns)]))
+        return pd.DataFrame(rows, columns=columns), source, warnings
     finally:
         workbook.close()
 
@@ -305,11 +366,13 @@ def _preview_result(
     source: TableReadSource,
     *,
     preview_limit: int,
+    warnings: tuple[str, ...] = (),
 ) -> TablePreviewResult:
     return TablePreviewResult(
         frame=frame,
         metadata=metadata,
         source=source,
+        warnings=warnings,
         preview_limit=preview_limit,
         sample_rows=_sample_rows(frame),
     )
@@ -333,6 +396,50 @@ def _xlsx_columns(header: tuple[Any, ...]) -> list[str]:
         str(value) if value is not None else f"Unnamed: {index}"
         for index, value in enumerate(header)
     ]
+
+
+def _validate_preview_limits(limits: PreviewReadLimits) -> None:
+    if limits.max_rows < 1:
+        raise ValueError("Preview max_rows must be at least 1")
+    if limits.max_file_bytes is not None and limits.max_file_bytes < 1:
+        raise ValueError("Preview max_file_bytes must be at least 1")
+    if limits.max_columns is not None and limits.max_columns < 1:
+        raise ValueError("Preview max_columns must be at least 1")
+    if limits.max_cells is not None and limits.max_cells < 1:
+        raise ValueError("Preview max_cells must be at least 1")
+
+
+def _preview_row_limit(limits: PreviewReadLimits) -> int:
+    column_limit = _preview_column_limit(limits)
+    if limits.max_cells is None or column_limit is None:
+        return limits.max_rows
+    return min(limits.max_rows, max(1, limits.max_cells // column_limit))
+
+
+def _preview_column_limit(limits: PreviewReadLimits) -> int | None:
+    column_limit = limits.max_columns
+    if limits.max_cells is None:
+        return column_limit
+    cell_column_limit = max(1, limits.max_cells // limits.max_rows)
+    if column_limit is None:
+        return cell_column_limit
+    return min(column_limit, cell_column_limit)
+
+
+def _limited_preview_columns(
+    columns: tuple[str, ...],
+    limits_or_max_columns: PreviewReadLimits | int | None,
+) -> tuple[tuple[str, ...] | None, tuple[str, ...]]:
+    if isinstance(limits_or_max_columns, PreviewReadLimits):
+        max_columns = _preview_column_limit(limits_or_max_columns)
+    else:
+        max_columns = limits_or_max_columns
+    if max_columns is None or len(columns) <= max_columns:
+        return None, ()
+    return (
+        tuple(columns[:max_columns]),
+        (f"미리보기 열 제한: {len(columns)}개 중 {max_columns}개 열만 표시합니다.",),
+    )
 
 
 def _xlsx_needs_limited_read(limits: FullReadLimits) -> bool:

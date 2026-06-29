@@ -46,6 +46,17 @@ def test_import_preview_service_surfaces_xlsx_source_context_and_sample(tmp_path
     assert "score=3.5" in preview.text
 
 
+def test_import_preview_service_surfaces_preview_limit_warning(tmp_path) -> None:
+    data_path = tmp_path / "wide-survey.csv"
+    frame = pd.DataFrame({f"v{index}": [index] for index in range(51)})
+    frame.to_csv(data_path, index=False)
+
+    preview = ImportPreviewService().preview(data_path)
+
+    assert preview.ok is True
+    assert "미리보기 열 제한: 51개 중 50개 열만 표시합니다." in preview.text
+
+
 def test_import_preview_service_reads_bounded_csv_preview(tmp_path, monkeypatch) -> None:
     data_path = tmp_path / "large-survey.csv"
     data_path.write_text("score\n1\n2\n", encoding="utf-8")
@@ -60,4 +71,4 @@ def test_import_preview_service_reads_bounded_csv_preview(tmp_path, monkeypatch)
     preview = ImportPreviewService().preview(data_path)
 
     assert preview.ok is True
-    assert calls == [{"nrows": 30}]
+    assert calls == [{"nrows": 0}, {"nrows": 30}]

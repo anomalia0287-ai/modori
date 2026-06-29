@@ -125,6 +125,50 @@ def test_xlsx_full_header_and_preview_use_same_active_sheet(tmp_path) -> None:
     }
 
 
+def test_read_preview_uses_bounded_csv_columns(tmp_path, monkeypatch) -> None:
+    path = tmp_path / "survey.csv"
+    path.write_text("a,b,c\n1,2,3\n", encoding="utf-8")
+    calls = []
+
+    def read_csv_spy(path_arg, *args, **kwargs):
+        calls.append(kwargs)
+        if kwargs.get("nrows") == 0:
+            return pd.DataFrame(columns=["a", "b", "c"])
+        return pd.DataFrame({"a": [1], "b": [2]})
+
+    monkeypatch.setattr("modori.table_io.pd.read_csv", read_csv_spy)
+
+    result = read_preview(path, "csv", limits=PreviewReadLimits(max_rows=2, max_columns=2))
+
+    assert result.columns == ("a", "b")
+    assert result.warnings == ("미리보기 열 제한: 3개 중 2개 열만 표시합니다.",)
+    assert calls == [
+        {"nrows": 0},
+        {"nrows": 2, "usecols": ["a", "b"]},
+    ]
+
+
+def test_default_preview_limits_do_not_block_by_file_size() -> None:
+    assert PreviewReadLimits().max_file_bytes is None
+
+
+def test_read_preview_limits_xlsx_columns(tmp_path) -> None:
+    path = tmp_path / "survey.xlsx"
+    pd.DataFrame(
+        {
+            "a": [1, 4],
+            "b": [2, 5],
+            "c": [3, 6],
+        }
+    ).to_excel(path, index=False)
+
+    result = read_preview(path, "xlsx", limits=PreviewReadLimits(max_rows=2, max_columns=2))
+
+    assert result.columns == ("a", "b")
+    assert result.frame.to_dict(orient="list") == {"a": [1, 4], "b": [2, 5]}
+    assert result.warnings == ("미리보기 열 제한: 3개 중 2개 열만 표시합니다.",)
+
+
 def test_read_full_rejects_csv_when_explicit_row_limit_is_exceeded(tmp_path) -> None:
     path = tmp_path / "survey.csv"
     pd.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]}).to_csv(path, index=False)

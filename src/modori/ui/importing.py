@@ -68,6 +68,7 @@ class ImportPreviewService:
             lines.append(f"시트: {preview.source.sheet_name}")
         if preview.source.sheet_names:
             lines.append(f"전체 시트: {', '.join(preview.source.sheet_names)}")
+        lines.extend(preview.warnings)
         lines.extend(variable_lines)
         sample_lines = ImportPreviewService._sample_lines(preview)
         if sample_lines:
