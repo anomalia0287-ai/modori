@@ -1,0 +1,24 @@
+slug: standard-error
+kind: statistic
+title_ko: "표준오차 (SE)"
+title_en: "Standard error (SE)"
+summary_ko: "추정값(예: 평균이나 계수)이 표본마다 얼마나 들쭉날쭉할지를 나타내는 값이에요. 작을수록 추정이 더 정밀합니다."
+summary_en: "A measure of how much an estimate (such as a mean or a coefficient) would bounce around from sample to sample. Smaller means a more precise estimate."
+interpretation_ko: "표준오차가 작을수록 추정값을 더 믿을 수 있습니다. 신뢰구간과 검정통계량을 계산하는 바탕이 됩니다."
+interpretation_en: "A smaller standard error means a more trustworthy estimate. It underlies confidence intervals and test statistics."
+when_to_use_ko: null
+when_to_use_en: null
+how_to_report_ko: "추정값과 함께 \"b = 0.55, SE = 0.15\"처럼 제시합니다."
+how_to_report_en: "Report alongside the estimate, e.g., \"b = 0.55, SE = 0.15\"."
+pitfalls_ko: "표준편차(SD)와 혼동하지 마세요 — SD는 자료가 퍼진 정도, SE는 추정값의 불확실성입니다."
+pitfalls_en: "Don't confuse it with the standard deviation (SD): SD describes the spread of the data, SE the uncertainty of an estimate."
+assumptions: []
+alternatives: []
+related:
+  - confidence-interval
+  - unstandardized-coefficient
+references:
+  - citation: "Field, A. (2018). Discovering Statistics Using IBM SPSS Statistics (5th ed.). SAGE."
+    locator: null
+    verified: true
+verification_status: needs_review

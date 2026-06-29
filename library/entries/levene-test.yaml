@@ -1,0 +1,27 @@
+slug: levene-test
+kind: diagnostic
+title_ko: "레빈 검정 (Levene's test)"
+title_en: "Levene's test"
+summary_ko: "비교하는 집단들의 점수가 퍼진 정도(분산)가 서로 같은지를 검정하는 방법이에요."
+summary_en: "A test that checks whether the groups being compared have an equal spread (variance) of scores."
+interpretation_ko: "p값이 .05보다 작으면 '분산이 서로 다르다'는 신호이고, 이때는 Welch 보정을 쓰는 게 안전합니다."
+interpretation_en: "A p-value below .05 signals unequal variances; in that case Welch's correction is the safe choice."
+when_to_use_ko: "두 집단 이상의 평균을 비교하기 전에 등분산 가정을 점검할 때."
+when_to_use_en: "Before comparing two or more group means, to check the equal-variance assumption."
+how_to_report_ko: "예: \"Levene F = 1.20, p = .28\" 형식으로 보고합니다."
+how_to_report_en: "Report as, e.g., \"Levene's F = 1.20, p = .28\"."
+pitfalls_ko: "이 검정 자체도 표본 크기에 민감합니다. 결과는 등분산 '판단의 참고'로 쓰세요."
+pitfalls_en: "The test itself is sensitive to sample size; use its result as guidance for the equal-variance decision."
+assumptions: []
+alternatives: []
+related:
+  - homogeneity-of-variance
+  - welch-t-test
+references:
+  - citation: "Levene, H. (1960). Robust tests for equality of variances. In I. Olkin et al. (Eds.), Contributions to Probability and Statistics (pp. 278-292). Stanford University Press."
+    locator: "pp. 278-292"
+    verified: false
+  - citation: "Field, A. (2018). Discovering Statistics Using IBM SPSS Statistics (5th ed.). SAGE."
+    locator: null
+    verified: true
+verification_status: needs_review

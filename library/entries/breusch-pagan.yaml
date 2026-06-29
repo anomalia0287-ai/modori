@@ -1,0 +1,27 @@
+slug: breusch-pagan
+kind: diagnostic
+title_ko: "브로이쉬-페이건 검정 (Breusch-Pagan)"
+title_en: "Breusch-Pagan test"
+summary_ko: "회귀의 오차(잔차)가 예측값에 상관없이 고르게 퍼져 있는지(등분산인지)를 검정하는 방법이에요."
+summary_en: "A test that checks whether a regression's errors (residuals) spread out evenly regardless of the predicted value (homoscedasticity)."
+interpretation_ko: "p값이 .05보다 작으면 '오차가 고르게 퍼지지 않았다(이분산)'는 신호이고, 이때는 HC3 강건 표준오차를 쓰면 안전합니다."
+interpretation_en: "A p-value below .05 signals uneven spread (heteroscedasticity); HC3 robust standard errors are then the safe choice."
+when_to_use_ko: "회귀에서 등분산성 가정을 점검할 때."
+when_to_use_en: "When checking the homoscedasticity assumption in regression."
+how_to_report_ko: "예: \"Breusch-Pagan χ² = 4.10, p = .043\" 형식으로 보고합니다."
+how_to_report_en: "Report as, e.g., \"Breusch-Pagan χ² = 4.10, p = .043\"."
+pitfalls_ko: "잔차-적합치 그림과 함께 보면 위반의 양상을 더 잘 알 수 있습니다."
+pitfalls_en: "Reading it together with a residual-vs-fitted plot reveals the shape of the violation."
+assumptions: []
+alternatives: []
+related:
+  - homoscedasticity
+  - multiple-regression-ols
+references:
+  - citation: "Breusch, T. S., & Pagan, A. R. (1979). A simple test for heteroscedasticity and random coefficient variation. Econometrica, 47(5), 1287-1294."
+    locator: "47(5), 1287-1294"
+    verified: false
+  - citation: "Field, A. (2018). Discovering Statistics Using IBM SPSS Statistics (5th ed.). SAGE."
+    locator: null
+    verified: true
+verification_status: needs_review

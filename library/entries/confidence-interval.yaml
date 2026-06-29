@@ -1,0 +1,27 @@
+slug: confidence-interval
+kind: concept
+title_ko: "신뢰구간 (confidence interval)"
+title_en: "Confidence interval"
+summary_ko: "추정값이 들어 있을 법한 '그럴듯한 범위'예요. 95% 신뢰구간은, 같은 방식으로 조사를 반복하면 그런 구간들이 참값을 약 95% 담는다는 뜻입니다."
+summary_en: "A plausible range for an estimate. A 95% confidence interval means that, if you repeated the study the same way, about 95% of such intervals would contain the true value."
+interpretation_ko: "구간이 좁을수록 추정이 더 정밀합니다. 평균차의 95% 구간이 0을 포함하면 그 차이는 유의하지 않은 경우가 많습니다."
+interpretation_en: "A narrower interval means a more precise estimate. If a 95% interval for a mean difference includes 0, the difference is usually not significant."
+when_to_use_ko: null
+when_to_use_en: null
+how_to_report_ko: "예: \"95% CI [-1.25, -0.67]\" 형식으로 추정값과 함께 보고합니다."
+how_to_report_en: "Report alongside the estimate, e.g., \"95% CI [-1.25, -0.67]\"."
+pitfalls_ko: "'참값이 이 구간에 있을 확률이 95%'라는 해석은 흔한 오해입니다 — 확률은 절차에 관한 것입니다."
+pitfalls_en: "'There is a 95% probability the true value lies in this interval' is a common misreading — the probability refers to the procedure."
+assumptions: []
+alternatives: []
+related:
+  - p-value
+  - statistical-significance
+references:
+  - citation: "Cumming, G. (2014). The new statistics: Why and how. Psychological Science, 25(1), 7-29."
+    locator: "25(1), 7-29"
+    verified: false
+  - citation: "Field, A. (2018). Discovering Statistics Using IBM SPSS Statistics (5th ed.). SAGE."
+    locator: null
+    verified: true
+verification_status: needs_review

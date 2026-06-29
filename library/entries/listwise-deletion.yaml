@@ -1,0 +1,23 @@
+slug: listwise-deletion
+kind: concept
+title_ko: "목록별 삭제 (listwise deletion)"
+title_en: "Listwise deletion"
+summary_ko: "분석에 쓰는 변수 중 하나라도 빈칸(결측)이 있는 응답자를 통째로 빼고 분석하는 방식이에요."
+summary_en: "An approach that drops an entire respondent from the analysis if any of the variables being used has a missing value."
+interpretation_ko: "간단하지만, 결측이 많으면 표본이 크게 줄고 결과가 한쪽으로 치우칠 수 있습니다."
+interpretation_en: "Simple, but with a lot of missingness it can shrink the sample considerably and bias the results."
+when_to_use_ko: null
+when_to_use_en: null
+how_to_report_ko: "분석에 실제로 쓰인 사례 수(N)와 제외된 사례 수를 함께 밝히는 것이 좋습니다."
+how_to_report_en: "It is good practice to report the number of cases actually used (N) and how many were excluded."
+pitfalls_ko: "결측이 무작위가 아니면 편향이 생깁니다. 결측이 많을 때는 대치(imputation) 같은 대안을 고려하세요."
+pitfalls_en: "If the missingness is not random, bias can arise; with much missingness, consider alternatives such as imputation."
+assumptions: []
+alternatives: []
+related:
+  - multiple-regression-ols
+references:
+  - citation: "Tabachnick, B. G., & Fidell, L. S. (2019). Using Multivariate Statistics (7th ed.). Pearson."
+    locator: null
+    verified: true
+verification_status: needs_review

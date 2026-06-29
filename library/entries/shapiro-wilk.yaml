@@ -1,0 +1,26 @@
+slug: shapiro-wilk
+kind: diagnostic
+title_ko: "샤피로-윌크 검정 (Shapiro-Wilk)"
+title_en: "Shapiro-Wilk test"
+summary_ko: "자료(또는 잔차)가 정규분포에 가까운지를 수치로 검정하는 방법이에요."
+summary_en: "A test that numerically checks whether data (or residuals) are close to a normal distribution."
+interpretation_ko: "p값이 .05보다 작으면 '정규분포와 다르다'는 신호입니다. 다만 표본이 매우 크면 사소한 차이에도 유의하게 나오니 Q-Q 그림과 함께 보세요."
+interpretation_en: "A p-value below .05 signals a departure from normality. But with very large samples it flags trivial deviations, so read it together with a Q-Q plot."
+when_to_use_ko: "t검정·회귀 등에서 정규성 가정을 점검할 때, 특히 표본이 작을 때."
+when_to_use_en: "When checking the normality assumption for t-tests, regression, etc., especially with small samples."
+how_to_report_ko: "예: \"W = 0.97, p = .21\" 형식으로 보고합니다."
+how_to_report_en: "Report as, e.g., \"W = 0.97, p = .21\"."
+pitfalls_ko: "유의성만으로 판단하지 마세요 — 큰 표본에서는 거의 항상 유의해집니다. 그림으로 정도를 함께 보는 게 안전합니다."
+pitfalls_en: "Don't judge by significance alone — with large samples it is almost always significant. Reading the degree of departure from a plot is safer."
+assumptions: []
+alternatives: []
+related:
+  - normality
+references:
+  - citation: "Shapiro, S. S., & Wilk, M. B. (1965). An analysis of variance test for normality (complete samples). Biometrika, 52(3-4), 591-611."
+    locator: "52(3-4), 591-611"
+    verified: false
+  - citation: "Field, A. (2018). Discovering Statistics Using IBM SPSS Statistics (5th ed.). SAGE."
+    locator: null
+    verified: true
+verification_status: needs_review

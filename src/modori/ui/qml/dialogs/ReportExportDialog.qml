@@ -1,0 +1,82 @@
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
+
+Dialog {
+    id: root
+    title: appBootstrap.text("dialog.report.title")
+    modal: true
+    standardButtons: Dialog.Close
+
+    ColumnLayout {
+        spacing: 12
+        anchors.fill: parent
+
+        property string selectedLanguage: "ko"
+
+        Label {
+            text: appBootstrap.text("dialog.report.description")
+            wrapMode: Text.WordWrap
+            Layout.fillWidth: true
+        }
+
+        RowLayout {
+            spacing: 10
+
+            RadioButton {
+                text: appBootstrap.text("dialog.report.language.ko")
+                checked: true
+                onClicked: parent.selectedLanguage = "ko"
+            }
+
+            RadioButton {
+                text: appBootstrap.text("dialog.report.language.en")
+                onClicked: parent.selectedLanguage = "en"
+            }
+        }
+
+        CheckBox {
+            id: includeReliability
+            text: appBootstrap.text("dialog.report.include_reliability")
+            checked: true
+        }
+
+        CheckBox {
+            id: includeComparison
+            text: appBootstrap.text("dialog.report.include_comparison")
+            checked: true
+        }
+
+        CheckBox {
+            id: includeRegression
+            text: appBootstrap.text("dialog.report.include_regression")
+            checked: true
+        }
+
+        CheckBox {
+            id: includeFigures
+            text: appBootstrap.text("dialog.report.include_figures")
+            checked: true
+        }
+
+        Button {
+            text: appBootstrap.text("dialog.report.export_word")
+            Accessible.name: appBootstrap.text("dialog.report.export_word")
+            onClicked: uiController.exportReportWithSelections(
+                parent.selectedLanguage,
+                includeReliability.checked,
+                includeComparison.checked,
+                includeRegression.checked,
+                includeFigures.checked
+            )
+        }
+
+        Label {
+            text: uiController.reportPath
+            visible: uiController.reportPath.length > 0
+            color: "#0B4A43"
+            wrapMode: Text.WordWrap
+            Layout.fillWidth: true
+        }
+    }
+}

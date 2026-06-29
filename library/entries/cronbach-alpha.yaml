@@ -1,0 +1,28 @@
+slug: cronbach-alpha
+kind: statistic
+title_ko: "크론바흐 알파 (Cronbach's α)"
+title_en: "Cronbach's alpha"
+summary_ko: "설문의 여러 문항이 정말 '같은 것'을 재고 있는지 알려 주는 0~1 사이 점수예요. 1에 가까울수록 문항들이 서로 잘 들어맞는다는 뜻입니다."
+summary_en: "A 0-1 score that tells you whether the items in a questionnaire really measure the same single thing. The closer to 1, the better the items hang together."
+interpretation_ko: "이 점수를 통계에서는 '내적 일관성 신뢰도'라고 부릅니다. 경험칙으로 .70 이상이면 수용 가능, .80 이상 양호, .90 이상 매우 높음으로 봅니다. 다만 값이 지나치게 높으면(예: .95 초과) 문항이 서로 거의 같은 말을 묻는 중복일 수 있습니다."
+interpretation_en: "Statisticians call this 'internal-consistency reliability'. As a rule of thumb, >= .70 is acceptable, >= .80 good, and >= .90 very high. However, a very high value (e.g., > .95) can mean items are redundant (asking nearly the same thing)."
+when_to_use_ko: null
+when_to_use_en: null
+how_to_report_ko: "예: \"직무만족 척도의 내적 일관성은 양호하였다(Cronbach's α = .87)\"처럼 보고합니다. 가능하면 McDonald's ω도 함께 제시하는 것이 좋습니다."
+how_to_report_en: "Report as, e.g., \"the job-satisfaction scale showed good internal consistency (Cronbach's α = .87)\". Where possible, also report McDonald's ω."
+pitfalls_ko: "알파는 문항 수가 많을수록 커지므로, 높은 값이 곧 '좋은 척도'를 뜻하지는 않습니다. 또한 척도가 하나의 차원이라고 가정하므로, 여러 차원이 섞이면 잘못 해석될 수 있습니다."
+pitfalls_en: "Alpha rises with the number of items, so a high value does not by itself mean a 'good' scale. It also assumes a single underlying dimension, so it can mislead when several dimensions are mixed."
+assumptions: []
+alternatives:
+  - mcdonald-omega
+related:
+  - corrected-item-total-correlation
+  - mcdonald-omega
+references:
+  - citation: "Cronbach, L. J. (1951). Coefficient alpha and the internal structure of tests. Psychometrika, 16(3), 297-334."
+    locator: "16(3), 297-334"
+    verified: true
+  - citation: "Nunnally, J. C., & Bernstein, I. H. (1994). Psychometric Theory (3rd ed.). McGraw-Hill."
+    locator: null
+    verified: true
+verification_status: needs_review

@@ -1,0 +1,25 @@
+slug: unstandardized-coefficient
+kind: statistic
+title_ko: "비표준화 계수 (b)"
+title_en: "Unstandardized coefficient (b)"
+summary_ko: "회귀에서 예측변수가 1단위 늘 때 결과 점수가 평균적으로 얼마나 변하는지를, 원래 측정 단위 그대로 나타낸 값이에요."
+summary_en: "In regression, how much the outcome score changes on average when a predictor increases by one unit, expressed in the original measurement units."
+interpretation_ko: "예를 들어 b = 0.55면, 다른 변수를 고정한 채 그 예측변수가 1 늘 때 결과가 평균 0.55만큼 변한다는 뜻입니다. 부호는 방향을 나타냅니다."
+interpretation_en: "For example, b = 0.55 means the outcome changes by about 0.55 for each one-unit increase in that predictor, holding the others constant. The sign shows the direction."
+when_to_use_ko: null
+when_to_use_en: null
+how_to_report_ko: "표준오차나 신뢰구간과 함께 \"b = 0.55, SE = 0.15\"처럼 보고합니다."
+how_to_report_en: "Report with its standard error or CI, e.g., \"b = 0.55, SE = 0.15\"."
+pitfalls_ko: "단위에 따라 크기가 달라지므로, 예측변수들 간 영향력 비교에는 표준화 계수(β)를 쓰세요."
+pitfalls_en: "Its size depends on the units, so use standardized coefficients (β) to compare predictors' influence."
+assumptions: []
+alternatives: []
+related:
+  - standardized-beta
+  - standard-error
+  - multiple-regression-ols
+references:
+  - citation: "Field, A. (2018). Discovering Statistics Using IBM SPSS Statistics (5th ed.). SAGE."
+    locator: null
+    verified: true
+verification_status: needs_review

@@ -1,0 +1,24 @@
+slug: alpha-if-deleted
+kind: statistic
+title_ko: "항목 제거 시 알파 (alpha if item deleted)"
+title_en: "Alpha if item deleted"
+summary_ko: "어떤 한 문항을 척도에서 뺐을 때 신뢰도(크론바흐 알파)가 얼마가 될지를 보여 주는 값이에요."
+summary_en: "A value showing what the reliability (Cronbach's alpha) would become if a particular item were removed from the scale."
+interpretation_ko: "어떤 문항을 뺀 값이 전체 알파보다 '눈에 띄게 높으면', 그 문항이 척도와 잘 안 맞을 수 있다는 신호입니다."
+interpretation_en: "If removing an item would make alpha noticeably higher than the overall alpha, that item may not fit the scale well."
+when_to_use_ko: null
+when_to_use_en: null
+how_to_report_ko: "신뢰도 분석 표에 문항별로 함께 제시합니다."
+how_to_report_en: "Report per item within the reliability analysis table."
+pitfalls_ko: "값 하나만 보고 기계적으로 문항을 빼지 말고, 내용 타당성도 함께 고려하세요."
+pitfalls_en: "Don't drop an item mechanically on this number alone; weigh content validity too."
+assumptions: []
+alternatives: []
+related:
+  - cronbach-alpha
+  - corrected-item-total-correlation
+references:
+  - citation: "Field, A. (2018). Discovering Statistics Using IBM SPSS Statistics (5th ed.). SAGE."
+    locator: null
+    verified: true
+verification_status: needs_review

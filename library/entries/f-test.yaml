@@ -1,0 +1,25 @@
+slug: f-test
+kind: statistic
+title_ko: "F검정 (모형 전체)"
+title_en: "F-test (overall model)"
+summary_ko: "회귀 모형 전체가 결과를 의미 있게 설명하는지(우연이 아닌지)를 한 번에 검정하는 값이에요."
+summary_en: "A value that tests, all at once, whether the whole regression model explains the outcome meaningfully (not by chance)."
+interpretation_ko: "p값이 .05보다 작으면 모형 전체가 통계적으로 유의하다고 봅니다. 이는 개별 예측변수의 유의성과는 별개입니다."
+interpretation_en: "A p-value below .05 means the overall model is statistically significant. This is separate from whether individual predictors are significant."
+when_to_use_ko: null
+when_to_use_en: null
+how_to_report_ko: "예: \"F(2, 37) = 8.75, p = .001\" 형식으로 보고합니다."
+how_to_report_en: "Report as, e.g., \"F(2, 37) = 8.75, p = .001\"."
+pitfalls_ko: "모형이 유의해도 개별 변수는 모두 비유의할 수 있습니다(다중공선성 때 흔함)."
+pitfalls_en: "A model can be significant while no individual predictor is (common under multicollinearity)."
+assumptions: []
+alternatives: []
+related:
+  - p-value
+  - multiple-regression-ols
+  - r-squared
+references:
+  - citation: "Field, A. (2018). Discovering Statistics Using IBM SPSS Statistics (5th ed.). SAGE."
+    locator: null
+    verified: true
+verification_status: needs_review

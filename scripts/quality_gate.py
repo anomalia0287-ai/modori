@@ -1,0 +1,44 @@
+from __future__ import annotations
+
+import argparse
+import subprocess
+import sys
+from collections.abc import Sequence
+
+
+def quality_commands(*, include_pip_audit: bool = False) -> list[list[str]]:
+    commands = [
+        ["-m", "compileall", "-q", "src", "tests", "scripts"],
+        ["-m", "ruff", "check", "src", "tests", "scripts"],
+        ["-m", "bandit", "-q", "-r", "src"],
+        ["scripts/launch_smoke.py"],
+        ["-m", "pytest", "-q", "-p", "no:cacheprovider"],
+        ["-m", "pip", "check"],
+    ]
+    if include_pip_audit:
+        commands.append(["-m", "pip_audit", "--local", "--progress-spinner", "off"])
+    return commands
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="Run TongTong's local dependency and static-analysis gate."
+    )
+    parser.add_argument(
+        "--with-pip-audit",
+        action="store_true",
+        help="Also run pip-audit. This may contact external advisory services.",
+    )
+    args = parser.parse_args(argv)
+
+    for command in quality_commands(include_pip_audit=args.with_pip_audit):
+        display = " ".join([sys.executable, *command])
+        print(f"$ {display}", flush=True)
+        completed = subprocess.run([sys.executable, *command], check=False)
+        if completed.returncode != 0:
+            return completed.returncode
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

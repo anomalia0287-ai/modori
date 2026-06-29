@@ -1,0 +1,24 @@
+slug: standardized-beta
+kind: effect_size
+title_ko: "표준화 계수 (β)"
+title_en: "Standardized coefficient (beta)"
+summary_ko: "회귀에서 예측변수들의 영향력을 '같은 잣대'로 비교할 수 있게 표준화한 계수예요."
+summary_en: "A regression coefficient standardized so that predictors' influences can be compared on the same scale."
+interpretation_ko: "β가 0.48이면 '그 예측변수가 1 표준편차 높아질 때 결과가 약 0.48 표준편차 변한다'는 뜻입니다. 절댓값이 클수록 영향이 큽니다."
+interpretation_en: "A β of 0.48 means 'when that predictor is one standard deviation higher, the outcome changes by about 0.48 standard deviations'. A larger magnitude means more influence."
+when_to_use_ko: null
+when_to_use_en: null
+how_to_report_ko: "예: \"β = .48\"처럼 비표준화 계수(b)와 함께 보고합니다."
+how_to_report_en: "Report as, e.g., \"β = .48\", alongside the unstandardized coefficient (b)."
+pitfalls_ko: "다중공선성이 심하면 β가 불안정해질 수 있으니 VIF를 함께 보세요."
+pitfalls_en: "With strong multicollinearity, β can be unstable — read it together with VIF."
+assumptions: []
+alternatives: []
+related:
+  - multiple-regression-ols
+  - p-value
+references:
+  - citation: "Field, A. (2018). Discovering Statistics Using IBM SPSS Statistics (5th ed.). SAGE."
+    locator: null
+    verified: true
+verification_status: needs_review

@@ -1,0 +1,27 @@
+slug: durbin-watson
+kind: diagnostic
+title_ko: "더빈-왓슨 검정 (Durbin-Watson)"
+title_en: "Durbin-Watson statistic"
+summary_ko: "회귀의 오차들이 순서상 서로 연관되어 있는지(자기상관)를 점검하는 값이에요. 자료에 의미 있는 순서가 있을 때만 쓸모 있습니다."
+summary_en: "A value that checks whether a regression's errors are related in sequence (autocorrelation). It is only meaningful when the data have a real order."
+interpretation_ko: "대략 2에 가까우면 자기상관이 거의 없는 것으로 봅니다. 1.5보다 작거나 2.5보다 크면 주의가 필요합니다."
+interpretation_en: "A value near 2 suggests little autocorrelation; below 1.5 or above 2.5 warrants caution."
+when_to_use_ko: "시간 순서처럼 순서가 의미 있는 회귀 자료에서 오차의 독립성을 점검할 때."
+when_to_use_en: "For regression data with a meaningful order (e.g., time), to check independence of errors."
+how_to_report_ko: "예: \"Durbin-Watson = 1.98\" 형식으로 보고합니다."
+how_to_report_en: "Report as, e.g., \"Durbin-Watson = 1.98\"."
+pitfalls_ko: "응답 순서가 의미 없는 횡단 설문 자료에서는 이 값을 해석하지 마세요."
+pitfalls_en: "Do not interpret this value for cross-sectional survey data where row order is meaningless."
+assumptions: []
+alternatives: []
+related:
+  - independence-of-errors
+  - multiple-regression-ols
+references:
+  - citation: "Durbin, J., & Watson, G. S. (1951). Testing for serial correlation in least squares regression. II. Biometrika, 38(1-2), 159-178."
+    locator: "38(1-2), 159-178"
+    verified: false
+  - citation: "Field, A. (2018). Discovering Statistics Using IBM SPSS Statistics (5th ed.). SAGE."
+    locator: null
+    verified: true
+verification_status: needs_review

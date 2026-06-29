@@ -1,0 +1,25 @@
+slug: cohens-d
+kind: effect_size
+title_ko: "코헨의 d (Cohen's d)"
+title_en: "Cohen's d"
+summary_ko: "두 집단의 평균 차이가 '얼마나 큰지'를 표준편차 단위로 나타낸 값이에요. p값이 '차이가 있나'를 본다면, 이 값은 '차이가 얼마나 크냐'를 말해 줍니다."
+summary_en: "How big the difference between two group means is, expressed in standard-deviation units. If the p-value asks 'is there a difference?', this answers 'how big is it?'"
+interpretation_ko: "대략 0.2는 작은, 0.5는 중간, 0.8은 큰 차이로 봅니다(어디까지나 경험칙). 부호는 어느 집단이 더 높은지를 나타냅니다."
+interpretation_en: "Roughly, 0.2 is a small, 0.5 a medium, and 0.8 a large difference (a rule of thumb). The sign shows which group is higher."
+when_to_use_ko: null
+when_to_use_en: null
+how_to_report_ko: "t검정 결과와 함께 \"Cohen's d = 0.66\"처럼 보고합니다."
+how_to_report_en: "Report alongside the t-test result, e.g., \"Cohen's d = 0.66\"."
+pitfalls_ko: "'크다/중간/작다'의 기준은 연구 분야마다 다릅니다. 통계적으로 유의해도 효과크기는 작을 수 있으니 둘을 함께 보세요."
+pitfalls_en: "The small/medium/large cutoffs differ by field. A result can be significant yet have a small effect — read both together."
+assumptions: []
+alternatives: []
+related:
+  - p-value
+  - student-t-test
+  - welch-t-test
+references:
+  - citation: "Cohen, J. (1988). Statistical Power Analysis for the Behavioral Sciences (2nd ed.). Lawrence Erlbaum Associates."
+    locator: null
+    verified: true
+verification_status: needs_review

@@ -1,0 +1,28 @@
+slug: p-value
+kind: concept
+title_ko: "p값 (p-value)"
+title_en: "p-value"
+summary_ko: "실제로는 아무 차이가 없을 때, 내가 본 것과 같거나 더 극단적인 결과가 우연히 나올 확률이에요. 작을수록 '우연치고는 드문 일'이라는 뜻입니다."
+summary_en: "The probability of seeing a result as extreme as yours if there were truly no effect at all. The smaller it is, the more unlikely the result is by chance alone."
+interpretation_ko: "흔히 .05보다 작으면 '통계적으로 유의하다'고 말합니다. 다만 p값은 '효과가 크다'거나 '가설이 참일 확률'을 뜻하지 않습니다 — 가장 흔한 오해입니다."
+interpretation_en: "By convention, below .05 is called 'statistically significant'. But a p-value does NOT mean the effect is large, nor the probability that your hypothesis is true — the most common misreadings."
+when_to_use_ko: null
+when_to_use_en: null
+how_to_report_ko: "APA에서는 소수 셋째 자리까지 적고, 아주 작으면 \"p < .001\"로 표기합니다(예: p = .032)."
+how_to_report_en: "In APA, report to three decimals, or \"p < .001\" when very small (e.g., p = .032)."
+pitfalls_ko: "p값만으로 결론짓지 말고 효과크기·신뢰구간과 함께 보세요. .05는 절대적인 경계선이 아닙니다."
+pitfalls_en: "Don't conclude from the p-value alone; read it together with effect size and confidence intervals. .05 is not a hard boundary."
+assumptions: []
+alternatives: []
+related:
+  - statistical-significance
+  - confidence-interval
+  - cohens-d
+references:
+  - citation: "Wasserstein, R. L., & Lazar, N. A. (2016). The ASA statement on p-values: Context, process, and purpose. The American Statistician, 70(2), 129-133."
+    locator: "70(2), 129-133"
+    verified: false
+  - citation: "Field, A. (2018). Discovering Statistics Using IBM SPSS Statistics (5th ed.). SAGE."
+    locator: null
+    verified: true
+verification_status: needs_review

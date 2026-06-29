@@ -1,0 +1,27 @@
+slug: multicollinearity
+kind: assumption
+title_ko: "다중공선성 (multicollinearity)"
+title_en: "Multicollinearity"
+summary_ko: "회귀에서 예측변수들끼리 너무 비슷하게 움직여(서로 강하게 상관) 각자의 효과를 따로 구분하기 어려워지는 문제예요."
+summary_en: "In regression, the problem where predictors move too similarly (are highly correlated), making each one's separate effect hard to tell apart."
+interpretation_ko: null
+interpretation_en: null
+when_to_use_ko: null
+when_to_use_en: null
+how_to_report_ko: null
+how_to_report_en: null
+pitfalls_ko: "VIF로 점검합니다. 심하면 계수가 불안정해지므로 변수를 합치거나 일부를 빼는 것을 고려하세요."
+pitfalls_en: "Check it with VIF. When severe, coefficients become unstable — consider combining or dropping variables."
+assumptions: []
+alternatives: []
+related:
+  - vif
+  - multiple-regression-ols
+references:
+  - citation: "Field, A. (2018). Discovering Statistics Using IBM SPSS Statistics (5th ed.). SAGE."
+    locator: null
+    verified: true
+  - citation: "Hair, J. F., Black, W. C., Babin, B. J., & Anderson, R. E. (2019). Multivariate Data Analysis (8th ed.). Cengage."
+    locator: null
+    verified: true
+verification_status: needs_review

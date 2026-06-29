@@ -1,0 +1,24 @@
+slug: independence-of-errors
+kind: assumption
+title_ko: "오차의 독립성 (independence of errors)"
+title_en: "Independence of errors"
+summary_ko: "한 응답(또는 그 오차)이 다른 응답에 영향을 주지 않고 서로 독립인지를 따지는 가정이에요."
+summary_en: "An assumption that each observation's error is independent of the others — one response does not influence another."
+interpretation_ko: null
+interpretation_en: null
+when_to_use_ko: null
+when_to_use_en: null
+how_to_report_ko: null
+how_to_report_en: null
+pitfalls_ko: "시간 순서 자료나 군집 자료(같은 학급·병원 등)에서 잘 깨집니다. 그런 경우 다층모형 같은 다른 방법이 필요할 수 있습니다."
+pitfalls_en: "Often violated with time-ordered or clustered data (same class, clinic, etc.), which may require other methods such as multilevel models."
+assumptions: []
+alternatives: []
+related:
+  - durbin-watson
+  - multiple-regression-ols
+references:
+  - citation: "Field, A. (2018). Discovering Statistics Using IBM SPSS Statistics (5th ed.). SAGE."
+    locator: null
+    verified: true
+verification_status: needs_review

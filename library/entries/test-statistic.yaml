@@ -1,0 +1,24 @@
+slug: test-statistic
+kind: statistic
+title_ko: "검정통계량 (t, U, F 등)"
+title_en: "Test statistic (t, U, F, ...)"
+summary_ko: "내 자료가 '차이가 없다'는 가정에서 얼마나 벗어나 있는지를 하나의 숫자로 요약한 값이에요. 절댓값이 클수록 차이의 증거가 강합니다."
+summary_en: "A single number summarizing how far your data fall from the 'no difference' assumption. The larger its magnitude, the stronger the evidence of an effect."
+interpretation_ko: "이 값 자체보다 그에 딸린 p값으로 유의성을 판단합니다. 검정에 따라 t, U, F 등 이름이 다릅니다."
+interpretation_en: "Significance is judged from its accompanying p-value rather than from the value alone. It goes by different names (t, U, F) depending on the test."
+when_to_use_ko: null
+when_to_use_en: null
+how_to_report_ko: "검정에 맞춰 \"t(38) = 2.10\", \"U = 112.0\", \"F(2, 37) = 8.75\"처럼 보고합니다."
+how_to_report_en: "Report per test, e.g., \"t(38) = 2.10\", \"U = 112.0\", \"F(2, 37) = 8.75\"."
+pitfalls_ko: "큰 검정통계량이 곧 '큰 효과'를 뜻하지는 않습니다 — 효과크기를 함께 보세요."
+pitfalls_en: "A large test statistic does not by itself mean a large effect — read it together with the effect size."
+assumptions: []
+alternatives: []
+related:
+  - p-value
+  - degrees-of-freedom
+references:
+  - citation: "Field, A. (2018). Discovering Statistics Using IBM SPSS Statistics (5th ed.). SAGE."
+    locator: null
+    verified: true
+verification_status: needs_review

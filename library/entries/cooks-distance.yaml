@@ -1,0 +1,26 @@
+slug: cooks-distance
+kind: diagnostic
+title_ko: "쿡의 거리 (Cook's distance)"
+title_en: "Cook's distance"
+summary_ko: "회귀에서 어떤 한 사례(응답자)가 결과를 유난히 크게 좌우하는지를 보여 주는 값이에요."
+summary_en: "A value showing whether a single case (respondent) has an unusually large influence on a regression's results."
+interpretation_ko: "값이 클수록 그 사례의 영향이 큽니다. 흔히 4/n을 넘는 사례를 점검 대상으로 봅니다(자동 삭제가 아니라 확인용)."
+interpretation_en: "Larger values mean greater influence. Cases above 4/n are commonly flagged for inspection (to check, not to auto-delete)."
+when_to_use_ko: "회귀 결과가 소수의 극단적 사례에 휘둘리는지 점검할 때."
+when_to_use_en: "When checking whether a regression's results are driven by a few extreme cases."
+how_to_report_ko: "본문보다는 진단 그림으로 제시하고, 임계값을 넘는 사례 수를 언급합니다."
+how_to_report_en: "Usually shown as a diagnostic plot; mention how many cases exceed the threshold."
+pitfalls_ko: "영향이 크다고 무조건 삭제하지 마세요 — 그 사례가 왜 특이한지 살핀 뒤 판단해야 합니다."
+pitfalls_en: "Do not delete a high-influence case automatically — investigate why it is unusual before deciding."
+assumptions: []
+alternatives: []
+related:
+  - multiple-regression-ols
+references:
+  - citation: "Cook, R. D. (1977). Detection of influential observation in linear regression. Technometrics, 19(1), 15-18."
+    locator: "19(1), 15-18"
+    verified: false
+  - citation: "Field, A. (2018). Discovering Statistics Using IBM SPSS Statistics (5th ed.). SAGE."
+    locator: null
+    verified: true
+verification_status: needs_review

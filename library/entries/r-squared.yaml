@@ -1,0 +1,25 @@
+slug: r-squared
+kind: statistic
+title_ko: "결정계수 (R²)"
+title_en: "R-squared"
+summary_ko: "회귀 모형이 결과변수의 변동을 얼마나 설명하는지를 0~1(또는 %)로 나타낸 값이에요."
+summary_en: "A 0-1 (or %) value showing how much of the outcome's variation a regression model explains."
+interpretation_ko: "예를 들어 0.34면 결과 변동의 약 34%를 모형이 설명한다는 뜻입니다. 높을수록 설명력이 큽니다."
+interpretation_en: "For example, 0.34 means the model explains about 34% of the outcome's variation. Higher means more explanatory power."
+when_to_use_ko: null
+when_to_use_en: null
+how_to_report_ko: "예: \"R² = .34\"처럼 보고합니다."
+how_to_report_en: "Report as, e.g., \"R² = .34\"."
+pitfalls_ko: "예측변수를 더하면 항상 올라가므로, 변수가 많을 때는 수정된 R²를 함께 보세요."
+pitfalls_en: "It always rises as predictors are added, so with many predictors read it together with adjusted R²."
+assumptions: []
+alternatives: []
+related:
+  - adjusted-r-squared
+  - multiple-regression-ols
+  - f-test
+references:
+  - citation: "Field, A. (2018). Discovering Statistics Using IBM SPSS Statistics (5th ed.). SAGE."
+    locator: null
+    verified: true
+verification_status: needs_review

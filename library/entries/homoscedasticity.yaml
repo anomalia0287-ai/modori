@@ -1,0 +1,27 @@
+slug: homoscedasticity
+kind: assumption
+title_ko: "등분산성(잔차) (homoscedasticity)"
+title_en: "Homoscedasticity"
+summary_ko: "회귀에서 예측값이 크든 작든 오차(잔차)가 고르게 퍼져 있는지를 따지는 가정이에요. 깔때기처럼 점점 벌어지면 위반입니다."
+summary_en: "In regression, the assumption that the errors (residuals) spread out evenly across all predicted values. A funnel shape signals a violation."
+interpretation_ko: null
+interpretation_en: null
+when_to_use_ko: null
+when_to_use_en: null
+how_to_report_ko: null
+how_to_report_en: null
+pitfalls_ko: "위반되면 이분산-강건(HC3) 표준오차를 쓰면 안전합니다. Breusch-Pagan 검정과 잔차-적합치 그림으로 점검합니다."
+pitfalls_en: "When violated, heteroscedasticity-robust (HC3) standard errors are a safe remedy. Check it with the Breusch-Pagan test and a residual-vs-fitted plot."
+assumptions: []
+alternatives: []
+related:
+  - breusch-pagan
+  - multiple-regression-ols
+references:
+  - citation: "Field, A. (2018). Discovering Statistics Using IBM SPSS Statistics (5th ed.). SAGE."
+    locator: null
+    verified: true
+  - citation: "Tabachnick, B. G., & Fidell, L. S. (2019). Using Multivariate Statistics (7th ed.). Pearson."
+    locator: null
+    verified: true
+verification_status: needs_review

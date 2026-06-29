@@ -1,0 +1,24 @@
+slug: degrees-of-freedom
+kind: concept
+title_ko: "자유도 (df)"
+title_en: "Degrees of freedom (df)"
+summary_ko: "검정 결과를 해석할 때 쓰는 수로, 대략 '자료에서 자유롭게 변할 수 있는 정보의 양'을 나타내요. 보통 표본 크기와 추정한 값의 개수로 정해집니다."
+summary_en: "A number used when interpreting a test that roughly reflects 'how much information in the data is free to vary'. It is usually set by the sample size and how many quantities were estimated."
+interpretation_ko: "자유도는 검정통계량을 p값으로 바꿀 때 함께 쓰입니다. 보통 표본이 클수록 자유도도 커집니다."
+interpretation_en: "Degrees of freedom are used together with the test statistic to turn it into a p-value. They usually grow with the sample size."
+when_to_use_ko: null
+when_to_use_en: null
+how_to_report_ko: "검정통계량과 함께 괄호로 적습니다(예: t(38), F(2, 37))."
+how_to_report_en: "Report in parentheses with the test statistic, e.g., t(38), F(2, 37)."
+pitfalls_ko: "Welch 보정에서는 자유도가 정수가 아니라 소수로 나옵니다."
+pitfalls_en: "With Welch's correction, the degrees of freedom are fractional rather than a whole number."
+assumptions: []
+alternatives: []
+related:
+  - test-statistic
+  - p-value
+references:
+  - citation: "Field, A. (2018). Discovering Statistics Using IBM SPSS Statistics (5th ed.). SAGE."
+    locator: null
+    verified: true
+verification_status: needs_review

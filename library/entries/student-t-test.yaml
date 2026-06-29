@@ -1,0 +1,32 @@
+slug: student-t-test
+kind: method
+title_ko: "독립표본 t검정 (Student)"
+title_en: "Student's independent-samples t-test"
+summary_ko: "서로 다른 두 집단의 평균 점수가 실제로 차이 나는지 확인하는 가장 기본적인 방법이에요. 두 집단에서 점수가 퍼진 정도가 비슷하다고 볼 때 씁니다."
+summary_en: "The most basic way to check whether two separate groups really differ in their average score. Used when the two groups' scores are spread out by similar amounts."
+interpretation_ko: "p값이 .05보다 작으면 두 집단의 평균 차이를 우연으로 보기 어렵다는 뜻입니다. 차이가 얼마나 큰지는 Cohen's d로 함께 확인하세요."
+interpretation_en: "A p-value below .05 means the difference in group means is unlikely to be due to chance. Read how large the difference is from Cohen's d."
+when_to_use_ko: "두 독립 집단의 연속 점수 평균을 비교하고, 두 집단의 분산이 비슷하다고 볼 수 있을 때."
+when_to_use_en: "When comparing the mean of a continuous score between two independent groups whose variances can be assumed similar."
+how_to_report_ko: "예: \"t(38) = 2.10, p = .042, Cohen's d = 0.66\" 형식으로 보고합니다. 자유도(df)는 정수로 나옵니다."
+how_to_report_en: "Report as, e.g., \"t(38) = 2.10, p = .042, Cohen's d = 0.66\". The degrees of freedom (df) are a whole number."
+pitfalls_ko: "두 집단의 분산이 많이 다르면 Welch 보정을 쓰는 편이 안전합니다. 정규성이 심하게 깨지고 표본이 작으면 Mann-Whitney U를 고려하세요."
+pitfalls_en: "If the two groups' variances differ a lot, Welch's correction is safer. With small, strongly non-normal samples, consider the Mann-Whitney U test."
+assumptions:
+  - independence-of-errors
+  - normality
+  - homogeneity-of-variance
+alternatives:
+  - welch-t-test
+  - mann-whitney-u
+related:
+  - cohens-d
+  - p-value
+references:
+  - citation: "Student (1908). The probable error of a mean. Biometrika, 6(1), 1-25."
+    locator: "6(1), 1-25"
+    verified: false
+  - citation: "Field, A. (2018). Discovering Statistics Using IBM SPSS Statistics (5th ed.). SAGE."
+    locator: null
+    verified: true
+verification_status: needs_review

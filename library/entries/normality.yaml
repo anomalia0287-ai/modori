@@ -1,0 +1,25 @@
+slug: normality
+kind: assumption
+title_ko: "정규성 (normality)"
+title_en: "Normality"
+summary_ko: "자료(또는 분석의 오차)가 좌우 대칭의 '종 모양' 분포에 가까운지를 따지는 가정이에요. 여러 검정이 이 가정 위에서 정확해집니다."
+summary_en: "An assumption that the data (or a model's errors) follow a roughly symmetric, bell-shaped distribution. Many tests are accurate only when it holds."
+interpretation_ko: null
+interpretation_en: null
+when_to_use_ko: null
+when_to_use_en: null
+how_to_report_ko: null
+how_to_report_en: null
+pitfalls_ko: "표본이 크면(대략 각 집단 30 이상) 이 가정이 조금 깨져도 결과가 크게 흔들리지 않습니다. 표본이 작을 때 더 중요합니다."
+pitfalls_en: "With larger samples (roughly 30+ per group) a mild violation barely matters; it matters more with small samples."
+assumptions: []
+alternatives: []
+related:
+  - shapiro-wilk
+  - student-t-test
+  - multiple-regression-ols
+references:
+  - citation: "Field, A. (2018). Discovering Statistics Using IBM SPSS Statistics (5th ed.). SAGE."
+    locator: null
+    verified: true
+verification_status: needs_review

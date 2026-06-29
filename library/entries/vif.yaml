@@ -1,0 +1,27 @@
+slug: vif
+kind: statistic
+title_ko: "분산팽창지수 (VIF)"
+title_en: "Variance inflation factor (VIF)"
+summary_ko: "회귀에서 어떤 예측변수가 다른 예측변수들과 얼마나 겹치는지(다중공선성)를 나타내는 값이에요."
+summary_en: "A value showing how much a predictor overlaps with the other predictors (multicollinearity) in a regression."
+interpretation_ko: "1에 가까우면 겹침이 거의 없습니다. 보통 5를 넘으면 주의, 10을 넘으면 심각한 다중공선성으로 봅니다(경험칙)."
+interpretation_en: "Near 1 means little overlap. Above 5 warrants caution and above 10 indicates serious multicollinearity (rules of thumb)."
+when_to_use_ko: null
+when_to_use_en: null
+how_to_report_ko: "각 예측변수 옆에 \"VIF = 1.4\"처럼 제시합니다."
+how_to_report_en: "Report next to each predictor, e.g., \"VIF = 1.4\"."
+pitfalls_ko: "기준(5, 10)은 경험칙입니다. 값이 높다고 곧장 변수를 빼기보다 이유를 살피세요."
+pitfalls_en: "The 5/10 cutoffs are rules of thumb; investigate before dropping a variable just because VIF is high."
+assumptions: []
+alternatives: []
+related:
+  - multicollinearity
+  - multiple-regression-ols
+references:
+  - citation: "Field, A. (2018). Discovering Statistics Using IBM SPSS Statistics (5th ed.). SAGE."
+    locator: null
+    verified: true
+  - citation: "Hair, J. F., Black, W. C., Babin, B. J., & Anderson, R. E. (2019). Multivariate Data Analysis (8th ed.). Cengage."
+    locator: null
+    verified: true
+verification_status: needs_review

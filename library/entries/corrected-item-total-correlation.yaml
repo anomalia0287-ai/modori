@@ -1,0 +1,23 @@
+slug: corrected-item-total-correlation
+kind: statistic
+title_ko: "수정된 문항-전체 상관"
+title_en: "Corrected item-total correlation"
+summary_ko: "한 문항이 '그 문항을 뺀 나머지 문항들의 합계'와 얼마나 잘 맞아떨어지는지를 보여 주는 값이에요. 문항이 척도에 잘 어울리는지 점검할 때 씁니다."
+summary_en: "A value showing how well one item agrees with the total of the remaining items (with that item removed). Used to check whether an item fits the scale."
+interpretation_ko: "보통 .30 이상이면 문항이 척도와 잘 어울린다고 봅니다. 낮으면 그 문항을 다듬거나 빼는 것을 고려하세요."
+interpretation_en: "As a rule of thumb, .30+ means the item fits the scale well. A low value suggests revising or dropping the item."
+when_to_use_ko: null
+when_to_use_en: null
+how_to_report_ko: "신뢰도 분석 표에 문항별로 함께 제시합니다."
+how_to_report_en: "Report per item within the reliability analysis table."
+pitfalls_ko: "낮은 값 하나로 기계적으로 문항을 빼지 말고, 내용 타당성도 함께 고려하세요."
+pitfalls_en: "Do not drop an item mechanically on one low value; weigh content validity too."
+assumptions: []
+alternatives: []
+related:
+  - cronbach-alpha
+references:
+  - citation: "Field, A. (2018). Discovering Statistics Using IBM SPSS Statistics (5th ed.). SAGE."
+    locator: null
+    verified: true
+verification_status: needs_review

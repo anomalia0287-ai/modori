@@ -1,0 +1,28 @@
+slug: statistical-significance
+kind: concept
+title_ko: "통계적 유의성 (statistical significance)"
+title_en: "Statistical significance"
+summary_ko: "관찰된 결과가 '우연만으로는 보기 드물다'고 판단되는 상태예요. 보통 p값이 정해 둔 기준(.05)보다 작을 때 그렇게 부릅니다."
+summary_en: "The state of judging an observed result 'unlikely by chance alone'. Usually declared when the p-value falls below a preset cutoff (.05)."
+interpretation_ko: "'유의하다'는 '효과가 크다'나 '중요하다'와 같은 말이 아닙니다 — 크기는 효과크기로, 중요성은 맥락으로 판단하세요."
+interpretation_en: "'Significant' does not mean 'large' or 'important' — judge size by effect size and importance by context."
+when_to_use_ko: null
+when_to_use_en: null
+how_to_report_ko: "보통 p값·효과크기·신뢰구간을 함께 제시해 결론을 뒷받침합니다."
+how_to_report_en: "Usually supported by reporting the p-value, effect size, and confidence interval together."
+pitfalls_ko: ".05는 관례일 뿐 절대 기준이 아닙니다. 유의하지 않다고 해서 '효과가 없다'로 단정하지 마세요."
+pitfalls_en: ".05 is a convention, not an absolute line. 'Not significant' does not prove 'no effect'."
+assumptions: []
+alternatives: []
+related:
+  - p-value
+  - confidence-interval
+  - cohens-d
+references:
+  - citation: "Wasserstein, R. L., & Lazar, N. A. (2016). The ASA statement on p-values: Context, process, and purpose. The American Statistician, 70(2), 129-133."
+    locator: "70(2), 129-133"
+    verified: false
+  - citation: "Field, A. (2018). Discovering Statistics Using IBM SPSS Statistics (5th ed.). SAGE."
+    locator: null
+    verified: true
+verification_status: needs_review

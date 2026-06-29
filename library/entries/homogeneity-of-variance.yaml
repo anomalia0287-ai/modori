@@ -1,0 +1,25 @@
+slug: homogeneity-of-variance
+kind: assumption
+title_ko: "등분산성 (homogeneity of variance)"
+title_en: "Homogeneity of variance"
+summary_ko: "비교하는 여러 집단에서 점수가 '퍼진 정도(분산)'가 서로 비슷한지를 따지는 가정이에요."
+summary_en: "An assumption that the groups being compared have a similar spread (variance) of scores."
+interpretation_ko: null
+interpretation_en: null
+when_to_use_ko: null
+when_to_use_en: null
+how_to_report_ko: null
+how_to_report_en: null
+pitfalls_ko: "이 가정이 깨지면 Welch 보정을 쓰는 편이 안전합니다. Levene 검정으로 점검합니다."
+pitfalls_en: "When it is violated, Welch's correction is a safe remedy. Check it with Levene's test."
+assumptions: []
+alternatives: []
+related:
+  - levene-test
+  - student-t-test
+  - welch-t-test
+references:
+  - citation: "Field, A. (2018). Discovering Statistics Using IBM SPSS Statistics (5th ed.). SAGE."
+    locator: null
+    verified: true
+verification_status: needs_review

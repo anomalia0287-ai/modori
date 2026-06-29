@@ -1,0 +1,725 @@
+from __future__ import annotations
+
+import os
+import re
+import uuid
+from collections.abc import Callable, Iterable
+from dataclasses import dataclass
+from pathlib import Path
+
+from modori.cache import matplotlib_cache_dir
+
+_CACHE_DIR = matplotlib_cache_dir()
+os.environ["MPLCONFIGDIR"] = str(_CACHE_DIR)
+
+import matplotlib
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+from matplotlib import font_manager
+import pandas as pd
+from docx import Document
+from scipy import stats
+
+from modori.core import PipelineContext, Step, StepResult
+from modori.results import (
+    ChartSpec,
+    CoefficientRow,
+    ComparisonResult,
+    RegressionResult,
+    ReliabilityResult,
+    ReportResult,
+)
+
+
+_FONT_CONFIGURED = False
+
+
+def _configure_fonts() -> None:
+    global _FONT_CONFIGURED
+    if _FONT_CONFIGURED:
+        return
+
+    candidates = ["Malgun Gothic", "AppleGothic", "Noto Sans CJK KR", "NanumGothic", "DejaVu Sans"]
+    available = {font.name for font in font_manager.fontManager.ttflist}
+    for name in candidates:
+        if name in available:
+            plt.rcParams["font.family"] = [name]
+            break
+    plt.rcParams["axes.unicode_minus"] = False
+    _FONT_CONFIGURED = True
+
+
+def _apa_number(value: float, digits: int = 2, omit_leading_zero: bool = True, **kwargs: object) -> str:
+    """Format a number with APA-style optional leading-zero omission."""
+
+    if "decimals" in kwargs:
+        digits = int(kwargs.pop("decimals"))
+    if kwargs:
+        unexpected = ", ".join(sorted(kwargs))
+        raise TypeError(f"Unexpected keyword argument(s): {unexpected}")
+    text = f"{float(value):.{digits}f}"
+    if omit_leading_zero:
+        text = re.sub(r"^(-?)0\.", r"\1.", text)
+    return text
+
+
+def _apa_p(value: float) -> str:
+    p_value = float(value)
+    if p_value < 0.001:
+        return "p < .001"
+    return f"p = {_apa_number(p_value, 3)}"
+
+
+def _safe_chart_key(key: str) -> str:
+    safe = re.sub(r"[^A-Za-z0-9_-]", "_", key).strip("._-")
+    return safe or "chart"
+
+
+def _alpha_qualifier_en(alpha: float) -> str:
+    if alpha >= 0.90:
+        return "excellent"
+    if alpha >= 0.80:
+        return "good"
+    if alpha >= 0.70:
+        return "acceptable"
+    if alpha >= 0.60:
+        return "questionable"
+    return "low"
+
+
+def _alpha_qualifier_ko(alpha: float) -> str:
+    if alpha >= 0.90:
+        return "매우 높은"
+    if alpha >= 0.80:
+        return "높은"
+    if alpha >= 0.70:
+        return "수용 가능한"
+    if alpha >= 0.60:
+        return "다소 낮은"
+    return "낮은"
+
+
+def _reliability_prose(result: ReliabilityResult, language: str = "ko") -> str:
+    alpha = _apa_number(result.cronbach_alpha, omit_leading_zero=True)
+    omega = _apa_number(result.mcdonald_omega, omit_leading_zero=True)
+    if language == "en":
+        return (
+            f"The {result.scale_name} scale showed {_alpha_qualifier_en(result.cronbach_alpha)} internal consistency "
+            f"(Cronbach's α = {alpha}, McDonald's ω = {omega})."
+        )
+    return (
+        f"{result.scale_name} 척도는 {_alpha_qualifier_ko(result.cronbach_alpha)} 내적 일관성을 보였다"
+        f"(Cronbach's α = {alpha}, McDonald's ω = {omega})."
+    )
+
+
+def _comparison_groups(result: ComparisonResult) -> list[tuple[str, object]]:
+    return list(result.groups.items())
+
+
+def _comparison_mean_difference(result: ComparisonResult) -> float:
+    groups = _comparison_groups(result)
+    if len(groups) < 2:
+        return float("nan")
+    return float(groups[0][1].mean - groups[1][1].mean)
+
+
+def _comparison_effect_label(result: ComparisonResult) -> str:
+    if result.effect_name == "cohen_d":
+        return "Cohen's d"
+    if result.effect_name == "hedges_g":
+        return "Hedges' g"
+    if result.effect_name == "eta_squared":
+        return "eta squared"
+    return result.effect_name
+
+
+def _comparison_test_label_ko(result: ComparisonResult) -> str:
+    if result.test_name == "welch_t":
+        return "독립표본 t검정(Welch 보정)"
+    if result.test_name == "student_t":
+        return "독립표본 t검정"
+    if result.test_name == "paired_t":
+        return "대응표본 t검정"
+    if result.test_name == "anova_oneway":
+        return "일원분산분석"
+    return result.test_name
+
+
+def _comparison_test_label_en(result: ComparisonResult) -> str:
+    if result.test_name == "welch_t":
+        return "Welch independent-samples t test"
+    if result.test_name == "student_t":
+        return "independent-samples t test"
+    if result.test_name == "paired_t":
+        return "paired-samples t test"
+    if result.test_name == "anova_oneway":
+        return "one-way ANOVA"
+    return result.test_name
+
+
+def _comparison_prose(result: ComparisonResult, language: str = "ko") -> str:
+    p_text = _apa_p(result.p_value)
+    effect = f"{_comparison_effect_label(result)} = {_apa_number(result.effect_value, omit_leading_zero=True)}"
+    ci_text = ""
+    if result.mean_diff_ci is not None:
+        ci_text = f", 95% CI [{_apa_number(result.mean_diff_ci[0])}, {_apa_number(result.mean_diff_ci[1])}]"
+    groups = _comparison_groups(result)
+    first_label, first_group = groups[0] if len(groups) > 0 else ("group 1", None)
+    second_label, second_group = groups[1] if len(groups) > 1 else ("group 2", None)
+    first_desc = ""
+    second_desc = ""
+    if first_group is not None:
+        first_desc = (
+            f"{first_label}(M = {_apa_number(first_group.mean)}, "
+            f"SD = {_apa_number(first_group.sd)}, n = {first_group.n})"
+        )
+    if second_group is not None:
+        second_desc = (
+            f"{second_label}(M = {_apa_number(second_group.mean)}, "
+            f"SD = {_apa_number(second_group.sd)}, n = {second_group.n})"
+        )
+
+    if result.test_name in {"student_t", "welch_t", "paired_t"}:
+        df_text = _apa_number(result.df, 2) if result.df is not None else ""
+        stat_text = f"t({df_text}) = {_apa_number(result.statistic)}" if df_text else f"t = {_apa_number(result.statistic)}"
+        mean_diff = _comparison_mean_difference(result)
+        if language == "en":
+            test_label = _comparison_test_label_en(result)
+            article = "A" if test_label.startswith("Welch") else "An"
+            significance = "a statistically significant" if result.p_value < 0.05 else "no statistically significant"
+            if first_desc and second_desc:
+                return (
+                    f"{article} {test_label} showed {significance} {result.dv_label or result.dv} score difference "
+                    f"between {first_desc} and {second_desc}, {stat_text}, {p_text}{ci_text}, {effect}."
+                )
+            return (
+                f"{article} {test_label} showed {significance} {result.dv_label or result.dv} score difference, "
+                f"{stat_text}, {p_text}{ci_text}, {effect}."
+            )
+        significance = "통계적으로 유의하였다" if result.p_value < 0.05 else "통계적으로 유의하지 않았다"
+        group_text = f"{first_desc}와 {second_desc}의 " if first_desc and second_desc else ""
+        return (
+            f"{_comparison_test_label_ko(result)} 결과, {group_text}{result.dv_label or result.dv} 점수 차이"
+            f"(Mdiff = {_apa_number(mean_diff)})는 {significance}, "
+            f"{stat_text}, {p_text}{ci_text}, {effect}."
+        )
+
+    if result.test_name == "anova_oneway":
+        stat_text = f"F = {_apa_number(result.statistic)}"
+        if language == "en":
+            return f"A {_comparison_test_label_en(result)} was {'significant' if result.p_value < 0.05 else 'not significant'}, {stat_text}, {p_text}, {effect}."
+        return f"{_comparison_test_label_ko(result)} 결과는 {'통계적으로 유의하였다' if result.p_value < 0.05 else '통계적으로 유의하지 않았다'}, {stat_text}, {p_text}, {effect}."
+
+    raise ValueError(f"Unsupported comparison test: {result.test_name}")
+
+
+def _regression_predictor_rows(result: RegressionResult) -> list[CoefficientRow]:
+    return [row for row in result.coefficients if row.name not in {"const", "(Intercept)", "Intercept"}]
+
+
+def _regression_se_label_ko(result: RegressionResult) -> str:
+    if result.se_type.upper() == "HC3":
+        return "이분산-강건(HC3) 표준오차"
+    return f"{result.se_type} 표준오차"
+
+
+def _regression_se_label_en(result: RegressionResult) -> str:
+    if result.se_type.upper() == "HC3":
+        return "HC3 robust standard errors"
+    return f"{result.se_type} standard errors"
+
+
+def _regression_row_text_ko(row: CoefficientRow, df_resid: int) -> str:
+    significance = "유의하게 예측하였다" if row.p_value < 0.05 else "유의하지 않았다"
+    beta = "" if row.beta is None else f", β = {_apa_number(row.beta, omit_leading_zero=True)}"
+    return (
+        f"{row.name}는 {significance}"
+        f"(b = {_apa_number(row.b)}, SE = {_apa_number(row.se)}, "
+        f"t({df_resid}) = {_apa_number(row.t)}, {_apa_p(row.p_value)}{beta})"
+    )
+
+
+def _regression_row_text_en(row: CoefficientRow, df_resid: int, dv: str) -> str:
+    beta = "" if row.beta is None else f", beta = {_apa_number(row.beta, omit_leading_zero=True)}"
+    stats_text = (
+        f"b = {_apa_number(row.b)}, SE = {_apa_number(row.se)}, "
+        f"t({df_resid}) = {_apa_number(row.t)}, {_apa_p(row.p_value)}{beta}"
+    )
+    if row.p_value < 0.05:
+        return f"{row.name} significantly predicted {dv} ({stats_text})"
+    return f"{row.name} was not significant ({stats_text})"
+
+
+def _regression_prose(result: RegressionResult, language: str = "ko") -> str:
+    omnibus = f"F({result.df_model}, {result.df_resid}) = {_apa_number(result.f_statistic)}, {_apa_p(result.f_p_value)}"
+    model_fit = (
+        f"R² = {_apa_number(result.r_squared, omit_leading_zero=True)}, "
+        f"adjusted R² = {_apa_number(result.adj_r_squared, omit_leading_zero=True)}"
+    )
+    predictors = _regression_predictor_rows(result)
+
+    if language == "en":
+        predictor_text = "; ".join(_regression_row_text_en(row, result.df_resid, result.dv) for row in predictors)
+        return (
+            f"Using {_regression_se_label_en(result)}, the regression model was statistically significant, "
+            f"{omnibus}, with {model_fit}. {predictor_text}."
+        )
+
+    predictor_text = "; ".join(_regression_row_text_ko(row, result.df_resid) for row in predictors)
+    return (
+        f"{_regression_se_label_ko(result)}를 사용한 회귀모형은 통계적으로 유의하였다, "
+        f"{omnibus}, {model_fit}. {predictor_text}."
+    )
+
+
+def prose_for(result: object, language: str = "ko") -> str:
+    if isinstance(result, RegressionResult):
+        return _regression_prose(result, language=language)
+    if isinstance(result, ReliabilityResult):
+        return _reliability_prose(result, language=language)
+    if isinstance(result, ComparisonResult):
+        return _comparison_prose(result, language=language)
+    raise TypeError(f"Unsupported result for prose: {type(result).__name__}")
+
+
+def table_for(result: object) -> list[dict[str, str]]:
+    if isinstance(result, RegressionResult):
+        return [
+            {
+                "predictor": row.name,
+                "b": _apa_number(row.b),
+                "SE": _apa_number(row.se),
+                "t": _apa_number(row.t),
+                "p": _apa_p(row.p_value),
+                "beta": "" if row.beta is None else _apa_number(row.beta, omit_leading_zero=True),
+                "95% CI": f"[{_apa_number(row.ci[0])}, {_apa_number(row.ci[1])}]",
+                "VIF": "" if row.vif is None else _apa_number(row.vif, omit_leading_zero=False),
+                "vif": "" if row.vif is None else _apa_number(row.vif, omit_leading_zero=False),
+            }
+            for row in result.coefficients
+        ]
+
+    if isinstance(result, ReliabilityResult):
+        return [
+            {
+                "item": item,
+                "item_total_corr": _apa_number(result.item_total_corr[item], omit_leading_zero=True),
+                "alpha_if_deleted": _apa_number(result.alpha_if_deleted[item], omit_leading_zero=True),
+            }
+            for item in result.item_total_corr
+        ]
+
+    if isinstance(result, ComparisonResult):
+        groups = _comparison_groups(result)
+        first_label = groups[0][0] if len(groups) > 0 else ""
+        second_label = groups[1][0] if len(groups) > 1 else ""
+        return [
+            {
+                "test": result.test_name,
+                "dv": result.dv,
+                "group": result.group_var,
+                "group_1": str(first_label),
+                "group_2": str(second_label),
+                "statistic": _apa_number(result.statistic),
+                "df": _apa_number(result.df, 2) if result.df is not None else "",
+                "p": _apa_p(result.p_value),
+                "effect": result.effect_name,
+                "effect_value": _apa_number(result.effect_value, omit_leading_zero=True),
+                "ci95": f"[{_apa_number(result.mean_diff_ci[0])}, {_apa_number(result.mean_diff_ci[1])}]" if result.mean_diff_ci is not None else "",
+            }
+        ]
+
+    raise TypeError(f"Unsupported result for table: {type(result).__name__}")
+
+
+def _chart_values_from_mapping(values: object) -> tuple[list[str], list[float]]:
+    if isinstance(values, dict):
+        return list(values.keys()), [float(value) for value in values.values()]
+    if isinstance(values, Iterable) and not isinstance(values, (str, bytes)):
+        numeric = [float(value) for value in values]
+        return [str(index + 1) for index in range(len(numeric))], numeric
+    return [], []
+
+
+def _render_legacy_chart(chart: ChartSpec, output_path: str | Path) -> None:
+    _configure_fonts()
+
+    data = chart.data
+    fig, ax = plt.subplots(figsize=(7, 4.5), constrained_layout=True)
+
+    if chart.type == "horizontal_bar":
+        labels = list(data.get("labels", []))
+        values = list(data.get("values", []))
+        if not labels:
+            labels, values = _chart_values_from_mapping(data.get("values", {}))
+        ax.barh(labels, values, color="#4C78A8")
+        ax.set_xlabel(chart.x_label)
+        ax.set_ylabel(chart.y_label)
+        ax.set_title(chart.title)
+        ax.invert_yaxis()
+    elif chart.type == "mean_ci_jitter":
+        groups = data.get("groups", [])
+        for idx, group in enumerate(groups):
+            values = group.get("values", [])
+            if values:
+                jitter_x = [idx + (i - len(values) / 2) * 0.015 for i in range(len(values))]
+                ax.scatter(jitter_x, values, alpha=0.45, color="#72B7B2")
+            mean = group.get("mean")
+            ci = group.get("ci95")
+            if mean is not None:
+                ax.scatter([idx], [mean], color="#F58518", zorder=3)
+            if ci is not None:
+                ax.vlines(idx, ci[0], ci[1], color="#F58518", linewidth=3)
+        ax.set_xticks(range(len(groups)))
+        ax.set_xticklabels([g.get("label", f"group {i + 1}") for i, g in enumerate(groups)])
+        ax.set_ylabel(chart.y_label)
+        ax.set_title(chart.title)
+    elif chart.type == "box":
+        groups = data.get("groups", [])
+        values = [g.get("values", []) for g in groups]
+        labels = [g.get("label", f"group {i + 1}") for i, g in enumerate(groups)]
+        ax.boxplot(values, labels=labels, patch_artist=True)
+        ax.set_ylabel(chart.y_label)
+        ax.set_title(chart.title)
+    else:
+        plt.close(fig)
+        raise ValueError(f"Unsupported chart type: {chart.type}")
+
+    fig.savefig(output_path, dpi=300)
+    plt.close(fig)
+
+
+def _render_coefficient_forest(spec: ChartSpec, output_path: str | Path) -> None:
+    _configure_fonts()
+    rows = list(spec.data.get("rows", []))
+    if not rows:
+        raise ValueError("coefficient_forest chart requires at least one coefficient row")
+
+    labels = [str(row.get("name", row.get("term", ""))) for row in rows]
+    estimates = [float(row.get("beta", row.get("estimate", 0.0))) for row in rows]
+    ci_values = [row.get("ci", (row.get("ci_low"), row.get("ci_high"))) for row in rows]
+    ci_low = [float(ci[0]) for ci in ci_values]
+    ci_high = [float(ci[1]) for ci in ci_values]
+    lower_errors = [estimate - low for estimate, low in zip(estimates, ci_low)]
+    upper_errors = [high - estimate for estimate, high in zip(estimates, ci_high)]
+
+    fig_height = max(3.5, 0.55 * len(rows) + 1.4)
+    fig, ax = plt.subplots(figsize=(7.2, fig_height), constrained_layout=True)
+    y_positions = list(range(len(rows)))
+    ax.errorbar(estimates, y_positions, xerr=[lower_errors, upper_errors], fmt="o", color="#1f77b4", ecolor="#555555", capsize=4)
+    ax.axvline(0, color="#999999", linestyle="--", linewidth=1)
+    ax.set_yticks(y_positions)
+    ax.set_yticklabels(labels)
+    ax.invert_yaxis()
+    ax.set_xlabel(spec.x_label)
+    ax.set_ylabel(spec.y_label)
+    ax.set_title(spec.title)
+    fig.savefig(output_path, dpi=300)
+    plt.close(fig)
+
+
+def _render_diagnostic_chart(spec: ChartSpec, output_path: str | Path) -> None:
+    _configure_fonts()
+    data = spec.data
+    fig, ax = plt.subplots(figsize=(7, 4.5), constrained_layout=True)
+
+    if spec.type == "residual_vs_fitted":
+        fitted = [float(value) for value in data.get("fitted", [])]
+        residuals = [float(value) for value in data.get("residuals", [])]
+        ax.scatter(fitted, residuals, alpha=0.75, color="#4C78A8")
+        ax.axhline(0, color="#999999", linestyle="--", linewidth=1)
+        ax.set_xlabel(spec.x_label)
+        ax.set_ylabel(spec.y_label)
+        ax.set_title(spec.title)
+    elif spec.type == "residual_qq":
+        if "theoretical" in data and "sample" in data:
+            theoretical = [float(value) for value in data.get("theoretical", [])]
+            sample = [float(value) for value in data.get("sample", [])]
+            ax.scatter(theoretical, sample, alpha=0.75, color="#4C78A8")
+            if theoretical and sample:
+                slope, intercept = pd.Series(sample).cov(pd.Series(theoretical)) / pd.Series(theoretical).var(), pd.Series(sample).mean()
+                ax.plot(theoretical, [slope * x + intercept for x in theoretical], color="#F58518", linewidth=2)
+        else:
+            residuals = [float(value) for value in data.get("residuals", [])]
+            if not residuals:
+                plt.close(fig)
+                raise ValueError("residual_qq chart requires residuals")
+            (osm, osr), (slope, intercept, _r) = stats.probplot(residuals, dist="norm")
+            ax.scatter(osm, osr, alpha=0.75, color="#4C78A8")
+            ax.plot(osm, slope * osm + intercept, color="#F58518", linewidth=2)
+        ax.set_xlabel(spec.x_label)
+        ax.set_ylabel(spec.y_label)
+        ax.set_title(spec.title)
+    elif spec.type == "cooks_distance":
+        cooks = [float(value) for value in data.get("cooks", data.get("cooks_distance", []))]
+        index = [int(value) for value in data.get("index", range(1, len(cooks) + 1))]
+        ax.bar(index, cooks, color="#4C78A8")
+        threshold = data.get("threshold")
+        if threshold is not None:
+            ax.axhline(float(threshold), color="#F58518", linestyle="--", linewidth=1)
+        ax.set_xlabel(spec.x_label)
+        ax.set_ylabel(spec.y_label)
+        ax.set_title(spec.title)
+    else:
+        plt.close(fig)
+        raise ValueError(f"Unsupported diagnostic chart type: {spec.type}")
+
+    fig.savefig(output_path, dpi=300)
+    plt.close(fig)
+
+
+def _render_single_or_bundle(
+    spec: ChartSpec,
+    output_path: str | Path,
+    key: str | None,
+    renderer: Callable[[ChartSpec, str | Path], None],
+) -> str | list[str]:
+    if key is None:
+        single_path = Path(output_path)
+        single_path.parent.mkdir(parents=True, exist_ok=True)
+        renderer(spec, single_path)
+        return str(single_path)
+
+    output_dir = Path(output_path)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    stem = f"{_safe_chart_key(key)}-{uuid.uuid4().hex[:8]}"
+    paths: list[str] = []
+    for ext in ("png", "svg", "eps"):
+        path = output_dir / f"{stem}.{ext}"
+        renderer(spec, path)
+        paths.append(str(path))
+    return paths
+
+
+def render_chart(spec: ChartSpec, output_path: str | Path, key: str | None = None) -> str | list[str]:
+    if spec.type == "coefficient_forest":
+        return _render_single_or_bundle(spec, output_path, key, _render_coefficient_forest)
+    if spec.type in {"residual_vs_fitted", "residual_qq", "cooks_distance"}:
+        return _render_single_or_bundle(spec, output_path, key, _render_diagnostic_chart)
+    if spec.type in {"horizontal_bar", "mean_ci_jitter", "box"}:
+        return _render_single_or_bundle(spec, output_path, key, _render_legacy_chart)
+    raise ValueError(f"Unsupported chart type: {spec.type}")
+
+
+def write_docx(
+    prose: list[str],
+    tables: dict[str, list[dict[str, str]]],
+    figure_paths: dict[str, list[str]],
+    path: str | Path,
+) -> str:
+    docx_path = Path(path)
+    docx_path.parent.mkdir(parents=True, exist_ok=True)
+    document = Document()
+    document.add_heading("APA Report", level=1)
+
+    for sentence in prose:
+        document.add_paragraph(sentence)
+
+    for key, rows in tables.items():
+        document.add_heading(key, level=2)
+        if not rows:
+            continue
+        columns = list(rows[0].keys())
+        table = document.add_table(rows=1, cols=len(columns))
+        table.style = "Table Grid"
+        for cell, column in zip(table.rows[0].cells, columns):
+            cell.text = str(column)
+        for row in rows:
+            cells = table.add_row().cells
+            for idx, column in enumerate(columns):
+                cells[idx].text = str(row.get(column, ""))
+
+    for key, paths in figure_paths.items():
+        if not paths:
+            continue
+        document.add_heading(key, level=2)
+        for figure_path in paths:
+            if Path(figure_path).suffix.lower() == ".png":
+                document.add_picture(str(figure_path))
+            else:
+                document.add_paragraph(str(figure_path))
+
+    document.save(docx_path)
+    return str(docx_path)
+
+
+def _normalise_include(params: dict[str, object]) -> list[str] | None:
+    include = params.get("include")
+    analysis_key = params.get("analysis_key")
+    if include is None and analysis_key is not None:
+        include = [analysis_key]
+    if include is None:
+        return None
+    if isinstance(include, str):
+        return [include]
+    if not isinstance(include, list) or not all(isinstance(item, str) for item in include):
+        raise ValueError("Report include must be a list of analysis result keys")
+    return list(include)
+
+
+def _resolve_included(ctx: PipelineContext, include: list[str] | None) -> list[tuple[str, object]]:
+    if include is None:
+        analyses = [(key, value) for key, value in ctx.analyses.items() if not key.startswith("analysis:")]
+        if len(analyses) != 1:
+            raise ValueError("ReportStep requires include when the context does not contain exactly one analysis result")
+        return analyses
+
+    resolved: list[tuple[str, object]] = []
+    for public_key in include:
+        if public_key in ctx.analyses:
+            resolved.append((public_key, ctx.analyses[public_key]))
+            continue
+        alias_key = f"analysis:{public_key}"
+        if alias_key in ctx.analyses:
+            resolved.append((public_key, ctx.analyses[alias_key]))
+            continue
+        raise ValueError(f"Missing analysis result: {public_key}")
+    return resolved
+
+
+def _cleanup_generated(paths: list[Path], output_dir: Path, *, remove_output_dir: bool) -> None:
+    for path in paths:
+        try:
+            resolved = path.resolve(strict=False)
+            if not _is_relative_to_path(resolved, output_dir):
+                continue
+            if path.is_file() and path.suffix.lower() in {".docx", ".png", ".svg", ".eps"}:
+                path.unlink(missing_ok=True)
+        except OSError:
+            pass
+    if remove_output_dir:
+        try:
+            output_dir.rmdir()
+        except OSError:
+            pass
+
+
+def _is_relative_to_path(path: Path, base: Path) -> bool:
+    try:
+        path.relative_to(base)
+    except ValueError:
+        return False
+    return True
+
+
+def _safe_report_paths(params: dict[str, object]) -> tuple[Path, Path, Path, bool]:
+    forbidden_aliases = {"output_docx", "docx_path", "output_path"} & set(params)
+    if forbidden_aliases:
+        raise ValueError("Report direct output paths are not supported; use output_dir and filename")
+
+    filename = str(params.get("filename", "report.docx"))
+    if any(separator in filename for separator in ("/", "\\")) or Path(filename).is_absolute() or ":" in filename:
+        raise ValueError("Report filename must not contain path separators")
+    if Path(filename).suffix.lower() != ".docx":
+        raise ValueError("Report filename must use .docx extension")
+
+    raw_output_dir = Path(str(params.get("output_dir", ".")))
+    output_dir_existed = raw_output_dir.exists()
+    if output_dir_existed:
+        if raw_output_dir.is_symlink():
+            raise ValueError("Report output_dir must not be a symbolic link")
+        if not raw_output_dir.is_dir():
+            raise ValueError("Report output_dir exists and is not a directory")
+    output_dir = raw_output_dir.resolve()
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    raw_docx_path = output_dir / filename
+    if raw_docx_path.exists() and raw_docx_path.is_symlink():
+        raise ValueError("Report output path must not be a symbolic link")
+    docx_path = raw_docx_path.resolve()
+    if not _is_relative_to_path(docx_path, output_dir):
+        raise ValueError("Report filename resolves outside output_dir")
+
+    chart_dir_param = params.get("chart_dir")
+    if chart_dir_param is None:
+        chart_dir = output_dir
+    else:
+        raw_chart_dir = Path(str(chart_dir_param))
+        if not raw_chart_dir.is_absolute():
+            raw_chart_dir = output_dir / raw_chart_dir
+        if raw_chart_dir.exists() and raw_chart_dir.is_symlink():
+            raise ValueError("Report chart_dir must not be a symbolic link")
+        chart_dir = raw_chart_dir.resolve()
+    if not _is_relative_to_path(chart_dir, output_dir):
+        raise ValueError("Report chart_dir must stay within output_dir")
+    if chart_dir.exists():
+        if chart_dir.is_symlink():
+            raise ValueError("Report chart_dir must not be a symbolic link")
+        if not chart_dir.is_dir():
+            raise ValueError("Report chart_dir exists and is not a directory")
+
+    return output_dir, docx_path, chart_dir, not output_dir_existed
+
+
+@dataclass
+class ReportStep(Step):
+    step_type = "report.apa"
+    produces_analysis = True
+    safe_for_untrusted_project_json = False
+
+    def compute(self, ctx: PipelineContext) -> StepResult:
+        language_param = str(self.params.get("language", "ko"))
+        language_base = language_param.lower().split("-")[0]
+        if language_base not in {"ko", "en"}:
+            raise ValueError("Unsupported report language")
+        language = "en" if language_base == "en" else "ko"
+
+        include = _normalise_include(self.params)
+        output_dir, docx_path, chart_dir, remove_output_dir_on_failure = _safe_report_paths(self.params)
+        included_results = _resolve_included(ctx, include)
+
+        created_paths: list[Path] = []
+        prose: list[str] = []
+        tables: dict[str, list[dict[str, str]]] = {}
+        figure_paths: dict[str, list[str]] = {}
+        try:
+            for public_key, result in included_results:
+                prose.append(prose_for(result, language=language))
+                tables[public_key] = table_for(result)
+                chart_spec = getattr(result, "chart_spec", None)
+                if chart_spec is not None:
+                    rendered = render_chart(chart_spec, chart_dir, public_key)
+                    paths = [rendered] if isinstance(rendered, str) else list(rendered)
+                    figure_paths[public_key] = paths
+                    created_paths.extend(Path(path) for path in paths)
+                else:
+                    figure_paths[public_key] = []
+
+            write_docx(prose, tables, figure_paths, docx_path)
+            created_paths.append(docx_path)
+        except Exception:
+            if docx_path.exists():
+                created_paths.append(docx_path)
+            _cleanup_generated(
+                created_paths,
+                output_dir,
+                remove_output_dir=remove_output_dir_on_failure,
+            )
+            raise
+
+        report = ReportResult(
+            prose=prose,
+            tables=tables,
+            docx_path=str(docx_path),
+            figure_paths=figure_paths,
+            apa_template_id="report.apa.v1",
+        )
+        return StepResult(analysis=report)
+
+    def reads(self) -> set[str]:
+        include = _normalise_include(self.params)
+        if include is None:
+            return set()
+        reads: set[str] = set()
+        for key in include:
+            reads.add(key)
+            reads.add(f"analysis:{key}")
+        return reads
+
+    def writes(self) -> set[str]:
+        return {f"report:{self.id}"}
+
+
+Step.register_type(ReportStep.step_type, ReportStep)

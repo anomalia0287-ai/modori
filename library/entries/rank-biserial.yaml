@@ -1,0 +1,23 @@
+slug: rank-biserial
+kind: effect_size
+title_ko: "순위양분상관 (rank-biserial correlation)"
+title_en: "Rank-biserial correlation"
+summary_ko: "Mann-Whitney 검정에서 두 집단의 차이가 '얼마나 큰지'를 -1에서 1 사이 값으로 나타낸 것이에요."
+summary_en: "For the Mann-Whitney test, how large the difference between two groups is, on a scale from -1 to 1."
+interpretation_ko: "0에 가까우면 차이가 작고, ±1에 가까우면 한 집단이 거의 항상 다른 집단보다 높다는 뜻입니다. 부호는 차이의 방향을 나타냅니다."
+interpretation_en: "Near 0 means a small difference; near ±1 means one group almost always scores above the other. The sign shows the direction."
+when_to_use_ko: null
+when_to_use_en: null
+how_to_report_ko: "Mann-Whitney 결과와 함께 \"r = .41\"처럼 보고합니다."
+how_to_report_en: "Report alongside the Mann-Whitney result, e.g., \"r = .41\"."
+pitfalls_ko: "Cohen's d와는 다른 척도이므로 두 값을 직접 비교하지 마세요."
+pitfalls_en: "It is not on the same scale as Cohen's d, so do not compare the two numbers directly."
+assumptions: []
+alternatives: []
+related:
+  - mann-whitney-u
+references:
+  - citation: "Cureton, E. E. (1956). Rank-biserial correlation. Psychometrika, 21(3), 287-290."
+    locator: "21(3), 287-290"
+    verified: false
+verification_status: needs_review

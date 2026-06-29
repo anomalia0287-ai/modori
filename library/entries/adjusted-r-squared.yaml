@@ -1,0 +1,24 @@
+slug: adjusted-r-squared
+kind: statistic
+title_ko: "수정된 결정계수 (adjusted R²)"
+title_en: "Adjusted R-squared"
+summary_ko: "R²를 예측변수 개수에 맞춰 보정한 값이에요. 쓸모없는 변수를 넣으면 오히려 내려갑니다."
+summary_en: "R² adjusted for the number of predictors. Adding useless variables can actually lower it."
+interpretation_ko: "예측변수 수가 서로 다른 모형들을 비교할 때 더 공정한 설명력 지표입니다."
+interpretation_en: "A fairer measure of explanatory power when comparing models with different numbers of predictors."
+when_to_use_ko: null
+when_to_use_en: null
+how_to_report_ko: "예: \"adj. R² = .31\"처럼 R²와 함께 보고합니다."
+how_to_report_en: "Report alongside R², e.g., \"adj. R² = .31\"."
+pitfalls_ko: null
+pitfalls_en: null
+assumptions: []
+alternatives: []
+related:
+  - r-squared
+  - multiple-regression-ols
+references:
+  - citation: "Field, A. (2018). Discovering Statistics Using IBM SPSS Statistics (5th ed.). SAGE."
+    locator: null
+    verified: true
+verification_status: needs_review

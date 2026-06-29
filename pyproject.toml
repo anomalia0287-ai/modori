@@ -1,0 +1,79 @@
+[project]
+name = "modori"
+version = "0.1.0"
+description = "Replayable statistical analysis pipeline for Modori."
+requires-python = ">=3.11"
+dependencies = [
+    "factor_analyzer>=0.5",
+    "matplotlib>=3.8",
+    "openpyxl>=3.1",
+    "pandas>=2.0",
+    "pingouin>=0.5",
+    "pyreadstat>=1.2",
+    "pyyaml>=6.0",
+    "PySide6>=6.6",
+    "python-docx>=1.1",
+    "scikit-learn>=1.2.2,<1.8",
+    "scipy>=1.11",
+    "statsmodels>=0.14",
+]
+
+[project.optional-dependencies]
+dev = [
+    "bandit>=1.9",
+    "pip-audit>=2.10",
+    "pytest>=8.0",
+    "ruff>=0.15",
+]
+typing = [
+    "mypy>=1.18",
+]
+
+[project.scripts]
+modori = "modori.app:main"
+
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"modori.ui" = [
+    "qml/*.qml",
+    "qml/components/*.qml",
+    "qml/dialogs/*.qml",
+    "qml/screens/*.qml",
+    "qml/theme/*.qml",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py311"
+extend-exclude = [
+    ".agents",
+    ".codex",
+    ".git",
+    ".modori_cache",
+    ".pytest_cache",
+    ".pytest-tmp",
+    ".render-tmp",
+    ".ruff_cache",
+    ".test-tmp",
+    ".tmp",
+    ".tongtong_cache",
+    ".tools",
+    ".venv",
+    "matplotlib-cache",
+    "tongtong-cache",
+    "visual-qa",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"src/modori/steps/reporting.py" = ["E402"]
+"src/modori/steps/statistics.py" = ["E402"]
+"src/modori/workflow.py" = ["E402"]

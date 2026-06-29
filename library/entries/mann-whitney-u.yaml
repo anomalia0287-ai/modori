@@ -1,0 +1,30 @@
+slug: mann-whitney-u
+kind: method
+title_ko: "Mann-Whitney U 검정"
+title_en: "Mann-Whitney U test"
+summary_ko: "두 집단의 점수에 차이가 있는지를, 평균 대신 '순위'로 비교하는 방법이에요. 점수가 정규분포를 따르지 않거나 표본이 작을 때 안전합니다."
+summary_en: "A way to check whether two groups differ, comparing them by rank instead of by mean. Safe when scores are not normally distributed or samples are small."
+interpretation_ko: "p값이 .05보다 작으면 두 집단의 분포 위치가 서로 다르다고 봅니다. 효과의 크기는 순위양분상관(r)으로 함께 제시합니다."
+interpretation_en: "A p-value below .05 indicates the two groups' distributions sit at different levels. Report the rank-biserial correlation (r) as the effect size."
+when_to_use_ko: "두 독립 집단을 비교하는데 점수가 정규분포를 따르지 않거나 표본이 작아 t검정이 적절하지 않을 때."
+when_to_use_en: "When comparing two independent groups but scores are non-normal or samples are too small for a t-test."
+how_to_report_ko: "예: \"U = 112.0, p = .030, r = .41\" 형식으로 보고합니다. 각 집단의 중앙값(Mdn)을 함께 제시하면 좋습니다."
+how_to_report_en: "Report as, e.g., \"U = 112.0, p = .030, r = .41\". Reporting each group's median (Mdn) helps."
+pitfalls_ko: "이 검정은 평균이 아니라 분포의 위치를 비교합니다. 표본이 충분히 크고 정규성이 받아들일 만하면 t검정이 더 많은 정보를 줍니다."
+pitfalls_en: "It compares distribution location, not means. With large enough, reasonably normal samples, a t-test is more informative."
+assumptions:
+  - independence-of-errors
+alternatives:
+  - student-t-test
+  - welch-t-test
+related:
+  - rank-biserial
+  - p-value
+references:
+  - citation: "Mann, H. B., & Whitney, D. R. (1947). On a test of whether one of two random variables is stochastically larger than the other. Annals of Mathematical Statistics, 18(1), 50-60."
+    locator: "18(1), 50-60"
+    verified: false
+  - citation: "Field, A. (2018). Discovering Statistics Using IBM SPSS Statistics (5th ed.). SAGE."
+    locator: null
+    verified: true
+verification_status: needs_review

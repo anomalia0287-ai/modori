@@ -1,0 +1,28 @@
+slug: mcdonald-omega
+kind: statistic
+title_ko: "맥도널드 오메가 (McDonald's ω)"
+title_en: "McDonald's omega"
+summary_ko: "설문의 여러 문항이 같은 하나를 일관되게 재는지를 0~1로 나타내는 신뢰도 값이에요. 크론바흐 알파의 더 현대적인 대안으로 자주 권장됩니다."
+summary_en: "A 0-1 reliability value for how consistently a questionnaire's items measure the same thing. Often recommended as a more modern alternative to Cronbach's alpha."
+interpretation_ko: "알파와 비슷하게 .70 이상이면 수용 가능으로 봅니다. 문항들의 기여가 서로 다를 때 알파보다 정확한 경우가 많습니다."
+interpretation_en: "Like alpha, .70+ is considered acceptable. It is often more accurate than alpha when items contribute unequally."
+when_to_use_ko: null
+when_to_use_en: null
+how_to_report_ko: "예: \"McDonald's ω = .88\"처럼 보고하며, 알파와 함께 제시하면 좋습니다."
+how_to_report_en: "Report as, e.g., \"McDonald's ω = .88\", ideally alongside alpha."
+pitfalls_ko: "알파와 마찬가지로 척도가 하나의 차원이라는 가정 위에서 의미가 분명합니다."
+pitfalls_en: "Like alpha, it is clearest under the assumption that the scale is unidimensional."
+assumptions: []
+alternatives:
+  - cronbach-alpha
+related:
+  - cronbach-alpha
+  - corrected-item-total-correlation
+references:
+  - citation: "McDonald, R. P. (1999). Test Theory: A Unified Treatment. Lawrence Erlbaum Associates."
+    locator: null
+    verified: true
+  - citation: "Hayes, A. F., & Coutts, J. J. (2020). Use omega rather than Cronbach's alpha for estimating reliability. But.... Communication Methods and Measures, 14(1), 1-24."
+    locator: "14(1), 1-24"
+    verified: false
+verification_status: needs_review

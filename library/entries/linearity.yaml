@@ -1,0 +1,23 @@
+slug: linearity
+kind: assumption
+title_ko: "선형성 (linearity)"
+title_en: "Linearity"
+summary_ko: "예측변수와 결과변수가 곡선이 아니라 대체로 '직선' 관계인지를 따지는 가정이에요."
+summary_en: "An assumption that a predictor and the outcome have a roughly straight-line (not curved) relationship."
+interpretation_ko: null
+interpretation_en: null
+when_to_use_ko: null
+when_to_use_en: null
+how_to_report_ko: null
+how_to_report_en: null
+pitfalls_ko: "잔차-적합치 그림에서 뚜렷한 곡선 패턴이 보이면 위반 신호입니다. 변수 변환이나 비선형 항 추가를 고려하세요."
+pitfalls_en: "A clear curved pattern in the residual-vs-fitted plot signals a violation; consider transforming variables or adding nonlinear terms."
+assumptions: []
+alternatives: []
+related:
+  - multiple-regression-ols
+references:
+  - citation: "Tabachnick, B. G., & Fidell, L. S. (2019). Using Multivariate Statistics (7th ed.). Pearson."
+    locator: null
+    verified: true
+verification_status: needs_review

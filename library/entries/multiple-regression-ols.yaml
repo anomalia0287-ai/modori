@@ -1,0 +1,35 @@
+slug: multiple-regression-ols
+kind: method
+title_ko: "다중 선형회귀 (OLS)"
+title_en: "Multiple linear regression (OLS)"
+summary_ko: "여러 예측변수가 하나의 결과 점수를 함께 얼마나, 어떻게 설명하는지 알아보는 방법이에요. 각 변수의 '고유한' 기여를 따로 볼 수 있습니다."
+summary_en: "A method for seeing how several predictors together explain one outcome score, and how each one contributes. It isolates each variable's unique contribution."
+interpretation_ko: "각 예측변수의 계수는 '다른 변수를 일정하게 두었을 때' 그 변수가 결과에 주는 영향을 뜻합니다. 표준화 계수(β)로 변수들 간 영향력을 비교합니다."
+interpretation_en: "Each predictor's coefficient is its effect on the outcome 'holding the other predictors constant'. Use standardized coefficients (β) to compare predictors."
+when_to_use_ko: "연속형 결과 점수를 여러 변수로 예측하거나 설명하고 싶을 때."
+when_to_use_en: "When predicting or explaining a continuous outcome score from several variables."
+how_to_report_ko: "모형 적합도(F, R²)와 각 예측변수의 b·β·p를 함께 보고합니다."
+how_to_report_en: "Report the model fit (F, R²) together with each predictor's b, β, and p."
+pitfalls_ko: "가정(선형성·정규성·등분산성·독립성·다중공선성)을 함께 점검해야 결과를 믿을 수 있습니다."
+pitfalls_en: "Check the assumptions (linearity, normality, homoscedasticity, independence, multicollinearity) before trusting the results."
+assumptions:
+  - linearity
+  - independence-of-errors
+  - homoscedasticity
+  - normality
+alternatives: []
+related:
+  - r-squared
+  - adjusted-r-squared
+  - f-test
+  - standardized-beta
+  - vif
+  - p-value
+references:
+  - citation: "Field, A. (2018). Discovering Statistics Using IBM SPSS Statistics (5th ed.). SAGE."
+    locator: null
+    verified: true
+  - citation: "Tabachnick, B. G., & Fidell, L. S. (2019). Using Multivariate Statistics (7th ed.). Pearson."
+    locator: null
+    verified: true
+verification_status: needs_review
