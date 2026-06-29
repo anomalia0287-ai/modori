@@ -59,12 +59,14 @@ Item {
                 Button {
                     text: appBootstrap.text("work.guided")
                     Accessible.name: appBootstrap.text("entry.guided")
+                    enabled: uiController.mode !== "guided"
                     onClicked: uiController.chooseMode("guided")
                 }
 
                 Button {
                     text: appBootstrap.text("work.standard")
                     Accessible.name: appBootstrap.text("entry.standard")
+                    enabled: uiController.mode !== "standard"
                     onClicked: uiController.chooseMode("standard")
                 }
 
@@ -91,7 +93,10 @@ Item {
             orientation: Qt.Horizontal
 
             GuideRail {
-                SplitView.preferredWidth: 260
+                visible: uiController.mode === "guided"
+                SplitView.preferredWidth: uiController.mode === "guided" ? 260 : 0
+                SplitView.minimumWidth: uiController.mode === "guided" ? 220 : 0
+                SplitView.maximumWidth: uiController.mode === "guided" ? 360 : 0
             }
 
             Rectangle {

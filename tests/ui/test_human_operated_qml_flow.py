@@ -108,6 +108,15 @@ def test_explain_mode_control_is_bound_to_explanation_surfaces() -> None:
     assert "uiController.explainModeEnabled ?" in guide
 
 
+def test_guided_and_standard_modes_change_visible_work_surface() -> None:
+    work = qml_text("screens/WorkScreen.qml")
+
+    assert 'visible: uiController.mode === "guided"' in work
+    assert 'SplitView.preferredWidth: uiController.mode === "guided" ? 260 : 0' in work
+    assert 'enabled: uiController.mode !== "guided"' in work
+    assert 'enabled: uiController.mode !== "standard"' in work
+
+
 def test_controller_bridge_runs_reference_flow_from_path(tmp_path) -> None:
     from tests.ui.test_end_to_end_ui_flow import write_reference_csv
     from modori.ui.controller import UiController
