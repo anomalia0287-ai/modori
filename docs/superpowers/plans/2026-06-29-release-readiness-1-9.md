@@ -192,11 +192,11 @@ The gate must fail if the packaged artifact cannot load QML root, cannot constru
 - Test: `tests/test_pipeline_core.py`
 - Test: `tests/test_table_io.py`
 
-- [ ] **Step 1: Add RED tests for JSON pre-load byte limits and variables pre-count limits**
+- [x] **Step 1: Add RED tests for JSON pre-load byte limits and variables pre-count limits**
 
 The tests must prove oversized JSON and oversized variables payloads fail before full object expansion is trusted.
 
-- [ ] **Step 2: Add RED tests for XLSX/SAV full-import limit semantics**
+- [x] **Step 2: Add RED tests for XLSX/SAV full-import limit semantics**
 
 The tests must distinguish preview limits from full import limits and document where true streaming is supported.
 

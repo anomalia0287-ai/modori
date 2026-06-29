@@ -46,13 +46,25 @@ def read_full(
             read_kwargs["nrows"] = limits.max_rows + 1
         frame = pd.read_csv(path, **read_kwargs)
         metadata = None
-    elif normalized in {"xlsx", "xls"}:
-        frame = pd.read_excel(path)
+    elif normalized == "xlsx":
+        if _xlsx_needs_limited_read(limits):
+            frame = _read_xlsx_limited(path, limits)
+        else:
+            frame = pd.read_excel(path)
+        metadata = None
+    elif normalized == "xls":
+        read_kwargs = {}
+        if limits.max_rows is not None:
+            read_kwargs["nrows"] = limits.max_rows + 1
+        frame = pd.read_excel(path, **read_kwargs)
         metadata = None
     elif normalized == "sav":
         import pyreadstat
 
-        frame, metadata = pyreadstat.read_sav(path, user_missing=True)
+        read_kwargs = {"user_missing": True}
+        if limits.max_rows is not None:
+            read_kwargs["row_limit"] = limits.max_rows + 1
+        frame, metadata = pyreadstat.read_sav(path, **read_kwargs)
     else:
         raise ValueError(f"Unsupported table file type: {normalized}")
     _enforce_shape_limits(frame, limits)
@@ -107,9 +119,11 @@ def read_preview(
 
 
 def _read_xlsx_preview(path: Path, max_rows: int) -> pd.DataFrame:
-    from openpyxl import load_workbook
+    return _read_xlsx_rows(path, max_rows)
 
-    workbook = load_workbook(path, read_only=True, data_only=True)
+
+def _read_xlsx_limited(path: Path, limits: FullReadLimits) -> pd.DataFrame:
+    workbook = _load_xlsx_workbook(path)
     try:
         worksheet = workbook.active
         iterator = worksheet.iter_rows(values_only=True)
@@ -117,16 +131,68 @@ def _read_xlsx_preview(path: Path, max_rows: int) -> pd.DataFrame:
             header = next(iterator)
         except StopIteration:
             return pd.DataFrame()
-        columns = [
-            str(value) if value is not None else f"Unnamed: {index}"
-            for index, value in enumerate(header)
-        ]
+        columns = _xlsx_columns(header)
+        row_limit = _xlsx_limited_row_read_count(limits, len(columns))
+        rows = []
+        for row in iterator:
+            rows.append(list(row))
+            if row_limit is not None and len(rows) >= row_limit:
+                break
+        return pd.DataFrame(rows, columns=columns)
+    finally:
+        workbook.close()
+
+
+def _read_xlsx_rows(path: Path, max_rows: int) -> pd.DataFrame:
+    workbook = _load_xlsx_workbook(path)
+    try:
+        worksheet = workbook.active
+        iterator = worksheet.iter_rows(values_only=True)
+        try:
+            header = next(iterator)
+        except StopIteration:
+            return pd.DataFrame()
+        columns = _xlsx_columns(header)
         rows = []
         for _, row in zip(range(max_rows), iterator, strict=False):
             rows.append(list(row))
         return pd.DataFrame(rows, columns=columns)
     finally:
         workbook.close()
+
+
+def _load_xlsx_workbook(path: Path):
+    from openpyxl import load_workbook
+
+    return load_workbook(path, read_only=True, data_only=True)
+
+
+def _xlsx_columns(header: tuple[Any, ...]) -> list[str]:
+    return [
+        str(value) if value is not None else f"Unnamed: {index}"
+        for index, value in enumerate(header)
+    ]
+
+
+def _xlsx_needs_limited_read(limits: FullReadLimits) -> bool:
+    return (
+        limits.max_rows is not None
+        or limits.max_columns is not None
+        or limits.max_cells is not None
+    )
+
+
+def _xlsx_limited_row_read_count(
+    limits: FullReadLimits,
+    column_count: int,
+) -> int | None:
+    row_limit = limits.max_rows + 1 if limits.max_rows is not None else None
+    if limits.max_cells is not None and column_count > 0:
+        cell_row_limit = limits.max_cells // column_count + 1
+        if row_limit is None:
+            return cell_row_limit
+        return min(row_limit, cell_row_limit)
+    return row_limit
 
 
 def _enforce_file_size(path: Path, max_file_bytes: int | None) -> None:

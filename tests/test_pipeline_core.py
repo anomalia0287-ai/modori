@@ -503,6 +503,23 @@ def test_dataset_from_dict_rejects_payload_when_explicit_cell_limit_is_exceeded(
         Dataset.from_dict(payload, limits=DatasetShapeLimits(max_cells=3))
 
 
+def test_dataset_from_dict_rejects_variables_payload_before_frame_expansion(
+    monkeypatch,
+) -> None:
+    payload = Dataset(
+        df=pd.DataFrame({"a": [1], "b": [2]}),
+        variables={"a": variable("a"), "b": variable("b")},
+    ).to_dict()
+
+    def dataframe_spy(*args, **kwargs):
+        raise AssertionError("DataFrame should not be constructed")
+
+    monkeypatch.setattr("modori.core.model.pd.DataFrame", dataframe_spy)
+
+    with pytest.raises(ValueError, match="variable limit"):
+        Dataset.from_dict(payload, limits=DatasetShapeLimits(max_variables=1))
+
+
 def test_pipeline_from_json_applies_untrusted_dataset_shape_limit() -> None:
     payload = {
         "source_dataset": Dataset(
@@ -517,6 +534,23 @@ def test_pipeline_from_json_applies_untrusted_dataset_shape_limit() -> None:
             json.dumps(payload),
             dataset_limits=DatasetShapeLimits(max_cells=3),
         )
+
+
+def test_pipeline_from_json_rejects_json_byte_limit_before_parse(monkeypatch) -> None:
+    payload = json.dumps(
+        {
+            "source_dataset": Dataset.empty().to_dict(),
+            "steps": [],
+        }
+    )
+
+    def loads_spy(*args, **kwargs):
+        raise AssertionError("json.loads should not be called")
+
+    monkeypatch.setattr("modori.core.pipeline.json.loads", loads_spy)
+
+    with pytest.raises(ValueError, match="JSON byte limit"):
+        Pipeline.from_json(payload, dataset_limits=DatasetShapeLimits(max_json_bytes=1))
 
 
 def test_pipeline_from_json_applies_default_untrusted_dataset_shape_limit(

@@ -17,8 +17,10 @@ class Measure(Enum):
 
 @dataclass(frozen=True)
 class DatasetShapeLimits:
+    max_json_bytes: int | None = None
     max_rows: int | None = None
     max_columns: int | None = None
+    max_variables: int | None = None
     max_cells: int | None = None
 
 
@@ -235,7 +237,7 @@ class Dataset:
             "Dataset variables must be an object",
         )
         if limits is not None:
-            _validate_dataset_payload_shape(frame_payload, limits)
+            _validate_dataset_payload_shape(frame_payload, variables_payload, limits)
         try:
             frame = pd.DataFrame(
                 data=frame_payload["data"],
@@ -254,10 +256,17 @@ class Dataset:
 
 def _validate_dataset_payload_shape(
     frame_payload: Mapping[str, Any],
+    variables_payload: Mapping[str, Any],
     limits: DatasetShapeLimits,
 ) -> None:
     columns = frame_payload["columns"]
     data = frame_payload["data"]
+    variable_count = len(variables_payload)
+    if limits.max_variables is not None and variable_count > limits.max_variables:
+        raise ValueError(
+            f"Dataset variable count {variable_count} exceeds the configured "
+            f"variable limit of {limits.max_variables}."
+        )
     if not isinstance(columns, list) or not isinstance(data, list):
         return
     row_count = len(data)
