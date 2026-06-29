@@ -8,6 +8,59 @@ import pandas as pd
 
 
 @dataclass(frozen=True)
+class TableReadSource:
+    path: Path
+    file_type: str
+    sheet_name: str | None = None
+    sheet_names: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class TableReadResult:
+    frame: pd.DataFrame
+    metadata: Any | None
+    source: TableReadSource
+    warnings: tuple[str, ...] = ()
+
+    @property
+    def columns(self) -> tuple[str, ...]:
+        return tuple(str(column) for column in self.frame.columns)
+
+    @property
+    def row_count(self) -> int:
+        return int(self.frame.shape[0])
+
+    def __iter__(self):
+        yield self.frame
+        yield self.metadata
+
+
+@dataclass(frozen=True)
+class TableHeaderResult:
+    columns: tuple[str, ...]
+    source: TableReadSource
+
+    def __iter__(self):
+        return iter(self.columns)
+
+    def __len__(self) -> int:
+        return len(self.columns)
+
+    def __getitem__(self, index: int) -> str:
+        return self.columns[index]
+
+
+@dataclass(frozen=True)
+class TablePreviewResult(TableReadResult):
+    preview_limit: int = 0
+    sample_rows: tuple[dict[str, Any], ...] = ()
+
+    @property
+    def previewed_rows(self) -> int:
+        return self.row_count
+
+
+@dataclass(frozen=True)
 class PreviewReadLimits:
     max_rows: int = 30
 
@@ -37,7 +90,7 @@ def read_full(
     file_type: str | None = None,
     *,
     limits: FullReadLimits = DEFAULT_FULL_READ_LIMITS,
-) -> tuple[pd.DataFrame, Any | None]:
+) -> TableReadResult:
     normalized = normalize_file_type(path, file_type)
     _enforce_file_size(path, limits.max_file_bytes)
     if normalized == "csv":
@@ -46,11 +99,13 @@ def read_full(
             read_kwargs["nrows"] = limits.max_rows + 1
         frame = pd.read_csv(path, **read_kwargs)
         metadata = None
+        source = _table_source(path, normalized)
     elif normalized == "xlsx":
         if _xlsx_needs_limited_read(limits):
-            frame = _read_xlsx_limited(path, limits)
+            frame, source = _read_xlsx_limited(path, limits)
         else:
             frame = pd.read_excel(path)
+            source = _xlsx_source(path)
         metadata = None
     elif normalized == "xls":
         read_kwargs = {}
@@ -58,6 +113,7 @@ def read_full(
             read_kwargs["nrows"] = limits.max_rows + 1
         frame = pd.read_excel(path, **read_kwargs)
         metadata = None
+        source = _table_source(path, normalized)
     elif normalized == "sav":
         import pyreadstat
 
@@ -65,18 +121,29 @@ def read_full(
         if limits.max_rows is not None:
             read_kwargs["row_limit"] = limits.max_rows + 1
         frame, metadata = pyreadstat.read_sav(path, **read_kwargs)
+        source = _table_source(path, normalized)
     else:
         raise ValueError(f"Unsupported table file type: {normalized}")
     _enforce_shape_limits(frame, limits)
-    return frame, metadata
+    return TableReadResult(frame=frame, metadata=metadata, source=source)
 
 
 def read_header(path: Path, file_type: str | None = None) -> list[str]:
+    return list(read_header_result(path, file_type).columns)
+
+
+def read_header_result(path: Path, file_type: str | None = None) -> TableHeaderResult:
     normalized = normalize_file_type(path, file_type)
     if normalized == "csv":
         columns = pd.read_csv(path, nrows=0).columns
+        source = _table_source(path, normalized)
     elif normalized in {"xlsx", "xls"}:
         columns = pd.read_excel(path, nrows=0).columns
+        source = (
+            _safe_xlsx_source(path)
+            if normalized == "xlsx"
+            else _table_source(path, normalized)
+        )
     elif normalized == "sav":
         import pyreadstat
 
@@ -86,9 +153,13 @@ def read_header(path: Path, file_type: str | None = None) -> list[str]:
             user_missing=True,
         )
         columns = getattr(metadata, "column_names", None) or frame.columns
+        source = _table_source(path, normalized)
     else:
         raise ValueError(f"Unsupported table file type: {normalized}")
-    return [str(column) for column in columns]
+    return TableHeaderResult(
+        columns=tuple(str(column) for column in columns),
+        source=source,
+    )
 
 
 def read_preview(
@@ -96,16 +167,29 @@ def read_preview(
     file_type: str | None = None,
     *,
     limits: PreviewReadLimits = DEFAULT_PREVIEW_READ_LIMITS,
-) -> tuple[pd.DataFrame, Any | None]:
+) -> TablePreviewResult:
     if limits.max_rows < 1:
         raise ValueError("Preview max_rows must be at least 1")
     normalized = normalize_file_type(path, file_type)
     if normalized == "csv":
-        return pd.read_csv(path, nrows=limits.max_rows), None
+        frame = pd.read_csv(path, nrows=limits.max_rows)
+        return _preview_result(
+            frame,
+            None,
+            _table_source(path, normalized),
+            preview_limit=limits.max_rows,
+        )
     if normalized == "xlsx":
-        return _read_xlsx_preview(path, limits.max_rows), None
+        frame, source = _read_xlsx_preview(path, limits.max_rows)
+        return _preview_result(frame, None, source, preview_limit=limits.max_rows)
     if normalized == "xls":
-        return pd.read_excel(path, nrows=limits.max_rows), None
+        frame = pd.read_excel(path, nrows=limits.max_rows)
+        return _preview_result(
+            frame,
+            None,
+            _table_source(path, normalized),
+            preview_limit=limits.max_rows,
+        )
     if normalized == "sav":
         import pyreadstat
 
@@ -114,23 +198,29 @@ def read_preview(
             row_limit=limits.max_rows,
             user_missing=True,
         )
-        return frame, metadata
+        return _preview_result(
+            frame,
+            metadata,
+            _table_source(path, normalized),
+            preview_limit=limits.max_rows,
+        )
     raise ValueError(f"Unsupported table file type: {normalized}")
 
 
-def _read_xlsx_preview(path: Path, max_rows: int) -> pd.DataFrame:
+def _read_xlsx_preview(path: Path, max_rows: int) -> tuple[pd.DataFrame, TableReadSource]:
     return _read_xlsx_rows(path, max_rows)
 
 
-def _read_xlsx_limited(path: Path, limits: FullReadLimits) -> pd.DataFrame:
+def _read_xlsx_limited(path: Path, limits: FullReadLimits) -> tuple[pd.DataFrame, TableReadSource]:
     workbook = _load_xlsx_workbook(path)
     try:
         worksheet = workbook.active
+        source = _xlsx_source_from_workbook(path, workbook, worksheet)
         iterator = worksheet.iter_rows(values_only=True)
         try:
             header = next(iterator)
         except StopIteration:
-            return pd.DataFrame()
+            return pd.DataFrame(), source
         columns = _xlsx_columns(header)
         row_limit = _xlsx_limited_row_read_count(limits, len(columns))
         rows = []
@@ -138,25 +228,26 @@ def _read_xlsx_limited(path: Path, limits: FullReadLimits) -> pd.DataFrame:
             rows.append(list(row))
             if row_limit is not None and len(rows) >= row_limit:
                 break
-        return pd.DataFrame(rows, columns=columns)
+        return pd.DataFrame(rows, columns=columns), source
     finally:
         workbook.close()
 
 
-def _read_xlsx_rows(path: Path, max_rows: int) -> pd.DataFrame:
+def _read_xlsx_rows(path: Path, max_rows: int) -> tuple[pd.DataFrame, TableReadSource]:
     workbook = _load_xlsx_workbook(path)
     try:
         worksheet = workbook.active
+        source = _xlsx_source_from_workbook(path, workbook, worksheet)
         iterator = worksheet.iter_rows(values_only=True)
         try:
             header = next(iterator)
         except StopIteration:
-            return pd.DataFrame()
+            return pd.DataFrame(), source
         columns = _xlsx_columns(header)
         rows = []
         for _, row in zip(range(max_rows), iterator, strict=False):
             rows.append(list(row))
-        return pd.DataFrame(rows, columns=columns)
+        return pd.DataFrame(rows, columns=columns), source
     finally:
         workbook.close()
 
@@ -165,6 +256,67 @@ def _load_xlsx_workbook(path: Path):
     from openpyxl import load_workbook
 
     return load_workbook(path, read_only=True, data_only=True)
+
+
+def _table_source(path: Path, file_type: str) -> TableReadSource:
+    return TableReadSource(path=path, file_type=file_type)
+
+
+def _xlsx_source(path: Path) -> TableReadSource:
+    workbook = _load_xlsx_workbook(path)
+    try:
+        return _xlsx_source_from_workbook(path, workbook, workbook.active)
+    finally:
+        workbook.close()
+
+
+def _safe_xlsx_source(path: Path) -> TableReadSource:
+    try:
+        return _xlsx_source(path)
+    except Exception:
+        return _table_source(path, "xlsx")
+
+
+def _xlsx_source_from_workbook(
+    path: Path,
+    workbook: Any,
+    worksheet: Any,
+) -> TableReadSource:
+    return TableReadSource(
+        path=path,
+        file_type="xlsx",
+        sheet_name=getattr(worksheet, "title", None),
+        sheet_names=tuple(str(name) for name in getattr(workbook, "sheetnames", ())),
+    )
+
+
+def _preview_result(
+    frame: pd.DataFrame,
+    metadata: Any | None,
+    source: TableReadSource,
+    *,
+    preview_limit: int,
+) -> TablePreviewResult:
+    return TablePreviewResult(
+        frame=frame,
+        metadata=metadata,
+        source=source,
+        preview_limit=preview_limit,
+        sample_rows=_sample_rows(frame),
+    )
+
+
+def _sample_rows(frame: pd.DataFrame) -> tuple[dict[str, Any], ...]:
+    rows: list[dict[str, Any]] = []
+    for row in frame.to_dict(orient="records"):
+        rows.append({str(key): _display_cell(value) for key, value in row.items()})
+    return tuple(rows)
+
+
+def _display_cell(value: Any) -> Any:
+    if pd.isna(value):
+        return None
+    return value
 
 
 def _xlsx_columns(header: tuple[Any, ...]) -> list[str]:

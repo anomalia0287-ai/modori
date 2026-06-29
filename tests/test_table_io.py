@@ -2,7 +2,87 @@ import pandas as pd
 import pyreadstat
 import pytest
 
-from modori.table_io import FullReadLimits, read_full
+from modori.table_io import (
+    FullReadLimits,
+    PreviewReadLimits,
+    TableHeaderResult,
+    TablePreviewResult,
+    TableReadResult,
+    read_full,
+    read_header,
+    read_header_result,
+    read_preview,
+)
+
+
+def test_read_full_returns_structured_result_that_stays_tuple_unpackable(tmp_path) -> None:
+    path = tmp_path / "survey.csv"
+    pd.DataFrame({"score": [1, 2]}).to_csv(path, index=False)
+
+    result = read_full(path, "csv")
+    frame, metadata = result
+
+    assert isinstance(result, TableReadResult)
+    assert frame.equals(result.frame)
+    assert metadata is None
+    assert result.source.path == path
+    assert result.source.file_type == "csv"
+    assert result.columns == ("score",)
+    assert result.row_count == 2
+
+
+def test_read_preview_returns_xlsx_source_context_and_sample_rows(tmp_path) -> None:
+    path = tmp_path / "survey.xlsx"
+    with pd.ExcelWriter(path) as writer:
+        pd.DataFrame({"respondent_id": [101, 102, 103], "score": [5, 4, 3]}).to_excel(
+            writer,
+            sheet_name="Survey Responses",
+            index=False,
+        )
+        pd.DataFrame({"code": [1, 2], "label": ["control", "treatment"]}).to_excel(
+            writer,
+            sheet_name="Codebook",
+            index=False,
+        )
+
+    result = read_preview(path, "xlsx", limits=PreviewReadLimits(max_rows=2))
+    frame, metadata = result
+
+    assert isinstance(result, TablePreviewResult)
+    assert metadata is None
+    assert frame.shape == (2, 2)
+    assert result.source.file_type == "xlsx"
+    assert result.source.path == path
+    assert result.source.sheet_name == "Survey Responses"
+    assert result.source.sheet_names == ("Survey Responses", "Codebook")
+    assert result.preview_limit == 2
+    assert result.previewed_rows == 2
+    assert result.columns == ("respondent_id", "score")
+    assert result.sample_rows == (
+        {"respondent_id": 101, "score": 5},
+        {"respondent_id": 102, "score": 4},
+    )
+
+
+def test_read_header_result_exposes_xlsx_source_context_and_compat_header(tmp_path) -> None:
+    path = tmp_path / "survey.xlsx"
+    with pd.ExcelWriter(path) as writer:
+        pd.DataFrame({"q1": [1], "q2": [2]}).to_excel(
+            writer,
+            sheet_name="Responses",
+            index=False,
+        )
+        pd.DataFrame({"code": [1]}).to_excel(writer, sheet_name="Codebook", index=False)
+
+    result = read_header_result(path, "xlsx")
+
+    assert isinstance(result, TableHeaderResult)
+    assert result.columns == ("q1", "q2")
+    assert tuple(result) == ("q1", "q2")
+    assert result.source.file_type == "xlsx"
+    assert result.source.sheet_name == "Responses"
+    assert result.source.sheet_names == ("Responses", "Codebook")
+    assert read_header(path, "xlsx") == ["q1", "q2"]
 
 
 def test_read_full_rejects_csv_when_explicit_row_limit_is_exceeded(tmp_path) -> None:

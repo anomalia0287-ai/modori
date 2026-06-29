@@ -19,6 +19,33 @@ def test_import_preview_service_returns_variable_summary(tmp_path) -> None:
     assert "score" in preview.text
 
 
+def test_import_preview_service_surfaces_xlsx_source_context_and_sample(tmp_path) -> None:
+    data_path = tmp_path / "survey.xlsx"
+    with pd.ExcelWriter(data_path) as writer:
+        pd.DataFrame({"group": [1, 2], "score": [3.5, 4.5]}).to_excel(
+            writer,
+            sheet_name="Responses",
+            index=False,
+        )
+        pd.DataFrame({"code": [1], "label": ["control"]}).to_excel(
+            writer,
+            sheet_name="Codebook",
+            index=False,
+        )
+
+    preview = ImportPreviewService().preview(data_path)
+
+    assert preview.ok is True
+    assert preview.pending_path == data_path
+    assert "파일: survey.xlsx" in preview.text
+    assert "시트: Responses" in preview.text
+    assert "전체 시트: Responses, Codebook" in preview.text
+    assert "미리보기: 앞 30행 중 2행" in preview.text
+    assert "샘플 행" in preview.text
+    assert "group=1" in preview.text
+    assert "score=3.5" in preview.text
+
+
 def test_import_preview_service_reads_bounded_csv_preview(tmp_path, monkeypatch) -> None:
     data_path = tmp_path / "large-survey.csv"
     data_path.write_text("score\n1\n2\n", encoding="utf-8")
