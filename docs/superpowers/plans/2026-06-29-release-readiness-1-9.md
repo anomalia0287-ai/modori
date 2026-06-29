@@ -272,11 +272,11 @@ Record exact date, environment, steps, pass/fail, and screenshots where useful.
 - Create: `tests/test_stress_matrix_script.py`
 - Docs: release checklist document
 
-- [ ] **Step 1: Define local synthetic datasets**
+- [x] **Step 1: Define local synthetic datasets**
 
 Use deterministic generated CSV/XLSX shapes that do not require external data.
 
-- [ ] **Step 2: Measure import, preview, analysis, and report-export timings**
+- [x] **Step 2: Measure import, preview, analysis, and report-export timings**
 
 The output must record dataset shape, command, elapsed time, and pass/fail status.
 

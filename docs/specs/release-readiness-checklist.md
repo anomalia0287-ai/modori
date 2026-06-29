@@ -73,3 +73,27 @@ surfacing, report export failure surfacing, and accessibility smoke.
 The current run does not contain accepted screenshot evidence. A visible
 target-machine walkthrough with screenshots is still required before claiming a
 signed Windows release is ready for end users.
+
+## Stress Matrix Gate
+
+Run the deterministic local stress matrix before claiming import, analysis, and
+report-export performance evidence:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\stress_matrix.py --output-dir .stress-matrix --rows 50,500 --formats csv,xlsx --json-out .stress-matrix\results-2026-06-29.json
+```
+
+The `.stress-matrix` directory is a generated local evidence folder and is
+ignored by git. The JSON output records dataset shape, command, elapsed time,
+operation, status, and error message for:
+
+- `preview`
+- `full_import`
+- `analysis`
+- `report_export`
+
+Current evidence from this workspace:
+
+- CSV and XLSX at 50 rows x 9 columns: all operations passed.
+- CSV and XLSX at 500 rows x 9 columns: all operations passed.
+- Slowest recorded operation: CSV 50-row `report_export`, 0.669728 seconds.

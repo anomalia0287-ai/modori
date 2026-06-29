@@ -7,6 +7,7 @@ from pathlib import Path
 AUDITED_FILE_OPERATION_FILES = {
     "scripts/package_launch_smoke.py",
     "scripts/package_windows.py",
+    "scripts/stress_matrix.py",
     "src/modori/cache.py",
     "src/modori/knowledge/loader.py",
     "src/modori/path_policy.py",

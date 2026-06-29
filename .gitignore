@@ -6,6 +6,7 @@
 .ruff_cache/
 .test-tmp/
 .tmp/
+.stress-matrix/
 .tools/
 .modori_cache/
 .tongtong_cache/
