@@ -335,12 +335,7 @@ class UiController(QObject):
 
     def rerun(self) -> CommandResult:
         if self.pipeline is None:
-            return CommandResult(
-                ok=False,
-                message_ko="다시 실행할 분석이 없습니다.",
-                error_code="no_pipeline",
-                pipeline_version=self._pipeline_state.pipeline_version,
-            )
+            return self._command_error("다시 실행할 분석이 없습니다.", "no_pipeline")
         run_id = self._run_tracker.submit(
             worker=self._worker,
             pipeline_version=self._pipeline_state.pipeline_version,
@@ -369,9 +364,9 @@ class UiController(QObject):
             pipeline_version=self._pipeline_state.pipeline_version,
         )
         if not result.ok:
-            if result.error_code == "engine_error":
-                self._last_error = result.message_ko
-                self.stateChanged.emit()
+            self._last_error = result.message_ko
+            self._pipeline_state.mark_ready_unless_empty()
+            self.stateChanged.emit()
             return result
         self._report_path = result.result_ids[0]
         self._last_error = ""

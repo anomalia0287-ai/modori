@@ -62,6 +62,28 @@ def test_work_qml_wires_rerun_results_explain_and_report() -> None:
     assert "rerunRequested" in pipeline
 
 
+def test_work_header_actions_are_connected_to_real_user_flows() -> None:
+    main = qml_text("Main.qml")
+    work = qml_text("screens/WorkScreen.qml")
+
+    assert "signal openDataRequested()" in work
+    assert "signal reportRequested()" in work
+    assert "onOpenDataRequested: dataFileDialog.open()" in main
+    assert "onReportRequested: reportExportDialog.open()" in main
+    assert "onClicked: root.openDataRequested()" in work
+    assert "onClicked: root.reportRequested()" in work
+
+
+def test_standard_pipeline_rail_reaches_every_supported_v1_analysis() -> None:
+    pipeline = qml_text("components/PipelineRail.qml")
+
+    assert "uiController.configureReliabilityFromText" in pipeline
+    assert "uiController.configureComparisonFromText" in pipeline
+    assert "uiController.configureRegressionFromText" in pipeline
+    assert "pipeline.apply_regression" in pipeline
+    assert "pipeline.predictors_placeholder" in pipeline
+
+
 def test_controller_bridge_runs_reference_flow_from_path(tmp_path) -> None:
     from tests.ui.test_end_to_end_ui_flow import write_reference_csv
     from modori.ui.controller import UiController
@@ -83,3 +105,14 @@ def test_controller_bridge_runs_reference_flow_from_path(tmp_path) -> None:
     assert controller.reportPath.endswith("report.docx")
     assert Path(controller.reportPath).exists()
     assert "Cronbach" in controller.explainPlainText("ui.result.cronbach_alpha", "ko")
+
+
+def test_dead_end_work_actions_surface_user_visible_errors() -> None:
+    from modori.ui.controller import UiController
+
+    controller = UiController()
+
+    assert controller.rerunNow() is False
+    assert controller.lastError == "다시 실행할 분석이 없습니다."
+    assert controller.exportReportNow() is False
+    assert controller.lastError == "내보낼 분석 결과가 없습니다."

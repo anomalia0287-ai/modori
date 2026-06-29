@@ -49,6 +49,8 @@ ApplicationWindow {
         anchors.fill: parent
         reduceEffects: root.reduceEffects
         visible: root.currentScreen === "work"
+        onOpenDataRequested: dataFileDialog.open()
+        onReportRequested: reportExportDialog.open()
     }
 
     ImportDialog {
@@ -60,6 +62,10 @@ ApplicationWindow {
                 importDialog.close()
             }
         }
+    }
+
+    ReportExportDialog {
+        id: reportExportDialog
     }
 
     FileDialog {

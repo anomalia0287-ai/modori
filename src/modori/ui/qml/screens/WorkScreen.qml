@@ -6,6 +6,8 @@ import "../components"
 Item {
     id: root
     property bool reduceEffects: false
+    signal openDataRequested()
+    signal reportRequested()
 
     Rectangle {
         anchors.fill: parent
@@ -37,6 +39,7 @@ Item {
                 Button {
                     text: appBootstrap.text("work.data")
                     Accessible.name: appBootstrap.text("work.data_menu")
+                    onClicked: root.openDataRequested()
                 }
 
                 Button {
@@ -48,6 +51,7 @@ Item {
                 Button {
                     text: appBootstrap.text("work.report")
                     Accessible.name: appBootstrap.text("work.report_menu")
+                    onClicked: root.reportRequested()
                 }
 
                 Item { Layout.fillWidth: true }
@@ -123,7 +127,7 @@ Item {
 
         PipelineRail {
             Layout.fillWidth: true
-            Layout.preferredHeight: 72
+            Layout.preferredHeight: 116
             onRerunRequested: uiController.rerunNow()
         }
     }
