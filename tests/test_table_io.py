@@ -1,6 +1,7 @@
 import pandas as pd
 import pyreadstat
 import pytest
+from openpyxl import load_workbook
 
 from modori.table_io import (
     FullReadLimits,
@@ -83,6 +84,45 @@ def test_read_header_result_exposes_xlsx_source_context_and_compat_header(tmp_pa
     assert result.source.sheet_name == "Responses"
     assert result.source.sheet_names == ("Responses", "Codebook")
     assert read_header(path, "xlsx") == ["q1", "q2"]
+
+
+def test_xlsx_full_header_and_preview_use_same_active_sheet(tmp_path) -> None:
+    path = tmp_path / "survey.xlsx"
+    with pd.ExcelWriter(path) as writer:
+        pd.DataFrame({"code": [1], "label": ["treatment"]}).to_excel(
+            writer,
+            sheet_name="Codebook",
+            index=False,
+        )
+        pd.DataFrame({"respondent_id": [101, 102], "score": [5, 4]}).to_excel(
+            writer,
+            sheet_name="Responses",
+            index=False,
+        )
+
+    workbook = load_workbook(path)
+    workbook.active = workbook.sheetnames.index("Responses")
+    workbook.save(path)
+    workbook.close()
+
+    preview = read_preview(path, "xlsx", limits=PreviewReadLimits(max_rows=1))
+    header = read_header_result(path, "xlsx")
+    full = read_full(path, "xlsx")
+
+    assert preview.source.sheet_name == "Responses"
+    assert header.source.sheet_name == "Responses"
+    assert full.source.sheet_name == "Responses"
+    assert preview.columns == ("respondent_id", "score")
+    assert header.columns == ("respondent_id", "score")
+    assert full.columns == ("respondent_id", "score")
+    assert preview.frame.to_dict(orient="list") == {
+        "respondent_id": [101],
+        "score": [5],
+    }
+    assert full.frame.to_dict(orient="list") == {
+        "respondent_id": [101, 102],
+        "score": [5, 4],
+    }
 
 
 def test_read_full_rejects_csv_when_explicit_row_limit_is_exceeded(tmp_path) -> None:

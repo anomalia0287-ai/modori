@@ -104,8 +104,8 @@ def read_full(
         if _xlsx_needs_limited_read(limits):
             frame, source = _read_xlsx_limited(path, limits)
         else:
-            frame = pd.read_excel(path)
             source = _xlsx_source(path)
+            frame = pd.read_excel(path, **_xlsx_read_excel_kwargs(source))
         metadata = None
     elif normalized == "xls":
         read_kwargs = {}
@@ -137,13 +137,16 @@ def read_header_result(path: Path, file_type: str | None = None) -> TableHeaderR
     if normalized == "csv":
         columns = pd.read_csv(path, nrows=0).columns
         source = _table_source(path, normalized)
-    elif normalized in {"xlsx", "xls"}:
+    elif normalized == "xlsx":
+        source = _safe_xlsx_source(path)
+        columns = pd.read_excel(
+            path,
+            nrows=0,
+            **_xlsx_read_excel_kwargs(source),
+        ).columns
+    elif normalized == "xls":
         columns = pd.read_excel(path, nrows=0).columns
-        source = (
-            _safe_xlsx_source(path)
-            if normalized == "xlsx"
-            else _table_source(path, normalized)
-        )
+        source = _table_source(path, normalized)
     elif normalized == "sav":
         import pyreadstat
 
@@ -275,6 +278,12 @@ def _safe_xlsx_source(path: Path) -> TableReadSource:
         return _xlsx_source(path)
     except Exception:
         return _table_source(path, "xlsx")
+
+
+def _xlsx_read_excel_kwargs(source: TableReadSource) -> dict[str, str]:
+    if source.sheet_name is None:
+        return {}
+    return {"sheet_name": source.sheet_name}
 
 
 def _xlsx_source_from_workbook(
