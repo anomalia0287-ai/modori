@@ -9,7 +9,9 @@ from modori.steps import (
     CompareGroupsStep,
     ComposeScaleStep,
     ImportStep,
+    MultipleRegressionStep,
     RecodeReverseStep,
+    RegressionCsvImportStep,
     ReliabilityStep,
     ReportStep,
 )
@@ -25,6 +27,10 @@ class AnalysisPreferences:
     report_language: str = "ko"
     custom_routing: dict[str, Any] | None = None
     custom_min_valid: float | None = None
+    regression_policy: dict[str, Any] | None = None
+    custom_regression: dict[str, Any] | None = None
+    ordered_data: bool | None = None
+    order_var: str | None = None
 
 
 def build_reference_slice_pipeline(
@@ -116,42 +122,11 @@ def _snapshot_missing_policy(prefs: AnalysisPreferences) -> dict[str, Any]:
         policy["min_valid"] = prefs.custom_min_valid
     return policy
 
-# Slice #02 multiple-regression workflow extension.
-from pathlib import Path as _WorkflowPath
-from typing import Any as _WorkflowAny
-
-from modori.core import Dataset as _WorkflowDataset
-from modori.core import Pipeline as _WorkflowPipeline
-from modori.steps import MultipleRegressionStep as _WorkflowMultipleRegressionStep
-from modori.steps import RegressionCsvImportStep as _WorkflowRegressionCsvImportStep
-from modori.steps import ReportStep as _WorkflowReportStep
-
-_ORIGINAL_ANALYSIS_PREFERENCES_INIT = AnalysisPreferences.__init__
-
-
-def _analysis_preferences_init_with_regression(
-    self,
-    *args: _WorkflowAny,
-    regression_policy: dict[str, _WorkflowAny] | None = None,
-    custom_regression: dict[str, _WorkflowAny] | None = None,
-    ordered_data: bool | None = None,
-    order_var: str | None = None,
-    **kwargs: _WorkflowAny,
-) -> None:
-    _ORIGINAL_ANALYSIS_PREFERENCES_INIT(self, *args, **kwargs)
-    object.__setattr__(self, "regression_policy", regression_policy)
-    object.__setattr__(self, "custom_regression", custom_regression)
-    object.__setattr__(self, "ordered_data", ordered_data)
-    object.__setattr__(self, "order_var", order_var)
-
-
-AnalysisPreferences.__init__ = _analysis_preferences_init_with_regression
-
 
 def _snapshot_regression_policy(
     preferences: AnalysisPreferences | None = None,
-    policy: dict[str, _WorkflowAny] | None = None,
-) -> dict[str, _WorkflowAny]:
+    policy: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     if policy is not None:
         snapshot = dict(policy)
     else:
@@ -172,20 +147,20 @@ def _snapshot_regression_policy(
 
 
 def build_regression_slice_pipeline(
-    csv_path: str | _WorkflowPath | None = None,
+    csv_path: str | Path | None = None,
     *,
-    data_path: str | _WorkflowPath | None = None,
+    data_path: str | Path | None = None,
     dv: str,
     predictors: list[str],
     preferences: AnalysisPreferences | None = None,
     prefs: AnalysisPreferences | None = None,
-    policy: dict[str, _WorkflowAny] | None = None,
+    policy: dict[str, Any] | None = None,
     mode: str | None = None,
     language: str | None = None,
-    output_docx: str | _WorkflowPath | None = None,
-    output_dir: str | _WorkflowPath | None = None,
-    chart_dir: str | _WorkflowPath | None = None,
-) -> _WorkflowPipeline:
+    output_docx: str | Path | None = None,
+    output_dir: str | Path | None = None,
+    chart_dir: str | Path | None = None,
+) -> Pipeline:
     if csv_path is None:
         csv_path = data_path
     if csv_path is None:
@@ -193,22 +168,22 @@ def build_regression_slice_pipeline(
     selected_preferences = preferences if preferences is not None else prefs
     regression_policy = _snapshot_regression_policy(selected_preferences, policy)
     report_language = language or str(getattr(selected_preferences, "report_language", "ko"))
-    csv_path = _WorkflowPath(csv_path)
+    csv_path = Path(csv_path)
     scale_columns = [str(dv), *[str(predictor) for predictor in predictors]]
     if regression_policy.get("order_var"):
         scale_columns.append(str(regression_policy["order_var"]))
-    report_params: dict[str, _WorkflowAny] = {
+    report_params: dict[str, Any] = {
         "include": ["regression-main"],
         "language": report_language,
     }
     if output_dir is not None:
-        output_dir_path = _WorkflowPath(output_dir)
+        output_dir_path = Path(output_dir)
         report_params["output_dir"] = str(output_dir_path)
         report_params["filename"] = "report.docx"
         if chart_dir is None:
             chart_dir = output_dir_path
     if output_docx is not None:
-        output_docx_path = _WorkflowPath(output_docx)
+        output_docx_path = Path(output_docx)
         report_params["output_dir"] = str(output_docx_path.parent)
         report_params["filename"] = output_docx_path.name
         if chart_dir is None:
@@ -216,12 +191,12 @@ def build_regression_slice_pipeline(
     if chart_dir is not None:
         report_params["chart_dir"] = str(chart_dir)
     steps = [
-        _WorkflowRegressionCsvImportStep(
+        RegressionCsvImportStep(
             id="import-data",
             title="Import regression data",
             params={"path": str(csv_path), "scale_columns": scale_columns},
         ),
-        _WorkflowMultipleRegressionStep(
+        MultipleRegressionStep(
             id="regression-main",
             title="Multiple linear regression",
             params={
@@ -231,14 +206,14 @@ def build_regression_slice_pipeline(
             },
             input_step_ids=["import-data"],
         ),
-        _WorkflowReportStep(
+        ReportStep(
             id="report",
             title="Regression report",
             params=report_params,
             input_step_ids=["regression-main"],
         ),
     ]
-    pipeline = _WorkflowPipeline(_WorkflowDataset.empty())
+    pipeline = Pipeline(Dataset.empty())
     for step in steps:
         pipeline.add(step)
     return pipeline
