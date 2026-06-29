@@ -36,6 +36,16 @@ def test_main_qml_wires_entry_file_dialog_and_work_transition() -> None:
     assert "openDataRequested" in entry
 
 
+def test_entry_mode_buttons_transition_to_work_screen_when_mode_is_selected() -> None:
+    main = qml_text("Main.qml")
+
+    assert "onGuidedRequested: {" in main
+    assert 'uiController.chooseMode("guided")' in main
+    assert 'root.currentScreen = "work"' in main
+    assert "onStandardRequested: {" in main
+    assert 'uiController.chooseMode("standard")' in main
+
+
 def test_work_qml_wires_rerun_results_explain_and_report() -> None:
     work = qml_text("screens/WorkScreen.qml")
     results = qml_text("components/ResultsPanel.qml")

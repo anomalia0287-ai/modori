@@ -32,8 +32,16 @@ ApplicationWindow {
         anchors.fill: parent
         reduceEffects: root.reduceEffects
         visible: root.currentScreen === "entry"
-        onGuidedRequested: uiController.chooseMode("guided")
-        onStandardRequested: uiController.chooseMode("standard")
+        onGuidedRequested: {
+            if (uiController.chooseMode("guided")) {
+                root.currentScreen = "work"
+            }
+        }
+        onStandardRequested: {
+            if (uiController.chooseMode("standard")) {
+                root.currentScreen = "work"
+            }
+        }
         onOpenDataRequested: dataFileDialog.open()
     }
 
