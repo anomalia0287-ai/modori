@@ -10,7 +10,12 @@ from modori.cache import cache_dir
 from modori.path_policy import resolve_secure_file_path
 
 
-DEFAULT_SETTINGS = {"recent_files_enabled": True, "recent_files": [], "reduce_effects": False}
+DEFAULT_SETTINGS = {
+    "explain_mode_enabled": True,
+    "recent_files_enabled": True,
+    "recent_files": [],
+    "reduce_effects": False,
+}
 
 
 def _settings_path(configured: str | Path | None) -> Path:
@@ -52,6 +57,7 @@ class UiSettingsStore:
         if not isinstance(recent_files, list):
             recent_files = []
         return {
+            "explain_mode_enabled": bool(payload.get("explain_mode_enabled", True)),
             "recent_files_enabled": bool(payload.get("recent_files_enabled", True)),
             "recent_files": [str(path) for path in recent_files if isinstance(path, str)],
             "reduce_effects": bool(payload.get("reduce_effects", False)),

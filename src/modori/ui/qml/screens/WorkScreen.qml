@@ -71,7 +71,8 @@ Item {
                 CheckBox {
                     text: appBootstrap.text("work.explain_mode")
                     Accessible.name: appBootstrap.text("work.explain_mode")
-                    checked: true
+                    checked: uiController.explainModeEnabled
+                    onClicked: uiController.setExplainModeEnabled(checked)
                 }
 
                 CheckBox {

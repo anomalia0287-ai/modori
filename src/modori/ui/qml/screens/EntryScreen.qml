@@ -8,6 +8,7 @@ Pane {
     signal guidedRequested()
     signal standardRequested()
     signal openDataRequested()
+    signal recentFileRequested(int index)
 
     background: Rectangle {
         gradient: Gradient {
@@ -61,6 +62,16 @@ Pane {
         }
 
         Label {
+            text: uiController.lastError
+            color: "#FFE6E6"
+            visible: uiController.lastError.length > 0
+            wrapMode: Text.WordWrap
+            horizontalAlignment: Text.AlignHCenter
+            Layout.maximumWidth: 420
+            Layout.alignment: Qt.AlignHCenter
+        }
+
+        Label {
             text: appBootstrap.text("entry.recent")
             color: "white"
             opacity: 0.9
@@ -69,13 +80,21 @@ Pane {
             Layout.alignment: Qt.AlignHCenter
         }
 
-        Label {
-            text: uiController.recentFilesText
-            color: "white"
-            opacity: 0.78
+        ColumnLayout {
             visible: uiController.recentFilesText.length > 0
-            horizontalAlignment: Text.AlignHCenter
+            spacing: 6
             Layout.alignment: Qt.AlignHCenter
+
+            Repeater {
+                model: uiController.recentFilesText.length > 0 ? uiController.recentFilesText.split("\n") : []
+
+                Button {
+                    text: modelData
+                    Accessible.name: modelData
+                    Layout.alignment: Qt.AlignHCenter
+                    onClicked: root.recentFileRequested(index)
+                }
+            }
         }
 
         Label {

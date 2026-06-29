@@ -43,6 +43,12 @@ ApplicationWindow {
             }
         }
         onOpenDataRequested: dataFileDialog.open()
+        onRecentFileRequested: {
+            if (uiController.openRecentFileAt(index)) {
+                root.currentScreen = "work"
+                uiController.rerunNow()
+            }
+        }
     }
 
     WorkScreen {

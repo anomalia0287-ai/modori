@@ -21,6 +21,7 @@ class UiSessionState:
         )
         self._recent_files_enabled = bool(settings.get("recent_files_enabled", True))
         self._recent_files = list(settings.get("recent_files", []))[:5]
+        self._explain_mode_enabled = bool(settings.get("explain_mode_enabled", True))
 
     @property
     def reduce_effects(self) -> bool:
@@ -33,6 +34,10 @@ class UiSessionState:
     @property
     def recent_files(self) -> list[str]:
         return list(self._recent_files)
+
+    @property
+    def explain_mode_enabled(self) -> bool:
+        return self._explain_mode_enabled
 
     @property
     def recent_files_text(self) -> str:
@@ -48,6 +53,10 @@ class UiSessionState:
             self._recent_files = []
         self.save()
 
+    def set_explain_mode_enabled(self, enabled: bool) -> None:
+        self._explain_mode_enabled = bool(enabled)
+        self.save()
+
     def remember_recent_file(self, path: Path) -> None:
         if not self._recent_files_enabled:
             return
@@ -60,6 +69,7 @@ class UiSessionState:
     def save(self) -> None:
         self._settings_store.save(
             {
+                "explain_mode_enabled": self._explain_mode_enabled,
                 "recent_files_enabled": self._recent_files_enabled,
                 "recent_files": list(self._recent_files),
                 "reduce_effects": self._reduce_effects,

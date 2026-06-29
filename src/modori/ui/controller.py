@@ -78,6 +78,10 @@ class UiController(QObject):
     def reduceEffects(self) -> bool:
         return self._session.reduce_effects
 
+    @Property(bool, notify=stateChanged)
+    def explainModeEnabled(self) -> bool:
+        return self._session.explain_mode_enabled
+
     @Property(str, notify=stateChanged)
     def status(self) -> str:
         return self._pipeline_state.status
@@ -160,6 +164,12 @@ class UiController(QObject):
         self.stateChanged.emit()
         return True
 
+    @Slot(bool, result=bool)
+    def setExplainModeEnabled(self, enabled: bool) -> bool:
+        self._session.set_explain_mode_enabled(enabled)
+        self.stateChanged.emit()
+        return True
+
     @Slot(str, result=bool)
     def chooseMode(self, mode: str) -> bool:
         return self.setMode(mode).ok
@@ -210,6 +220,9 @@ class UiController(QObject):
             pipeline_version=self._pipeline_state.pipeline_version,
         )
         if not load_result.command.ok:
+            self._last_error = load_result.command.message_ko
+            self._pipeline_state.mark_ready_unless_empty()
+            self.stateChanged.emit()
             return load_result.command
 
         self.pipeline = load_result.pipeline
@@ -238,10 +251,21 @@ class UiController(QObject):
         result = self.openDataFile(local_path, ImportOptions(confirm_new_session=True))
         return result.ok
 
+    @Slot(int, result=bool)
+    def openRecentFileAt(self, index: int) -> bool:
+        recent_files = self._session.recent_files
+        if index < 0 or index >= len(recent_files):
+            return self._command_error("최근 파일을 찾을 수 없습니다.", "recent_file_missing").ok
+        recent_path = Path(recent_files[index])
+        if not recent_path.exists():
+            return self._command_error("최근 파일을 찾을 수 없습니다.", "recent_file_missing").ok
+        return self.openDataFile(recent_path, ImportOptions(confirm_new_session=True)).ok
+
     @Slot(str, result=bool)
     def previewDataFilePath(self, path: str) -> bool:
         local_path = local_path_from_qml(path)
         ok = self._services.import_flow.preview(local_path)
+        self._last_error = "" if ok else self._services.import_flow.preview_text
         self.stateChanged.emit()
         return ok
 
@@ -249,6 +273,7 @@ class UiController(QObject):
     def confirmPendingImport(self) -> bool:
         pending_path = self._services.import_flow.require_pending_path()
         if pending_path is None:
+            self._last_error = self._services.import_flow.preview_text
             self.stateChanged.emit()
             return False
         result = self.openDataFile(

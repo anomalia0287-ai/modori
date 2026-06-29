@@ -36,6 +36,19 @@ def test_main_qml_wires_entry_file_dialog_and_work_transition() -> None:
     assert "openDataRequested" in entry
 
 
+def test_entry_recent_files_are_clickable_and_open_existing_sessions() -> None:
+    main = qml_text("Main.qml")
+    entry = qml_text("screens/EntryScreen.qml")
+
+    assert "signal recentFileRequested(int index)" in entry
+    assert "Repeater" in entry
+    assert "uiController.recentFilesText.split" in entry
+    assert "root.recentFileRequested(index)" in entry
+    assert "onRecentFileRequested:" in main
+    assert "uiController.openRecentFileAt(index)" in main
+    assert 'root.currentScreen = "work"' in main
+
+
 def test_entry_mode_buttons_transition_to_work_screen_when_mode_is_selected() -> None:
     main = qml_text("Main.qml")
 
@@ -84,6 +97,17 @@ def test_standard_pipeline_rail_reaches_every_supported_v1_analysis() -> None:
     assert "pipeline.predictors_placeholder" in pipeline
 
 
+def test_explain_mode_control_is_bound_to_explanation_surfaces() -> None:
+    work = qml_text("screens/WorkScreen.qml")
+    results = qml_text("components/ResultsPanel.qml")
+    guide = qml_text("components/GuideRail.qml")
+
+    assert "uiController.explainModeEnabled" in work
+    assert "uiController.setExplainModeEnabled(checked)" in work
+    assert "visible: uiController.explainModeEnabled" in results
+    assert "uiController.explainModeEnabled ?" in guide
+
+
 def test_controller_bridge_runs_reference_flow_from_path(tmp_path) -> None:
     from tests.ui.test_end_to_end_ui_flow import write_reference_csv
     from modori.ui.controller import UiController
@@ -105,6 +129,18 @@ def test_controller_bridge_runs_reference_flow_from_path(tmp_path) -> None:
     assert controller.reportPath.endswith("report.docx")
     assert Path(controller.reportPath).exists()
     assert "Cronbach" in controller.explainPlainText("ui.result.cronbach_alpha", "ko")
+
+
+def test_controller_toggles_explain_mode(tmp_path) -> None:
+    from modori.ui.settings import UiSettingsStore
+    from modori.ui.controller import UiController
+
+    controller = UiController(settings_store=UiSettingsStore(tmp_path / "settings.json"))
+
+    assert controller.explainModeEnabled is True
+    assert controller.setExplainModeEnabled(False) is True
+
+    assert controller.explainModeEnabled is False
 
 
 def test_dead_end_work_actions_surface_user_visible_errors() -> None:

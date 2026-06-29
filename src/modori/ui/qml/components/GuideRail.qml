@@ -45,7 +45,7 @@ Rectangle {
             Layout.fillWidth: true
             onClicked: {
                 root.selectedIntent = "reliability"
-                root.guideNote = uiController.explainPlainText("ui.result.cronbach_alpha", "ko")
+                root.guideNote = uiController.explainModeEnabled ? uiController.explainPlainText("ui.result.cronbach_alpha", "ko") : ""
             }
         }
 
@@ -55,7 +55,7 @@ Rectangle {
             Layout.fillWidth: true
             onClicked: {
                 root.selectedIntent = "comparison"
-                root.guideNote = uiController.explainPlainText("ui.result.welch_t", "ko")
+                root.guideNote = uiController.explainModeEnabled ? uiController.explainPlainText("ui.result.welch_t", "ko") : ""
             }
         }
 
@@ -65,7 +65,7 @@ Rectangle {
             Layout.fillWidth: true
             onClicked: {
                 root.selectedIntent = "regression"
-                root.guideNote = uiController.explainPlainText("ui.result.r_squared", "ko")
+                root.guideNote = uiController.explainModeEnabled ? uiController.explainPlainText("ui.result.r_squared", "ko") : ""
             }
         }
 
@@ -127,7 +127,7 @@ Rectangle {
 
         Label {
             text: root.guideNote
-            visible: root.guideNote.length > 0
+            visible: uiController.explainModeEnabled && root.guideNote.length > 0
             color: "#26352F"
             wrapMode: Text.WordWrap
             Layout.fillWidth: true

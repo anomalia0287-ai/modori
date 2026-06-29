@@ -92,6 +92,7 @@ Rectangle {
             Button {
                 text: appBootstrap.text("results.why_this_test")
                 Accessible.name: appBootstrap.text("results.why_this_test")
+                visible: uiController.explainModeEnabled
                 onClicked: {
                     explainPopover.bodyText = uiController.explainRichText("ui.result.cronbach_alpha", "ko")
                     explainPopover.open()
