@@ -6,7 +6,11 @@ import sys
 from collections.abc import Sequence
 
 
-def quality_commands(*, include_pip_audit: bool = False) -> list[list[str]]:
+def quality_commands(
+    *,
+    include_pip_audit: bool = False,
+    include_package_check: bool = False,
+) -> list[list[str]]:
     commands = [
         ["-m", "compileall", "-q", "src", "tests", "scripts"],
         ["-m", "ruff", "check", "src", "tests", "scripts"],
@@ -15,6 +19,8 @@ def quality_commands(*, include_pip_audit: bool = False) -> list[list[str]]:
         ["-m", "pytest", "-q", "-p", "no:cacheprovider"],
         ["-m", "pip", "check"],
     ]
+    if include_package_check:
+        commands.append(["scripts/package_windows.py", "--check"])
     if include_pip_audit:
         commands.append(["-m", "pip_audit", "--local", "--progress-spinner", "off"])
     return commands
@@ -29,9 +35,17 @@ def main(argv: Sequence[str] | None = None) -> int:
         action="store_true",
         help="Also run pip-audit. This may contact external advisory services.",
     )
+    parser.add_argument(
+        "--with-package-check",
+        action="store_true",
+        help="Also verify that the Windows packaging toolchain is installed.",
+    )
     args = parser.parse_args(argv)
 
-    for command in quality_commands(include_pip_audit=args.with_pip_audit):
+    for command in quality_commands(
+        include_pip_audit=args.with_pip_audit,
+        include_package_check=args.with_package_check,
+    ):
         display = " ".join([sys.executable, *command])
         print(f"$ {display}", flush=True)
         completed = subprocess.run([sys.executable, *command], check=False)

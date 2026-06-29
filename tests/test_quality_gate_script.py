@@ -18,3 +18,9 @@ def test_quality_gate_can_opt_into_dependency_advisory_scan() -> None:
     commands = quality_commands(include_pip_audit=True)
 
     assert ["-m", "pip_audit", "--local", "--progress-spinner", "off"] in commands
+
+
+def test_quality_gate_can_opt_into_packaging_check() -> None:
+    commands = quality_commands(include_package_check=True)
+
+    assert ["scripts/package_windows.py", "--check"] in commands

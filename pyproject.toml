@@ -25,6 +25,9 @@ dev = [
     "pytest>=8.0",
     "ruff>=0.15",
 ]
+packaging = [
+    "pyinstaller>=6.0",
+]
 typing = [
     "mypy>=1.18",
 ]
