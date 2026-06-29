@@ -501,6 +501,7 @@ class UiController(QObject):
     def _apply_step_edit_result(self, result: CommandResult) -> CommandResult:
         if not result.ok:
             self._last_error = result.message_ko
+            self._last_message = ""
             self._pipeline_state.mark_ready_unless_empty()
             self.stateChanged.emit()
             return result

@@ -39,6 +39,21 @@ def test_controller_success_and_error_messages_are_mutually_exclusive() -> None:
     assert controller.lastMessage == ""
 
 
+def test_controller_step_edit_errors_clear_prior_success_message() -> None:
+    from modori.ui.controller import UiController
+
+    controller = UiController()
+
+    assert controller.chooseMode("standard") is True
+    assert controller.lastMessage == "모드가 변경되었습니다."
+
+    result = controller.configureReliabilitySelection("q1, q2")
+
+    assert result.ok is False
+    assert controller.lastError == "신뢰도 분석에는 세 개 이상의 문항 변수가 필요합니다."
+    assert controller.lastMessage == ""
+
+
 def test_controller_error_result_sets_visible_state() -> None:
     from modori.ui.controller import UiController
     from modori.ui.worker import EngineJobResult
