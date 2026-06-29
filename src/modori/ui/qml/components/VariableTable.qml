@@ -4,6 +4,22 @@ import QtQuick.Layouts
 
 Item {
     id: root
+    property string selectedVariableKey: ""
+
+    function measureIndex(measureValue) {
+        if (measureValue === "ordinal") {
+            return 1
+        }
+        if (measureValue === "scale") {
+            return 2
+        }
+        return 0
+    }
+
+    function selectVariable(variableKey, measureValue) {
+        root.selectedVariableKey = variableKey
+        measureBox.currentIndex = root.measureIndex(measureValue)
+    }
 
     ColumnLayout {
         anchors.fill: parent
@@ -16,6 +32,8 @@ Item {
             TextField {
                 id: variableKeyField
                 Layout.fillWidth: true
+                text: root.selectedVariableKey
+                readOnly: true
                 placeholderText: appBootstrap.text("variable.key_placeholder")
                 selectByMouse: true
                 Accessible.name: appBootstrap.text("variable.key_accessible")
@@ -29,11 +47,8 @@ Item {
 
             Button {
                 text: appBootstrap.text("variable.measure_edit")
-                enabled: variableKeyField.text.length > 0
-                onClicked: uiController.changeVariableMeasure(
-                    variableKeyField.text,
-                    measureBox.currentText
-                )
+                enabled: root.selectedVariableKey.length > 0 && uiController.status !== "running"
+                onClicked: uiController.changeVariableMeasure(root.selectedVariableKey, measureBox.currentText)
             }
         }
 
@@ -46,10 +61,18 @@ Item {
             model: uiController.variableModel
 
             delegate: Rectangle {
+                property string variableKey: model.variableKey ?? ""
+                property string measureValue: model.measureValue ?? ""
+
                 implicitWidth: 140
                 implicitHeight: 34
-                color: "#FFFFFF"
+                color: root.selectedVariableKey === variableKey ? "#E3F1EC" : "#FFFFFF"
                 border.color: "#E4ECE8"
+
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: root.selectVariable(variableKey, measureValue)
+                }
 
                 Text {
                     anchors.centerIn: parent

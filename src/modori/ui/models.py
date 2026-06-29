@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from PySide6.QtCore import QAbstractTableModel, QModelIndex, Qt
+from PySide6.QtCore import QAbstractTableModel, QByteArray, QModelIndex, Qt
 
 from modori.ui.table_provider import TableProvider
 
@@ -53,6 +53,9 @@ class VariableRecord:
 
 
 class VariableTableModel(QAbstractTableModel):
+    VARIABLE_KEY_ROLE = int(Qt.ItemDataRole.UserRole) + 1
+    MEASURE_VALUE_ROLE = int(Qt.ItemDataRole.UserRole) + 2
+
     _columns = ("이름", "레이블", "측정수준", "값 레이블", "결측", "유형")
 
     def __init__(self, records: list[VariableRecord] | None = None) -> None:
@@ -70,9 +73,15 @@ class VariableTableModel(QAbstractTableModel):
         return len(self._columns)
 
     def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole) -> Any:
-        if not index.isValid() or role != Qt.ItemDataRole.DisplayRole:
+        if not index.isValid():
             return None
         record = self._records[index.row()]
+        if role == self.VARIABLE_KEY_ROLE:
+            return record.key
+        if role == self.MEASURE_VALUE_ROLE:
+            return record.measure
+        if role != Qt.ItemDataRole.DisplayRole:
+            return None
         values = (
             record.key,
             record.label,
@@ -82,6 +91,12 @@ class VariableTableModel(QAbstractTableModel):
             record.display_type,
         )
         return values[index.column()]
+
+    def roleNames(self) -> dict[int, QByteArray]:
+        roles = super().roleNames()
+        roles[self.VARIABLE_KEY_ROLE] = QByteArray(b"variableKey")
+        roles[self.MEASURE_VALUE_ROLE] = QByteArray(b"measureValue")
+        return roles
 
     def headerData(
         self,

@@ -65,6 +65,11 @@ def test_variable_table_model_exposes_metadata_rows() -> None:
     assert model.columnCount() == 6
     assert model.data(model.index(0, 0), Qt.ItemDataRole.DisplayRole) == "score"
     assert model.data(model.index(0, 2), Qt.ItemDataRole.DisplayRole) == "scale"
+    role_names = {bytes(value).decode("utf-8") for value in model.roleNames().values()}
+    assert "variableKey" in role_names
+    assert "measureValue" in role_names
+    assert model.data(model.index(0, 4), VariableTableModel.VARIABLE_KEY_ROLE) == "score"
+    assert model.data(model.index(0, 4), VariableTableModel.MEASURE_VALUE_ROLE) == "scale"
 
 
 def test_variable_records_from_engine_dataset() -> None:
