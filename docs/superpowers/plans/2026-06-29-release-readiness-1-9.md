@@ -37,7 +37,7 @@
 - Create: `tests/test_release_baseline.py`
 - Modify: none initially
 
-- [ ] **Step 1: Write the failing baseline test**
+- [x] **Step 1: Write the failing baseline test**
 
 Create `tests/test_release_baseline.py`:
 
@@ -67,7 +67,7 @@ def test_gitignore_exists_and_excludes_generated_roots() -> None:
         assert pattern in text
 ```
 
-- [ ] **Step 2: Run the test to verify RED**
+- [x] **Step 2: Run the test to verify RED**
 
 Run:
 
@@ -77,7 +77,7 @@ Run:
 
 Expected: FAIL because `.gitignore` does not exist.
 
-- [ ] **Step 3: Add `.gitignore`**
+- [x] **Step 3: Add `.gitignore`**
 
 Create `.gitignore`:
 
@@ -110,7 +110,7 @@ build/
 dist/
 ```
 
-- [ ] **Step 4: Verify GREEN**
+- [x] **Step 4: Verify GREEN**
 
 Run:
 
@@ -120,7 +120,7 @@ Run:
 
 Expected: PASS.
 
-- [ ] **Step 5: Decide repository recovery path**
+- [x] **Step 5: Decide repository recovery path**
 
 Run:
 
@@ -148,7 +148,7 @@ Expected after recovery: Git recognizes the repository and generated roots are n
 - Modify: `scripts/quality_gate.py`
 - Create later: packaging script after tool choice is selected
 
-- [ ] **Step 1: Preserve current development launch smoke**
+- [x] **Step 1: Preserve current development launch smoke**
 
 Run:
 
@@ -159,7 +159,7 @@ $env:QT_QPA_PLATFORM='offscreen'
 
 Expected: `launch-smoke-ok`.
 
-- [ ] **Step 2: Add packaged artifact launch smoke after packaging tool selection**
+- [x] **Step 2: Add packaged artifact launch smoke after packaging tool selection**
 
 Candidate tool choice must be made explicitly among PyInstaller, Nuitka, or another Windows desktop packager. The chosen tool must produce an artifact that launches from outside `C:\Users\V\Desktop\TongTong`.
 
@@ -169,7 +169,7 @@ Candidate tool choice must be made explicitly among PyInstaller, Nuitka, or anot
 - Modify: `scripts/quality_gate.py`
 - Test: `tests/test_quality_gate_script.py`
 
-- [ ] **Step 1: Keep local gate deterministic**
+- [x] **Step 1: Keep local gate deterministic**
 
 Run:
 
@@ -179,7 +179,7 @@ Run:
 
 Expected: compileall, ruff, bandit, launch smoke, pytest, and pip check all pass.
 
-- [ ] **Step 2: Add packaged-artifact gate only after Task 2 has an artifact**
+- [x] **Step 2: Add packaged-artifact gate only after Task 2 has an artifact**
 
 The gate must fail if the packaged artifact cannot load QML root, cannot construct `UiController`, or exits immediately before the event loop can start.
 
