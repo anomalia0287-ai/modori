@@ -95,6 +95,17 @@ Attempt 3: visible app launch plus Windows `CopyFromScreen`.
 
 - Result: failed with `Exception calling "CopyFromScreen" with "3" argument(s): "핸들이 잘못되었습니다."`
 
+Attempt 4: packaged `dist\Modori\Modori.exe` visible launch plus Python
+`PIL.ImageGrab.grab(all_screens=True)`.
+
+- Result: failed with `OSError: screen grab failed`.
+
+Attempt 5: Codex Computer Use Windows.Graphics.Capture path against packaged
+`dist\Modori\Modori.exe`.
+
+- Result: blocked by Computer Use app approval timeout before a targetable
+  Modori window capture could be accepted.
+
 ## Release Interpretation
 
 This document closes the repository-local QA matrix and records current evidence.
