@@ -111,16 +111,19 @@ def test_guided_and_standard_apply_buttons_require_complete_fields() -> None:
     rail = Path("src/modori/ui/qml/components/PipelineRail.qml").read_text(encoding="utf-8")
 
     assert "property bool canCommitSelection" in guide
+    assert 'property bool canEditSelection: uiController.status !== "empty" && uiController.status !== "running"' in guide
     assert "enabled: root.canCommitSelection" in guide
+    assert "root.canEditSelection && root.selectedIntent ===" in guide
     assert "root.hasText(reliabilityItemsField.text)" in guide
     assert "root.hasText(outcomeKeyField.text) && root.hasText(groupKeyField.text)" in guide
     assert "root.hasText(outcomeKeyField.text) && root.hasText(predictorKeysField.text)" in guide
-    assert "enabled: root.hasText(reliabilityItemsField.text)" in rail
+    assert 'property bool canEditSelection: uiController.status !== "empty" && uiController.status !== "running"' in rail
+    assert "enabled: root.canEditSelection && root.hasText(reliabilityItemsField.text)" in rail
     assert (
-        "enabled: root.hasText(comparisonOutcomeField.text) "
+        "enabled: root.canEditSelection && root.hasText(comparisonOutcomeField.text) "
         "&& root.hasText(comparisonGroupField.text)"
     ) in rail
     assert (
-        "enabled: root.hasText(regressionOutcomeField.text) "
+        "enabled: root.canEditSelection && root.hasText(regressionOutcomeField.text) "
         "&& root.hasText(regressionPredictorsField.text)"
     ) in rail

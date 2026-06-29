@@ -117,6 +117,20 @@ def test_guided_and_standard_modes_change_visible_work_surface() -> None:
     assert 'enabled: uiController.mode !== "standard"' in work
 
 
+def test_work_actions_are_disabled_until_required_state_exists() -> None:
+    work = qml_text("screens/WorkScreen.qml")
+    results = qml_text("components/ResultsPanel.qml")
+    pipeline = qml_text("components/PipelineRail.qml")
+    dialog = qml_text("dialogs/ReportExportDialog.qml")
+
+    assert 'enabled: uiController.status !== "empty" && uiController.status !== "running"' in work
+    assert "enabled: uiController.resultSummary.length > 0" in work
+    assert "enabled: uiController.resultSummary.length > 0" in results
+    assert 'property bool canRunPipeline: uiController.status !== "empty" && uiController.status !== "running"' in pipeline
+    assert "enabled: root.canRunPipeline" in pipeline
+    assert "enabled: uiController.resultSummary.length > 0" in dialog
+
+
 def test_controller_bridge_runs_reference_flow_from_path(tmp_path) -> None:
     from tests.ui.test_end_to_end_ui_flow import write_reference_csv
     from modori.ui.controller import UiController

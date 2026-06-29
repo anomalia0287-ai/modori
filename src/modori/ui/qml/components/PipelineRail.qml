@@ -9,6 +9,9 @@ Rectangle {
 
     signal rerunRequested()
 
+    property bool canRunPipeline: uiController.status !== "empty" && uiController.status !== "running"
+    property bool canEditSelection: uiController.status !== "empty" && uiController.status !== "running"
+
     function hasText(value) {
         return String(value).trim().length > 0
     }
@@ -34,6 +37,7 @@ Rectangle {
             Button {
                 text: appBootstrap.text("pipeline.rerun")
                 Accessible.name: appBootstrap.text("pipeline.rerun")
+                enabled: root.canRunPipeline
                 onClicked: root.rerunRequested()
             }
         }
@@ -53,7 +57,7 @@ Rectangle {
             Button {
                 text: appBootstrap.text("pipeline.apply_reliability")
                 Accessible.name: appBootstrap.text("pipeline.apply_reliability")
-                enabled: root.hasText(reliabilityItemsField.text)
+                enabled: root.canEditSelection && root.hasText(reliabilityItemsField.text)
                 onClicked: uiController.configureReliabilityFromText(reliabilityItemsField.text)
             }
 
@@ -76,7 +80,7 @@ Rectangle {
             Button {
                 text: appBootstrap.text("pipeline.apply_comparison")
                 Accessible.name: appBootstrap.text("pipeline.apply_comparison")
-                enabled: root.hasText(comparisonOutcomeField.text) && root.hasText(comparisonGroupField.text)
+                enabled: root.canEditSelection && root.hasText(comparisonOutcomeField.text) && root.hasText(comparisonGroupField.text)
                 onClicked: uiController.configureComparisonFromText(
                     comparisonOutcomeField.text,
                     comparisonGroupField.text
@@ -102,7 +106,7 @@ Rectangle {
             Button {
                 text: appBootstrap.text("pipeline.apply_regression")
                 Accessible.name: appBootstrap.text("pipeline.apply_regression")
-                enabled: root.hasText(regressionOutcomeField.text) && root.hasText(regressionPredictorsField.text)
+                enabled: root.canEditSelection && root.hasText(regressionOutcomeField.text) && root.hasText(regressionPredictorsField.text)
                 onClicked: uiController.configureRegressionFromText(
                     regressionOutcomeField.text,
                     regressionPredictorsField.text

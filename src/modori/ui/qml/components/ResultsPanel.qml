@@ -111,6 +111,7 @@ Rectangle {
             Button {
                 text: appBootstrap.text("dialog.report.export_word")
                 Accessible.name: appBootstrap.text("dialog.report.export_word")
+                enabled: uiController.resultSummary.length > 0
                 onClicked: reportExportDialog.open()
             }
         }

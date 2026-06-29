@@ -7,9 +7,10 @@ Rectangle {
     color: "#EFF7F3"
     property string guideNote: ""
     property string selectedIntent: ""
-    property bool canCommitSelection: root.selectedIntent === "reliability" && root.hasText(reliabilityItemsField.text)
-        || root.selectedIntent === "comparison" && root.hasText(outcomeKeyField.text) && root.hasText(groupKeyField.text)
-        || root.selectedIntent === "regression" && root.hasText(outcomeKeyField.text) && root.hasText(predictorKeysField.text)
+    property bool canEditSelection: uiController.status !== "empty" && uiController.status !== "running"
+    property bool canCommitSelection: root.canEditSelection && root.selectedIntent === "reliability" && root.hasText(reliabilityItemsField.text)
+        || root.canEditSelection && root.selectedIntent === "comparison" && root.hasText(outcomeKeyField.text) && root.hasText(groupKeyField.text)
+        || root.canEditSelection && root.selectedIntent === "regression" && root.hasText(outcomeKeyField.text) && root.hasText(predictorKeysField.text)
 
     function hasText(value) {
         return String(value).trim().length > 0

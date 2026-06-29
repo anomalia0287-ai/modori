@@ -45,12 +45,14 @@ Item {
                 Button {
                     text: appBootstrap.text("work.analysis")
                     Accessible.name: appBootstrap.text("work.analysis_run")
+                    enabled: uiController.status !== "empty" && uiController.status !== "running"
                     onClicked: uiController.rerunNow()
                 }
 
                 Button {
                     text: appBootstrap.text("work.report")
                     Accessible.name: appBootstrap.text("work.report_menu")
+                    enabled: uiController.resultSummary.length > 0
                     onClicked: root.reportRequested()
                 }
 
