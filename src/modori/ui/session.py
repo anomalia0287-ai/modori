@@ -41,7 +41,16 @@ class UiSessionState:
 
     @property
     def recent_files_text(self) -> str:
-        return "\n".join(Path(path).name for path in self._recent_files)
+        names = [Path(path).name for path in self._recent_files]
+        duplicate_names = {name for name in names if names.count(name) > 1}
+        labels = []
+        for path in self._recent_files:
+            recent_path = Path(path)
+            if recent_path.name in duplicate_names:
+                labels.append(f"{recent_path.name} - {recent_path.parent}")
+            else:
+                labels.append(recent_path.name)
+        return "\n".join(labels)
 
     def set_reduce_effects(self, enabled: bool) -> None:
         self._reduce_effects = bool(enabled)
