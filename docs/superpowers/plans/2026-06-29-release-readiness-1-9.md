@@ -257,11 +257,11 @@ Expected: R-gated tests pass rather than skip.
 **Files:**
 - Create or modify: `docs/specs/release-manual-qa.md`
 
-- [ ] **Step 1: Define manual QA matrix**
+- [x] **Step 1: Define manual QA matrix**
 
 Include Korean Windows path, long filenames, high DPI, low GPU/reduce-effects, broken input file, report export failure, and accessibility smoke.
 
-- [ ] **Step 2: Capture evidence**
+- [x] **Step 2: Capture evidence**
 
 Record exact date, environment, steps, pass/fail, and screenshots where useful.
 

@@ -62,3 +62,14 @@ $env:MODORI_RSCRIPT = ".tools\r-env\Scripts\Rscript.exe"
 The required R packages are documented in
 `docs/specs/statistical-reference-environment.md`: `psych` for omega and
 `sandwich` for HC3 robust covariance.
+
+## UI/UX Manual QA Gate
+
+Use `docs/specs/release-manual-qa.md` as the current manual QA matrix and
+evidence log. It covers Korean Windows path handling, long filename handling,
+high DPI smoke, low GPU / reduce-effects behavior, broken input file error
+surfacing, report export failure surfacing, and accessibility smoke.
+
+The current run does not contain accepted screenshot evidence. A visible
+target-machine walkthrough with screenshots is still required before claiming a
+signed Windows release is ready for end users.
