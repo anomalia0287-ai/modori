@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from scripts.quality_gate import quality_commands
 
 
@@ -17,7 +19,15 @@ def test_quality_gate_default_commands_are_local_only() -> None:
 def test_quality_gate_can_opt_into_dependency_advisory_scan() -> None:
     commands = quality_commands(include_pip_audit=True)
 
-    assert ["-m", "pip_audit", "--local", "--progress-spinner", "off"] in commands
+    assert [
+        "-m",
+        "pip_audit",
+        "--local",
+        "--cache-dir",
+        ".pip-audit-cache",
+        "--progress-spinner",
+        "off",
+    ] in commands
 
 
 def test_quality_gate_can_opt_into_packaging_check() -> None:
@@ -31,3 +41,15 @@ def test_quality_gate_can_opt_into_package_build_and_launch() -> None:
 
     assert ["scripts/package_windows.py"] in commands
     assert ["scripts/package_launch_smoke.py"] in commands
+
+
+def test_release_checklist_documents_dependency_release_gate() -> None:
+    text = Path("docs/specs/release-readiness-checklist.md").read_text(
+        encoding="utf-8"
+    )
+
+    assert "scripts\\quality_gate.py" in text
+    assert "--with-pip-audit" in text
+    assert ".pip-audit-cache" in text
+    assert "default gate" in text
+    assert "offline" in text

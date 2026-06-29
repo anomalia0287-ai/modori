@@ -28,7 +28,17 @@ def quality_commands(
     if include_packaged_launch:
         commands.append(["scripts/package_launch_smoke.py"])
     if include_pip_audit:
-        commands.append(["-m", "pip_audit", "--local", "--progress-spinner", "off"])
+        commands.append(
+            [
+                "-m",
+                "pip_audit",
+                "--local",
+                "--cache-dir",
+                ".pip-audit-cache",
+                "--progress-spinner",
+                "off",
+            ]
+        )
     return commands
 
 

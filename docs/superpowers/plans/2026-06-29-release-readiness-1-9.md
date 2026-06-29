@@ -223,11 +223,11 @@ Expected: every production filesystem mutation is reviewed against `modori.path_
 - Test: `tests/test_quality_gate_script.py`
 - Docs: release checklist document
 
-- [ ] **Step 1: Keep default gate offline**
+- [x] **Step 1: Keep default gate offline**
 
 Default `quality_gate.py` must not contact network services.
 
-- [ ] **Step 2: Add explicit release mode for advisory scan**
+- [x] **Step 2: Add explicit release mode for advisory scan**
 
 Run:
 
