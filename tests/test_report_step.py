@@ -209,6 +209,37 @@ def test_report_step_generates_korean_apa_prose_figures_and_docx(tmp_path) -> No
     assert len(embedded_media) == len(png_paths)
 
 
+def test_report_step_can_export_without_figures(tmp_path) -> None:
+    pipeline = Pipeline(report_dataset())
+    pipeline.add(
+        ReliabilityStep(
+            id="reliability",
+            title="Reliability",
+            params={"items": ["q1", "q2", "q3", "q4"], "scale_name": "job_sat"},
+        )
+    )
+    pipeline.add(
+        ReportStep(
+            id="report",
+            title="APA report",
+            params={
+                "include": ["reliability:job_sat"],
+                "output_dir": str(tmp_path),
+                "filename": "report-no-figures.docx",
+                "language": "ko",
+                "include_figures": False,
+            },
+        )
+    )
+
+    pipeline.recompute(dirty_from=None)
+
+    report = pipeline.analysis_objects["report"]
+    assert report.figure_paths == {"reliability:job_sat": []}
+    assert Path(report.docx_path).exists()
+    assert not list(tmp_path.glob("reliability_job_sat.*"))
+
+
 def test_report_step_recomputes_after_import_data_changes(tmp_path) -> None:
     csv_path = tmp_path / "survey.csv"
     csv_path.write_text(

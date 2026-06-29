@@ -667,6 +667,7 @@ class ReportStep(Step):
         language = "en" if language_base == "en" else "ko"
 
         include = _normalise_include(self.params)
+        include_figures = bool(self.params.get("include_figures", True))
         output_dir, docx_path, chart_dir, remove_output_dir_on_failure = _safe_report_paths(self.params)
         included_results = _resolve_included(ctx, include)
 
@@ -679,7 +680,7 @@ class ReportStep(Step):
                 prose.append(prose_for(result, language=language))
                 tables[public_key] = table_for(result)
                 chart_spec = getattr(result, "chart_spec", None)
-                if chart_spec is not None:
+                if include_figures and chart_spec is not None:
                     rendered = render_chart(chart_spec, chart_dir, public_key)
                     paths = [rendered] if isinstance(rendered, str) else list(rendered)
                     figure_paths[public_key] = paths

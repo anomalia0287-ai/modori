@@ -132,7 +132,7 @@ class PipelineOperations:
         return {}
 
     def export_report(self, options: ReportExportOptions) -> Path:
-        _ = options
+        self._apply_report_export_options(options)
         analysis_objects = self.analysis_objects()
         if "report" not in analysis_objects and self._pipeline is not None:
             if hasattr(self._pipeline, "recompute"):
@@ -159,3 +159,88 @@ class PipelineOperations:
         if isinstance(step, Mapping):
             return str(step.get("id", ""))
         return str(getattr(step, "id", ""))
+
+    def _apply_report_export_options(self, options: ReportExportOptions) -> None:
+        report_step = self._report_step()
+        if report_step is None or not self.can_edit_steps():
+            return
+        params = self._report_params_for_options(report_step, options)
+        self._pipeline.edit_params(self._step_id(report_step), params)
+
+    def _report_step(self) -> object | None:
+        return next(
+            (
+                step
+                for step in self.steps()
+                if self._step_type(step) == "report.apa" or self._step_id(step) == "report"
+            ),
+            None,
+        )
+
+    def _report_params_for_options(
+        self,
+        report_step: object,
+        options: ReportExportOptions,
+    ) -> dict[str, Any]:
+        params = self._step_params(report_step)
+        params["language"] = options.language
+        params["include_figures"] = bool(options.include_figures)
+        include = self._filtered_report_include(params.get("include"), options)
+        if include is not None:
+            params["include"] = include
+        return params
+
+    def _filtered_report_include(
+        self,
+        include: object,
+        options: ReportExportOptions,
+    ) -> list[str] | None:
+        keys = self._analysis_keys_for_report()
+        if not keys:
+            keys = self._normalise_report_include(include)
+        if keys is None:
+            return None
+        return [key for key in keys if self._include_key_enabled(key, options)]
+
+    def _analysis_keys_for_report(self) -> list[str]:
+        return [
+            key
+            for key in self.analysis_objects()
+            if key != "report" and not key.startswith("analysis:") and not key.startswith("report:")
+        ]
+
+    @staticmethod
+    def _normalise_report_include(include: object) -> list[str] | None:
+        if include is None:
+            return None
+        if isinstance(include, str):
+            return [include]
+        if isinstance(include, list) and all(isinstance(item, str) for item in include):
+            return list(include)
+        return None
+
+    @staticmethod
+    def _include_key_enabled(key: str, options: ReportExportOptions) -> bool:
+        if key.startswith("reliability:"):
+            return bool(options.include_reliability)
+        if key.startswith("comparison:"):
+            return bool(options.include_comparison)
+        if key.startswith("regression"):
+            return bool(options.include_regression)
+        return True
+
+    @staticmethod
+    def _step_type(step: object) -> str:
+        if isinstance(step, Mapping):
+            return str(step.get("step_type", ""))
+        return str(getattr(step, "step_type", ""))
+
+    @staticmethod
+    def _step_params(step: object) -> dict[str, Any]:
+        if isinstance(step, Mapping):
+            params = step.get("params", {})
+        else:
+            params = getattr(step, "params", {})
+        if isinstance(params, Mapping):
+            return dict(params)
+        return {}

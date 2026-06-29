@@ -22,10 +22,12 @@ class FakeStep:
         step_id: str,
         step_type: str = "import.table",
         title: str | None = None,
+        params: dict[str, object] | None = None,
     ) -> None:
         self.id = step_id
         self.step_type = step_type
         self.title = title or step_id
+        self.params = params or {}
 
 
 class FakePipeline:
@@ -43,6 +45,10 @@ class FakePipeline:
 
     def edit_params(self, step_id, params):
         self.edits.append((step_id, params))
+        for step in self.steps:
+            if step.id == step_id:
+                step.params = dict(params)
+                break
 
     def insert_after_and_recompute(self, after_step_id, step, *, dirty_from):
         self.insertions.append((after_step_id, step, dirty_from))
@@ -130,3 +136,95 @@ def test_pipeline_operations_export_report_recomputes_missing_report(tmp_path) -
 
     assert result == Path(output_path)
     assert pipeline.recomputed is True
+
+
+def test_pipeline_operations_export_report_applies_dialog_options_to_report_step(tmp_path) -> None:
+    output_path = tmp_path / "report.docx"
+    output_path.write_bytes(b"docx")
+
+    class Report:
+        docx_path = output_path
+
+    pipeline = FakePipeline()
+    pipeline.steps.append(
+        FakeStep(
+            "report",
+            "report.apa",
+            title="APA report",
+            params={
+                "include": [
+                    "reliability:scale",
+                    "comparison:score:group",
+                    "regression-main",
+                ],
+                "output_dir": str(tmp_path),
+                "filename": "report.docx",
+                "language": "ko",
+                "include_figures": True,
+            },
+        )
+    )
+    pipeline.analysis_objects = {
+        "report": Report(),
+        "reliability:scale": object(),
+        "comparison:score:group": object(),
+        "regression-main": object(),
+    }
+
+    result = PipelineOperations(pipeline).export_report(
+        ReportExportOptions(
+            language="en",
+            include_reliability=True,
+            include_comparison=False,
+            include_regression=True,
+            include_figures=False,
+        )
+    )
+
+    assert result == output_path
+    assert pipeline.edits[-1] == (
+        "report",
+        {
+            "include": ["reliability:scale", "regression-main"],
+            "output_dir": str(tmp_path),
+            "filename": "report.docx",
+            "language": "en",
+            "include_figures": False,
+        },
+    )
+
+
+def test_pipeline_operations_report_export_options_can_be_toggled_back_on(tmp_path) -> None:
+    output_path = tmp_path / "report.docx"
+    output_path.write_bytes(b"docx")
+
+    class Report:
+        docx_path = output_path
+
+    pipeline = FakePipeline()
+    pipeline.steps.append(
+        FakeStep(
+            "report",
+            "report.apa",
+            params={
+                "include": ["reliability:scale", "comparison:score:group"],
+                "output_dir": str(tmp_path),
+                "filename": "report.docx",
+                "language": "ko",
+            },
+        )
+    )
+    pipeline.analysis_objects = {
+        "report": Report(),
+        "reliability:scale": object(),
+        "comparison:score:group": object(),
+    }
+    ops = PipelineOperations(pipeline)
+
+    ops.export_report(ReportExportOptions(include_comparison=False))
+    ops.export_report(ReportExportOptions(include_comparison=True))
+
+    assert pipeline.edits[-1][1]["include"] == [
+        "reliability:scale",
+        "comparison:score:group",
+    ]
