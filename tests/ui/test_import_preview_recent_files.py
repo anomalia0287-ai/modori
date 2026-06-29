@@ -40,6 +40,26 @@ def test_confirm_import_without_preview_sets_visible_error() -> None:
     assert controller.lastError == "가져올 파일이 선택되지 않았습니다."
 
 
+def test_confirm_import_binds_preview_models_before_analysis_runs(tmp_path) -> None:
+    from tests.ui.test_end_to_end_ui_flow import write_reference_csv
+    from modori.ui.controller import UiController
+
+    data_path = tmp_path / "survey.csv"
+    write_reference_csv(data_path)
+    controller = UiController()
+
+    assert controller.previewDataFilePath(str(data_path)) is True
+    assert controller.confirmPendingImport() is True
+
+    assert controller.dataModel is not None
+    assert controller.dataModel.rowCount() == 20
+    assert controller.dataModel.columnCount() == 9
+    assert controller.variableModel is not None
+    assert controller.variableModel.rowCount() == 9
+    assert controller.dataViewNotice == "가져온 데이터 미리보기: 20행 · 9열"
+    assert controller.resultSummary == ""
+
+
 def test_recent_files_persist_to_settings_file(tmp_path, monkeypatch) -> None:
     from tests.ui.test_end_to_end_ui_flow import write_reference_csv
     from modori.ui.controller import UiController

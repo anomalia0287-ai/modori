@@ -14,7 +14,10 @@ def pyinstaller_available() -> bool:
 
 
 def build_pyinstaller_command() -> list[str]:
-    qt_hidden_imports = [
+    hidden_imports = [
+        "matplotlib.backends.backend_agg",
+        "matplotlib.backends.backend_ps",
+        "matplotlib.backends.backend_svg",
         "PySide6.QtCore",
         "PySide6.QtGui",
         "PySide6.QtQml",
@@ -23,7 +26,7 @@ def build_pyinstaller_command() -> list[str]:
     ]
     hidden_import_args = [
         item
-        for module in qt_hidden_imports
+        for module in hidden_imports
         for item in ("--hidden-import", module)
     ]
     return [

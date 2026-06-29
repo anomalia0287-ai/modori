@@ -41,3 +41,20 @@ def test_worker_result_captures_engine_error_without_traceback_text() -> None:
     assert result.ok is False
     assert result.error_code == "engine_error"
     assert result.message_ko == "엔진 실행 중 오류가 발생했습니다."
+
+
+def test_worker_can_write_opt_in_local_debug_error(tmp_path, monkeypatch) -> None:
+    from modori.ui.worker import SerializedEngineWorker
+
+    monkeypatch.setenv("MODORI_DEBUG_ENGINE_ERRORS", "1")
+    monkeypatch.setenv("MODORI_CACHE_DIR", str(tmp_path))
+    worker = SerializedEngineWorker()
+
+    def fail() -> None:
+        raise RuntimeError("diagnostic detail")
+
+    result = worker.submit(run_id=1, pipeline_version=3, job=fail).result(timeout=5)
+
+    assert result.message_ko == "엔진 실행 중 오류가 발생했습니다."
+    debug_text = (tmp_path / "engine-error-debug.txt").read_text(encoding="utf-8")
+    assert "RuntimeError: diagnostic detail" in debug_text

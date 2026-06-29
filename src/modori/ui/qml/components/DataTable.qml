@@ -1,25 +1,48 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Layouts
 
-TableView {
+Item {
     id: root
-    clip: true
-    reuseItems: true
-    model: uiController.dataModel
     property string editPolicyText: "셀 직접 수정은 재현 가능한 편집 단계가 준비된 뒤 활성화됩니다."
-    ToolTip.text: editPolicyText
 
-    delegate: Rectangle {
-        implicitWidth: 120
-        implicitHeight: 32
-        color: "#FFFFFF"
-        border.color: "#E4ECE8"
+    ColumnLayout {
+        anchors.fill: parent
+        spacing: 0
 
-        Text {
-            anchors.centerIn: parent
-            text: model.display ?? ""
-            color: "#17211D"
+        Label {
+            text: uiController.dataViewNotice
+            color: "#486157"
+            visible: uiController.dataViewNotice.length > 0
             elide: Text.ElideRight
+            Layout.fillWidth: true
+            Layout.leftMargin: 12
+            Layout.rightMargin: 12
+            Layout.topMargin: 8
+            Layout.bottomMargin: 8
+        }
+
+        TableView {
+            clip: true
+            reuseItems: true
+            model: uiController.dataModel
+            ToolTip.text: root.editPolicyText
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+
+            delegate: Rectangle {
+                implicitWidth: 120
+                implicitHeight: 32
+                color: "#FFFFFF"
+                border.color: "#E4ECE8"
+
+                Text {
+                    anchors.centerIn: parent
+                    text: model.display ?? ""
+                    color: "#17211D"
+                    elide: Text.ElideRight
+                }
+            }
         }
     }
 }

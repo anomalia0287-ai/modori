@@ -8,7 +8,7 @@ Environment:
 
 - OS shell: Windows PowerShell.
 - Workspace: `C:\Users\V\Desktop\TongTong`.
-- App runtime: PySide6/QML through `.venv\Scripts\python.exe`.
+- App runtime: packaged `dist\Modori\Modori.exe` plus PySide6/QML source smoke.
 - Product Design saved context: none configured for this workspace.
 - Local evidence folder: `.visual-qa\release-manual-qa-2026-06-29`.
 
@@ -23,7 +23,7 @@ Environment:
 | broken input file | Pass for visible error contract | Opening a missing CSV path creates a session, then `rerunNow` fails through the worker path with `status=error`, `stale=True`, and Korean `lastError` text. |
 | report export failure | Pass for visible error contract | A failing report exporter returned `error_code=engine_error` and set `lastError` to `보고서를 내보내지 못했습니다.` |
 | accessibility smoke | Pass for source/static contract | `tests\ui\test_security_privacy.py::test_core_qml_buttons_have_accessible_names` passed. Existing QML controls include Korean `Accessible.name` bindings. |
-| screenshot evidence | Blocked in this environment | QML offscreen `grabWindow` timed out or exited without an accepted image. Visible desktop capture through `System.Drawing.Graphics.CopyFromScreen` failed with a Windows invalid-handle error. No screenshot is accepted as release evidence from this run. |
+| screenshot evidence | Pass for packaged visible walkthrough | Codex Computer Use Windows.Graphics.Capture captured packaged `dist\Modori\Modori.exe` entry, Excel import preview, and final work screen. Final screen showed `가져온 데이터: 20행 · 12열`, `분석 결과가 업데이트되었습니다.`, reliability/comparison result text, result tables, and enabled `Word 내보내기`. |
 
 ## Commands Run
 
@@ -34,7 +34,17 @@ Environment:
 Result:
 
 ```text
-161 passed in 5.77s
+188 passed in 9.45s
+```
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest -q -p no:cacheprovider
+```
+
+Result:
+
+```text
+418 passed, 2 skipped in 40.59s
 ```
 
 ```powershell
@@ -81,6 +91,43 @@ Result:
 3 passed in 3.87s
 ```
 
+```powershell
+.\.venv\Scripts\python.exe scripts\quality_gate.py --with-package-build --with-packaged-launch
+```
+
+Result:
+
+```text
+compileall passed
+ruff check src tests scripts passed
+bandit -q -r src passed
+launch-smoke-ok
+418 passed, 2 skipped
+pip check: No broken requirements found.
+dist\Modori\Modori.exe
+package-launch-smoke-ok
+```
+
+```powershell
+dist\Modori\Modori.exe --engine-smoke .visual-qa\release-manual-qa-2026-06-29\visible-import-reference.xlsx .tmp\packaged-engine-smoke.json
+```
+
+Result:
+
+```json
+{
+  "data_columns": 12,
+  "data_rows": 20,
+  "last_error": "",
+  "ok": true,
+  "opened": true,
+  "rerun": true,
+  "result_summary_present": true,
+  "status": "ready",
+  "waited": true
+}
+```
+
 ## Screenshot Capture Attempts
 
 Attempt 1: QML offscreen `window.grabWindow()` with `QT_QPA_PLATFORM=offscreen`.
@@ -106,9 +153,31 @@ Attempt 5: Codex Computer Use Windows.Graphics.Capture path against packaged
 - Result: blocked by Computer Use app approval timeout before a targetable
   Modori window capture could be accepted.
 
+Attempt 6: Codex Computer Use Windows.Graphics.Capture path against rebuilt
+packaged `dist\Modori\Modori.exe`.
+
+- Result: accepted screenshots captured. Entry screen exposed guided/standard
+  modes, data-open action, and recent items. Excel import preview for
+  `visible-import-reference.xlsx` showed `20 cases previewed · 9 variables`,
+  sheet `Responses`, and sample rows with fixed visible `취소` / `가져오기`
+  actions. Final work screen showed imported data, result summary text, result
+  tables, and enabled report export.
+
+## Issue Closed During Visible QA
+
+- Import preview dialog previously let long Excel previews push the confirm
+  action out of clear view. It now uses a scrollable preview body and fixed
+  Korean `취소` / `가져오기` actions.
+- Work screen previously did not make imported content easy to identify before
+  analysis completed. It now binds preview/full data models and shows a data
+  notice such as `가져온 데이터 미리보기: 20행 · 9열` or `가져온 데이터: 20행 · 12열`.
+- Packaged analysis previously failed at chart/report rendering because
+  PyInstaller omitted Matplotlib SVG/PS backends. The package build now includes
+  `matplotlib.backends.backend_agg`, `backend_svg`, and `backend_ps`; packaged
+  engine smoke covers this path.
+
 ## Release Interpretation
 
-This document closes the repository-local QA matrix and records current evidence.
-It does not certify visible desktop layout quality. A target-machine visual
-walkthrough with accepted screenshots remains required before claiming a signed
-Windows release is ready for end users.
+This document records an accepted target-machine visible walkthrough for the
+packaged Windows app. It does not by itself certify installer signing,
+distribution trust, or broader SPSS-equivalent feature completeness.

@@ -12,15 +12,18 @@ using one of these operations without being added to this audited allowlist.
 | File | Operations | Boundary |
 | --- | --- | --- |
 | `src/modori/path_policy.py` | `resolve` | Central path validation helper. Rejects relative paths and symlink/junction ancestors before returning configured paths. |
+| `src/modori/app.py` | `mkdir`, `write_text` | Hidden `--engine-smoke` packaging gate only. The normal QML app path does not invoke this branch; the CLI writes a diagnostic JSON payload to the caller-supplied smoke output path for release verification. |
 | `src/modori/cache.py` | `resolve`, `mkdir`, `write_text`, `unlink` | Cache roots are selected through `resolve_secure_directory_path` where possible. `_ensure_cache_dir` creates only the selected cache directory, rejects link/junction targets, probes writability with a random temp filename, and deletes only that probe. |
 | `src/modori/ui/settings.py` | `resolve`, `mkdir`, `write_text`, `replace`, `unlink` | Settings path is either a secure absolute `.json` file or the managed cache. Writes go to a same-directory random temp file and then atomically replace the target; cleanup deletes only that temp path. |
 | `src/modori/ui/result_binding.py` | `resolve`, `unlink` | Obsolete chart cleanup deletes only image files under the managed `cache/charts` directory after resolving both the cache root and candidate path. |
 | `src/modori/ui/session.py` | `resolve` | Recent-file storage records a resolved path string only; it does not read, write, or delete the referenced file. |
+| `src/modori/ui/worker.py` | `resolve`, `write_text` | Engine exception traces are written only when explicitly enabled by `MODORI_DEBUG_ENGINE_ERRORS=1` or an executable-adjacent `enable-engine-debug` sentinel. The file is written under the managed Modori cache directory and is not part of the normal user-facing error path. |
 | `src/modori/steps/reporting.py` | `mkdir`, `resolve`, `unlink`, `rmdir` | `ReportStep` is not allowed in untrusted project JSON. Report paths reject direct output aliases, path separators in filenames, symlink output targets, and chart dirs outside `output_dir`. Failure cleanup deletes only created report/chart files under `output_dir` and removes the output directory only when this run created it. |
 | `src/modori/knowledge/loader.py` | `resolve` | Read-only package data root resolution. No mutation. |
 | `src/modori/ui/resources.py` | `resolve` | Read-only QML resource root resolution. No mutation. |
 | `scripts/package_windows.py` | `mkdir` | Local release-build setup under the workspace `.tmp` directory. Not user-data cleanup. |
 | `scripts/package_launch_smoke.py` | `mkdir`, `resolve` | Local smoke-test setup under the workspace `.tmp` directory and explicit executable/cwd normalization. Not product runtime deletion. |
+| `scripts/package_engine_smoke.py` | `mkdir`, `resolve` | Local packaged-engine smoke setup under the workspace `.tmp/packaged-engine-smoke` directory. It creates a deterministic reference workbook and reads the packaged app's smoke JSON; it does not delete user data. |
 | `scripts/stress_matrix.py` | `mkdir`, `write_text` | Local stress evidence generation under caller-selected output paths; release checklist uses ignored `.stress-matrix`. It creates deterministic synthetic datasets, JSON results, and report artifacts, not user-data cleanup. |
 
 ## Decisions

@@ -37,6 +37,8 @@ def test_session_state_disambiguates_duplicate_recent_file_names(tmp_path) -> No
     assert labels[1].startswith("survey.csv - ")
     assert "second" in labels[0]
     assert "first" in labels[1]
+    assert str(tmp_path) not in labels[0]
+    assert str(tmp_path) not in labels[1]
 
 
 def test_session_state_reduce_effects_override_and_persistence(tmp_path) -> None:

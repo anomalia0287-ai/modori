@@ -47,10 +47,21 @@ class UiSessionState:
         for path in self._recent_files:
             recent_path = Path(path)
             if recent_path.name in duplicate_names:
-                labels.append(f"{recent_path.name} - {recent_path.parent}")
+                labels.append(f"{recent_path.name} - {self._compact_parent_hint(recent_path)}")
             else:
                 labels.append(recent_path.name)
         return "\n".join(labels)
+
+    @staticmethod
+    def _compact_parent_hint(path: Path, *, max_chars: int = 42) -> str:
+        parts = [part for part in path.parent.parts if part != path.anchor]
+        if not parts:
+            hint = str(path.parent)
+        else:
+            hint = "\\".join(parts[-2:])
+        if len(hint) <= max_chars:
+            return hint
+        return "..." + hint[-(max_chars - 3) :]
 
     def set_reduce_effects(self, enabled: bool) -> None:
         self._reduce_effects = bool(enabled)

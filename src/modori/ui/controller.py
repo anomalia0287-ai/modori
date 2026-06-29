@@ -8,16 +8,15 @@ from PySide6.QtCore import Property, QObject, Signal, Slot
 from modori.knowledge import Library
 from modori.ui.contracts import CommandResult, ExplainResult, ImportOptions, ReportExportOptions
 from modori.ui.controller_services import UiControllerServices
-from modori.ui.models import DataTableModel, VariableTableModel, variable_records_from_dataset
 from modori.ui.patches import PatchValidationError, parse_step_patch
 from modori.ui.paths import local_path_from_qml
 from modori.ui.pipeline_ops import PipelineOperations
 from modori.ui.pipeline_state import UiPipelineState
+from modori.ui.preview_models import models_for_dataset, models_for_table_preview
 from modori.ui.result_state import UiResultState
 from modori.ui.run_tracker import UiRunTracker
 from modori.ui.session import UiSessionState
 from modori.ui.settings import UiSettingsStore
-from modori.ui.table_provider import DatasetTableProvider
 from modori.ui.worker import EngineJobResult, SerializedEngineWorker
 
 
@@ -62,6 +61,7 @@ class UiController(QObject):
         self.stepsModel = self._pipeline_state.steps_model
         self._data_model = None
         self._variable_model = None
+        self._data_view_notice = ""
         self.resultsModel: list[Any] = self._result_state.results_model
         self._run_tracker = UiRunTracker()
         self._worker = worker or SerializedEngineWorker()
@@ -138,6 +138,10 @@ class UiController(QObject):
     @Property(bool, notify=stateChanged)
     def recentFilesEnabled(self) -> bool:
         return self._session.recent_files_enabled
+
+    @Property(str, notify=stateChanged)
+    def dataViewNotice(self) -> str:
+        return self._data_view_notice
 
     @Property(QObject, notify=stateChanged)
     def dataModel(self) -> QObject | None:
@@ -230,6 +234,9 @@ class UiController(QObject):
         self.resultsModel = self._result_state.results_model
         self._data_model = None
         self._variable_model = None
+        self._data_view_notice = ""
+        if load_result.path is not None:
+            self._bind_import_preview_models(load_result.path)
         self._last_error = ""
         self._last_message = load_result.command.message_ko
         self._report_path = ""
@@ -544,8 +551,24 @@ class UiController(QObject):
         current_dataset = self._services.pipeline_ops.current_dataset()
         if current_dataset is None:
             return
-        self._data_model = DataTableModel(DatasetTableProvider(current_dataset))
-        self._variable_model = VariableTableModel(variable_records_from_dataset(current_dataset))
+        models = models_for_dataset(current_dataset)
+        self._data_model = models.data_model
+        self._variable_model = models.variable_model
+        self._data_view_notice = models.notice
+
+    def _bind_import_preview_models(self, path: Path) -> bool:
+        import_flow = self._services.import_flow
+        if import_flow.pending_path != path or import_flow.table_preview is None:
+            if not import_flow.preview(path):
+                return False
+        preview = import_flow.table_preview
+        if preview is None:
+            return False
+        models = models_for_table_preview(preview)
+        self._data_model = models.data_model
+        self._variable_model = models.variable_model
+        self._data_view_notice = models.notice
+        return True
 
     def _remember_recent_file(self, path: Path) -> None:
         self._session.remember_recent_file(path)

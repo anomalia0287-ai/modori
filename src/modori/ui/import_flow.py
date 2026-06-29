@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from modori.table_io import TablePreviewResult
 from modori.ui.importing import ImportPreviewService
 
 
@@ -10,11 +11,13 @@ class UiImportFlow:
         self._preview_service = preview_service or ImportPreviewService()
         self.preview_text = ""
         self.pending_path: Path | None = None
+        self.table_preview: TablePreviewResult | None = None
 
     def preview(self, path: Path) -> bool:
         preview = self._preview_service.preview(path)
         self.preview_text = preview.text
         self.pending_path = preview.pending_path
+        self.table_preview = getattr(preview, "table_preview", None)
         return bool(preview.ok)
 
     def require_pending_path(self) -> Path | None:

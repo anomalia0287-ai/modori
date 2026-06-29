@@ -5,13 +5,16 @@ from pathlib import Path
 
 
 AUDITED_FILE_OPERATION_FILES = {
+    "scripts/package_engine_smoke.py",
     "scripts/package_launch_smoke.py",
     "scripts/package_windows.py",
     "scripts/stress_matrix.py",
+    "src/modori/app.py",
     "src/modori/cache.py",
     "src/modori/knowledge/loader.py",
     "src/modori/path_policy.py",
     "src/modori/steps/reporting.py",
+    "src/modori/ui/worker.py",
     "src/modori/ui/resources.py",
     "src/modori/ui/result_binding.py",
     "src/modori/ui/session.py",

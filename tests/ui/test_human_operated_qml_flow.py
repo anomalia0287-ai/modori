@@ -75,6 +75,23 @@ def test_work_qml_wires_rerun_results_explain_and_report() -> None:
     assert "rerunRequested" in pipeline
 
 
+def test_import_dialog_keeps_long_preview_scrollable_and_actions_fixed() -> None:
+    dialog = qml_text("dialogs/ImportDialog.qml")
+
+    assert "standardButtons: Dialog.NoButton" in dialog
+    assert "ScrollView" in dialog
+    assert "Layout.fillHeight: true" in dialog
+    assert "dialog.import.cancel" in dialog
+    assert "dialog.import.confirm" in dialog
+
+
+def test_data_table_surfaces_imported_dataset_notice() -> None:
+    data_table = qml_text("components/DataTable.qml")
+
+    assert "uiController.dataViewNotice" in data_table
+    assert "model: uiController.dataModel" in data_table
+
+
 def test_work_header_actions_are_connected_to_real_user_flows() -> None:
     main = qml_text("Main.qml")
     work = qml_text("screens/WorkScreen.qml")

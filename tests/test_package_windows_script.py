@@ -25,6 +25,9 @@ def test_pyinstaller_command_collects_qml_and_pyside6() -> None:
     assert "--windowed" in command
     assert "--collect-all" not in command
     for module in [
+        "matplotlib.backends.backend_agg",
+        "matplotlib.backends.backend_ps",
+        "matplotlib.backends.backend_svg",
         "PySide6.QtCore",
         "PySide6.QtGui",
         "PySide6.QtQml",

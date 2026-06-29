@@ -3,8 +3,10 @@ from __future__ import annotations
 UI_STRINGS_KO = {
     "app.title": "Modori",
     "app.subtitle": "모도리",
+    "dialog.import.cancel": "취소",
     "dialog.import.confirm": "가져오기",
     "dialog.import.preserve_metadata": "값 레이블·결측 코드 그대로 가져오기",
+    "dialog.import.preview_accessible": "데이터 미리보기",
     "dialog.import.title": "데이터 가져오기",
     "dialog.report.description": "현재 분석 결과를 Word(.docx)로 내보냅니다.",
     "dialog.report.export_word": "Word 내보내기",

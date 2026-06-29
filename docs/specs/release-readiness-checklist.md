@@ -54,7 +54,11 @@ Run the packaged executable gate before shipping a Windows artifact:
 ```
 
 The packaged launch smoke must start `dist\Modori\Modori.exe` from outside the
-repository and keep the event loop alive for the configured timeout.
+repository and keep the event loop alive for the configured timeout. The same
+packaging gate also runs packaged engine smoke through `Modori.exe
+--engine-smoke`, which opens a reference Excel file, runs the analysis/report
+path inside the packaged runtime, and fails if chart/report dependencies are
+missing.
 
 ## Statistical Reference Gate
 
@@ -77,9 +81,9 @@ evidence log. It covers Korean Windows path handling, long filename handling,
 high DPI smoke, low GPU / reduce-effects behavior, broken input file error
 surfacing, report export failure surfacing, and accessibility smoke.
 
-The current run does not contain accepted screenshot evidence. A visible
-target-machine walkthrough with screenshots is still required before claiming a
-signed Windows release is ready for end users.
+Current evidence from 2026-06-29 includes accepted packaged visible captures:
+entry screen, Excel import preview, and final work screen with imported data,
+analysis results, result tables, and enabled Word export.
 
 ## Stress Matrix Gate
 
