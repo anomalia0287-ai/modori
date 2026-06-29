@@ -206,7 +206,7 @@ The tests must distinguish preview limits from full import limits and document w
 - Modify only files with direct `Path.write_text`, `mkdir`, `unlink`, `replace`, or `resolve` usage after audit.
 - Test files must be adjacent to the affected module.
 
-- [ ] **Step 1: Generate audit inventory**
+- [x] **Step 1: Generate audit inventory**
 
 Run:
 

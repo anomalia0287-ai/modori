@@ -1,0 +1,42 @@
+# File Operations Audit - 2026-06-29
+
+Scope: production Python files under `src/` and release scripts under `scripts/`
+that call direct filesystem helpers:
+`write_text`, `write_bytes`, `mkdir`, `unlink`, `replace`, `rmdir`, or `resolve`.
+
+Guard: `tests/test_file_operation_audit.py` fails when a new product file starts
+using one of these operations without being added to this audited allowlist.
+
+## Audited Files
+
+| File | Operations | Boundary |
+| --- | --- | --- |
+| `src/modori/path_policy.py` | `resolve` | Central path validation helper. Rejects relative paths and symlink/junction ancestors before returning configured paths. |
+| `src/modori/cache.py` | `resolve`, `mkdir`, `write_text`, `unlink` | Cache roots are selected through `resolve_secure_directory_path` where possible. `_ensure_cache_dir` creates only the selected cache directory, rejects link/junction targets, probes writability with a random temp filename, and deletes only that probe. |
+| `src/modori/ui/settings.py` | `resolve`, `mkdir`, `write_text`, `replace`, `unlink` | Settings path is either a secure absolute `.json` file or the managed cache. Writes go to a same-directory random temp file and then atomically replace the target; cleanup deletes only that temp path. |
+| `src/modori/ui/result_binding.py` | `resolve`, `unlink` | Obsolete chart cleanup deletes only image files under the managed `cache/charts` directory after resolving both the cache root and candidate path. |
+| `src/modori/ui/session.py` | `resolve` | Recent-file storage records a resolved path string only; it does not read, write, or delete the referenced file. |
+| `src/modori/steps/reporting.py` | `mkdir`, `resolve`, `unlink`, `rmdir` | `ReportStep` is not allowed in untrusted project JSON. Report paths reject direct output aliases, path separators in filenames, symlink output targets, and chart dirs outside `output_dir`. Failure cleanup deletes only created report/chart files under `output_dir` and removes the output directory only when this run created it. |
+| `src/modori/knowledge/loader.py` | `resolve` | Read-only package data root resolution. No mutation. |
+| `src/modori/ui/resources.py` | `resolve` | Read-only QML resource root resolution. No mutation. |
+| `scripts/package_windows.py` | `mkdir` | Local release-build setup under the workspace `.tmp` directory. Not user-data cleanup. |
+| `scripts/package_launch_smoke.py` | `mkdir`, `resolve` | Local smoke-test setup under the workspace `.tmp` directory and explicit executable/cwd normalization. Not product runtime deletion. |
+
+## Decisions
+
+- No new delete-capable product file operation is accepted without updating this
+  audit and extending tests around its boundary.
+- `ReportStep`, table imports, and regression imports remain blocked from
+  untrusted project JSON, so attacker-controlled project files cannot trigger
+  report output writes or cleanup.
+- Direct helper calls such as `render_chart` and `write_docx` are treated as
+  trusted internal/reporting API entry points. User-facing project loading must
+  go through `Pipeline.from_json`, which rejects those IO steps unless trusted.
+
+## Residual Risk
+
+- Filesystem race conditions between path validation and write/delete operations
+  are reduced but not eliminated. The current product stance is local desktop
+  hardening, not a multi-tenant sandbox guarantee.
+- Relative report `output_dir` remains allowed for trusted workflows and resolves
+  against the current working directory. Untrusted project JSON cannot invoke it.
