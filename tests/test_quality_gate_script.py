@@ -24,3 +24,10 @@ def test_quality_gate_can_opt_into_packaging_check() -> None:
     commands = quality_commands(include_package_check=True)
 
     assert ["scripts/package_windows.py", "--check"] in commands
+
+
+def test_quality_gate_can_opt_into_package_build_and_launch() -> None:
+    commands = quality_commands(include_package_build=True, include_packaged_launch=True)
+
+    assert ["scripts/package_windows.py"] in commands
+    assert ["scripts/package_launch_smoke.py"] in commands

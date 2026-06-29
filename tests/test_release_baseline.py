@@ -20,6 +20,7 @@ def test_gitignore_exists_and_excludes_generated_roots() -> None:
         ".visual-qa/",
         "__pycache__/",
         "*.pyc",
+        "*.spec",
     ]:
         assert pattern in text
 

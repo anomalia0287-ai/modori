@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import importlib.util
+import os
 import subprocess
 import sys
 from collections.abc import Sequence
@@ -13,6 +14,18 @@ def pyinstaller_available() -> bool:
 
 
 def build_pyinstaller_command() -> list[str]:
+    qt_hidden_imports = [
+        "PySide6.QtCore",
+        "PySide6.QtGui",
+        "PySide6.QtQml",
+        "PySide6.QtQuick",
+        "PySide6.QtQuickControls2",
+    ]
+    hidden_import_args = [
+        item
+        for module in qt_hidden_imports
+        for item in ("--hidden-import", module)
+    ]
     return [
         sys.executable,
         "-m",
@@ -22,12 +35,20 @@ def build_pyinstaller_command() -> list[str]:
         "--name",
         "Modori",
         "--windowed",
-        "--collect-all",
-        "PySide6",
+        *hidden_import_args,
         "--add-data",
         "src/modori/ui/qml;modori/ui/qml",
         "src/modori/app.py",
     ]
+
+
+def build_package_environment() -> dict[str, str]:
+    env = dict(os.environ)
+    env["MPLCONFIGDIR"] = str(Path(".tmp") / "pyinstaller-matplotlib")
+    env["MODORI_CACHE_DIR"] = str(Path(".tmp") / "pyinstaller-modori-cache")
+    Path(env["MPLCONFIGDIR"]).mkdir(parents=True, exist_ok=True)
+    Path(env["MODORI_CACHE_DIR"]).mkdir(parents=True, exist_ok=True)
+    return env
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -51,7 +72,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     command = build_pyinstaller_command()
     print("$ " + " ".join(command), flush=True)
-    completed = subprocess.run(command, check=False)
+    completed = subprocess.run(command, check=False, env=build_package_environment())
     if completed.returncode != 0:
         return completed.returncode
 

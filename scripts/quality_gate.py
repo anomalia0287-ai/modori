@@ -10,6 +10,8 @@ def quality_commands(
     *,
     include_pip_audit: bool = False,
     include_package_check: bool = False,
+    include_package_build: bool = False,
+    include_packaged_launch: bool = False,
 ) -> list[list[str]]:
     commands = [
         ["-m", "compileall", "-q", "src", "tests", "scripts"],
@@ -21,6 +23,10 @@ def quality_commands(
     ]
     if include_package_check:
         commands.append(["scripts/package_windows.py", "--check"])
+    if include_package_build:
+        commands.append(["scripts/package_windows.py"])
+    if include_packaged_launch:
+        commands.append(["scripts/package_launch_smoke.py"])
     if include_pip_audit:
         commands.append(["-m", "pip_audit", "--local", "--progress-spinner", "off"])
     return commands
@@ -40,11 +46,23 @@ def main(argv: Sequence[str] | None = None) -> int:
         action="store_true",
         help="Also verify that the Windows packaging toolchain is installed.",
     )
+    parser.add_argument(
+        "--with-package-build",
+        action="store_true",
+        help="Also build the Windows desktop package. This is slow.",
+    )
+    parser.add_argument(
+        "--with-packaged-launch",
+        action="store_true",
+        help="Also smoke-test the packaged executable in offscreen mode.",
+    )
     args = parser.parse_args(argv)
 
     for command in quality_commands(
         include_pip_audit=args.with_pip_audit,
         include_package_check=args.with_package_check,
+        include_package_build=args.with_package_build,
+        include_packaged_launch=args.with_packaged_launch,
     ):
         display = " ".join([sys.executable, *command])
         print(f"$ {display}", flush=True)
