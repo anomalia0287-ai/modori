@@ -16,6 +16,7 @@ from modori.ui.pipeline_ops import PipelineOperations
 from modori.ui.recommendations import RecommendationService
 from modori.ui.report_export import ReportExportService
 from modori.ui.result_binding import ResultBindingPresenter
+from modori.ui.result_validation import ResultPayloadValidator
 from modori.ui.run_validation import RunConfigurationValidator
 
 
@@ -32,6 +33,7 @@ class UiControllerServices:
     import_flow: UiImportFlow
     report_export_service: ReportExportService
     result_binding_presenter: ResultBindingPresenter
+    result_payload_validator: ResultPayloadValidator
     explanation_service: ExplanationService
     explanation_presenter: ExplanationPresenter
     recommendation_service: RecommendationService
@@ -57,6 +59,7 @@ class UiControllerServices:
             import_flow=UiImportFlow(),
             report_export_service=ReportExportService(),
             result_binding_presenter=ResultBindingPresenter(),
+            result_payload_validator=ResultPayloadValidator(),
             explanation_service=ExplanationService(
                 library_factory=(lambda: library) if library is not None else None
             ),

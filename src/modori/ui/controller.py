@@ -607,6 +607,15 @@ class UiController(QObject):
             self._last_message = ""
             self.stateChanged.emit()
             return True
+        validation = self._services.result_payload_validator.validate(result.payload)
+        if not validation.ok:
+            self._pipeline_state.mark_error()
+            self._result_state.clear()
+            self.resultsModel = self._result_state.results_model
+            self._last_error = validation.message_ko
+            self._last_message = ""
+            self.stateChanged.emit()
+            return True
         self._refresh_dataset_models()
         previous_chart_paths, chart_paths = self._result_state.bind_payload(
             result.payload,

@@ -86,6 +86,35 @@ def test_controller_discards_stale_worker_result() -> None:
 
 
 def test_controller_applies_latest_worker_result() -> None:
+    from modori.ui.contracts import DisplayResult
+    from modori.ui.controller import UiController
+    from modori.ui.worker import EngineJobResult
+
+    controller = UiController(pipeline=FakePipeline())
+    display = DisplayResult(
+        result_id="fresh",
+        kind="reliability",
+        title_ko="신뢰도 분석",
+        title_en="Reliability analysis",
+        prose_ko="결과 요약",
+        prose_en="Result summary",
+    )
+
+    applied = controller.apply_worker_result(
+        EngineJobResult(
+            run_id=0,
+            pipeline_version=0,
+            ok=True,
+            payload=[display],
+        )
+    )
+
+    assert applied is True
+    assert controller.resultsModel == [display]
+    assert controller.stale is False
+
+
+def test_worker_success_with_empty_payload_becomes_result_display_error() -> None:
     from modori.ui.controller import UiController
     from modori.ui.worker import EngineJobResult
 
@@ -96,13 +125,14 @@ def test_controller_applies_latest_worker_result() -> None:
             run_id=0,
             pipeline_version=0,
             ok=True,
-            payload=["fresh"],
+            payload=[],
         )
     )
 
     assert applied is True
-    assert controller.resultsModel == ["fresh"]
-    assert controller.stale is False
+    assert controller.status == "error"
+    assert controller.lastError == "결과를 표시하지 못했습니다."
+    assert controller.resultsModel == []
 
 
 def test_open_data_file_requires_confirmation_before_new_session(tmp_path) -> None:
