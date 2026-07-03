@@ -60,6 +60,22 @@ packaging gate also runs packaged engine smoke through `Modori.exe
 path inside the packaged runtime, and fails if chart/report dependencies are
 missing.
 
+## Release QA Runbook Gate
+
+Use `docs/specs/release-qa-runbook.md` as the standing procedure for release QA
+evidence. It defines evidence classes, fixture-role separation, clean Windows VM
+requirements, failure classification, and recovery rules after a bad gate.
+
+The runbook is binding for the manual and clean-VM portions of release
+readiness. Incident handoffs may add current state, but they do not replace the
+runbook.
+
+Current active incident handoff:
+
+```text
+docs\superpowers\handoffs\2026-07-03-clean-win-vm-verification-handoff.md
+```
+
 ## Statistical Reference Gate
 
 Before claiming statistical-reference readiness on this Windows workspace, run
