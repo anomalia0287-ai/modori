@@ -45,5 +45,11 @@ def test_import_and_recent_file_paths_do_not_start_analysis_automatically() -> N
     recent_block = _qml_block(main, "onRecentFileRequested:", "WorkScreen")
     import_block = _qml_block(main, "onImportAccepted:", "ReportExportDialog")
 
-    assert "uiController.rerunNow()" not in recent_block
-    assert "uiController.rerunNow()" not in import_block
+    forbidden_run_calls = (
+        "uiController.rerunNow()",
+        "uiController.runPreparedRecommendationNow()",
+        "uiController.runPreparedRecommendation()",
+    )
+    for call in forbidden_run_calls:
+        assert call not in recent_block
+        assert call not in import_block
