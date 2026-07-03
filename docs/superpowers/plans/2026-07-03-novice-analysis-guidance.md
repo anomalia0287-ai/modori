@@ -32,7 +32,7 @@ def test_import_step_treats_unknown_sav_measure_as_inferred_measure() -> None:
 
     variables = metadata_variables(frame, origin_step_id="preview", metadata=metadata)
 
-    assert variables["score"].measure is Measure.SCALE
+    assert variables["score"].measure is Measure.ORDINAL
     assert variables["group"].measure is Measure.NOMINAL
 ```
 
@@ -48,7 +48,7 @@ Expected: FAIL with `ValueError: 'unknown' is not a valid Measure`.
 
 - [ ] **Step 3: Implement the fallback**
 
-In `src/modori/steps/data_prep.py`, update the `metadata_variables` branch that reads `metadata.variable_measure` so only known `Measure` enum values override inferred measures:
+In `src/modori/steps/data_prep.py`, update the `metadata_variables` branch that reads `metadata.variable_measure` so only known `Measure` enum values override inferred measures. Unknown metadata values must leave the already inferred measure unchanged:
 
 ```python
         if metadata is not None and column in metadata.variable_measure:
