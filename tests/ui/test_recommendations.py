@@ -6,13 +6,18 @@ from modori.core import Dataset, Measure, Variable
 from modori.ui.recommendations import RecommendationService
 
 
-def _variable(name: str, measure: Measure, dtype: str = "int64") -> Variable:
+def _variable(
+    name: str,
+    measure: Measure,
+    dtype: str = "int64",
+    missing_values: list[float] | None = None,
+) -> Variable:
     return Variable(
         name=name,
         label=None,
         measure=measure,
         value_labels={},
-        missing_values=[],
+        missing_values=[] if missing_values is None else missing_values,
         dtype=dtype,
         origin_step_id="import",
     )
@@ -53,6 +58,34 @@ def test_recommendation_service_produces_item_group_candidates_for_bfi_columns()
     ]
 
 
+def test_recommendation_service_masks_declared_missing_values_for_item_detection() -> None:
+    frame = pd.DataFrame(
+        {
+            "A1": [1, 2, 3, 4, 5, 99],
+            "A2": [2, 3, 4, 5, 1, 99],
+            "A3": [3, 4, 5, 1, 2, 99],
+        }
+    )
+    dataset = Dataset(
+        df=frame,
+        variables={
+            column: _variable(
+                column,
+                Measure.SCALE,
+                "float64",
+                missing_values=[99.0],
+            )
+            for column in frame.columns
+        },
+    )
+
+    state = RecommendationService().recommend(dataset)
+
+    reliability = next(candidate for candidate in state.candidates if candidate.kind == "reliability")
+    assert reliability.item_keys == ["A1", "A2", "A3"]
+    assert reliability.level == "가능한 후보"
+
+
 def test_recommendation_service_produces_two_group_comparison_candidate() -> None:
     frame = pd.DataFrame(
         {
@@ -90,6 +123,24 @@ def test_recommendation_service_excludes_near_constant_group_columns() -> None:
     assert state.message_ko == "안전하게 추천할 분석을 찾지 못했습니다. 직접 변수를 선택해 주세요."
 
 
+def test_recommendation_service_excludes_exactly_95_percent_near_constant_columns() -> None:
+    frame = pd.DataFrame(
+        {
+            "score": [index % 5 + 1 for index in range(100)],
+            "gender": [1] * 95 + [2] * 5,
+        }
+    )
+
+    state = RecommendationService().recommend(_dataset(frame))
+
+    assert not any(
+        candidate.kind == "comparison" and candidate.group_key == "gender"
+        for candidate in state.candidates
+    )
+    assert state.default_candidate is None
+    assert state.message_ko == "안전하게 추천할 분석을 찾지 못했습니다. 직접 변수를 선택해 주세요."
+
+
 def test_recommendation_service_returns_no_default_without_safe_candidate() -> None:
     frame = pd.DataFrame(
         {
@@ -104,6 +155,23 @@ def test_recommendation_service_returns_no_default_without_safe_candidate() -> N
     assert state.default_candidate is None
     assert state.candidates == []
     assert state.message_ko == "안전하게 추천할 분석을 찾지 못했습니다. 직접 변수를 선택해 주세요."
+
+
+def test_recommendation_service_explains_caution_only_state() -> None:
+    frame = pd.DataFrame(
+        {
+            "score": [1, 2, 3, 4, 5, 6],
+            "age": [18, 20, 22, 24, 26, 28],
+        }
+    )
+
+    state = RecommendationService().recommend(_dataset(frame))
+
+    assert state.candidates
+    assert {candidate.level for candidate in state.candidates} == {"주의 필요"}
+    assert state.default_candidate is None
+    assert state.selected_candidate is None
+    assert state.message_ko == "주의가 필요한 후보만 찾았습니다. 직접 확인한 뒤 선택해 주세요."
 
 
 def test_caution_candidates_are_not_default_when_stronger_candidates_exist() -> None:

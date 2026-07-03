@@ -11,6 +11,7 @@ RecommendationKind = Literal["reliability", "comparison", "regression"]
 RecommendationLevel = Literal["강한 추천", "가능한 후보", "주의 필요"]
 
 _EMPTY_MESSAGE = "안전하게 추천할 분석을 찾지 못했습니다. 직접 변수를 선택해 주세요."
+_CAUTION_ONLY_MESSAGE = "주의가 필요한 후보만 찾았습니다. 직접 확인한 뒤 선택해 주세요."
 
 
 @dataclass(frozen=True)
@@ -36,7 +37,7 @@ class RecommendationState:
 
 class RecommendationService:
     def recommend(self, dataset: object | None) -> RecommendationState:
-        frame = getattr(dataset, "df", None)
+        frame = self._frame_for_recommendation(dataset)
         if not isinstance(frame, pd.DataFrame) or frame.empty:
             return self._empty_state()
 
@@ -61,8 +62,17 @@ class RecommendationService:
             candidates=candidates,
             default_candidate=default,
             selected_candidate=default,
-            message_ko="" if candidates else _EMPTY_MESSAGE,
+            message_ko=self._message(candidates, default),
         )
+
+    @staticmethod
+    def _frame_for_recommendation(dataset: object | None) -> object | None:
+        if dataset is None:
+            return None
+        frame_for_compute = getattr(dataset, "frame_for_compute", None)
+        if callable(frame_for_compute):
+            return frame_for_compute()
+        return getattr(dataset, "df", None)
 
     @staticmethod
     def _empty_state() -> RecommendationState:
@@ -228,3 +238,14 @@ class RecommendationService:
             if candidate.level != "주의 필요":
                 return candidate
         return None
+
+    @staticmethod
+    def _message(
+        candidates: list[RecommendationCandidate],
+        default: RecommendationCandidate | None,
+    ) -> str:
+        if not candidates:
+            return _EMPTY_MESSAGE
+        if default is None:
+            return _CAUTION_ONLY_MESSAGE
+        return ""
