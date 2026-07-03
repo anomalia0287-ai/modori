@@ -97,12 +97,13 @@ class RunConfigurationValidator:
 
     @staticmethod
     def _variable_keys(pipeline_ops: object) -> set[str] | None:
-        if hasattr(pipeline_ops, "known_variable_keys"):
-            variable_keys = pipeline_ops.known_variable_keys()
-        elif hasattr(pipeline_ops, "variable_keys"):
-            variable_keys = pipeline_ops.variable_keys()
-        else:
-            variable_keys = None
+        variable_keys = getattr(pipeline_ops, "known_variable_keys", None)
+        if callable(variable_keys):
+            variable_keys = variable_keys()
+        if variable_keys is None:
+            variable_keys = getattr(pipeline_ops, "variable_keys", None)
+            if callable(variable_keys):
+                variable_keys = variable_keys()
         if variable_keys is None:
             return None
         return {str(key) for key in variable_keys}
