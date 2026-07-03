@@ -324,16 +324,26 @@ def test_run_prepared_recommendation_applies_selection_before_worker_submit(tmp_
             self.callback = callback
 
     class FakeWorker:
-        def __init__(self) -> None:
+        def __init__(self, pipelines) -> None:
+            self.pipelines = pipelines
             self.calls = []
 
         def submit(self, *, run_id, pipeline_version, job):
+            pipeline = self.pipelines[0]
+            assert pipeline.steps[0].params["items"] == ["A1", "A2", "A3"]
             self.calls.append((run_id, pipeline_version, job))
             return FakeFuture()
 
-    worker = FakeWorker()
+    pipelines = []
+
+    def factory(path, options):
+        pipeline = PipelineWithReliability()
+        pipelines.append(pipeline)
+        return pipeline
+
+    worker = FakeWorker(pipelines)
     controller = UiController(
-        pipeline_factory=lambda path, options: PipelineWithReliability(),
+        pipeline_factory=factory,
         worker=worker,
     )
     controller.openDataFile(tmp_path / "survey.csv", ImportOptions(confirm_new_session=True))
