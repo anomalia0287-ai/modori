@@ -127,3 +127,26 @@ def test_guided_and_standard_apply_buttons_require_complete_fields() -> None:
         "enabled: root.canEditSelection && root.hasText(regressionOutcomeField.text) "
         "&& root.hasText(regressionPredictorsField.text)"
     ) in rail
+
+
+def test_guide_rail_shows_recommendations_without_auto_running() -> None:
+    guide = Path("src/modori/ui/qml/components/GuideRail.qml").read_text(encoding="utf-8")
+
+    assert "uiController.recommendationTitle" in guide
+    assert "uiController.recommendationLevel" in guide
+    assert "uiController.recommendationReason" in guide
+    assert "uiController.recommendationAlternativesText" in guide
+    assert "uiController.recommendationCount" in guide
+    assert "uiController.recommendationCandidateTitleAt(index)" in guide
+    assert "uiController.recommendationCandidateLevelAt(index)" in guide
+    assert "uiController.selectRecommendationAt" in guide
+    assert 'appBootstrap.text("guide.other_recommendations")' in guide
+    assert 'appBootstrap.text("guide.manual_selection")' in guide
+    assert "uiController.runPreparedRecommendationNow()" in guide
+
+    selection_call = guide.index("uiController.selectRecommendationAt")
+    next_run_call = guide.find("uiController.rerunNow()", selection_call)
+    next_block_end = guide.find("}", selection_call)
+
+    assert next_block_end != -1
+    assert next_run_call == -1 or next_run_call > next_block_end
