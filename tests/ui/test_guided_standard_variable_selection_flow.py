@@ -9,6 +9,19 @@ from modori.steps import CompareGroupsStep, ImportStep, ReliabilityStep
 from modori.ui.controller import UiController
 
 
+def _qml_block_at(source: str, opening_brace: int) -> str:
+    depth = 0
+    for index in range(opening_brace, len(source)):
+        char = source[index]
+        if char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if depth == 0:
+                return source[opening_brace : index + 1]
+    raise AssertionError("QML block was not closed")
+
+
 def _write_selection_csv(path: Path) -> None:
     pd.DataFrame(
         {
@@ -132,10 +145,11 @@ def test_guided_and_standard_apply_buttons_require_complete_fields() -> None:
 def test_guide_rail_shows_recommendations_without_auto_running() -> None:
     guide = Path("src/modori/ui/qml/components/GuideRail.qml").read_text(encoding="utf-8")
 
+    assert "ScrollView" in guide
     assert "uiController.recommendationTitle" in guide
     assert "uiController.recommendationLevel" in guide
     assert "uiController.recommendationReason" in guide
-    assert "uiController.recommendationAlternativesText" in guide
+    assert "uiController.recommendationAlternativesText" not in guide
     assert "uiController.recommendationCount" in guide
     assert "uiController.recommendationCandidateTitleAt(index)" in guide
     assert "uiController.recommendationCandidateLevelAt(index)" in guide
@@ -145,8 +159,11 @@ def test_guide_rail_shows_recommendations_without_auto_running() -> None:
     assert "uiController.runPreparedRecommendationNow()" in guide
 
     selection_call = guide.index("uiController.selectRecommendationAt")
-    next_run_call = guide.find("uiController.rerunNow()", selection_call)
-    next_block_end = guide.find("}", selection_call)
+    selection_handler_start = guide.rfind("onClicked: {", 0, selection_call)
+    assert selection_handler_start != -1
+    selection_block = _qml_block_at(guide, guide.index("{", selection_handler_start))
 
-    assert next_block_end != -1
-    assert next_run_call == -1 or next_run_call > next_block_end
+    assert "uiController.selectRecommendationAt(index)" in selection_block
+    assert "uiController.rerunNow()" not in selection_block
+    assert "uiController.runPreparedRecommendationNow()" not in selection_block
+    assert "uiController.runPreparedRecommendation()" not in selection_block
