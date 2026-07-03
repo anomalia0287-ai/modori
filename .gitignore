@@ -1,5 +1,6 @@
 .agents/
 .codex/
+.worktrees/
 .venv/
 .pytest_cache/
 .pytest-tmp/
