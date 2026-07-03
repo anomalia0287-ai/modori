@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 import re
 from typing import Literal
 
+import numpy as np
 import pandas as pd
+
+from modori.core import Measure
 
 
 RecommendationKind = Literal["reliability", "comparison", "regression"]
@@ -40,6 +44,7 @@ class RecommendationService:
         frame = self._frame_for_recommendation(dataset)
         if not isinstance(frame, pd.DataFrame) or frame.empty:
             return self._empty_state()
+        variables = self._variables_for_recommendation(dataset)
 
         usable = [
             str(column)
@@ -54,7 +59,7 @@ class RecommendationService:
         candidates: list[RecommendationCandidate] = []
         candidates.extend(self._reliability_candidates(item_groups))
         candidates.extend(self._comparison_candidates(frame, numeric, usable))
-        candidates.extend(self._caution_candidates(frame, numeric))
+        candidates.extend(self._caution_candidates(frame, numeric, variables))
         candidates = self._rank(candidates)
 
         default = self._default_candidate(candidates)
@@ -73,6 +78,13 @@ class RecommendationService:
         if callable(frame_for_compute):
             return frame_for_compute()
         return getattr(dataset, "df", None)
+
+    @staticmethod
+    def _variables_for_recommendation(dataset: object | None) -> Mapping[str, object]:
+        if dataset is None:
+            return {}
+        variables = getattr(dataset, "variables", {})
+        return variables if isinstance(variables, Mapping) else {}
 
     @staticmethod
     def _empty_state() -> RecommendationState:
@@ -188,16 +200,30 @@ class RecommendationService:
         self,
         frame: pd.DataFrame,
         numeric: list[str],
+        variables: Mapping[str, object],
     ) -> list[RecommendationCandidate]:
-        survey_outcomes = [
-            column for column in numeric if self._is_survey_numeric(frame[column])
+        scale_numeric = [
+            column
+            for column in numeric
+            if self._is_scale_numeric(frame, variables, column)
         ]
         candidates: list[RecommendationCandidate] = []
         for predictor_key in numeric:
             if predictor_key.lower() not in {"age", "education"}:
                 continue
+            if predictor_key not in scale_numeric:
+                continue
             outcome_key = next(
-                (column for column in survey_outcomes if column != predictor_key),
+                (
+                    column
+                    for column in scale_numeric
+                    if column != predictor_key
+                    and self._has_safe_simple_regression_data(
+                        frame,
+                        outcome_key=column,
+                        predictor_key=predictor_key,
+                    )
+                ),
                 "",
             )
             if not outcome_key:
@@ -214,6 +240,41 @@ class RecommendationService:
                 )
             )
         return candidates
+
+    @staticmethod
+    def _is_scale_numeric(
+        frame: pd.DataFrame,
+        variables: Mapping[str, object],
+        column: str,
+    ) -> bool:
+        if not pd.api.types.is_numeric_dtype(frame[column]):
+            return False
+        if column not in variables:
+            return True
+        return getattr(variables[column], "measure", None) == Measure.SCALE
+
+    @staticmethod
+    def _has_safe_simple_regression_data(
+        frame: pd.DataFrame,
+        *,
+        outcome_key: str,
+        predictor_key: str,
+    ) -> bool:
+        values = frame.loc[:, [outcome_key, predictor_key]].apply(
+            pd.to_numeric,
+            errors="coerce",
+        )
+        values = values.dropna()
+        if len(values) <= 3:
+            return False
+        if not np.all(np.isfinite(values.to_numpy(dtype=float))):
+            return False
+        if values[outcome_key].nunique(dropna=True) < 2:
+            return False
+        if values[predictor_key].nunique(dropna=True) < 2:
+            return False
+        correlation = values[outcome_key].corr(values[predictor_key])
+        return bool(np.isfinite(correlation) and abs(float(correlation)) < 0.999999)
 
     @staticmethod
     def _rank(

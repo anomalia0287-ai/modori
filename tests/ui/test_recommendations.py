@@ -160,7 +160,7 @@ def test_recommendation_service_returns_no_default_without_safe_candidate() -> N
 def test_recommendation_service_explains_caution_only_state() -> None:
     frame = pd.DataFrame(
         {
-            "score": [1, 2, 3, 4, 5, 6],
+            "score": [1, 2, 2, 4, 5, 5],
             "age": [18, 20, 22, 24, 26, 28],
         }
     )
@@ -174,10 +174,56 @@ def test_recommendation_service_explains_caution_only_state() -> None:
     assert state.message_ko == "주의가 필요한 후보만 찾았습니다. 직접 확인한 뒤 선택해 주세요."
 
 
-def test_caution_candidates_are_not_default_when_stronger_candidates_exist() -> None:
+def test_regression_caution_candidates_exclude_perfect_linear_pairs() -> None:
+    frame = pd.DataFrame(
+        {
+            "score": [1, 2, 3, 4, 5, 6],
+            "age": [18, 20, 22, 24, 26, 28],
+        }
+    )
+
+    state = RecommendationService().recommend(_dataset(frame))
+
+    assert not any(candidate.kind == "regression" for candidate in state.candidates)
+
+
+def test_regression_caution_candidates_exclude_non_finite_values() -> None:
+    frame = pd.DataFrame(
+        {
+            "score": [1.2, 2.1, 2.4, 3.0, 3.8, 4.1, 4.0, 4.7, 5.2, 5.0, 5.8, 6.1],
+            "age": [18, 19, 20, 21, 22, float("inf"), 24, 25, 26, 27, 28, 29],
+        }
+    )
+
+    state = RecommendationService().recommend(_dataset(frame))
+
+    assert not any(candidate.kind == "regression" for candidate in state.candidates)
+
+
+def test_regression_caution_candidates_require_scale_outcome() -> None:
     frame = pd.DataFrame(
         {
             "A1": [1, 2, 3, 4, 5, 6],
+            "age": [18, 20, 22, 24, 26, 28],
+        }
+    )
+    dataset = Dataset(
+        df=frame,
+        variables={
+            "A1": _variable("A1", Measure.ORDINAL, "int64"),
+            "age": _variable("age", Measure.SCALE, "int64"),
+        },
+    )
+
+    state = RecommendationService().recommend(dataset)
+
+    assert not any(candidate.kind == "regression" for candidate in state.candidates)
+
+
+def test_caution_candidates_are_not_default_when_stronger_candidates_exist() -> None:
+    frame = pd.DataFrame(
+        {
+            "A1": [1, 2, 2, 4, 5, 5],
             "A2": [1, 2, 3, 4, 5, 6],
             "A3": [1, 2, 3, 4, 5, 6],
             "age": [18, 20, 22, 24, 26, 28],
