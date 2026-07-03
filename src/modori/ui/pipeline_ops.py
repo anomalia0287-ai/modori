@@ -84,13 +84,19 @@ class PipelineOperations:
     ) -> None:
         if self._pipeline is None or not hasattr(self._pipeline, "add"):
             raise RuntimeError("Pipeline does not support analysis step replacement")
+        analysis_step = self._analysis_step(step_id, step_type, params)
+        snapshot = self._snapshot_pipeline_state()
         preserved_steps = [
             step for step in self.steps() if self._step_type(step) not in self._managed_step_types()
         ]
-        self._replace_steps_preserving_cached_imports(preserved_steps)
-        analysis_step = self._analysis_step(step_id, step_type, params)
-        self._pipeline.add(analysis_step)
-        self._pipeline.add(self._report_step_for_analysis(analysis_step, params))
+        try:
+            self._replace_steps_preserving_cached_imports(preserved_steps)
+            self._recompute_preserved_steps()
+            self._pipeline.add(analysis_step)
+            self._pipeline.add(self._report_step_for_analysis(analysis_step, params))
+        except Exception:
+            self._restore_pipeline_state(snapshot)
+            raise
 
     def insert_metadata_step(self, variable_key: str, step: object) -> None:
         after_step_id = self.metadata_insert_after_step_id(variable_key)
@@ -195,6 +201,62 @@ class PipelineOperations:
                     attr,
                     {key: value for key, value in cache.items() if key in preserved_ids},
                 )
+
+    def _recompute_preserved_steps(self) -> None:
+        recompute = getattr(self._pipeline, "recompute", None)
+        if callable(recompute):
+            recompute(dirty_from=None)
+            return
+        if hasattr(self._pipeline, "source_dataset"):
+            self._pipeline.current_dataset = self._pipeline.source_dataset
+            self._pipeline.analysis_objects = {}
+            return
+        raise RuntimeError("Pipeline does not support preserved step recompute")
+
+    def _snapshot_pipeline_state(self) -> tuple[str, object]:
+        snapshot_state = getattr(self._pipeline, "_snapshot_state", None)
+        restore_state = getattr(self._pipeline, "_restore_state", None)
+        if callable(snapshot_state) and callable(restore_state):
+            return ("pipeline", snapshot_state())
+        snapshot: dict[str, object] = {}
+        for attr in (
+            "source_dataset",
+            "steps",
+            "current_dataset",
+            "analysis_objects",
+            "_result_cache",
+            "_writes_cache",
+            "_dirty_keys_cache",
+            "step_results",
+        ):
+            if not hasattr(self._pipeline, attr):
+                continue
+            value = getattr(self._pipeline, attr)
+            if attr == "steps" and isinstance(value, list):
+                snapshot[attr] = list(value)
+            elif isinstance(value, dict):
+                snapshot[attr] = self._copy_cache(value)
+            else:
+                snapshot[attr] = value
+        return ("attrs", snapshot)
+
+    def _restore_pipeline_state(self, snapshot: tuple[str, object]) -> None:
+        kind, state = snapshot
+        if kind == "pipeline":
+            restore_state = getattr(self._pipeline, "_restore_state", None)
+            if callable(restore_state):
+                restore_state(state)
+                return
+        if isinstance(state, dict):
+            for attr, value in state.items():
+                setattr(self._pipeline, attr, value)
+
+    @staticmethod
+    def _copy_cache(cache: dict[object, object]) -> dict[object, object]:
+        return {
+            key: set(value) if isinstance(value, set) else value
+            for key, value in cache.items()
+        }
 
     @staticmethod
     def _analysis_step(step_id: str, step_type: str, params: dict[str, Any]) -> object:
