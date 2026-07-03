@@ -13,9 +13,20 @@ class RunValidationResult:
 
 
 class RunConfigurationValidator:
+    _ANALYSIS_STEP_TYPES = {
+        "stats.reliability",
+        "stats.compare_groups",
+        "stats.regression_ols",
+    }
+
     def validate(self, pipeline_ops: object) -> RunValidationResult:
         variable_keys = self._variable_keys(pipeline_ops)
-        for step in self._steps(pipeline_ops):
+        steps = self._steps(pipeline_ops)
+        if steps and not any(
+            self._step_type(step) in self._ANALYSIS_STEP_TYPES for step in steps
+        ):
+            return self._invalid("실행할 분석이 없습니다. 추천 분석을 선택하거나 변수를 지정해 주세요.")
+        for step in steps:
             step_type = self._step_type(step)
             params = self._step_params(step)
             if step_type == "stats.reliability":

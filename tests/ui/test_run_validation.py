@@ -90,6 +90,20 @@ def test_validator_rejects_too_few_reliability_items() -> None:
     assert_invalid(result, "세 개 이상의 문항")
 
 
+def test_validator_rejects_pipeline_without_analysis_steps() -> None:
+    result = validate(
+        [
+            {
+                "step_type": "import.table",
+                "params": {"path": "survey.csv"},
+            }
+        ],
+        {"q1", "q2", "q3"},
+    )
+
+    assert_invalid(result, "실행할 분석")
+
+
 @pytest.mark.parametrize(
     ("step_type", "params", "variable_keys"),
     [

@@ -622,6 +622,32 @@ def test_rerun_blocks_blank_regression_predictor_before_worker_submit() -> None:
     assert controller.status == "ready"
 
 
+def test_rerun_blocks_import_only_pipeline_before_worker_submit() -> None:
+    from modori.ui.controller import UiController
+
+    class Step:
+        id = "import"
+        step_type = "import.table"
+        params = {"path": "survey.csv"}
+
+    class ImportOnlyPipeline:
+        steps = [Step()]
+        variable_keys = {"q1", "q2", "q3"}
+
+    class RaisingWorker:
+        def submit(self, *, run_id, pipeline_version, job):
+            raise AssertionError("worker must not be submitted without an analysis step")
+
+    controller = UiController(pipeline=ImportOnlyPipeline(), worker=RaisingWorker())
+
+    result = controller.rerun()
+
+    assert result.ok is False
+    assert result.error_code == "invalid_run_configuration"
+    assert "실행할 분석" in controller.lastError
+    assert controller.status == "ready"
+
+
 def test_rerun_blocks_duplicate_regression_predictors_before_worker_submit() -> None:
     from modori.ui.controller import UiController
 
