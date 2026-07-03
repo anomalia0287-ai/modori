@@ -24,11 +24,13 @@ def test_controller_exposes_qml_operated_bridge(tmp_path) -> None:
 def test_main_qml_wires_entry_file_dialog_and_work_transition() -> None:
     main = qml_text("Main.qml")
     entry = qml_text("screens/EntryScreen.qml")
+    work = qml_text("screens/WorkScreen.qml")
 
     assert "FileDialog" in main
     assert "uiController.previewDataFilePath" in main
     assert "uiController.confirmPendingImport" in main
-    assert "uiController.rerunNow" in main
+    assert "onClicked: uiController.rerunNow()" in work
+    assert "onRerunRequested: uiController.rerunNow()" in work
     assert "currentScreen" in main
     assert "currentScreen = \"work\"" in main
     assert "guidedRequested" in entry
