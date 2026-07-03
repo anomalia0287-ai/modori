@@ -353,3 +353,29 @@ def test_run_prepared_recommendation_applies_selection_before_worker_submit(tmp_
     assert result.ok is True
     assert controller.pipeline.steps[0].params["items"] == ["A1", "A2", "A3"]
     assert len(worker.calls) == 1
+
+
+def test_rerun_blocks_unknown_columns_before_worker_submit() -> None:
+    from modori.ui.controller import UiController
+
+    class Step:
+        id = "reliability"
+        step_type = "stats.reliability"
+        params = {"items": ["q1", "q2", "missing"], "scale_name": "bad_scale"}
+
+    class PipelineWithBadReliability:
+        steps = [Step()]
+        variable_keys = {"q1", "q2"}
+
+    class RaisingWorker:
+        def submit(self, *, run_id, pipeline_version, job):
+            raise AssertionError("worker must not be submitted for invalid run configuration")
+
+    controller = UiController(pipeline=PipelineWithBadReliability(), worker=RaisingWorker())
+
+    result = controller.rerun()
+
+    assert result.ok is False
+    assert result.error_code == "invalid_run_configuration"
+    assert "알 수 없는 변수" in controller.lastError
+    assert controller.status == "ready"

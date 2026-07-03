@@ -16,6 +16,7 @@ from modori.ui.pipeline_ops import PipelineOperations
 from modori.ui.recommendations import RecommendationService
 from modori.ui.report_export import ReportExportService
 from modori.ui.result_binding import ResultBindingPresenter
+from modori.ui.run_validation import RunConfigurationValidator
 
 
 PipelineFactory = Callable[[Path, ImportOptions], object]
@@ -34,6 +35,7 @@ class UiControllerServices:
     explanation_service: ExplanationService
     explanation_presenter: ExplanationPresenter
     recommendation_service: RecommendationService
+    run_validator: RunConfigurationValidator
 
     @classmethod
     def build(
@@ -60,6 +62,7 @@ class UiControllerServices:
             ),
             explanation_presenter=ExplanationPresenter(),
             recommendation_service=RecommendationService(),
+            run_validator=RunConfigurationValidator(),
         )
 
     def replace_pipeline(self, pipeline: object | None) -> None:

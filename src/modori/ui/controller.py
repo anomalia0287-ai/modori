@@ -491,6 +491,12 @@ class UiController(QObject):
     def rerun(self) -> CommandResult:
         if self.pipeline is None:
             return self._command_error("다시 실행할 분석이 없습니다.", "no_pipeline")
+        validation = self._services.run_validator.validate(self._services.pipeline_ops)
+        if not validation.ok:
+            return self._command_error(
+                validation.message_ko,
+                validation.error_code or "invalid_run_configuration",
+            )
         run_id = self._run_tracker.submit(
             worker=self._worker,
             pipeline_version=self._pipeline_state.pipeline_version,
