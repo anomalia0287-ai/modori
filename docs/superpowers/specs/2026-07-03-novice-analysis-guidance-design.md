@@ -46,6 +46,7 @@ Out of scope for the first implementation:
 - Full natural-language statistical tutoring.
 - Supporting every possible statistical design.
 - Automatically claiming a recommendation is the user's research intent.
+- Post-result automatic recommendation loops such as "run this next analysis".
 
 ## UX Model
 
@@ -83,6 +84,8 @@ disable analysis execution and show a plain-language reason.
   `가능한 후보` candidate exists.
 - Import success, recommendation presence, user-requested run, validation
   failure, and engine failure are represented as separate states.
+- After an engine run completes, Modori performs result integrity checks before
+  display, but it does not automatically recommend a next analysis.
 
 ## Recommendation Display
 
@@ -194,6 +197,11 @@ Examples:
 Engine exceptions may still occur, but ordinary invalid variable choices should
 not surface as only `Engine execution error`.
 
+After calculation, the app checks that the result payload is present, contains
+the expected fields for the selected analysis, and can be rendered. Failed result
+integrity checks are shown as result-display failures, not as new
+recommendations.
+
 ## Acceptance Criteria
 
 - Importing CSV/XLSX/SAV visible fixtures opens the preview/confirmation flow.
@@ -212,6 +220,8 @@ not surface as only `Engine execution error`.
 - Choosing another recommendation never starts analysis.
 - `주의 필요` candidates are not used as the default when stronger candidates
   exist.
+- Completed calculations run result integrity checks before display.
+- Completed calculations do not trigger automatic next-analysis recommendations.
 - Clean VM QA can distinguish:
   - import success;
   - recommendation presence;
@@ -235,6 +245,10 @@ Add focused tests for:
 - Dataset replacement clears stale recommendations.
 - `주의 필요` candidates are excluded from default selection when `강한 추천` or
   `가능한 후보` candidates exist.
+- Result-display validation distinguishes missing/invalid result payloads from
+  engine execution failures.
+- Successful calculation does not generate automatic next-analysis
+  recommendations.
 - QML exposes the preparation panel actions: run selected recommendation, show
   other recommendations, choose manually.
 
