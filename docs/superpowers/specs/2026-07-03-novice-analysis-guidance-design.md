@@ -63,6 +63,27 @@ The app must not call `rerunNow()` automatically from the import confirmation
 flow. Analysis starts only after the user selects or accepts a configuration and
 clicks an explicit run action.
 
+## Safety Invariants
+
+These invariants are mandatory. If an invariant cannot be satisfied, the UI must
+disable analysis execution and show a plain-language reason.
+
+- Analysis never starts from import confirmation, preview loading, table loading,
+  variable view loading, or recommendation generation.
+- Analysis starts only from an explicit user run action.
+- The run action re-validates the currently selected configuration immediately
+  before calling the engine worker.
+- The engine worker must not receive unknown columns, empty required roles, or
+  invalid role combinations from the recommendation/manual-selection path.
+- Recommendation candidates are derived from the current imported schema and are
+  discarded when the dataset changes.
+- Choosing another recommendation only updates the prepared configuration and
+  reason text. It never triggers analysis.
+- A `주의 필요` candidate is never selected as the default while any `강한 추천` or
+  `가능한 후보` candidate exists.
+- Import success, recommendation presence, user-requested run, validation
+  failure, and engine failure are represented as separate states.
+
 ## Recommendation Display
 
 The panel shows a single default recommendation first:
@@ -155,7 +176,10 @@ Analysis validation:
 
 ## Error Handling
 
-Invalid configurations must be blocked before engine execution when possible.
+Invalid configurations known from imported metadata must be blocked before
+engine execution. If validity cannot be determined confidently, the UI must mark
+the candidate as `주의 필요` and require an explicit user run action after showing
+the reason.
 
 Examples:
 
@@ -182,6 +206,12 @@ not surface as only `Engine execution error`.
 - Each recommendation shows a short reason.
 - Running an invalid recommendation is blocked before the engine worker when the
   invalidity is knowable from imported metadata.
+- The run action re-validates the selected configuration immediately before
+  engine execution.
+- Dataset changes discard stale recommendation candidates.
+- Choosing another recommendation never starts analysis.
+- `주의 필요` candidates are not used as the default when stronger candidates
+  exist.
 - Clean VM QA can distinguish:
   - import success;
   - recommendation presence;
@@ -200,6 +230,11 @@ Add focused tests for:
 - Recommendation service returns no forced default when no safe candidate exists.
 - Selecting an alternative recommendation updates the prepared fields and reason
   text without running analysis.
+- Run action validation blocks unknown columns, missing required roles, and
+  invalid role combinations before the engine worker is called.
+- Dataset replacement clears stale recommendations.
+- `주의 필요` candidates are excluded from default selection when `강한 추천` or
+  `가능한 후보` candidates exist.
 - QML exposes the preparation panel actions: run selected recommendation, show
   other recommendations, choose manually.
 
