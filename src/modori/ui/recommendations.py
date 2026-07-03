@@ -84,7 +84,9 @@ class RecommendationService:
         non_missing = series.dropna()
         if len(series) == 0 or len(non_missing) / len(series) < 0.5:
             return False
-        return non_missing.nunique(dropna=True) > 1
+        if non_missing.nunique(dropna=True) <= 1:
+            return False
+        return non_missing.value_counts(normalize=True).iloc[0] < 0.95
 
     @staticmethod
     def _is_survey_numeric(series: pd.Series) -> bool:

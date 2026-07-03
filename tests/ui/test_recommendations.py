@@ -72,6 +72,24 @@ def test_recommendation_service_produces_two_group_comparison_candidate() -> Non
     assert "두 집단" in comparison.reason_ko
 
 
+def test_recommendation_service_excludes_near_constant_group_columns() -> None:
+    frame = pd.DataFrame(
+        {
+            "score": [index % 5 + 1 for index in range(100)],
+            "gender": [1] * 98 + [2] * 2,
+        }
+    )
+
+    state = RecommendationService().recommend(_dataset(frame))
+
+    assert not any(
+        candidate.kind == "comparison" and candidate.group_key == "gender"
+        for candidate in state.candidates
+    )
+    assert state.default_candidate is None
+    assert state.message_ko == "안전하게 추천할 분석을 찾지 못했습니다. 직접 변수를 선택해 주세요."
+
+
 def test_recommendation_service_returns_no_default_without_safe_candidate() -> None:
     frame = pd.DataFrame(
         {
