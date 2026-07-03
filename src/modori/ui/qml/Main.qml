@@ -46,7 +46,6 @@ ApplicationWindow {
         onRecentFileRequested: {
             if (uiController.openRecentFileAt(index)) {
                 root.currentScreen = "work"
-                uiController.rerunNow()
             }
         }
     }
@@ -64,7 +63,6 @@ ApplicationWindow {
         onImportAccepted: {
             if (uiController.confirmPendingImport()) {
                 root.currentScreen = "work"
-                uiController.rerunNow()
                 importDialog.close()
             }
         }

@@ -5,6 +5,12 @@ def qml_text(relative: str) -> str:
     return Path("src/modori/ui/qml").joinpath(relative).read_text(encoding="utf-8")
 
 
+def _qml_block(text: str, start_marker: str, end_marker: str) -> str:
+    start = text.index(start_marker)
+    end = text.index(end_marker, start)
+    return text[start:end]
+
+
 def test_controller_previews_file_before_confirming_import(tmp_path) -> None:
     from tests.ui.test_end_to_end_ui_flow import write_reference_csv
     from modori.ui.controller import UiController
@@ -31,3 +37,13 @@ def test_main_qml_uses_import_dialog_before_importing() -> None:
     assert "uiController.confirmPendingImport" in main
     assert "uiController.importPreviewText" in dialog
     assert "dialog.import.confirm" in dialog
+
+
+def test_import_and_recent_file_paths_do_not_start_analysis_automatically() -> None:
+    main = qml_text("Main.qml")
+
+    recent_block = _qml_block(main, "onRecentFileRequested:", "WorkScreen")
+    import_block = _qml_block(main, "onImportAccepted:", "ReportExportDialog")
+
+    assert "uiController.rerunNow()" not in recent_block
+    assert "uiController.rerunNow()" not in import_block
