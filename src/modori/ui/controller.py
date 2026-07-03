@@ -13,6 +13,7 @@ from modori.ui.paths import local_path_from_qml
 from modori.ui.pipeline_ops import PipelineOperations
 from modori.ui.pipeline_state import UiPipelineState
 from modori.ui.preview_models import models_for_dataset, models_for_table_preview
+from modori.ui.recommendations import RecommendationCandidate, RecommendationState
 from modori.ui.result_state import UiResultState
 from modori.ui.run_tracker import UiRunTracker
 from modori.ui.session import UiSessionState
@@ -62,6 +63,12 @@ class UiController(QObject):
         self._data_model = None
         self._variable_model = None
         self._data_view_notice = ""
+        self._recommendation_state = RecommendationState(
+            candidates=[],
+            default_candidate=None,
+            selected_candidate=None,
+            message_ko="",
+        )
         self.resultsModel: list[Any] = self._result_state.results_model
         self._run_tracker = UiRunTracker()
         self._worker = worker or SerializedEngineWorker()
@@ -151,6 +158,58 @@ class UiController(QObject):
     def variableModel(self) -> QObject | None:
         return self._variable_model
 
+    @Property(str, notify=stateChanged)
+    def recommendationTitle(self) -> str:
+        candidate = self._recommendation_state.selected_candidate
+        return "" if candidate is None else candidate.title_ko
+
+    @Property(str, notify=stateChanged)
+    def recommendationLevel(self) -> str:
+        candidate = self._recommendation_state.selected_candidate
+        return "" if candidate is None else candidate.level
+
+    @Property(str, notify=stateChanged)
+    def recommendationReason(self) -> str:
+        candidate = self._recommendation_state.selected_candidate
+        if candidate is None:
+            return self._recommendation_state.message_ko
+        return candidate.reason_ko
+
+    @Property(str, notify=stateChanged)
+    def recommendationAlternativesText(self) -> str:
+        return "\n".join(
+            f"{index}. {candidate.title_ko} | {candidate.level}"
+            for index, candidate in enumerate(self._recommendation_state.candidates)
+        )
+
+    @Property(int, notify=stateChanged)
+    def recommendationCount(self) -> int:
+        return len(self._recommendation_state.candidates)
+
+    @Property(str, notify=stateChanged)
+    def preparedReliabilityItems(self) -> str:
+        candidate = self._recommendation_state.selected_candidate
+        if candidate is None or candidate.kind != "reliability":
+            return ""
+        return ", ".join(candidate.item_keys)
+
+    @Property(str, notify=stateChanged)
+    def preparedOutcomeKey(self) -> str:
+        candidate = self._recommendation_state.selected_candidate
+        return "" if candidate is None else candidate.outcome_key
+
+    @Property(str, notify=stateChanged)
+    def preparedGroupKey(self) -> str:
+        candidate = self._recommendation_state.selected_candidate
+        return "" if candidate is None else candidate.group_key
+
+    @Property(str, notify=stateChanged)
+    def preparedPredictorKeys(self) -> str:
+        candidate = self._recommendation_state.selected_candidate
+        if candidate is None:
+            return ""
+        return ", ".join(candidate.predictor_keys)
+
     def setMode(self, mode: str) -> CommandResult:
         if mode not in {"guided", "standard"}:
             return self._command_error("지원하지 않는 모드입니다.", "invalid_mode")
@@ -218,6 +277,7 @@ class UiController(QObject):
             pipeline_version=self._pipeline_state.pipeline_version,
         )
         if not load_result.command.ok:
+            self._clear_recommendations()
             self._last_error = load_result.command.message_ko
             self._last_message = ""
             self._pipeline_state.mark_ready_unless_empty()
@@ -226,6 +286,7 @@ class UiController(QObject):
 
         self.pipeline = load_result.pipeline
         self._services.replace_pipeline(load_result.pipeline)
+        self._refresh_recommendations()
         if load_result.path is not None:
             self._remember_recent_file(load_result.path)
         self._pipeline_state.mark_pipeline_replaced(self._services.pipeline_ops)
@@ -278,6 +339,7 @@ class UiController(QObject):
     def confirmPendingImport(self) -> bool:
         pending_path = self._services.import_flow.require_pending_path()
         if pending_path is None:
+            self._clear_recommendations()
             self._last_error = self._services.import_flow.preview_text
             self._last_message = ""
             self.stateChanged.emit()
@@ -369,6 +431,62 @@ class UiController(QObject):
     @Slot(str, str, result=bool)
     def configureRegressionFromText(self, outcome_key: str, predictor_keys_text: str) -> bool:
         return self.configureRegressionSelection(outcome_key, predictor_keys_text).ok
+
+    @Slot(int, result=bool)
+    def selectRecommendationAt(self, index: int) -> bool:
+        if index < 0 or index >= len(self._recommendation_state.candidates):
+            self._last_error = "추천 후보를 찾을 수 없습니다."
+            self._last_message = ""
+            self.stateChanged.emit()
+            return False
+        selected = self._recommendation_state.candidates[index]
+        self._recommendation_state = RecommendationState(
+            candidates=self._recommendation_state.candidates,
+            default_candidate=self._recommendation_state.default_candidate,
+            selected_candidate=selected,
+            message_ko=self._recommendation_state.message_ko,
+        )
+        self._last_error = ""
+        self._last_message = "추천 후보를 선택했습니다."
+        self.stateChanged.emit()
+        return True
+
+    @Slot(int, result=str)
+    def recommendationCandidateTitleAt(self, index: int) -> str:
+        if index < 0 or index >= len(self._recommendation_state.candidates):
+            return ""
+        return self._recommendation_state.candidates[index].title_ko
+
+    @Slot(int, result=str)
+    def recommendationCandidateLevelAt(self, index: int) -> str:
+        if index < 0 or index >= len(self._recommendation_state.candidates):
+            return ""
+        return self._recommendation_state.candidates[index].level
+
+    def applySelectedRecommendation(self) -> CommandResult:
+        candidate: RecommendationCandidate | None = self._recommendation_state.selected_candidate
+        if candidate is None:
+            return self._command_error("실행할 추천 분석이 없습니다.", "no_recommendation")
+        if candidate.kind == "reliability":
+            return self.configureReliabilitySelection(", ".join(candidate.item_keys))
+        if candidate.kind == "comparison":
+            return self.configureComparisonSelection(candidate.outcome_key, candidate.group_key)
+        if candidate.kind == "regression":
+            return self.configureRegressionSelection(
+                candidate.outcome_key,
+                ", ".join(candidate.predictor_keys),
+            )
+        return self._command_error("지원하지 않는 추천 분석입니다.", "invalid_recommendation")
+
+    @Slot(result=bool)
+    def runPreparedRecommendationNow(self) -> bool:
+        return self.runPreparedRecommendation().ok
+
+    def runPreparedRecommendation(self) -> CommandResult:
+        applied = self.applySelectedRecommendation()
+        if not applied.ok:
+            return applied
+        return self.rerun()
 
     def rerun(self) -> CommandResult:
         if self.pipeline is None:
@@ -556,6 +674,19 @@ class UiController(QObject):
         self._variable_model = models.variable_model
         self._data_view_notice = models.notice
 
+    def _refresh_recommendations(self) -> None:
+        self._recommendation_state = self._services.recommendation_service.recommend(
+            self._services.pipeline_ops.current_dataset()
+        )
+
+    def _clear_recommendations(self) -> None:
+        self._recommendation_state = RecommendationState(
+            candidates=[],
+            default_candidate=None,
+            selected_candidate=None,
+            message_ko="",
+        )
+
     def _bind_import_preview_models(self, path: Path) -> bool:
         import_flow = self._services.import_flow
         if import_flow.pending_path != path or import_flow.table_preview is None:
@@ -572,4 +703,3 @@ class UiController(QObject):
 
     def _remember_recent_file(self, path: Path) -> None:
         self._session.remember_recent_file(path)
-

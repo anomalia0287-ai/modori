@@ -163,3 +163,183 @@ def test_open_data_file_failure_leaves_previous_pipeline_untouched(tmp_path) -> 
     assert result.error_code == "engine_error"
     assert controller.pipeline is previous
     assert controller.pipeline_version == 0
+
+
+def test_open_data_file_populates_recommendation_without_running_worker(tmp_path) -> None:
+    import pandas as pd
+
+    from modori.core import Dataset, Measure, Variable
+    from modori.ui.contracts import ImportOptions
+    from modori.ui.controller import UiController
+
+    class FakeWorker:
+        def __init__(self) -> None:
+            self.calls = []
+
+        def submit(self, *, run_id, pipeline_version, job):
+            self.calls.append((run_id, pipeline_version, job))
+            raise AssertionError("worker must not run during import")
+
+    class PipelineWithDataset:
+        def __init__(self) -> None:
+            frame = pd.DataFrame(
+                {
+                    "A1": [1, 2, 3, 4, 5],
+                    "A2": [1, 2, 3, 4, 5],
+                    "A3": [1, 2, 3, 4, 5],
+                }
+            )
+            self.current_dataset = Dataset(
+                df=frame,
+                variables={
+                    column: Variable(
+                        name=column,
+                        label=None,
+                        measure=Measure.SCALE,
+                        value_labels={},
+                        missing_values=[],
+                        dtype="int64",
+                        origin_step_id="import",
+                    )
+                    for column in frame.columns
+                },
+            )
+            self.steps = []
+            self.variable_keys = set(frame.columns)
+
+    worker = FakeWorker()
+    controller = UiController(
+        pipeline_factory=lambda path, options: PipelineWithDataset(),
+        worker=worker,
+    )
+
+    result = controller.openDataFile(tmp_path / "survey.csv", ImportOptions(confirm_new_session=True))
+
+    assert result.ok is True
+    assert controller.recommendationTitle.startswith("신뢰도 분석")
+    assert controller.recommendationLevel in {"강한 추천", "가능한 후보"}
+    assert "접두사" in controller.recommendationReason
+    assert controller.recommendationAlternativesText
+    assert worker.calls == []
+
+
+def test_select_recommendation_updates_prepared_fields_without_running(tmp_path) -> None:
+    import pandas as pd
+
+    from modori.core import Dataset, Measure, Variable
+    from modori.ui.contracts import ImportOptions
+    from modori.ui.controller import UiController
+
+    class PipelineWithDataset:
+        def __init__(self) -> None:
+            frame = pd.DataFrame(
+                {
+                    "A1": [1, 2, 3, 4, 5],
+                    "A2": [1, 2, 3, 4, 5],
+                    "A3": [1, 2, 3, 4, 5],
+                    "C1": [1, 2, 3, 4, 5],
+                    "C2": [1, 2, 3, 4, 5],
+                    "C3": [1, 2, 3, 4, 5],
+                }
+            )
+            self.current_dataset = Dataset(
+                df=frame,
+                variables={
+                    column: Variable(
+                        name=column,
+                        label=None,
+                        measure=Measure.SCALE,
+                        value_labels={},
+                        missing_values=[],
+                        dtype="int64",
+                        origin_step_id="import",
+                    )
+                    for column in frame.columns
+                },
+            )
+            self.steps = []
+            self.variable_keys = set(frame.columns)
+
+    controller = UiController(pipeline_factory=lambda path, options: PipelineWithDataset())
+    controller.openDataFile(tmp_path / "survey.csv", ImportOptions(confirm_new_session=True))
+    before_version = controller.pipeline_version
+
+    assert controller.selectRecommendationAt(1) is True
+
+    assert controller.recommendationTitle.startswith("신뢰도 분석")
+    assert controller.preparedReliabilityItems in {"A1, A2, A3", "C1, C2, C3"}
+    assert controller.pipeline_version == before_version
+    assert controller.status == "ready"
+
+
+def test_run_prepared_recommendation_applies_selection_before_worker_submit(tmp_path) -> None:
+    import pandas as pd
+
+    from modori.core import Dataset, Measure, Variable
+    from modori.ui.contracts import ImportOptions
+    from modori.ui.controller import UiController
+
+    class Step:
+        id = "reliability"
+        step_type = "stats.reliability"
+        title = "Reliability"
+        params = {"items": ["old1", "old2", "old3"], "scale_name": "selected_scale"}
+
+    class PipelineWithReliability:
+        def __init__(self) -> None:
+            frame = pd.DataFrame(
+                {
+                    "A1": [1, 2, 3, 4, 5],
+                    "A2": [1, 2, 3, 4, 5],
+                    "A3": [1, 2, 3, 4, 5],
+                }
+            )
+            self.current_dataset = Dataset(
+                df=frame,
+                variables={
+                    column: Variable(
+                        name=column,
+                        label=None,
+                        measure=Measure.SCALE,
+                        value_labels={},
+                        missing_values=[],
+                        dtype="int64",
+                        origin_step_id="import",
+                    )
+                    for column in frame.columns
+                },
+            )
+            self.steps = [Step()]
+            self.variable_keys = set(frame.columns)
+            self.analysis_objects = {}
+
+        def edit_params(self, step_id, params):
+            self.steps[0].params = dict(params)
+
+        def recompute(self, dirty_from):
+            self.analysis_objects = {}
+
+    class FakeFuture:
+        def add_done_callback(self, callback):
+            self.callback = callback
+
+    class FakeWorker:
+        def __init__(self) -> None:
+            self.calls = []
+
+        def submit(self, *, run_id, pipeline_version, job):
+            self.calls.append((run_id, pipeline_version, job))
+            return FakeFuture()
+
+    worker = FakeWorker()
+    controller = UiController(
+        pipeline_factory=lambda path, options: PipelineWithReliability(),
+        worker=worker,
+    )
+    controller.openDataFile(tmp_path / "survey.csv", ImportOptions(confirm_new_session=True))
+
+    result = controller.runPreparedRecommendation()
+
+    assert result.ok is True
+    assert controller.pipeline.steps[0].params["items"] == ["A1", "A2", "A3"]
+    assert len(worker.calls) == 1

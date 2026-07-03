@@ -13,6 +13,7 @@ from modori.ui.explanations import ExplanationPresenter
 from modori.ui.import_flow import UiImportFlow
 from modori.ui.metadata_editor import VariableMetadataEditor
 from modori.ui.pipeline_ops import PipelineOperations
+from modori.ui.recommendations import RecommendationService
 from modori.ui.report_export import ReportExportService
 from modori.ui.result_binding import ResultBindingPresenter
 
@@ -32,6 +33,7 @@ class UiControllerServices:
     result_binding_presenter: ResultBindingPresenter
     explanation_service: ExplanationService
     explanation_presenter: ExplanationPresenter
+    recommendation_service: RecommendationService
 
     @classmethod
     def build(
@@ -57,6 +59,7 @@ class UiControllerServices:
                 library_factory=(lambda: library) if library is not None else None
             ),
             explanation_presenter=ExplanationPresenter(),
+            recommendation_service=RecommendationService(),
         )
 
     def replace_pipeline(self, pipeline: object | None) -> None:
