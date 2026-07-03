@@ -379,3 +379,55 @@ def test_rerun_blocks_unknown_columns_before_worker_submit() -> None:
     assert result.error_code == "invalid_run_configuration"
     assert "알 수 없는 변수" in controller.lastError
     assert controller.status == "ready"
+
+
+def test_rerun_blocks_blank_reliability_item_before_worker_submit() -> None:
+    from modori.ui.controller import UiController
+
+    class Step:
+        id = "reliability"
+        step_type = "stats.reliability"
+        params = {"items": ["q1", "q2", "q3", ""], "scale_name": "bad_scale"}
+
+    class PipelineWithBlankReliabilityItem:
+        steps = [Step()]
+        variable_keys = {"q1", "q2", "q3"}
+
+    class RaisingWorker:
+        def submit(self, *, run_id, pipeline_version, job):
+            raise AssertionError("worker must not be submitted for invalid run configuration")
+
+    controller = UiController(pipeline=PipelineWithBlankReliabilityItem(), worker=RaisingWorker())
+
+    result = controller.rerun()
+
+    assert result.ok is False
+    assert result.error_code == "invalid_run_configuration"
+    assert "문자열" in controller.lastError
+    assert controller.status == "ready"
+
+
+def test_rerun_blocks_blank_regression_predictor_before_worker_submit() -> None:
+    from modori.ui.controller import UiController
+
+    class Step:
+        id = "regression"
+        step_type = "stats.regression_ols"
+        params = {"dv": "score", "predictors": ["q1", ""], "regression_policy": {"preset": "modern"}}
+
+    class PipelineWithBlankRegressionPredictor:
+        steps = [Step()]
+        variable_keys = {"score", "q1"}
+
+    class RaisingWorker:
+        def submit(self, *, run_id, pipeline_version, job):
+            raise AssertionError("worker must not be submitted for invalid run configuration")
+
+    controller = UiController(pipeline=PipelineWithBlankRegressionPredictor(), worker=RaisingWorker())
+
+    result = controller.rerun()
+
+    assert result.ok is False
+    assert result.error_code == "invalid_run_configuration"
+    assert "문자열" in controller.lastError
+    assert controller.status == "ready"

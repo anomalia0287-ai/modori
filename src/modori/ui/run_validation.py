@@ -35,7 +35,9 @@ class RunConfigurationValidator:
         params: Mapping[str, Any],
         variable_keys: set[str] | None,
     ) -> RunValidationResult:
-        items = self._string_list(params.get("items"))
+        items, error = self._string_list(params.get("items"), "신뢰도 문항 변수")
+        if error is not None:
+            return error
         if not items:
             return self._invalid("신뢰도 분석에는 문항 변수가 필요합니다.")
         if len(items) < 3:
@@ -61,7 +63,12 @@ class RunConfigurationValidator:
         variable_keys: set[str] | None,
     ) -> RunValidationResult:
         outcome = self._string_value(params.get("dv", params.get("outcome_key")))
-        predictors = self._string_list(params.get("predictors", params.get("predictor_keys")))
+        predictors, error = self._string_list(
+            params.get("predictors", params.get("predictor_keys")),
+            "회귀분석 예측 변수",
+        )
+        if error is not None:
+            return error
         if not outcome or not predictors:
             return self._invalid("회귀분석에는 종속 변수와 예측 변수가 모두 필요합니다.")
         if outcome in predictors:
@@ -128,7 +135,17 @@ class RunConfigurationValidator:
         return value.strip() if isinstance(value, str) else ""
 
     @staticmethod
-    def _string_list(value: object) -> list[str]:
+    def _string_list(
+        value: object,
+        label_ko: str,
+    ) -> tuple[list[str], RunValidationResult | None]:
         if not isinstance(value, list):
-            return []
-        return [item.strip() for item in value if isinstance(item, str) and item.strip()]
+            return [], RunConfigurationValidator._invalid(f"{label_ko}는 문자열 목록이어야 합니다.")
+        values: list[str] = []
+        for item in value:
+            if not isinstance(item, str) or not item.strip():
+                return [], RunConfigurationValidator._invalid(
+                    f"{label_ko}는 비어 있지 않은 문자열 목록이어야 합니다."
+                )
+            values.append(item.strip())
+        return values, None
