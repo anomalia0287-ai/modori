@@ -312,6 +312,36 @@ def test_open_data_file_populates_recommendation_without_running_worker(tmp_path
     assert worker.calls == []
 
 
+def test_default_open_data_file_imports_fixture_for_recommendations_without_worker() -> None:
+    from pathlib import Path
+
+    from modori.ui.contracts import ImportOptions
+    from modori.ui.controller import UiController
+
+    class RaisingWorker:
+        def __init__(self) -> None:
+            self.calls = []
+
+        def submit(self, *, run_id, pipeline_version, job):
+            self.calls.append((run_id, pipeline_version, job))
+            raise AssertionError("worker must not run during import")
+
+    worker = RaisingWorker()
+    controller = UiController(worker=worker)
+
+    result = controller.openDataFile(
+        Path("tests/fixtures/psych_bfi.csv"),
+        ImportOptions(confirm_new_session=True),
+    )
+
+    assert result.ok is True
+    assert controller.pipeline.current_dataset.df.shape[0] > 0
+    assert controller.pipeline.current_dataset.df.shape[1] > 0
+    assert controller.recommendationCount > 0
+    assert controller.recommendationTitle
+    assert worker.calls == []
+
+
 def test_select_recommendation_updates_prepared_fields_without_running(tmp_path) -> None:
     import pandas as pd
 
@@ -444,6 +474,50 @@ def test_run_prepared_recommendation_applies_selection_before_worker_submit(tmp_
     assert len(worker.calls) == 1
 
 
+def test_default_run_prepared_recommendation_builds_real_dataset_pipeline_without_reference_steps() -> None:
+    from pathlib import Path
+
+    from modori.ui.contracts import ImportOptions
+    from modori.ui.controller import UiController
+
+    class FakeFuture:
+        def add_done_callback(self, callback):
+            self.callback = callback
+
+    class InspectingWorker:
+        def __init__(self, controller: UiController) -> None:
+            self.controller = controller
+            self.calls = []
+
+        def submit(self, *, run_id, pipeline_version, job):
+            step_ids = [step.id for step in self.controller.pipeline.steps]
+            params_text = repr([step.params for step in self.controller.pipeline.steps])
+            assert step_ids[0] == "import"
+            assert "reliability" in step_ids
+            assert "reverse-negative-items" not in step_ids
+            assert "compose-job-sat" not in step_ids
+            assert "compare-groups" not in step_ids
+            assert "q3_R" not in params_text
+            assert "job_sat" not in params_text
+            assert "'group'" not in params_text
+            self.calls.append((run_id, pipeline_version, job))
+            return FakeFuture()
+
+    controller = UiController()
+    worker = InspectingWorker(controller)
+    controller._worker = worker
+    opened = controller.openDataFile(
+        Path("tests/fixtures/psych_bfi.csv"),
+        ImportOptions(confirm_new_session=True),
+    )
+    assert opened.ok is True
+
+    result = controller.runPreparedRecommendation()
+
+    assert result.ok is True
+    assert len(worker.calls) == 1
+
+
 def test_rerun_blocks_unknown_columns_before_worker_submit() -> None:
     from modori.ui.controller import UiController
 
@@ -496,6 +570,32 @@ def test_rerun_blocks_blank_reliability_item_before_worker_submit() -> None:
     assert controller.status == "ready"
 
 
+def test_rerun_blocks_duplicate_reliability_items_before_worker_submit() -> None:
+    from modori.ui.controller import UiController
+
+    class Step:
+        id = "reliability"
+        step_type = "stats.reliability"
+        params = {"items": ["q1", "q1", "q2"], "scale_name": "bad_scale"}
+
+    class PipelineWithDuplicateReliabilityItem:
+        steps = [Step()]
+        variable_keys = {"q1", "q2"}
+
+    class RaisingWorker:
+        def submit(self, *, run_id, pipeline_version, job):
+            raise AssertionError("worker must not be submitted for invalid run configuration")
+
+    controller = UiController(pipeline=PipelineWithDuplicateReliabilityItem(), worker=RaisingWorker())
+
+    result = controller.rerun()
+
+    assert result.ok is False
+    assert result.error_code == "invalid_run_configuration"
+    assert "중복" in controller.lastError
+    assert controller.status == "ready"
+
+
 def test_rerun_blocks_blank_regression_predictor_before_worker_submit() -> None:
     from modori.ui.controller import UiController
 
@@ -519,4 +619,34 @@ def test_rerun_blocks_blank_regression_predictor_before_worker_submit() -> None:
     assert result.ok is False
     assert result.error_code == "invalid_run_configuration"
     assert "문자열" in controller.lastError
+    assert controller.status == "ready"
+
+
+def test_rerun_blocks_duplicate_regression_predictors_before_worker_submit() -> None:
+    from modori.ui.controller import UiController
+
+    class Step:
+        id = "regression"
+        step_type = "stats.regression_ols"
+        params = {
+            "dv": "score",
+            "predictors": ["q1", "q1"],
+            "regression_policy": {"preset": "modern"},
+        }
+
+    class PipelineWithDuplicateRegressionPredictor:
+        steps = [Step()]
+        variable_keys = {"score", "q1"}
+
+    class RaisingWorker:
+        def submit(self, *, run_id, pipeline_version, job):
+            raise AssertionError("worker must not be submitted for invalid run configuration")
+
+    controller = UiController(pipeline=PipelineWithDuplicateRegressionPredictor(), worker=RaisingWorker())
+
+    result = controller.rerun()
+
+    assert result.ok is False
+    assert result.error_code == "invalid_run_configuration"
+    assert "중복" in controller.lastError
     assert controller.status == "ready"

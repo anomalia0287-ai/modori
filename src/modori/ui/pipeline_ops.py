@@ -6,6 +6,7 @@ from typing import Any
 
 from modori.ui.contracts import DisplayResult, ReportExportOptions
 from modori.ui.results import display_result_from_engine_result
+from modori.steps import CompareGroupsStep, MultipleRegressionStep, ReliabilityStep, ReportStep
 
 
 class PipelineOperations:
@@ -73,6 +74,23 @@ class PipelineOperations:
         if not self.can_edit_steps():
             raise RuntimeError("Pipeline does not support step editing")
         self._pipeline.edit_params(step_id, params)
+
+    def replace_managed_analysis_steps(
+        self,
+        *,
+        step_id: str,
+        step_type: str,
+        params: dict[str, Any],
+    ) -> None:
+        if self._pipeline is None or not hasattr(self._pipeline, "add"):
+            raise RuntimeError("Pipeline does not support analysis step replacement")
+        preserved_steps = [
+            step for step in self.steps() if self._step_type(step) not in self._managed_step_types()
+        ]
+        self._replace_steps_preserving_cached_imports(preserved_steps)
+        analysis_step = self._analysis_step(step_id, step_type, params)
+        self._pipeline.add(analysis_step)
+        self._pipeline.add(self._report_step_for_analysis(analysis_step, params))
 
     def insert_metadata_step(self, variable_key: str, step: object) -> None:
         after_step_id = self.metadata_insert_after_step_id(variable_key)
@@ -153,6 +171,82 @@ class PipelineOperations:
         if result_id.startswith("regression"):
             return "regression"
         return None
+
+    @staticmethod
+    def _managed_step_types() -> set[str]:
+        return {
+            "data.recode_reverse",
+            "data.compose_scale",
+            "stats.reliability",
+            "stats.compare_groups",
+            "stats.regression_ols",
+            "report.apa",
+        }
+
+    def _replace_steps_preserving_cached_imports(self, preserved_steps: list[object]) -> None:
+        preserved_ids = {self._step_id(step) for step in preserved_steps}
+        self._pipeline.steps = preserved_steps
+        self._pipeline.analysis_objects = {}
+        for attr in ("_result_cache", "_writes_cache", "_dirty_keys_cache", "step_results"):
+            cache = getattr(self._pipeline, attr, None)
+            if isinstance(cache, dict):
+                setattr(
+                    self._pipeline,
+                    attr,
+                    {key: value for key, value in cache.items() if key in preserved_ids},
+                )
+
+    @staticmethod
+    def _analysis_step(step_id: str, step_type: str, params: dict[str, Any]) -> object:
+        if step_type == "stats.reliability":
+            return ReliabilityStep(id=step_id, title="Reliability", params=dict(params))
+        if step_type == "stats.compare_groups":
+            return CompareGroupsStep(id=step_id, title="Compare groups", params=dict(params))
+        if step_type == "stats.regression_ols":
+            return MultipleRegressionStep(
+                id=step_id,
+                title="Multiple linear regression",
+                params=dict(params),
+            )
+        raise RuntimeError(f"Unsupported analysis step type: {step_type}")
+
+    def _report_step_for_analysis(self, analysis_step: object, params: dict[str, Any]) -> ReportStep:
+        return ReportStep(
+            id="report",
+            title="APA report",
+            params={
+                "include": [self._analysis_result_key(analysis_step, params)],
+                "output_dir": str(self._default_output_dir()),
+                "filename": "report.docx",
+                "language": "ko",
+            },
+            input_step_ids=[self._step_id(analysis_step)],
+        )
+
+    def _analysis_result_key(self, analysis_step: object, params: dict[str, Any]) -> str:
+        step_type = self._step_type(analysis_step)
+        if step_type == "stats.reliability":
+            return f"reliability:{params.get('scale_name', 'scale')}"
+        if step_type == "stats.compare_groups":
+            return f"comparison:{params['dv']}:{params['group']}"
+        if step_type == "stats.regression_ols":
+            return self._step_id(analysis_step)
+        raise RuntimeError(f"Unsupported analysis step type: {step_type}")
+
+    def _default_output_dir(self) -> Path:
+        import_step = next(
+            (
+                step
+                for step in self.steps()
+                if self._step_type(step) == "import.table" or self._step_id(step) == "import"
+            ),
+            None,
+        )
+        if import_step is not None:
+            path = self._step_params(import_step).get("path")
+            if isinstance(path, str) and path:
+                return Path(path).parent / "modori-output"
+        return Path("modori-output")
 
     @staticmethod
     def _step_id(step: object) -> str:

@@ -89,23 +89,30 @@ def test_controller_applies_comparison_selection_to_existing_step(tmp_path) -> N
     result = controller.configureComparisonSelection("q4", "group")
 
     assert result.ok is True
-    assert pipeline.steps[2].params["dv"] == "q4"
-    assert pipeline.steps[2].params["group"] == "group"
-    assert pipeline.steps[2].params["routing_policy"] == {"preset": "always_welch"}
+    comparison = next(step for step in pipeline.steps if step.id == "comparison")
+    assert comparison.params["dv"] == "q4"
+    assert comparison.params["group"] == "group"
+    assert comparison.params["routing_policy"] == {"preset": "always_welch"}
+    assert [step.id for step in pipeline.steps] == ["import", "comparison", "report"]
     assert controller.pipeline_version == 1
     assert controller.stale is True
 
 
-def test_controller_rejects_regression_selection_without_regression_step(tmp_path) -> None:
+def test_controller_creates_regression_selection_without_existing_regression_step(tmp_path) -> None:
     data_path = tmp_path / "survey.csv"
     _write_selection_csv(data_path)
-    controller = UiController(pipeline=_selection_pipeline(data_path))
+    pipeline = _selection_pipeline(data_path)
+    controller = UiController(pipeline=pipeline)
 
     result = controller.configureRegressionSelection("q4", "q1, q2")
 
-    assert result.ok is False
-    assert result.error_code == "step_not_available"
-    assert controller.pipeline_version == 0
+    assert result.ok is True
+    regression = next(step for step in pipeline.steps if step.id == "regression")
+    assert regression.step_type == "stats.regression_ols"
+    assert regression.params["dv"] == "q4"
+    assert regression.params["predictors"] == ["q1", "q2"]
+    assert [step.id for step in pipeline.steps] == ["import", "regression", "report"]
+    assert controller.pipeline_version == 1
 
 
 def test_guide_and_standard_rails_commit_variable_selections() -> None:

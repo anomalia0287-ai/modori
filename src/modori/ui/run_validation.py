@@ -42,6 +42,8 @@ class RunConfigurationValidator:
             return self._invalid("신뢰도 분석에는 문항 변수가 필요합니다.")
         if len(items) < 3:
             return self._invalid("신뢰도 분석에는 세 개 이상의 문항 변수가 필요합니다.")
+        if self._has_duplicates(items):
+            return self._invalid("신뢰도 문항 변수에 중복이 있습니다.")
         return self._require_known_variables(items, variable_keys)
 
     def _validate_compare_groups(
@@ -71,6 +73,8 @@ class RunConfigurationValidator:
             return error
         if not outcome or not predictors:
             return self._invalid("회귀분석에는 종속 변수와 예측 변수가 모두 필요합니다.")
+        if self._has_duplicates(predictors):
+            return self._invalid("회귀분석 예측 변수에 중복이 있습니다.")
         if outcome in predictors:
             return self._invalid("종속 변수는 예측 변수에 포함될 수 없습니다.")
         return self._require_known_variables([outcome, *predictors], variable_keys)
@@ -94,6 +98,10 @@ class RunConfigurationValidator:
             message_ko=message_ko,
             error_code="invalid_run_configuration",
         )
+
+    @staticmethod
+    def _has_duplicates(values: Sequence[str]) -> bool:
+        return len(set(values)) != len(values)
 
     @staticmethod
     def _variable_keys(pipeline_ops: object) -> set[str] | None:

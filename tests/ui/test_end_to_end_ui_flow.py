@@ -47,13 +47,12 @@ def test_default_controller_reference_flow_runs_to_report(tmp_path) -> None:
     opened = controller.openDataFile(data_path, ImportOptions(confirm_new_session=True))
     assert opened.ok is True
 
-    rerun = controller.rerun()
+    rerun = controller.runPreparedRecommendation()
     assert rerun.ok is True
     assert controller.waitForLastRun(timeout=10) is True
 
     result_ids = [result.result_id for result in controller.resultsModel]
-    assert "reliability:job_sat" in result_ids
-    assert "comparison:job_sat:group" in result_ids
+    assert "reliability:selected_scale" in result_ids
     assert controller.stale is False
 
     exported = controller.exportReport(ReportExportOptions(language="ko"))

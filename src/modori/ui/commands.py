@@ -11,6 +11,7 @@ from modori.ui.patches import PatchValidationError
 @dataclass(frozen=True)
 class PipelineStepCommand:
     step_id: str
+    step_type: str
     params: dict[str, Any]
     message_ko: str
 
@@ -43,15 +44,14 @@ class AnalysisSelectionCommandBuilder:
                 error_code="invalid_selection",
             )
         self._require_known_variables(item_keys)
-        step = self._require_step_by_type(
-            "stats.reliability",
-            "현재 파이프라인에 신뢰도 분석 단계가 없습니다.",
-        )
-        params = dict(step.params)
+        step_type = "stats.reliability"
+        step = self._step_by_type(step_type)
+        params = {} if step is None else dict(step.params)
         params["items"] = item_keys
-        params.setdefault("scale_name", "selected_scale")
+        params["scale_name"] = "selected_scale"
         return PipelineStepCommand(
-            step_id=str(step.id),
+            step_id="reliability" if step is None else str(step.id),
+            step_type=step_type,
             params=params,
             message_ko="신뢰도 분석 변수가 변경되었습니다.",
         )
@@ -70,16 +70,15 @@ class AnalysisSelectionCommandBuilder:
                 error_code="invalid_selection",
             )
         self._require_known_variables([outcome_key, group_key])
-        step = self._require_step_by_type(
-            "stats.compare_groups",
-            "현재 파이프라인에 집단 비교 단계가 없습니다.",
-        )
-        params = dict(step.params)
+        step_type = "stats.compare_groups"
+        step = self._step_by_type(step_type)
+        params = {} if step is None else dict(step.params)
         params["dv"] = outcome_key
         params["group"] = group_key
         params.setdefault("routing_policy", {"preset": "modern"})
         return PipelineStepCommand(
-            step_id=str(step.id),
+            step_id="comparison" if step is None else str(step.id),
+            step_type=step_type,
             params=params,
             message_ko="집단 비교 변수가 변경되었습니다.",
         )
@@ -98,16 +97,15 @@ class AnalysisSelectionCommandBuilder:
                 error_code="invalid_selection",
             )
         self._require_known_variables([outcome_key, *predictor_keys])
-        step = self._require_step_by_type(
-            "stats.regression_ols",
-            "현재 파이프라인에 회귀분석 단계가 없습니다.",
-        )
-        params = dict(step.params)
+        step_type = "stats.regression_ols"
+        step = self._step_by_type(step_type)
+        params = {} if step is None else dict(step.params)
         params["dv"] = outcome_key
         params["predictors"] = predictor_keys
         params.setdefault("regression_policy", {"preset": "modern"})
         return PipelineStepCommand(
-            step_id=str(step.id),
+            step_id="regression" if step is None else str(step.id),
+            step_type=step_type,
             params=params,
             message_ko="회귀분석 변수가 변경되었습니다.",
         )
@@ -126,9 +124,9 @@ class AnalysisSelectionCommandBuilder:
                 error_code="unknown_variable",
             )
 
-    def _require_step_by_type(self, step_type: str, message_ko: str) -> PipelineStepLike:
+    def _step_by_type(self, step_type: str) -> PipelineStepLike | None:
         steps = [] if self._pipeline is None else self._pipeline.steps
-        step = next(
+        return next(
             (
                 step
                 for step in steps
@@ -136,9 +134,6 @@ class AnalysisSelectionCommandBuilder:
             ),
             None,
         )
-        if step is None:
-            raise PatchValidationError(message_ko, error_code="step_not_available")
-        return step
 
 
 def normalize_variable_metadata_patch(patch: Mapping[str, Any]) -> dict[str, Any]:
