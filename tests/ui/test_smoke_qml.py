@@ -24,6 +24,24 @@ def qml_object_block(source: str, marker: str) -> str:
     return qml_block_at(source, source.index("{", marker_index))
 
 
+def qml_handler_block(source: str, marker: str) -> str:
+    marker_index = source.index(marker)
+    return qml_block_at(source, source.index("{", marker_index))
+
+
+def controller_method_calls(block: str) -> list[str]:
+    return re.findall(r"uiController\.([A-Za-z_]\w*)\s*\(", block)
+
+
+def assert_no_hidden_run_calls(block: str) -> None:
+    forbidden_run_methods = {
+        "rerunNow",
+        "runPreparedRecommendationNow",
+        "runPreparedRecommendation",
+    }
+    assert not (set(controller_method_calls(block)) & forbidden_run_methods)
+
+
 def test_work_screen_wires_required_shell_components() -> None:
     from modori.ui.strings import UI_STRINGS_KO
 
@@ -78,6 +96,8 @@ def test_no_hidden_rerun_calls_in_import_or_recommendation_selection() -> None:
     guide = qml_text("components/GuideRail.qml")
 
     import_dialog_block = qml_object_block(main, "ImportDialog")
+    file_dialog_block = qml_object_block(main, "FileDialog {")
+    file_dialog_accepted_block = qml_handler_block(file_dialog_block, "onAccepted:")
     selection_call = guide.index("uiController.selectRecommendationAt(index)")
     selection_handler_start = guide.rfind("onClicked: {", 0, selection_call)
     assert selection_handler_start != -1
@@ -85,20 +105,18 @@ def test_no_hidden_rerun_calls_in_import_or_recommendation_selection() -> None:
         guide, guide.index("{", selection_handler_start)
     )
 
-    forbidden_run_calls = (
-        "uiController.rerunNow()",
-        "uiController.runPreparedRecommendationNow()",
-        "uiController.runPreparedRecommendation()",
-    )
-    for call in forbidden_run_calls:
-        assert call not in import_dialog_block
-        assert call not in recommendation_selection_block
+    assert_no_hidden_run_calls(import_dialog_block)
+    assert_no_hidden_run_calls(file_dialog_block)
+    assert_no_hidden_run_calls(file_dialog_accepted_block)
+    assert_no_hidden_run_calls(recommendation_selection_block)
 
-    assert "uiController.confirmPendingImport()" in import_dialog_block
-    assert "uiController.selectRecommendationAt(index)" in recommendation_selection_block
-    assert re.findall(r"uiController\.\w+\([^)]*\)", recommendation_selection_block) == [
-        "uiController.selectRecommendationAt(index)"
+    assert "confirmPendingImport" in controller_method_calls(import_dialog_block)
+    assert "previewDataFilePath" in controller_method_calls(file_dialog_accepted_block)
+    assert controller_method_calls(recommendation_selection_block) == [
+        "selectRecommendationAt"
     ]
-    assert "uiController.runPreparedRecommendationNow()" in qml_object_block(
-        guide, 'text: appBootstrap.text("guide.run_selected")'
+    assert "runPreparedRecommendationNow" in controller_method_calls(
+        qml_object_block(
+            guide, 'text: appBootstrap.text("guide.run_selected")'
+        )
     )

@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 
@@ -9,6 +10,42 @@ def _qml_block(text: str, start_marker: str, end_marker: str) -> str:
     start = text.index(start_marker)
     end = text.index(end_marker, start)
     return text[start:end]
+
+
+def _qml_block_at(text: str, opening_brace: int) -> str:
+    depth = 0
+    for index in range(opening_brace, len(text)):
+        char = text[index]
+        if char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if depth == 0:
+                return text[opening_brace : index + 1]
+    raise AssertionError("QML block was not closed")
+
+
+def _qml_object_block(text: str, marker: str) -> str:
+    marker_index = text.index(marker)
+    return _qml_block_at(text, text.index("{", marker_index))
+
+
+def _qml_handler_block(text: str, marker: str) -> str:
+    marker_index = text.index(marker)
+    return _qml_block_at(text, text.index("{", marker_index))
+
+
+def _controller_method_calls(block: str) -> list[str]:
+    return re.findall(r"uiController\.([A-Za-z_]\w*)\s*\(", block)
+
+
+def _assert_no_hidden_run_calls(block: str) -> None:
+    forbidden_run_methods = {
+        "rerunNow",
+        "runPreparedRecommendationNow",
+        "runPreparedRecommendation",
+    }
+    assert not (set(_controller_method_calls(block)) & forbidden_run_methods)
 
 
 def test_controller_previews_file_before_confirming_import(tmp_path) -> None:
@@ -42,14 +79,16 @@ def test_main_qml_uses_import_dialog_before_importing() -> None:
 def test_import_and_recent_file_paths_do_not_start_analysis_automatically() -> None:
     main = qml_text("Main.qml")
 
-    recent_block = _qml_block(main, "onRecentFileRequested:", "WorkScreen")
-    import_block = _qml_block(main, "onImportAccepted:", "ReportExportDialog")
+    recent_block = _qml_handler_block(main, "onRecentFileRequested:")
+    file_dialog_block = _qml_object_block(main, "FileDialog {")
+    file_dialog_accepted_block = _qml_handler_block(file_dialog_block, "onAccepted:")
+    import_block = _qml_handler_block(main, "onImportAccepted:")
 
-    forbidden_run_calls = (
-        "uiController.rerunNow()",
-        "uiController.runPreparedRecommendationNow()",
-        "uiController.runPreparedRecommendation()",
-    )
-    for call in forbidden_run_calls:
-        assert call not in recent_block
-        assert call not in import_block
+    _assert_no_hidden_run_calls(recent_block)
+    _assert_no_hidden_run_calls(file_dialog_block)
+    _assert_no_hidden_run_calls(file_dialog_accepted_block)
+    _assert_no_hidden_run_calls(import_block)
+
+    assert "openRecentFileAt" in _controller_method_calls(recent_block)
+    assert "previewDataFilePath" in _controller_method_calls(file_dialog_accepted_block)
+    assert "confirmPendingImport" in _controller_method_calls(import_block)
