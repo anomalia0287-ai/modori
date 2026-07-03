@@ -77,17 +77,26 @@ def test_controller_error_result_sets_visible_state() -> None:
 
 
 def test_controller_successful_worker_result_sets_visible_message() -> None:
+    from modori.ui.contracts import DisplayResult
     from modori.ui.controller import UiController
     from modori.ui.worker import EngineJobResult
 
     controller = UiController(pipeline=object())
+    display = DisplayResult(
+        result_id="fresh",
+        kind="reliability",
+        title_ko="신뢰도 분석",
+        title_en="Reliability analysis",
+        prose_ko="결과 요약",
+        prose_en="Result summary",
+    )
 
     assert controller.apply_worker_result(
         EngineJobResult(
             run_id=0,
             pipeline_version=0,
             ok=True,
-            payload=[],
+            payload=[display],
         )
     ) is True
 

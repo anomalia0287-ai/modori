@@ -14,6 +14,19 @@ class ImportablePipeline(FakePipeline):
         self.steps = [{"id": step_id} for step_id in step_ids]
 
 
+def valid_display_result():
+    from modori.ui.contracts import DisplayResult
+
+    return DisplayResult(
+        result_id="fresh",
+        kind="reliability",
+        title_ko="신뢰도 분석",
+        title_en="Reliability analysis",
+        prose_ko="결과 요약",
+        prose_en="Result summary",
+    )
+
+
 def test_mode_switch_does_not_change_steps_or_pipeline_version() -> None:
     from modori.ui.controller import UiController
 
@@ -86,19 +99,11 @@ def test_controller_discards_stale_worker_result() -> None:
 
 
 def test_controller_applies_latest_worker_result() -> None:
-    from modori.ui.contracts import DisplayResult
     from modori.ui.controller import UiController
     from modori.ui.worker import EngineJobResult
 
     controller = UiController(pipeline=FakePipeline())
-    display = DisplayResult(
-        result_id="fresh",
-        kind="reliability",
-        title_ko="신뢰도 분석",
-        title_en="Reliability analysis",
-        prose_ko="결과 요약",
-        prose_en="Result summary",
-    )
+    display = valid_display_result()
 
     applied = controller.apply_worker_result(
         EngineJobResult(
@@ -126,6 +131,60 @@ def test_worker_success_with_empty_payload_becomes_result_display_error() -> Non
             pipeline_version=0,
             ok=True,
             payload=[],
+        )
+    )
+
+    assert applied is True
+    assert controller.status == "error"
+    assert controller.lastError == "결과를 표시하지 못했습니다."
+    assert controller.resultsModel == []
+
+
+def test_worker_success_with_malformed_table_payload_becomes_result_display_error() -> None:
+    from dataclasses import replace
+
+    from modori.ui.controller import UiController
+    from modori.ui.worker import EngineJobResult
+
+    controller = UiController(pipeline=FakePipeline())
+    display = replace(
+        valid_display_result(),
+        tables=[object()],  # type: ignore[list-item]
+    )
+
+    applied = controller.apply_worker_result(
+        EngineJobResult(
+            run_id=0,
+            pipeline_version=0,
+            ok=True,
+            payload=[display],
+        )
+    )
+
+    assert applied is True
+    assert controller.status == "error"
+    assert controller.lastError == "결과를 표시하지 못했습니다."
+    assert controller.resultsModel == []
+
+
+def test_worker_success_with_malformed_notes_payload_becomes_result_display_error() -> None:
+    from dataclasses import replace
+
+    from modori.ui.controller import UiController
+    from modori.ui.worker import EngineJobResult
+
+    controller = UiController(pipeline=FakePipeline())
+    display = replace(
+        valid_display_result(),
+        notes=[object()],  # type: ignore[list-item]
+    )
+
+    applied = controller.apply_worker_result(
+        EngineJobResult(
+            run_id=0,
+            pipeline_version=0,
+            ok=True,
+            payload=[display],
         )
     )
 
