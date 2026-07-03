@@ -218,6 +218,21 @@ def test_import_step_reads_sav_metadata(tmp_path) -> None:
     assert group.missing_values == [99.0]
 
 
+def test_import_step_treats_unknown_sav_measure_as_inferred_measure() -> None:
+    import pandas as pd
+
+    from modori.core import Measure
+    from modori.steps.data_prep import TabularMetadata, metadata_variables
+
+    frame = pd.DataFrame({"score": [1, 2, 3], "group": ["a", "b", "a"]})
+    metadata = TabularMetadata(variable_measure={"score": "unknown", "group": "unknown"})
+
+    variables = metadata_variables(frame, origin_step_id="preview", metadata=metadata)
+
+    assert variables["score"].measure is Measure.SCALE
+    assert variables["group"].measure is Measure.NOMINAL
+
+
 def test_import_step_rejects_sav_missing_ranges_that_are_not_point_codes(
     tmp_path,
     monkeypatch,

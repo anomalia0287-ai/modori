@@ -30,12 +30,27 @@ def _infer_measure(series: pd.Series) -> Measure:
     return Measure.NOMINAL
 
 
+def _infer_unknown_metadata_measure(series: pd.Series) -> Measure:
+    non_missing = series.dropna()
+    if pd.api.types.is_numeric_dtype(non_missing):
+        return Measure.SCALE
+    return Measure.NOMINAL
+
+
 def read_table(path: Path, file_type: str) -> tuple[pd.DataFrame, Any | None]:
     return read_full(path, file_type)
 
 
 def read_columns(path: Path, file_type: str) -> list[str]:
     return read_header(path, file_type)
+
+
+@dataclass(frozen=True)
+class TabularMetadata:
+    column_labels: list[str] | tuple[str, ...] | None = None
+    variable_value_labels: dict[str, dict[Any, Any]] | None = None
+    missing_ranges: dict[str, list[Any]] | None = None
+    variable_measure: dict[str, Any] | None = None
 
 
 def _file_type_from_params(path: Path, params: dict[str, Any]) -> str:
@@ -75,7 +90,12 @@ def metadata_variables(
                 missing_values.append(float(item))
         measure = _infer_measure(frame[column])
         if isinstance(variable_measure, dict) and column in variable_measure:
-            measure = Measure(str(variable_measure[column]).lower())
+            metadata_measure = str(variable_measure[column]).lower()
+            valid_measure_values = {item.value for item in Measure}
+            if metadata_measure in valid_measure_values:
+                measure = Measure(metadata_measure)
+            elif metadata_measure == "unknown":
+                measure = _infer_unknown_metadata_measure(frame[column])
         variables[str(column)] = Variable(
             name=str(column),
             label=label,
