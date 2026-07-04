@@ -66,8 +66,7 @@ class ReliabilityStep(Step):
         ]
         if non_numeric_items:
             raise ValueError(
-                "Reliability items must be numeric: "
-                f"{', '.join(non_numeric_items)}"
+                f"Reliability items must be numeric: {', '.join(non_numeric_items)}"
             )
         zero_variance_items = [
             column for column in frame.columns if frame[column].nunique(dropna=True) < 2
@@ -104,7 +103,9 @@ class ReliabilityStep(Step):
             new_columns={},
             new_variables={},
             analysis=result,
-            notes=[f"Cronbach's alpha indicates {self._alpha_grade(alpha)} internal consistency."],
+            notes=[
+                f"Cronbach's alpha indicates {self._alpha_grade(alpha)} internal consistency."
+            ],
         )
 
     @staticmethod
@@ -186,7 +187,11 @@ class CompareGroupsStep(Step):
             raise ValueError(
                 "CompareGroupsStep dependent variable and group variable must differ."
             )
-        frame = ctx.dataset.frame_for_compute([dv, group_var]).dropna(axis=0, how="any")
+        source_frame = ctx.dataset.frame_for_compute([dv, group_var])
+        n_total = len(source_frame)
+        frame = source_frame.dropna(axis=0, how="any")
+        n_obs = len(frame)
+        n_dropped = n_total - n_obs
         if not pd.api.types.is_numeric_dtype(frame[dv]):
             raise ValueError("CompareGroupsStep dependent variable must be numeric.")
         group_values = sorted(
@@ -218,7 +223,10 @@ class CompareGroupsStep(Step):
                 first,
                 second,
                 assumptions,
-                route_reason,
+                route_reason=route_reason,
+                n_obs=n_obs,
+                n_total=n_total,
+                n_dropped=n_dropped,
             )
             note_test_name = "Mann-Whitney U"
         else:
@@ -233,8 +241,13 @@ class CompareGroupsStep(Step):
                 assumptions,
                 correction=(route == "welch_t"),
                 route_reason=route_reason,
+                n_obs=n_obs,
+                n_total=n_total,
+                n_dropped=n_dropped,
             )
-            note_test_name = "Welch's t-test" if route == "welch_t" else "Student's t-test"
+            note_test_name = (
+                "Welch's t-test" if route == "welch_t" else "Student's t-test"
+            )
 
         return StepResult(
             new_columns={},
@@ -270,7 +283,11 @@ class CompareGroupsStep(Step):
             or assumptions["shapiro_g2_p"] < normality_threshold
         )
         variance_unequal = use_levene and assumptions["levene_p"] < 0.05
-        if allow_nonparametric and normality_violated and min(len(first), len(second)) < nonparametric_cutoff:
+        if (
+            allow_nonparametric
+            and normality_violated
+            and min(len(first), len(second)) < nonparametric_cutoff
+        ):
             return "mann_whitney", "normality violated + small sample"
         if variance_unequal:
             return "welch_t", "unequal variance -> Welch correction"
@@ -296,9 +313,13 @@ class CompareGroupsStep(Step):
     @staticmethod
     def _validate_group_sizes(first: pd.Series, second: pd.Series) -> None:
         if len(first) < 3 or len(second) < 3:
-            raise ValueError("CompareGroupsStep requires at least three valid cases per group.")
+            raise ValueError(
+                "CompareGroupsStep requires at least three valid cases per group."
+            )
         if first.nunique(dropna=True) < 2 or second.nunique(dropna=True) < 2:
-            raise ValueError("CompareGroupsStep requires non-zero variance in each group.")
+            raise ValueError(
+                "CompareGroupsStep requires non-zero variance in each group."
+            )
 
     def _t_result(
         self,
@@ -313,6 +334,9 @@ class CompareGroupsStep(Step):
         *,
         correction: bool,
         route_reason: str,
+        n_obs: int,
+        n_total: int,
+        n_dropped: int,
     ) -> ComparisonResult:
         test = pg.ttest(first, second, correction=correction).iloc[0]
         test_name = "welch_t" if correction else "student_t"
@@ -341,6 +365,9 @@ class CompareGroupsStep(Step):
                 x_label=group_var,
                 y_label=dv,
             ),
+            n_obs=n_obs,
+            n_total=n_total,
+            n_dropped=n_dropped,
             dv_label=dv_label,
             group_label=group_label,
         )
@@ -355,7 +382,11 @@ class CompareGroupsStep(Step):
         first: pd.Series,
         second: pd.Series,
         assumptions: dict[str, float],
+        *,
         route_reason: str,
+        n_obs: int,
+        n_total: int,
+        n_dropped: int,
     ) -> ComparisonResult:
         test = pg.mwu(first, second).iloc[0]
         return ComparisonResult(
@@ -382,6 +413,9 @@ class CompareGroupsStep(Step):
                 x_label=group_var,
                 y_label=dv,
             ),
+            n_obs=n_obs,
+            n_total=n_total,
+            n_dropped=n_dropped,
             dv_label=dv_label,
             group_label=group_label,
         )

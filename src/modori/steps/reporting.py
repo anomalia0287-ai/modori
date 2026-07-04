@@ -40,7 +40,13 @@ def _configure_fonts() -> None:
     if _FONT_CONFIGURED:
         return
 
-    candidates = ["Malgun Gothic", "AppleGothic", "Noto Sans CJK KR", "NanumGothic", "DejaVu Sans"]
+    candidates = [
+        "Malgun Gothic",
+        "AppleGothic",
+        "Noto Sans CJK KR",
+        "NanumGothic",
+        "DejaVu Sans",
+    ]
     available = {font.name for font in font_manager.fontManager.ttflist}
     for name in candidates:
         if name in available:
@@ -50,7 +56,9 @@ def _configure_fonts() -> None:
     _FONT_CONFIGURED = True
 
 
-def _apa_number(value: float, digits: int = 2, omit_leading_zero: bool = True, **kwargs: object) -> str:
+def _apa_number(
+    value: float, digits: int = 2, omit_leading_zero: bool = True, **kwargs: object
+) -> str:
     """Format a number with APA-style optional leading-zero omission."""
 
     if "decimals" in kwargs:
@@ -159,9 +167,21 @@ def _comparison_test_label_en(result: ComparisonResult) -> str:
     return result.test_name
 
 
+def _comparison_case_count_sentence(result: ComparisonResult, language: str) -> str:
+    if result.n_dropped <= 0:
+        return ""
+    if language == "en":
+        return (
+            f" The analysis used {result.n_obs} cases; "
+            f"{result.n_dropped} cases were excluded for missing values."
+        )
+    return f" 분석에는 {result.n_obs}명이 사용되었고 {result.n_dropped}명은 결측으로 제외되었다."
+
+
 def _comparison_prose(result: ComparisonResult, language: str = "ko") -> str:
     p_text = _apa_p(result.p_value)
     effect = f"{_comparison_effect_label(result)} = {_apa_number(result.effect_value, omit_leading_zero=True)}"
+    case_count_sentence = _comparison_case_count_sentence(result, language)
     ci_text = ""
     if result.mean_diff_ci is not None:
         ci_text = f", 95% CI [{_apa_number(result.mean_diff_ci[0])}, {_apa_number(result.mean_diff_ci[1])}]"
@@ -183,40 +203,66 @@ def _comparison_prose(result: ComparisonResult, language: str = "ko") -> str:
 
     if result.test_name in {"student_t", "welch_t", "paired_t"}:
         df_text = _apa_number(result.df, 2) if result.df is not None else ""
-        stat_text = f"t({df_text}) = {_apa_number(result.statistic)}" if df_text else f"t = {_apa_number(result.statistic)}"
+        stat_text = (
+            f"t({df_text}) = {_apa_number(result.statistic)}"
+            if df_text
+            else f"t = {_apa_number(result.statistic)}"
+        )
         mean_diff = _comparison_mean_difference(result)
         if language == "en":
             test_label = _comparison_test_label_en(result)
             article = "A" if test_label.startswith("Welch") else "An"
-            significance = "a statistically significant" if result.p_value < 0.05 else "no statistically significant"
+            significance = (
+                "a statistically significant"
+                if result.p_value < 0.05
+                else "no statistically significant"
+            )
             if first_desc and second_desc:
                 return (
                     f"{article} {test_label} showed {significance} {result.dv_label or result.dv} score difference "
                     f"between {first_desc} and {second_desc}, {stat_text}, {p_text}{ci_text}, {effect}."
+                    f"{case_count_sentence}"
                 )
             return (
                 f"{article} {test_label} showed {significance} {result.dv_label or result.dv} score difference, "
-                f"{stat_text}, {p_text}{ci_text}, {effect}."
+                f"{stat_text}, {p_text}{ci_text}, {effect}.{case_count_sentence}"
             )
-        significance = "통계적으로 유의하였다" if result.p_value < 0.05 else "통계적으로 유의하지 않았다"
-        group_text = f"{first_desc}와 {second_desc}의 " if first_desc and second_desc else ""
+        significance = (
+            "통계적으로 유의하였다"
+            if result.p_value < 0.05
+            else "통계적으로 유의하지 않았다"
+        )
+        group_text = (
+            f"{first_desc}와 {second_desc}의 " if first_desc and second_desc else ""
+        )
         return (
             f"{_comparison_test_label_ko(result)} 결과, {group_text}{result.dv_label or result.dv} 점수 차이"
             f"(Mdiff = {_apa_number(mean_diff)})는 {significance}, "
-            f"{stat_text}, {p_text}{ci_text}, {effect}."
+            f"{stat_text}, {p_text}{ci_text}, {effect}.{case_count_sentence}"
         )
 
     if result.test_name == "anova_oneway":
         stat_text = f"F = {_apa_number(result.statistic)}"
         if language == "en":
-            return f"A {_comparison_test_label_en(result)} was {'significant' if result.p_value < 0.05 else 'not significant'}, {stat_text}, {p_text}, {effect}."
-        return f"{_comparison_test_label_ko(result)} 결과는 {'통계적으로 유의하였다' if result.p_value < 0.05 else '통계적으로 유의하지 않았다'}, {stat_text}, {p_text}, {effect}."
+            return (
+                f"A {_comparison_test_label_en(result)} was {'significant' if result.p_value < 0.05 else 'not significant'}, "
+                f"{stat_text}, {p_text}, {effect}.{case_count_sentence}"
+            )
+        return (
+            f"{_comparison_test_label_ko(result)} 결과는 "
+            f"{'통계적으로 유의하였다' if result.p_value < 0.05 else '통계적으로 유의하지 않았다'}, "
+            f"{stat_text}, {p_text}, {effect}.{case_count_sentence}"
+        )
 
     raise ValueError(f"Unsupported comparison test: {result.test_name}")
 
 
 def _regression_predictor_rows(result: RegressionResult) -> list[CoefficientRow]:
-    return [row for row in result.coefficients if row.name not in {"const", "(Intercept)", "Intercept"}]
+    return [
+        row
+        for row in result.coefficients
+        if row.name not in {"const", "(Intercept)", "Intercept"}
+    ]
 
 
 def _regression_se_label_ko(result: RegressionResult) -> str:
@@ -233,7 +279,11 @@ def _regression_se_label_en(result: RegressionResult) -> str:
 
 def _regression_row_text_ko(row: CoefficientRow, df_resid: int) -> str:
     significance = "유의하게 예측하였다" if row.p_value < 0.05 else "유의하지 않았다"
-    beta = "" if row.beta is None else f", β = {_apa_number(row.beta, omit_leading_zero=True)}"
+    beta = (
+        ""
+        if row.beta is None
+        else f", β = {_apa_number(row.beta, omit_leading_zero=True)}"
+    )
     return (
         f"{row.name}는 {significance}"
         f"(b = {_apa_number(row.b)}, SE = {_apa_number(row.se)}, "
@@ -242,7 +292,11 @@ def _regression_row_text_ko(row: CoefficientRow, df_resid: int) -> str:
 
 
 def _regression_row_text_en(row: CoefficientRow, df_resid: int, dv: str) -> str:
-    beta = "" if row.beta is None else f", beta = {_apa_number(row.beta, omit_leading_zero=True)}"
+    beta = (
+        ""
+        if row.beta is None
+        else f", beta = {_apa_number(row.beta, omit_leading_zero=True)}"
+    )
     stats_text = (
         f"b = {_apa_number(row.b)}, SE = {_apa_number(row.se)}, "
         f"t({df_resid}) = {_apa_number(row.t)}, {_apa_p(row.p_value)}{beta}"
@@ -261,13 +315,18 @@ def _regression_prose(result: RegressionResult, language: str = "ko") -> str:
     predictors = _regression_predictor_rows(result)
 
     if language == "en":
-        predictor_text = "; ".join(_regression_row_text_en(row, result.df_resid, result.dv) for row in predictors)
+        predictor_text = "; ".join(
+            _regression_row_text_en(row, result.df_resid, result.dv)
+            for row in predictors
+        )
         return (
             f"Using {_regression_se_label_en(result)}, the regression model was statistically significant, "
             f"{omnibus}, with {model_fit}. {predictor_text}."
         )
 
-    predictor_text = "; ".join(_regression_row_text_ko(row, result.df_resid) for row in predictors)
+    predictor_text = "; ".join(
+        _regression_row_text_ko(row, result.df_resid) for row in predictors
+    )
     return (
         f"{_regression_se_label_ko(result)}를 사용한 회귀모형은 통계적으로 유의하였다, "
         f"{omnibus}, {model_fit}. {predictor_text}."
@@ -293,10 +352,16 @@ def table_for(result: object) -> list[dict[str, str]]:
                 "SE": _apa_number(row.se),
                 "t": _apa_number(row.t),
                 "p": _apa_p(row.p_value),
-                "beta": "" if row.beta is None else _apa_number(row.beta, omit_leading_zero=True),
+                "beta": ""
+                if row.beta is None
+                else _apa_number(row.beta, omit_leading_zero=True),
                 "95% CI": f"[{_apa_number(row.ci[0])}, {_apa_number(row.ci[1])}]",
-                "VIF": "" if row.vif is None else _apa_number(row.vif, omit_leading_zero=False),
-                "vif": "" if row.vif is None else _apa_number(row.vif, omit_leading_zero=False),
+                "VIF": ""
+                if row.vif is None
+                else _apa_number(row.vif, omit_leading_zero=False),
+                "vif": ""
+                if row.vif is None
+                else _apa_number(row.vif, omit_leading_zero=False),
             }
             for row in result.coefficients
         ]
@@ -305,8 +370,12 @@ def table_for(result: object) -> list[dict[str, str]]:
         return [
             {
                 "item": item,
-                "item_total_corr": _apa_number(result.item_total_corr[item], omit_leading_zero=True),
-                "alpha_if_deleted": _apa_number(result.alpha_if_deleted[item], omit_leading_zero=True),
+                "item_total_corr": _apa_number(
+                    result.item_total_corr[item], omit_leading_zero=True
+                ),
+                "alpha_if_deleted": _apa_number(
+                    result.alpha_if_deleted[item], omit_leading_zero=True
+                ),
             }
             for item in result.item_total_corr
         ]
@@ -326,8 +395,12 @@ def table_for(result: object) -> list[dict[str, str]]:
                 "df": _apa_number(result.df, 2) if result.df is not None else "",
                 "p": _apa_p(result.p_value),
                 "effect": result.effect_name,
-                "effect_value": _apa_number(result.effect_value, omit_leading_zero=True),
-                "ci95": f"[{_apa_number(result.mean_diff_ci[0])}, {_apa_number(result.mean_diff_ci[1])}]" if result.mean_diff_ci is not None else "",
+                "effect_value": _apa_number(
+                    result.effect_value, omit_leading_zero=True
+                ),
+                "ci95": f"[{_apa_number(result.mean_diff_ci[0])}, {_apa_number(result.mean_diff_ci[1])}]"
+                if result.mean_diff_ci is not None
+                else "",
             }
         ]
 
@@ -364,7 +437,9 @@ def _render_legacy_chart(chart: ChartSpec, output_path: str | Path) -> None:
         for idx, group in enumerate(groups):
             values = group.get("values", [])
             if values:
-                jitter_x = [idx + (i - len(values) / 2) * 0.015 for i in range(len(values))]
+                jitter_x = [
+                    idx + (i - len(values) / 2) * 0.015 for i in range(len(values))
+                ]
                 ax.scatter(jitter_x, values, alpha=0.45, color="#72B7B2")
             mean = group.get("mean")
             ci = group.get("ci95")
@@ -373,7 +448,9 @@ def _render_legacy_chart(chart: ChartSpec, output_path: str | Path) -> None:
             if ci is not None:
                 ax.vlines(idx, ci[0], ci[1], color="#F58518", linewidth=3)
         ax.set_xticks(range(len(groups)))
-        ax.set_xticklabels([g.get("label", f"group {i + 1}") for i, g in enumerate(groups)])
+        ax.set_xticklabels(
+            [g.get("label", f"group {i + 1}") for i, g in enumerate(groups)]
+        )
         ax.set_ylabel(chart.y_label)
         ax.set_title(chart.title)
     elif chart.type == "box":
@@ -395,7 +472,9 @@ def _render_coefficient_forest(spec: ChartSpec, output_path: str | Path) -> None
     _configure_fonts()
     rows = list(spec.data.get("rows", []))
     if not rows:
-        raise ValueError("coefficient_forest chart requires at least one coefficient row")
+        raise ValueError(
+            "coefficient_forest chart requires at least one coefficient row"
+        )
 
     labels = [str(row.get("name", row.get("term", ""))) for row in rows]
     estimates = [float(row.get("beta", row.get("estimate", 0.0))) for row in rows]
@@ -408,7 +487,15 @@ def _render_coefficient_forest(spec: ChartSpec, output_path: str | Path) -> None
     fig_height = max(3.5, 0.55 * len(rows) + 1.4)
     fig, ax = plt.subplots(figsize=(7.2, fig_height), constrained_layout=True)
     y_positions = list(range(len(rows)))
-    ax.errorbar(estimates, y_positions, xerr=[lower_errors, upper_errors], fmt="o", color="#1f77b4", ecolor="#555555", capsize=4)
+    ax.errorbar(
+        estimates,
+        y_positions,
+        xerr=[lower_errors, upper_errors],
+        fmt="o",
+        color="#1f77b4",
+        ecolor="#555555",
+        capsize=4,
+    )
     ax.axvline(0, color="#999999", linestyle="--", linewidth=1)
     ax.set_yticks(y_positions)
     ax.set_yticklabels(labels)
@@ -439,8 +526,17 @@ def _render_diagnostic_chart(spec: ChartSpec, output_path: str | Path) -> None:
             sample = [float(value) for value in data.get("sample", [])]
             ax.scatter(theoretical, sample, alpha=0.75, color="#4C78A8")
             if theoretical and sample:
-                slope, intercept = pd.Series(sample).cov(pd.Series(theoretical)) / pd.Series(theoretical).var(), pd.Series(sample).mean()
-                ax.plot(theoretical, [slope * x + intercept for x in theoretical], color="#F58518", linewidth=2)
+                slope, intercept = (
+                    pd.Series(sample).cov(pd.Series(theoretical))
+                    / pd.Series(theoretical).var(),
+                    pd.Series(sample).mean(),
+                )
+                ax.plot(
+                    theoretical,
+                    [slope * x + intercept for x in theoretical],
+                    color="#F58518",
+                    linewidth=2,
+                )
         else:
             residuals = [float(value) for value in data.get("residuals", [])]
             if not residuals:
@@ -453,7 +549,9 @@ def _render_diagnostic_chart(spec: ChartSpec, output_path: str | Path) -> None:
         ax.set_ylabel(spec.y_label)
         ax.set_title(spec.title)
     elif spec.type == "cooks_distance":
-        cooks = [float(value) for value in data.get("cooks", data.get("cooks_distance", []))]
+        cooks = [
+            float(value) for value in data.get("cooks", data.get("cooks_distance", []))
+        ]
         index = [int(value) for value in data.get("index", range(1, len(cooks) + 1))]
         ax.bar(index, cooks, color="#4C78A8")
         threshold = data.get("threshold")
@@ -493,11 +591,17 @@ def _render_single_or_bundle(
     return paths
 
 
-def render_chart(spec: ChartSpec, output_path: str | Path, key: str | None = None) -> str | list[str]:
+def render_chart(
+    spec: ChartSpec, output_path: str | Path, key: str | None = None
+) -> str | list[str]:
     if spec.type == "coefficient_forest":
-        return _render_single_or_bundle(spec, output_path, key, _render_coefficient_forest)
+        return _render_single_or_bundle(
+            spec, output_path, key, _render_coefficient_forest
+        )
     if spec.type in {"residual_vs_fitted", "residual_qq", "cooks_distance"}:
-        return _render_single_or_bundle(spec, output_path, key, _render_diagnostic_chart)
+        return _render_single_or_bundle(
+            spec, output_path, key, _render_diagnostic_chart
+        )
     if spec.type in {"horizontal_bar", "mean_ci_jitter", "box"}:
         return _render_single_or_bundle(spec, output_path, key, _render_legacy_chart)
     raise ValueError(f"Unsupported chart type: {spec.type}")
@@ -554,16 +658,26 @@ def _normalise_include(params: dict[str, object]) -> list[str] | None:
         return None
     if isinstance(include, str):
         return [include]
-    if not isinstance(include, list) or not all(isinstance(item, str) for item in include):
+    if not isinstance(include, list) or not all(
+        isinstance(item, str) for item in include
+    ):
         raise ValueError("Report include must be a list of analysis result keys")
     return list(include)
 
 
-def _resolve_included(ctx: PipelineContext, include: list[str] | None) -> list[tuple[str, object]]:
+def _resolve_included(
+    ctx: PipelineContext, include: list[str] | None
+) -> list[tuple[str, object]]:
     if include is None:
-        analyses = [(key, value) for key, value in ctx.analyses.items() if not key.startswith("analysis:")]
+        analyses = [
+            (key, value)
+            for key, value in ctx.analyses.items()
+            if not key.startswith("analysis:")
+        ]
         if len(analyses) != 1:
-            raise ValueError("ReportStep requires include when the context does not contain exactly one analysis result")
+            raise ValueError(
+                "ReportStep requires include when the context does not contain exactly one analysis result"
+            )
         return analyses
 
     resolved: list[tuple[str, object]] = []
@@ -579,13 +693,20 @@ def _resolve_included(ctx: PipelineContext, include: list[str] | None) -> list[t
     return resolved
 
 
-def _cleanup_generated(paths: list[Path], output_dir: Path, *, remove_output_dir: bool) -> None:
+def _cleanup_generated(
+    paths: list[Path], output_dir: Path, *, remove_output_dir: bool
+) -> None:
     for path in paths:
         try:
             resolved = path.resolve(strict=False)
             if not _is_relative_to_path(resolved, output_dir):
                 continue
-            if path.is_file() and path.suffix.lower() in {".docx", ".png", ".svg", ".eps"}:
+            if path.is_file() and path.suffix.lower() in {
+                ".docx",
+                ".png",
+                ".svg",
+                ".eps",
+            }:
                 path.unlink(missing_ok=True)
         except OSError:
             pass
@@ -607,10 +728,16 @@ def _is_relative_to_path(path: Path, base: Path) -> bool:
 def _safe_report_paths(params: dict[str, object]) -> tuple[Path, Path, Path, bool]:
     forbidden_aliases = {"output_docx", "docx_path", "output_path"} & set(params)
     if forbidden_aliases:
-        raise ValueError("Report direct output paths are not supported; use output_dir and filename")
+        raise ValueError(
+            "Report direct output paths are not supported; use output_dir and filename"
+        )
 
     filename = str(params.get("filename", "report.docx"))
-    if any(separator in filename for separator in ("/", "\\")) or Path(filename).is_absolute() or ":" in filename:
+    if (
+        any(separator in filename for separator in ("/", "\\"))
+        or Path(filename).is_absolute()
+        or ":" in filename
+    ):
         raise ValueError("Report filename must not contain path separators")
     if Path(filename).suffix.lower() != ".docx":
         raise ValueError("Report filename must use .docx extension")
@@ -668,7 +795,9 @@ class ReportStep(Step):
 
         include = _normalise_include(self.params)
         include_figures = bool(self.params.get("include_figures", True))
-        output_dir, docx_path, chart_dir, remove_output_dir_on_failure = _safe_report_paths(self.params)
+        output_dir, docx_path, chart_dir, remove_output_dir_on_failure = (
+            _safe_report_paths(self.params)
+        )
         included_results = _resolve_included(ctx, include)
 
         created_paths: list[Path] = []

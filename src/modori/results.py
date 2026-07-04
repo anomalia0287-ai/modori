@@ -51,6 +51,9 @@ class ComparisonResult:
     assumptions: dict[str, float]
     apa_template_id: str
     chart_spec: ChartSpec
+    n_obs: int
+    n_total: int
+    n_dropped: int
     dv_label: str | None = None
     group_label: str | None = None
 
@@ -62,6 +65,7 @@ class ReportResult:
     docx_path: str
     figure_paths: dict[str, list[str]]
     apa_template_id: str
+
 
 @dataclass(frozen=True)
 class CoefficientRow:

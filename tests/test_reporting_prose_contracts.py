@@ -40,7 +40,9 @@ def _comparison_result(test_name: str = "student_t") -> ComparisonResult:
         dv="job_sat",
         group_var="group",
         test_name=test_name,
-        route_reason="unequal variance -> Welch correction" if test_name == "welch_t" else "assumptions met",
+        route_reason="unequal variance -> Welch correction"
+        if test_name == "welch_t"
+        else "assumptions met",
         groups={
             "control": GroupDesc(n=10, mean=3.0875, sd=0.3007513738769765, median=3.0),
             "treatment": GroupDesc(n=10, mean=4.05, sd=0.3184162195757133, median=4.0),
@@ -54,6 +56,9 @@ def _comparison_result(test_name: str = "student_t") -> ComparisonResult:
         assumptions={},
         apa_template_id="ttest.v1",
         chart_spec=_dummy_chart("mean_ci_jitter"),
+        n_obs=20,
+        n_total=22,
+        n_dropped=2,
     )
 
 
@@ -72,12 +77,36 @@ def _regression_result() -> RegressionResult:
         df_resid=37,
         f_p_value=0.001,
         coefficients=[
-            CoefficientRow("(Intercept)", 1.20, 0.30, None, None, 4.0, 0.001, (0.60, 1.80), None),
-            CoefficientRow("autonomy", 0.55, 0.15, 0.48, (0.22, 0.74), 3.67, 0.001, (0.25, 0.85), 1.4),
-            CoefficientRow("support", -0.20, 0.18, -0.16, (-0.45, 0.13), -1.11, 0.274, (-0.56, 0.16), 1.4),
+            CoefficientRow(
+                "(Intercept)", 1.20, 0.30, None, None, 4.0, 0.001, (0.60, 1.80), None
+            ),
+            CoefficientRow(
+                "autonomy",
+                0.55,
+                0.15,
+                0.48,
+                (0.22, 0.74),
+                3.67,
+                0.001,
+                (0.25, 0.85),
+                1.4,
+            ),
+            CoefficientRow(
+                "support",
+                -0.20,
+                0.18,
+                -0.16,
+                (-0.45, 0.13),
+                -1.11,
+                0.274,
+                (-0.56, 0.16),
+                1.4,
+            ),
         ],
         diagnostics={"model_test": "robust_wald_f"},
-        warnings=["HC3 robust standard errors were used because heteroscedasticity was detected."],
+        warnings=[
+            "HC3 robust standard errors were used because heteroscedasticity was detected."
+        ],
         apa_template_id="regression.v1",
         chart_spec=ChartSpec(
             type="coefficient_forest",
@@ -112,11 +141,11 @@ def test_reliability_questionable_alpha_band_is_exactly_locked() -> None:
 def test_comparison_student_t_prose_is_exactly_locked() -> None:
     assert (
         prose_for(_comparison_result("student_t"), "ko")
-        == "독립표본 t검정 결과, control(M = 3.09, SD = .30, n = 10)와 treatment(M = 4.05, SD = .32, n = 10)의 job_sat 점수 차이(Mdiff = -.96)는 통계적으로 유의하였다, t(18.00) = -6.95, p < .001, 95% CI [-1.25, -.67], Cohen's d = -3.11."
+        == "독립표본 t검정 결과, control(M = 3.09, SD = .30, n = 10)와 treatment(M = 4.05, SD = .32, n = 10)의 job_sat 점수 차이(Mdiff = -.96)는 통계적으로 유의하였다, t(18.00) = -6.95, p < .001, 95% CI [-1.25, -.67], Cohen's d = -3.11. 분석에는 20명이 사용되었고 2명은 결측으로 제외되었다."
     )
     assert (
         prose_for(_comparison_result("student_t"), "en")
-        == "An independent-samples t test showed a statistically significant job_sat score difference between control(M = 3.09, SD = .30, n = 10) and treatment(M = 4.05, SD = .32, n = 10), t(18.00) = -6.95, p < .001, 95% CI [-1.25, -.67], Cohen's d = -3.11."
+        == "An independent-samples t test showed a statistically significant job_sat score difference between control(M = 3.09, SD = .30, n = 10) and treatment(M = 4.05, SD = .32, n = 10), t(18.00) = -6.95, p < .001, 95% CI [-1.25, -.67], Cohen's d = -3.11. The analysis used 20 cases; 2 cases were excluded for missing values."
     )
 
 
@@ -124,7 +153,7 @@ def test_comparison_welch_prose_says_welch_correction_once() -> None:
     prose = prose_for(_comparison_result("welch_t"), "ko")
 
     assert prose == (
-        "독립표본 t검정(Welch 보정) 결과, control(M = 3.09, SD = .30, n = 10)와 treatment(M = 4.05, SD = .32, n = 10)의 job_sat 점수 차이(Mdiff = -.96)는 통계적으로 유의하였다, t(18.00) = -6.95, p < .001, 95% CI [-1.25, -.67], Cohen's d = -3.11."
+        "독립표본 t검정(Welch 보정) 결과, control(M = 3.09, SD = .30, n = 10)와 treatment(M = 4.05, SD = .32, n = 10)의 job_sat 점수 차이(Mdiff = -.96)는 통계적으로 유의하였다, t(18.00) = -6.95, p < .001, 95% CI [-1.25, -.67], Cohen's d = -3.11. 분석에는 20명이 사용되었고 2명은 결측으로 제외되었다."
     )
     assert prose.count("Welch 보정") == 1
 

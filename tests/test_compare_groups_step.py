@@ -104,12 +104,16 @@ def compare_step_with_policy(policy: dict) -> CompareGroupsStep:
 
 
 def test_compare_groups_routes_to_student_t_when_assumptions_hold() -> None:
-    result = compare_step().compute_context_free(
-        comparison_dataset(
-            [10, 11, 9, 10, 12, 11, 10, 9, 11, 10],
-            [12, 13, 11, 12, 14, 13, 12, 11, 13, 12],
+    result = (
+        compare_step()
+        .compute_context_free(
+            comparison_dataset(
+                [10, 11, 9, 10, 12, 11, 10, 9, 11, 10],
+                [12, 13, 11, 12, 14, 13, 12, 11, 13, 12],
+            )
         )
-    ).analysis
+        .analysis
+    )
 
     assert isinstance(result, ComparisonResult)
     assert result.test_name == "student_t"
@@ -123,6 +127,20 @@ def test_compare_groups_routes_to_student_t_when_assumptions_hold() -> None:
     assert result.mean_diff_ci == pytest.approx((-2.89, -1.11), abs=0.001)
     assert result.chart_spec.type == "mean_ci_jitter"
     assert result.apa_template_id == "ttest.v1"
+
+
+def test_compare_groups_records_analysis_case_counts_after_listwise_deletion() -> None:
+    dataset = comparison_dataset(
+        [10, 11, 9, 10, 12],
+        [12, 13, 11, 12, 14],
+    )
+    dataset.df.loc[9, "job_sat"] = float("nan")
+
+    result = compare_step().compute_context_free(dataset).analysis
+
+    assert result.n_total == 10
+    assert result.n_obs == 9
+    assert result.n_dropped == 1
 
 
 def test_compare_groups_matches_pingouin_mixed_anova_public_dataset() -> None:
@@ -176,12 +194,16 @@ def test_compare_groups_matches_pingouin_mixed_anova_public_dataset() -> None:
 
 
 def test_compare_groups_routes_to_welch_when_variance_is_unequal() -> None:
-    result = compare_step().compute_context_free(
-        comparison_dataset(
-            [9, 10, 11] * 10,
-            [0, 5, 10, 15, 20, 25] * 5,
+    result = (
+        compare_step()
+        .compute_context_free(
+            comparison_dataset(
+                [9, 10, 11] * 10,
+                [0, 5, 10, 15, 20, 25] * 5,
+            )
         )
-    ).analysis
+        .analysis
+    )
 
     assert result.test_name == "welch_t"
     assert result.route_reason == "unequal variance -> Welch correction"
@@ -220,12 +242,16 @@ def test_compare_groups_results_are_stable_when_rows_are_shuffled() -> None:
 
 
 def test_compare_groups_accepts_string_group_codes_without_value_labels() -> None:
-    result = compare_step().compute_context_free(
-        string_group_dataset(
-            [10, 11, 9, 10, 12, 11, 10, 9, 11, 10],
-            [12, 13, 11, 12, 14, 13, 12, 11, 13, 12],
+    result = (
+        compare_step()
+        .compute_context_free(
+            string_group_dataset(
+                [10, 11, 9, 10, 12, 11, 10, 9, 11, 10],
+                [12, 13, 11, 12, 14, 13, 12, 11, 13, 12],
+            )
         )
-    ).analysis
+        .analysis
+    )
 
     assert list(result.groups) == ["control", "treatment"]
     assert result.statistic == pytest.approx(-4.714, abs=0.001)
@@ -254,7 +280,9 @@ def test_compare_groups_rejects_same_dependent_and_group_variable() -> None:
         },
     )
 
-    with pytest.raises(ValueError, match="dependent variable and group variable must differ"):
+    with pytest.raises(
+        ValueError, match="dependent variable and group variable must differ"
+    ):
         step.compute_context_free(comparison_dataset([1, 2, 3], [4, 5, 6]))
 
 
@@ -304,17 +332,23 @@ def test_compare_groups_rejects_non_numeric_dependent_variable() -> None:
         },
     )
 
-    with pytest.raises(ValueError, match="CompareGroupsStep dependent variable must be numeric"):
+    with pytest.raises(
+        ValueError, match="CompareGroupsStep dependent variable must be numeric"
+    ):
         compare_step().compute_context_free(dataset)
 
 
 def test_compare_groups_routes_to_mann_whitney_for_small_nonnormal_groups() -> None:
-    result = compare_step().compute_context_free(
-        comparison_dataset(
-            [1, 1, 1, 1, 10, 10],
-            [5, 6, 7, 8, 9, 10],
+    result = (
+        compare_step()
+        .compute_context_free(
+            comparison_dataset(
+                [1, 1, 1, 1, 10, 10],
+                [5, 6, 7, 8, 9, 10],
+            )
         )
-    ).analysis
+        .analysis
+    )
 
     assert result.test_name == "mann_whitney"
     assert result.route_reason == "normality violated + small sample"
@@ -354,43 +388,55 @@ def test_mann_whitney_effect_is_stable_when_rows_are_shuffled() -> None:
 
 
 def test_compare_groups_always_welch_policy_ignores_assumption_rerouting() -> None:
-    result = compare_step_with_policy({"preset": "always_welch"}).compute_context_free(
-        comparison_dataset(
-            [1, 1, 1, 1, 10, 10],
-            [5, 6, 7, 8, 9, 10],
+    result = (
+        compare_step_with_policy({"preset": "always_welch"})
+        .compute_context_free(
+            comparison_dataset(
+                [1, 1, 1, 1, 10, 10],
+                [5, 6, 7, 8, 9, 10],
+            )
         )
-    ).analysis
+        .analysis
+    )
 
     assert result.test_name == "welch_t"
     assert result.route_reason == "always_welch policy"
 
 
 def test_compare_groups_classic_policy_disables_nonparametric_auto_reroute() -> None:
-    result = compare_step_with_policy({"preset": "classic"}).compute_context_free(
-        comparison_dataset(
-            [1, 1, 1, 1, 10, 10],
-            [5, 6, 7, 8, 9, 10],
+    result = (
+        compare_step_with_policy({"preset": "classic"})
+        .compute_context_free(
+            comparison_dataset(
+                [1, 1, 1, 1, 10, 10],
+                [5, 6, 7, 8, 9, 10],
+            )
         )
-    ).analysis
+        .analysis
+    )
 
     assert result.test_name == "student_t"
     assert result.route_reason == "classic policy: nonparametric auto-reroute off"
 
 
 def test_compare_groups_custom_policy_uses_custom_nonparametric_cutoff() -> None:
-    result = compare_step_with_policy(
-        {
-            "preset": "custom",
-            "normality_p": 0.05,
-            "nonparametric_n_cutoff": 5,
-            "use_levene": True,
-        }
-    ).compute_context_free(
-        comparison_dataset(
-            [1, 1, 1, 1, 10, 10],
-            [5, 6, 7, 8, 9, 10],
+    result = (
+        compare_step_with_policy(
+            {
+                "preset": "custom",
+                "normality_p": 0.05,
+                "nonparametric_n_cutoff": 5,
+                "use_levene": True,
+            }
         )
-    ).analysis
+        .compute_context_free(
+            comparison_dataset(
+                [1, 1, 1, 1, 10, 10],
+                [5, 6, 7, 8, 9, 10],
+            )
+        )
+        .analysis
+    )
 
     assert result.test_name == "student_t"
     assert result.route_reason == "custom policy: nonparametric cutoff not met"
@@ -493,7 +539,9 @@ def test_compare_groups_writes_analysis_object_for_pipeline() -> None:
     pipeline.recompute(dirty_from=None)
 
     assert "comparison:job_sat:group" in pipeline.analysis_objects
-    assert pipeline.analysis_objects["comparison:job_sat:group"].groups["control"].n == 10
+    assert (
+        pipeline.analysis_objects["comparison:job_sat:group"].groups["control"].n == 10
+    )
     assert pipeline.step_results["compare"].notes == [
         "Selected Student's t-test because assumptions met."
     ]
