@@ -530,7 +530,7 @@ class PairedComparisonStep(Step):
         differences = before_scores - after_scores
         if differences.nunique(dropna=True) < 2:
             raise ValueError(
-                "PairedComparisonStep requires paired differences with non-zero variance."
+                "PairedComparisonStep requires non-zero variance in paired differences."
             )
 
         assumptions = {

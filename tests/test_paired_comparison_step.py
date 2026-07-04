@@ -172,3 +172,38 @@ def test_paired_comparison_rejects_too_few_complete_pairs() -> None:
 
     with pytest.raises(ValueError, match="at least three complete pairs"):
         paired_step().compute_context_free(dataset)
+
+
+def test_paired_comparison_rejects_constant_paired_differences() -> None:
+    dataset = paired_dataset([1, 2, 3, 4], [2, 3, 4, 5])
+
+    with pytest.raises(ValueError, match="non-zero variance in paired differences"):
+        paired_step().compute_context_free(dataset)
+
+
+@pytest.mark.parametrize(
+    "routing_policy, message",
+    [
+        ({"preset": "unknown"}, "Unsupported routing_policy preset"),
+        (
+            {"preset": "modern", "normality_p": 0, "nonparametric_n_cutoff": 30},
+            "normality_p must be greater than 0 and less than 1",
+        ),
+        (
+            {"preset": "modern", "normality_p": 1, "nonparametric_n_cutoff": 30},
+            "normality_p must be greater than 0 and less than 1",
+        ),
+        (
+            {"preset": "modern", "normality_p": 0.05, "nonparametric_n_cutoff": 2},
+            "nonparametric_n_cutoff must be at least 3",
+        ),
+    ],
+)
+def test_paired_comparison_rejects_invalid_routing_policy(
+    routing_policy: dict,
+    message: str,
+) -> None:
+    dataset = paired_dataset([1, 2, 3, 4], [2, 4, 4, 8])
+
+    with pytest.raises(ValueError, match=message):
+        paired_step(routing_policy).compute_context_free(dataset)
