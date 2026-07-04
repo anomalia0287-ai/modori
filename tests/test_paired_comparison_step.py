@@ -15,6 +15,8 @@ def paired_dataset(
     after_measure: Measure = Measure.SCALE,
     before_missing_values: list[float] | None = None,
     after_missing_values: list[float] | None = None,
+    before_label: str | None = "Pre score",
+    after_label: str | None = "Post score",
 ) -> Dataset:
     frame = pd.DataFrame({"pre": before_values, "post": after_values})
     return Dataset(
@@ -22,7 +24,7 @@ def paired_dataset(
         variables={
             "pre": Variable(
                 name="pre",
-                label="Pre score",
+                label=before_label,
                 measure=before_measure,
                 value_labels={},
                 missing_values=before_missing_values or [],
@@ -31,7 +33,7 @@ def paired_dataset(
             ),
             "post": Variable(
                 name="post",
-                label="Post score",
+                label=after_label,
                 measure=after_measure,
                 value_labels={},
                 missing_values=after_missing_values or [],
@@ -127,6 +129,18 @@ def test_paired_comparison_rejects_same_column() -> None:
 
     with pytest.raises(ValueError, match="before and after variables must differ"):
         step.compute_context_free(paired_dataset([1, 2, 3], [2, 3, 4]))
+
+
+def test_paired_comparison_rejects_duplicate_labels() -> None:
+    dataset = paired_dataset(
+        [10, 11, 12, 13],
+        [11, 13, 13, 16],
+        before_label="Score",
+        after_label="Score",
+    )
+
+    with pytest.raises(ValueError, match="labels must be unique"):
+        paired_step().compute_context_free(dataset)
 
 
 def test_paired_comparison_writes_analysis_object_for_pipeline() -> None:

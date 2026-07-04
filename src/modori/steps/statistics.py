@@ -539,6 +539,8 @@ class PairedComparisonStep(Step):
         route, route_reason = self._route(n_obs, assumptions)
         before_label = ctx.dataset.variables[before].label or before
         after_label = ctx.dataset.variables[after].label or after
+        if before_label == after_label:
+            raise ValueError("PairedComparisonStep labels must be unique.")
 
         if route == "wilcoxon":
             analysis = self._wilcoxon_result(
