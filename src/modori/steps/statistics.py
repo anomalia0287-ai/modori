@@ -16,7 +16,7 @@ os.environ["MPLCONFIGDIR"] = str(_matplotlib_cache)
 import pingouin as pg
 from factor_analyzer import FactorAnalyzer
 
-from modori.core import PipelineContext, Step, StepResult
+from modori.core import Measure, PipelineContext, Step, StepResult
 from modori.results import ChartSpec, ComparisonResult, GroupDesc, ReliabilityResult
 
 
@@ -491,3 +491,298 @@ class CompareGroupsStep(Step):
 
 
 Step.register_type(CompareGroupsStep.step_type, CompareGroupsStep)
+
+
+@dataclass
+class PairedComparisonStep(Step):
+    step_type = "stats.paired_comparison"
+    produces_analysis = True
+
+    def compute(self, ctx: PipelineContext) -> StepResult:
+        before = str(self.params["before"])
+        after = str(self.params["after"])
+        if before == after:
+            raise ValueError(
+                "PairedComparisonStep before and after variables must differ."
+            )
+        self._validate_variables(ctx, before, after)
+
+        source_frame = ctx.dataset.frame_for_compute([before, after])
+        n_total = len(source_frame)
+        if not (
+            pd.api.types.is_numeric_dtype(source_frame[before])
+            and pd.api.types.is_numeric_dtype(source_frame[after])
+        ):
+            raise ValueError(
+                "PairedComparisonStep before and after variables must be numeric."
+            )
+
+        frame = source_frame.dropna(axis=0, how="any")
+        n_obs = len(frame)
+        n_dropped = n_total - n_obs
+        if n_obs < 3:
+            raise ValueError(
+                "PairedComparisonStep requires at least three complete pairs."
+            )
+
+        before_scores = frame[before]
+        after_scores = frame[after]
+        differences = before_scores - after_scores
+        if differences.nunique(dropna=True) < 2:
+            raise ValueError(
+                "PairedComparisonStep requires paired differences with non-zero variance."
+            )
+
+        assumptions = {
+            "shapiro_diff_p": float(stats.shapiro(differences).pvalue),
+        }
+        route, route_reason = self._route(n_obs, assumptions)
+        before_label = ctx.dataset.variables[before].label or before
+        after_label = ctx.dataset.variables[after].label or after
+
+        if route == "wilcoxon":
+            analysis = self._wilcoxon_result(
+                before,
+                after,
+                before_label,
+                after_label,
+                before_scores,
+                after_scores,
+                assumptions,
+                route_reason=route_reason,
+                n_obs=n_obs,
+                n_total=n_total,
+                n_dropped=n_dropped,
+            )
+            note_test_name = "Wilcoxon signed-rank test"
+        else:
+            analysis = self._paired_t_result(
+                before,
+                after,
+                before_label,
+                after_label,
+                before_scores,
+                after_scores,
+                assumptions,
+                route_reason=route_reason,
+                n_obs=n_obs,
+                n_total=n_total,
+                n_dropped=n_dropped,
+            )
+            note_test_name = "paired t-test"
+
+        return StepResult(
+            new_columns={},
+            new_variables={},
+            analysis=analysis,
+            notes=[f"Selected {note_test_name} because {analysis.route_reason}."],
+        )
+
+    @staticmethod
+    def _validate_variables(
+        ctx: PipelineContext,
+        before: str,
+        after: str,
+    ) -> None:
+        missing = [
+            column for column in (before, after) if column not in ctx.dataset.variables
+        ]
+        if missing:
+            raise KeyError(f"Unknown columns requested: {sorted(missing)}")
+        if (
+            ctx.dataset.variables[before].measure is not Measure.SCALE
+            or ctx.dataset.variables[after].measure is not Measure.SCALE
+        ):
+            raise ValueError(
+                "PairedComparisonStep before and after variables must be SCALE."
+            )
+
+    def _route(
+        self,
+        n_obs: int,
+        assumptions: dict[str, float],
+    ) -> tuple[str, str]:
+        policy = dict(self.params.get("routing_policy", {"preset": "modern"}))
+        preset = str(policy.get("preset", "modern"))
+        if preset not in {"modern", "always_wilcoxon", "classic"}:
+            raise ValueError(f"Unsupported routing_policy preset: {preset}")
+
+        normality_threshold = float(policy.get("normality_p", 0.05))
+        nonparametric_cutoff = int(policy.get("nonparametric_n_cutoff", 30))
+        if not 0 < normality_threshold < 1:
+            raise ValueError("normality_p must be greater than 0 and less than 1")
+        if nonparametric_cutoff < 3:
+            raise ValueError("nonparametric_n_cutoff must be at least 3")
+
+        if preset == "always_wilcoxon":
+            return "wilcoxon", "always_wilcoxon policy"
+        if preset == "classic":
+            return "paired_t", "classic policy"
+        if (
+            assumptions["shapiro_diff_p"] < normality_threshold
+            and n_obs < nonparametric_cutoff
+        ):
+            return "wilcoxon", "non-normal paired differences + small sample"
+        return "paired_t", "paired differences compatible with t-test"
+
+    def _paired_t_result(
+        self,
+        before: str,
+        after: str,
+        before_label: str,
+        after_label: str,
+        before_scores: pd.Series,
+        after_scores: pd.Series,
+        assumptions: dict[str, float],
+        *,
+        route_reason: str,
+        n_obs: int,
+        n_total: int,
+        n_dropped: int,
+    ) -> ComparisonResult:
+        test = pg.ttest(before_scores, after_scores, paired=True).iloc[0]
+        ci = tuple(float(value) for value in test["CI95"])
+        return ComparisonResult(
+            dv=before,
+            group_var=after,
+            test_name="paired_t",
+            route_reason=route_reason,
+            groups=self._paired_descriptions(
+                (before_label, after_label),
+                before_scores,
+                after_scores,
+            ),
+            statistic=float(test["T"]),
+            df=float(test["dof"]),
+            p_value=float(test["p_val"]),
+            effect_name="cohen_dz",
+            effect_value=float(test["T"]) / float(np.sqrt(n_obs)),
+            mean_diff_ci=(ci[0], ci[1]),
+            assumptions=assumptions,
+            apa_template_id="paired_t.v1",
+            chart_spec=self._paired_chart(
+                before,
+                after,
+                before_label,
+                after_label,
+                before_scores,
+                after_scores,
+            ),
+            n_obs=n_obs,
+            n_total=n_total,
+            n_dropped=n_dropped,
+            dv_label=before_label,
+            group_label=after_label,
+            paired=True,
+            before_label=before_label,
+            after_label=after_label,
+        )
+
+    def _wilcoxon_result(
+        self,
+        before: str,
+        after: str,
+        before_label: str,
+        after_label: str,
+        before_scores: pd.Series,
+        after_scores: pd.Series,
+        assumptions: dict[str, float],
+        *,
+        route_reason: str,
+        n_obs: int,
+        n_total: int,
+        n_dropped: int,
+    ) -> ComparisonResult:
+        test = pg.wilcoxon(before_scores, after_scores).iloc[0]
+        return ComparisonResult(
+            dv=before,
+            group_var=after,
+            test_name="wilcoxon",
+            route_reason=route_reason,
+            groups=self._paired_descriptions(
+                (before_label, after_label),
+                before_scores,
+                after_scores,
+            ),
+            statistic=float(test["W_val"]),
+            df=None,
+            p_value=float(test["p_val"]),
+            effect_name="rank_biserial",
+            effect_value=float(test["RBC"]),
+            mean_diff_ci=None,
+            assumptions=assumptions,
+            apa_template_id="wilcoxon.v1",
+            chart_spec=self._paired_chart(
+                before,
+                after,
+                before_label,
+                after_label,
+                before_scores,
+                after_scores,
+            ),
+            n_obs=n_obs,
+            n_total=n_total,
+            n_dropped=n_dropped,
+            dv_label=before_label,
+            group_label=after_label,
+            paired=True,
+            before_label=before_label,
+            after_label=after_label,
+        )
+
+    @staticmethod
+    def _paired_descriptions(
+        labels: tuple[str, str],
+        before_scores: pd.Series,
+        after_scores: pd.Series,
+    ) -> dict[str, GroupDesc]:
+        return {
+            labels[0]: GroupDesc(
+                n=int(before_scores.count()),
+                mean=float(before_scores.mean()),
+                sd=float(before_scores.std(ddof=1)),
+                median=float(before_scores.median()),
+            ),
+            labels[1]: GroupDesc(
+                n=int(after_scores.count()),
+                mean=float(after_scores.mean()),
+                sd=float(after_scores.std(ddof=1)),
+                median=float(after_scores.median()),
+            ),
+        }
+
+    @staticmethod
+    def _paired_chart(
+        before: str,
+        after: str,
+        before_label: str,
+        after_label: str,
+        before_scores: pd.Series,
+        after_scores: pd.Series,
+    ) -> ChartSpec:
+        return ChartSpec(
+            type="paired_line",
+            title="Paired scores",
+            data={
+                "before": before_scores.tolist(),
+                "after": after_scores.tolist(),
+                "before_variable": before,
+                "after_variable": after,
+                "before_label": before_label,
+                "after_label": after_label,
+            },
+            x_label="Time",
+            y_label="Score",
+        )
+
+    def reads(self) -> set[str]:
+        return {str(self.params["before"]), str(self.params["after"])}
+
+    def writes(self) -> set[str]:
+        return {f"comparison:{self.params['before']}:{self.params['after']}:paired"}
+
+    def provenance(self) -> str:
+        return f"compared paired {self.params['before']} and {self.params['after']}"
+
+
+Step.register_type(PairedComparisonStep.step_type, PairedComparisonStep)

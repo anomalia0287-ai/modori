@@ -56,6 +56,9 @@ class ComparisonResult:
     n_dropped: int
     dv_label: str | None = None
     group_label: str | None = None
+    paired: bool = False
+    before_label: str | None = None
+    after_label: str | None = None
 
 
 @dataclass(frozen=True)
