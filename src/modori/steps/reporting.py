@@ -142,6 +142,8 @@ def _comparison_effect_label(result: ComparisonResult) -> str:
         return "Hedges' g"
     if result.effect_name == "eta_squared":
         return "eta squared"
+    if result.effect_name == "rank_biserial":
+        return "rank-biserial r"
     return result.effect_name
 
 
@@ -154,6 +156,8 @@ def _comparison_test_label_ko(result: ComparisonResult) -> str:
         return "대응표본 t검정"
     if result.test_name == "wilcoxon":
         return "Wilcoxon 부호순위검정"
+    if result.test_name == "mann_whitney":
+        return "Mann-Whitney U 검정"
     if result.test_name == "anova_oneway":
         return "일원분산분석"
     return result.test_name
@@ -168,6 +172,8 @@ def _comparison_test_label_en(result: ComparisonResult) -> str:
         return "paired-samples t test"
     if result.test_name == "wilcoxon":
         return "Wilcoxon signed-rank test"
+    if result.test_name == "mann_whitney":
+        return "Mann-Whitney U test"
     if result.test_name == "anova_oneway":
         return "one-way ANOVA"
     return result.test_name
@@ -186,12 +192,12 @@ def _comparison_significance_en(result: ComparisonResult) -> str:
 
 
 def _comparison_case_count_sentence(result: ComparisonResult, language: str) -> str:
-    if result.n_dropped <= 0:
-        return ""
     if language == "en":
+        excluded_case = "case" if result.n_dropped == 1 else "cases"
+        excluded_verb = "was" if result.n_dropped == 1 else "were"
         return (
             f" The analysis used {result.n_obs} cases; "
-            f"{result.n_dropped} cases were excluded for missing values."
+            f"{result.n_dropped} {excluded_case} {excluded_verb} excluded for missing values."
         )
     return f" 분석에는 {result.n_obs}명이 사용되었고 {result.n_dropped}명은 결측으로 제외되었다."
 
@@ -260,6 +266,30 @@ def _comparison_prose(result: ComparisonResult, language: str = "ko") -> str:
             )
         return (
             f"{_comparison_test_label_ko(result)} 결과, {before_label}와 {after_label}의 차이는 "
+            f"{_comparison_significance_ko(result)}, {stat_text}, {p_text}, "
+            f"{effect}.{case_count_sentence}"
+        )
+
+    if result.test_name == "mann_whitney":
+        stat_text = f"U = {_apa_number(result.statistic)}"
+        dv_label = result.dv_label or result.dv
+        if language == "en":
+            if first_desc and second_desc:
+                return (
+                    f"A {_comparison_test_label_en(result)} showed {_comparison_significance_en(result)} "
+                    f"{dv_label} distribution difference between {first_desc} and {second_desc}, "
+                    f"{stat_text}, {p_text}, {effect}.{case_count_sentence}"
+                )
+            return (
+                f"A {_comparison_test_label_en(result)} showed {_comparison_significance_en(result)} "
+                f"{dv_label} distribution difference, {stat_text}, {p_text}, "
+                f"{effect}.{case_count_sentence}"
+            )
+        group_text = (
+            f"{first_desc}와 {second_desc}의 " if first_desc and second_desc else ""
+        )
+        return (
+            f"{_comparison_test_label_ko(result)} 결과, {group_text}{dv_label} 분포 차이는 "
             f"{_comparison_significance_ko(result)}, {stat_text}, {p_text}, "
             f"{effect}.{case_count_sentence}"
         )
@@ -447,6 +477,10 @@ def table_for(result: object) -> list[dict[str, str]]:
         groups = _comparison_groups(result)
         first_label = groups[0][0] if len(groups) > 0 else ""
         second_label = groups[1][0] if len(groups) > 1 else ""
+        before_label = result.before_label or (
+            str(first_label) if result.paired else ""
+        )
+        after_label = result.after_label or (str(second_label) if result.paired else "")
         return [
             {
                 "test": result.test_name,
@@ -454,6 +488,8 @@ def table_for(result: object) -> list[dict[str, str]]:
                 "group": result.group_var,
                 "group_1": str(first_label),
                 "group_2": str(second_label),
+                "before": before_label,
+                "after": after_label,
                 "statistic": _apa_number(result.statistic),
                 "df": _apa_number(result.df, 2) if result.df is not None else "",
                 "p": _apa_p(result.p_value),
@@ -461,6 +497,9 @@ def table_for(result: object) -> list[dict[str, str]]:
                 "effect_value": _apa_number(
                     result.effect_value, omit_leading_zero=True
                 ),
+                "n_obs": str(result.n_obs),
+                "n_total": str(result.n_total),
+                "n_dropped": str(result.n_dropped),
                 "ci95": f"[{_apa_number(result.mean_diff_ci[0])}, {_apa_number(result.mean_diff_ci[1])}]"
                 if result.mean_diff_ci is not None
                 else "",

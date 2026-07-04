@@ -126,6 +126,12 @@ def test_compare_groups_routes_to_welch_when_assumptions_hold() -> None:
     assert sign(result.effect_value) == sign(result.statistic)
     assert result.mean_diff_ci == pytest.approx((-2.89, -1.11), abs=0.001)
     assert result.chart_spec.type == "mean_ci_jitter"
+    chart_groups = result.chart_spec.data["groups"]
+    assert [group["label"] for group in chart_groups] == ["control", "treatment"]
+    assert chart_groups[0]["values"] == [10, 11, 9, 10, 12, 11, 10, 9, 11, 10]
+    assert chart_groups[1]["values"] == [12, 13, 11, 12, 14, 13, 12, 11, 13, 12]
+    assert chart_groups[0]["mean"] == pytest.approx(10.3)
+    assert chart_groups[1]["mean"] == pytest.approx(12.3)
     assert result.apa_template_id == "ttest.v1"
 
 
@@ -364,6 +370,10 @@ def test_compare_groups_routes_to_mann_whitney_for_small_nonnormal_groups() -> N
     assert sign(result.effect_value) == -1
     assert result.mean_diff_ci is None
     assert result.chart_spec.type == "box"
+    chart_groups = result.chart_spec.data["groups"]
+    assert [group["label"] for group in chart_groups] == ["control", "treatment"]
+    assert chart_groups[0]["values"] == [1, 1, 1, 1, 10, 10]
+    assert chart_groups[1]["values"] == [5, 6, 7, 8, 9, 10]
     assert result.apa_template_id == "mwu.v1"
 
 

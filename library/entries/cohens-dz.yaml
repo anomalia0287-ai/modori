@@ -1,0 +1,24 @@
+slug: cohens-dz
+kind: effect_size
+title_ko: "코헨의 dz (Cohen's dz)"
+title_en: "Cohen's dz"
+summary_ko: "대응표본 t검정에서 두 시점 또는 두 조건의 평균 차이가 얼마나 큰지 나타내는 표준화 효과크기예요."
+summary_en: "A standardized effect size for paired-samples t-tests, describing how large the paired mean difference is."
+interpretation_ko: "대략 0.2는 작은, 0.5는 중간, 0.8은 큰 차이로 보는 경험칙을 참고할 수 있습니다. 부호는 사후-사전 차이의 방향을 나타냅니다."
+interpretation_en: "As a rough rule of thumb, 0.2 is small, 0.5 medium, and 0.8 large. The sign shows the direction of the after-minus-before difference."
+when_to_use_ko: null
+when_to_use_en: null
+how_to_report_ko: "대응표본 t검정 결과와 함께 \"Cohen's dz = 0.47\"처럼 보고합니다."
+how_to_report_en: "Report alongside the paired-samples t-test result, e.g., \"Cohen's dz = 0.47\"."
+pitfalls_ko: "독립표본 Cohen's d와 계산 기준이 다르므로 두 값을 직접 비교하지 마세요. 연구 분야의 효과크기 기준도 함께 고려해야 합니다."
+pitfalls_en: "It is computed differently from independent-samples Cohen's d, so do not compare them directly without context. Field-specific effect-size standards still matter."
+assumptions: []
+alternatives: []
+related:
+  - paired-samples-t-test
+  - p-value
+references:
+  - citation: "Cohen, J. (1988). Statistical Power Analysis for the Behavioral Sciences (2nd ed.). Lawrence Erlbaum Associates."
+    locator: null
+    verified: true
+verification_status: needs_review

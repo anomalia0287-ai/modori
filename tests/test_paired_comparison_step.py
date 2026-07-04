@@ -63,7 +63,7 @@ def test_paired_comparison_uses_paired_t_for_approximately_normal_differences() 
     dataset = paired_dataset(before, after)
 
     result = paired_step().compute_context_free(dataset).analysis
-    reference = pg.ttest(before, after, paired=True).iloc[0]
+    reference = pg.ttest(after, before, paired=True).iloc[0]
 
     assert isinstance(result, ComparisonResult)
     assert result.test_name == "paired_t"
@@ -78,6 +78,10 @@ def test_paired_comparison_uses_paired_t_for_approximately_normal_differences() 
     assert result.apa_template_id == "paired_t.v1"
     assert result.chart_spec.type == "paired_line"
     assert result.paired is True
+    assert result.dv == "post"
+    assert result.group_var == "pre"
+    assert result.dv_label == "Post score"
+    assert result.group_label == "Pre score"
     assert result.before_label == "Pre score"
     assert result.after_label == "Post score"
 
@@ -88,7 +92,7 @@ def test_paired_comparison_routes_to_wilcoxon_for_small_nonnormal_differences() 
     dataset = paired_dataset(before, after)
 
     result = paired_step().compute_context_free(dataset).analysis
-    reference = pg.wilcoxon(before, after).iloc[0]
+    reference = pg.wilcoxon(after, before).iloc[0]
 
     assert result.test_name == "wilcoxon"
     assert result.route_reason == "non-normal paired differences + small sample"
@@ -102,6 +106,10 @@ def test_paired_comparison_routes_to_wilcoxon_for_small_nonnormal_differences() 
     assert result.apa_template_id == "wilcoxon.v1"
     assert result.chart_spec.type == "paired_line"
     assert result.paired is True
+    assert result.dv == "post"
+    assert result.group_var == "pre"
+    assert result.dv_label == "Post score"
+    assert result.group_label == "Pre score"
     assert result.before_label == "Pre score"
     assert result.after_label == "Post score"
 

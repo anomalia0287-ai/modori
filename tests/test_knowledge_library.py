@@ -149,6 +149,36 @@ def _comparison_result(test_name: str, effect_name: str) -> ComparisonResult:
     )
 
 
+def _paired_comparison_result(test_name: str, effect_name: str) -> ComparisonResult:
+    return ComparisonResult(
+        dv="post",
+        group_var="pre",
+        test_name=test_name,
+        route_reason="paired route",
+        groups={
+            "pre": GroupDesc(n=10, mean=3.0, sd=0.5, median=3.0),
+            "post": GroupDesc(n=10, mean=4.0, sd=0.5, median=4.0),
+        },
+        statistic=2.0,
+        df=9.0 if test_name == "paired_t" else None,
+        p_value=0.03,
+        effect_name=effect_name,
+        effect_value=0.70,
+        mean_diff_ci=(0.2, 1.5) if test_name == "paired_t" else None,
+        assumptions={"shapiro_diff_p": 0.20},
+        apa_template_id="paired_t.v1" if test_name == "paired_t" else "wilcoxon.v1",
+        chart_spec=_dummy_chart("paired_line"),
+        n_obs=10,
+        n_total=10,
+        n_dropped=0,
+        dv_label="Post score",
+        group_label="Pre score",
+        paired=True,
+        before_label="Pre score",
+        after_label="Post score",
+    )
+
+
 def _regression_result() -> RegressionResult:
     return RegressionResult(
         dv="job_sat",
@@ -196,6 +226,8 @@ def _actual_user_facing_terms_from_results() -> set[str]:
         _comparison_result("student_t", "cohen_d"),
         _comparison_result("welch_t", "cohen_d"),
         _comparison_result("mann_whitney", "rank_biserial"),
+        _paired_comparison_result("paired_t", "cohen_dz"),
+        _paired_comparison_result("wilcoxon", "rank_biserial"),
         _regression_result(),
     ]
     for result in results:

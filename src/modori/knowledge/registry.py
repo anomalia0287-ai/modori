@@ -10,6 +10,8 @@ USER_FACING_EXCLUDED_KEYS = frozenset(
     {
         "classical",
         "classical_f",
+        "after",
+        "before",
         "dv",
         "effect",
         "effect_value",
@@ -54,7 +56,10 @@ _HELP_KEY_ALIASES: dict[str, str] = {
     "max_vif": "vif",
     "mean_diff_ci": "confidence_interval",
     "n_dropped": "listwise_deletion",
+    "n_obs": "listwise_deletion",
+    "n_total": "listwise_deletion",
     "p": "p_value",
+    "shapiro_diff_p": "shapiro_wilk",
     "se": "se",
     "shapiro_g1_p": "shapiro_wilk",
     "shapiro_g2_p": "shapiro_wilk",
@@ -74,7 +79,10 @@ HELP_KEYS: dict[str, str] = {
     "welch-t-test": "welch-t-test",
     "welch_t": "welch-t-test",
     "mann_whitney": "mann-whitney-u",
+    "paired_t": "paired-samples-t-test",
+    "wilcoxon": "wilcoxon-signed-rank",
     "cohen_d": "cohens-d",
+    "cohen_dz": "cohens-dz",
     "rank_biserial": "rank-biserial",
     "mcdonald_omega": "mcdonald-omega",
     "corrected_item_total_correlation": "corrected-item-total-correlation",
@@ -107,7 +115,9 @@ HELP_KEYS: dict[str, str] = {
 }
 
 
-ENGINE_VOCABULARY: set[str] = set(STATISTICS_ENGINE_VOCABULARY) | set(REGRESSION_ENGINE_VOCABULARY)
+ENGINE_VOCABULARY: set[str] = set(STATISTICS_ENGINE_VOCABULARY) | set(
+    REGRESSION_ENGINE_VOCABULARY
+)
 
 
 def normalize_help_key(entity_key: str) -> str | None:

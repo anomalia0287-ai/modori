@@ -23,6 +23,7 @@ from modori.results import ChartSpec, ComparisonResult, GroupDesc, ReliabilityRe
 STATISTICS_ENGINE_VOCABULARY = frozenset(
     {
         "alpha_if_deleted",
+        "cohen_dz",
         "cohen_d",
         "confidence_interval",
         "corrected_item_total_correlation",
@@ -32,11 +33,13 @@ STATISTICS_ENGINE_VOCABULARY = frozenset(
         "mann_whitney",
         "mcdonald_omega",
         "p_value",
+        "paired_t",
         "rank_biserial",
         "shapiro_wilk",
         "statistic",
         "student_t",
         "welch_t",
+        "wilcoxon",
     }
 )
 
@@ -364,10 +367,7 @@ class CompareGroupsStep(Step):
             chart_spec=ChartSpec(
                 type="mean_ci_jitter",
                 title="Group means with 95% CI",
-                data={
-                    labels[0]: first.tolist(),
-                    labels[1]: second.tolist(),
-                },
+                data=self._group_chart_payload(labels, first, second, include_ci=True),
                 x_label=group_var,
                 y_label=dv,
             ),
@@ -412,10 +412,7 @@ class CompareGroupsStep(Step):
             chart_spec=ChartSpec(
                 type="box",
                 title="Group distributions",
-                data={
-                    labels[0]: first.tolist(),
-                    labels[1]: second.tolist(),
-                },
+                data=self._group_chart_payload(labels, first, second),
                 x_label=group_var,
                 y_label=dv,
             ),
@@ -446,6 +443,29 @@ class CompareGroupsStep(Step):
                 median=float(second.median()),
             ),
         }
+
+    @staticmethod
+    def _group_chart_payload(
+        labels: tuple[str, str],
+        first: pd.Series,
+        second: pd.Series,
+        *,
+        include_ci: bool = False,
+    ) -> dict[str, list[dict[str, object]]]:
+        groups: list[dict[str, object]] = []
+        for label, values in ((labels[0], first), (labels[1], second)):
+            numeric = [float(value) for value in values.tolist()]
+            mean = float(values.mean())
+            payload: dict[str, object] = {
+                "label": label,
+                "values": numeric,
+                "mean": mean,
+            }
+            if include_ci and len(values) > 1:
+                margin = float(stats.t.ppf(0.975, len(values) - 1) * stats.sem(values))
+                payload["ci95"] = (mean - margin, mean + margin)
+            groups.append(payload)
+        return {"groups": groups}
 
     @staticmethod
     def _group_labels(
@@ -527,7 +547,7 @@ class PairedComparisonStep(Step):
 
         before_scores = frame[before]
         after_scores = frame[after]
-        differences = before_scores - after_scores
+        differences = after_scores - before_scores
         if differences.nunique(dropna=True) < 2:
             raise ValueError(
                 "PairedComparisonStep requires non-zero variance in paired differences."
@@ -642,11 +662,11 @@ class PairedComparisonStep(Step):
         n_total: int,
         n_dropped: int,
     ) -> ComparisonResult:
-        test = pg.ttest(before_scores, after_scores, paired=True).iloc[0]
+        test = pg.ttest(after_scores, before_scores, paired=True).iloc[0]
         ci = tuple(float(value) for value in test["CI95"])
         return ComparisonResult(
-            dv=before,
-            group_var=after,
+            dv=after,
+            group_var=before,
             test_name="paired_t",
             route_reason=route_reason,
             groups=self._paired_descriptions(
@@ -673,8 +693,8 @@ class PairedComparisonStep(Step):
             n_obs=n_obs,
             n_total=n_total,
             n_dropped=n_dropped,
-            dv_label=before_label,
-            group_label=after_label,
+            dv_label=after_label,
+            group_label=before_label,
             paired=True,
             before_label=before_label,
             after_label=after_label,
@@ -695,10 +715,10 @@ class PairedComparisonStep(Step):
         n_total: int,
         n_dropped: int,
     ) -> ComparisonResult:
-        test = pg.wilcoxon(before_scores, after_scores).iloc[0]
+        test = pg.wilcoxon(after_scores, before_scores).iloc[0]
         return ComparisonResult(
-            dv=before,
-            group_var=after,
+            dv=after,
+            group_var=before,
             test_name="wilcoxon",
             route_reason=route_reason,
             groups=self._paired_descriptions(
@@ -725,8 +745,8 @@ class PairedComparisonStep(Step):
             n_obs=n_obs,
             n_total=n_total,
             n_dropped=n_dropped,
-            dv_label=before_label,
-            group_label=after_label,
+            dv_label=after_label,
+            group_label=before_label,
             paired=True,
             before_label=before_label,
             after_label=after_label,

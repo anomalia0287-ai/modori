@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from dataclasses import replace
 
 import modori.steps.reporting as reporting
 import pandas as pd
@@ -13,7 +14,7 @@ from modori.results import (
     ReliabilityResult,
 )
 from modori.steps import PairedComparisonStep
-from modori.steps.reporting import prose_for
+from modori.steps.reporting import prose_for, table_for
 
 
 def _dummy_chart(chart_type: str = "horizontal_bar") -> ChartSpec:
@@ -219,6 +220,60 @@ def test_comparison_student_t_prose_is_exactly_locked() -> None:
     )
 
 
+def test_comparison_prose_reports_zero_exclusions() -> None:
+    result = replace(_comparison_result("welch_t"), n_total=20, n_dropped=0)
+
+    assert prose_for(result, "ko").endswith(
+        "분석에는 20명이 사용되었고 0명은 결측으로 제외되었다."
+    )
+    assert prose_for(result, "en").endswith(
+        "The analysis used 20 cases; 0 cases were excluded for missing values."
+    )
+
+
+def test_comparison_mann_whitney_prose_is_exactly_locked() -> None:
+    result = replace(
+        _comparison_result(),
+        test_name="mann_whitney",
+        route_reason="normality violated + small sample",
+        statistic=17.0,
+        df=None,
+        p_value=0.421,
+        effect_name="rank_biserial",
+        effect_value=0.28,
+        mean_diff_ci=None,
+        apa_template_id="mwu.v1",
+        n_total=20,
+        n_dropped=0,
+    )
+
+    assert prose_for(result, "ko") == (
+        "Mann-Whitney U 검정 결과, control(M = 3.09, SD = .30, n = 10)와 "
+        "treatment(M = 4.05, SD = .32, n = 10)의 job_sat 분포 차이는 "
+        "통계적으로 유의하지 않았다, U = 17.00, p = .421, "
+        "rank-biserial r = .28. 분석에는 20명이 사용되었고 0명은 결측으로 제외되었다."
+    )
+    assert prose_for(result, "en") == (
+        "A Mann-Whitney U test showed no statistically significant job_sat distribution "
+        "difference between control(M = 3.09, SD = .30, n = 10) and "
+        "treatment(M = 4.05, SD = .32, n = 10), U = 17.00, p = .421, "
+        "rank-biserial r = .28. The analysis used 20 cases; "
+        "0 cases were excluded for missing values."
+    )
+
+
+def test_comparison_table_includes_case_counts_and_paired_labels(
+    _paired_result: Callable[[str], ComparisonResult],
+) -> None:
+    row = table_for(_paired_result("paired_t"))[0]
+
+    assert row["n_obs"] == "8"
+    assert row["n_total"] == "9"
+    assert row["n_dropped"] == "1"
+    assert row["before"] == "사전 점수"
+    assert row["after"] == "사후 점수"
+
+
 def test_comparison_welch_prose_says_welch_correction_once() -> None:
     prose = prose_for(_comparison_result("welch_t"), "ko")
 
@@ -237,7 +292,7 @@ def test_comparison_paired_t_prose_is_exactly_locked(
     )
     assert (
         prose_for(_paired_result("paired_t"), "en")
-        == "A paired-samples t test showed a statistically significant mean difference between 사전 점수 and 사후 점수, t(7.00) = -2.35, p = .049, 95% CI [-1.23, -.14], Cohen's dz = -.83. The analysis used 8 cases; 1 cases were excluded for missing values."
+        == "A paired-samples t test showed a statistically significant mean difference between 사전 점수 and 사후 점수, t(7.00) = -2.35, p = .049, 95% CI [-1.23, -.14], Cohen's dz = -.83. The analysis used 8 cases; 1 case was excluded for missing values."
     )
 
 
@@ -246,12 +301,12 @@ def test_comparison_wilcoxon_prose_is_exactly_locked(
 ) -> None:
     assert (
         prose_for(_paired_result("wilcoxon"), "ko")
-        == "Wilcoxon 부호순위검정 결과, 사전 점수와 사후 점수의 차이는 통계적으로 유의하지 않았다, W = 4.00, p = .125, rank_biserial = -.37. 분석에는 8명이 사용되었고 1명은 결측으로 제외되었다."
+        == "Wilcoxon 부호순위검정 결과, 사전 점수와 사후 점수의 차이는 통계적으로 유의하지 않았다, W = 4.00, p = .125, rank-biserial r = -.37. 분석에는 8명이 사용되었고 1명은 결측으로 제외되었다."
     )
     english_prose = prose_for(_paired_result("wilcoxon"), "en")
 
     assert english_prose == (
-        "A Wilcoxon signed-rank test showed no statistically significant difference between 사전 점수 and 사후 점수, W = 4.00, p = .125, rank_biserial = -.37. The analysis used 8 cases; 1 cases were excluded for missing values."
+        "A Wilcoxon signed-rank test showed no statistically significant difference between 사전 점수 and 사후 점수, W = 4.00, p = .125, rank-biserial r = -.37. The analysis used 8 cases; 1 case was excluded for missing values."
     )
     assert "통계적으로" not in english_prose
 

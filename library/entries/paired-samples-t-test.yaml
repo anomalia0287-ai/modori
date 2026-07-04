@@ -1,0 +1,29 @@
+slug: paired-samples-t-test
+kind: method
+title_ko: "대응표본 t검정"
+title_en: "Paired-samples t-test"
+summary_ko: "같은 사람이나 같은 단위에서 두 번 측정한 연속 점수의 평균이 달라졌는지 확인하는 방법이에요. 사전-사후 설문처럼 두 점수가 서로 짝지어져 있을 때 씁니다."
+summary_en: "A test for whether the mean of a continuous score changed across two linked measurements from the same people or units, such as pre-post survey scores."
+interpretation_ko: "p값이 .05보다 작으면 두 시점의 평균 차이를 우연으로 보기 어렵다는 뜻입니다. 차이가 얼마나 큰지는 Cohen's dz와 함께 보세요."
+interpretation_en: "A p-value below .05 means the paired mean difference is unlikely to be due to chance. Read the size of the difference with Cohen's dz."
+when_to_use_ko: "동일한 응답자나 단위에서 두 시점 또는 두 조건의 연속 점수를 비교할 때."
+when_to_use_en: "When comparing a continuous score measured twice from the same respondents or units."
+how_to_report_ko: "예: \"t(19) = 2.10, p = .049, Cohen's dz = 0.47\" 형식으로 보고합니다. 분석에 사용된 짝 수와 제외된 결측 짝 수를 함께 제시하세요."
+how_to_report_en: "Report as, e.g., \"t(19) = 2.10, p = .049, Cohen's dz = 0.47\". Include the number of complete pairs used and pairs excluded for missing values."
+pitfalls_ko: "독립된 두 집단에는 쓰면 안 됩니다. 두 시점 차이값이 심하게 비정규이고 표본이 작으면 Wilcoxon 부호순위검정을 고려하세요."
+pitfalls_en: "Do not use it for two independent groups. If paired differences are strongly non-normal and the sample is small, consider the Wilcoxon signed-rank test."
+assumptions:
+  - normality
+alternatives:
+  - wilcoxon-signed-rank
+related:
+  - cohens-dz
+  - p-value
+references:
+  - citation: "Student (1908). The probable error of a mean. Biometrika, 6(1), 1-25."
+    locator: "6(1), 1-25"
+    verified: false
+  - citation: "Field, A. (2018). Discovering Statistics Using IBM SPSS Statistics (5th ed.). SAGE."
+    locator: null
+    verified: true
+verification_status: needs_review
