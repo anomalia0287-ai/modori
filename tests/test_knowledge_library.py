@@ -18,7 +18,14 @@ from modori.knowledge import (
     validate_slug_integrity,
 )
 from modori.knowledge.registry import USER_FACING_EXCLUDED_KEYS, normalize_help_key
-from modori.results import ChartSpec, CoefficientRow, ComparisonResult, GroupDesc, RegressionResult, ReliabilityResult
+from modori.results import (
+    ChartSpec,
+    CoefficientRow,
+    ComparisonResult,
+    GroupDesc,
+    RegressionResult,
+    ReliabilityResult,
+)
 from modori.steps.reporting import table_for
 
 
@@ -41,7 +48,11 @@ def _entry(
     related: list[str] | None = None,
 ) -> LibraryEntry:
     needs_when_to_use = kind in {EntryKind.METHOD, EntryKind.DIAGNOSTIC}
-    needs_interpretation = kind in {EntryKind.CONCEPT, EntryKind.STATISTIC, EntryKind.EFFECT_SIZE}
+    needs_interpretation = kind in {
+        EntryKind.CONCEPT,
+        EntryKind.STATISTIC,
+        EntryKind.EFFECT_SIZE,
+    }
     return LibraryEntry(
         slug=slug,
         kind=kind,
@@ -80,7 +91,10 @@ def _closed_library() -> Library:
         _entry("p-value", EntryKind.CONCEPT),
         _entry("cronbach-alpha", EntryKind.STATISTIC),
     ]
-    return Library(entries, help_keys={"welch_t": "welch-t-test", "cronbach_alpha": "cronbach-alpha"})
+    return Library(
+        entries,
+        help_keys={"welch_t": "welch-t-test", "cronbach_alpha": "cronbach-alpha"},
+    )
 
 
 def _dummy_chart(chart_type: str = "horizontal_bar") -> ChartSpec:
@@ -126,7 +140,12 @@ def _comparison_result(test_name: str, effect_name: str) -> ComparisonResult:
         mean_diff_ci=(-1.5, -0.2),
         assumptions={"shapiro_g1_p": 0.20, "shapiro_g2_p": 0.30, "levene_p": 0.01},
         apa_template_id="mwu.v1" if test_name == "mann_whitney" else "ttest.v1",
-        chart_spec=_dummy_chart("box" if test_name == "mann_whitney" else "mean_ci_jitter"),
+        chart_spec=_dummy_chart(
+            "box" if test_name == "mann_whitney" else "mean_ci_jitter"
+        ),
+        n_obs=20,
+        n_total=20,
+        n_dropped=0,
     )
 
 
@@ -145,8 +164,12 @@ def _regression_result() -> RegressionResult:
         df_resid=28,
         f_p_value=0.02,
         coefficients=[
-            CoefficientRow("(Intercept)", 1.0, 0.2, None, None, 5.0, 0.001, (0.6, 1.4), None),
-            CoefficientRow("autonomy", 0.5, 0.1, 0.4, (0.1, 0.7), 4.0, 0.001, (0.3, 0.7), 1.1),
+            CoefficientRow(
+                "(Intercept)", 1.0, 0.2, None, None, 5.0, 0.001, (0.6, 1.4), None
+            ),
+            CoefficientRow(
+                "autonomy", 0.5, 0.1, 0.4, (0.1, 0.7), 4.0, 0.001, (0.3, 0.7), 1.1
+            ),
         ],
         diagnostics={
             "breusch_pagan_p": 0.02,
@@ -182,7 +205,9 @@ def _actual_user_facing_terms_from_results() -> set[str]:
         if isinstance(result, ReliabilityResult):
             raw_terms.update({"cronbach_alpha", "mcdonald_omega"})
         if isinstance(result, ComparisonResult):
-            raw_terms.update({result.test_name, result.effect_name, "p_value", "df", "mean_diff_ci"})
+            raw_terms.update(
+                {result.test_name, result.effect_name, "p_value", "df", "mean_diff_ci"}
+            )
             raw_terms.update(result.assumptions)
         if isinstance(result, RegressionResult):
             raw_terms.update(
@@ -293,10 +318,16 @@ verification_status: needs_review
     library = load_library(tmp_path)
     entry = library.get("rich-method")
 
-    assert entry.summary_ko == "첫 줄입니다.\n두 번째 줄에는 쉼표, 콜론: 값이 함께 있습니다.\n"
+    assert (
+        entry.summary_ko
+        == "첫 줄입니다.\n두 번째 줄에는 쉼표, 콜론: 값이 함께 있습니다.\n"
+    )
     assert "commas, colons: and normal prose across multiple lines." in entry.summary_en
     assert entry.when_to_use_ko == "값에 쉼표, 콜론: 이 있어도 안전해야 합니다."
-    assert entry.references[0].citation == "Author, A. (2020). Title with colon: subtitle, and commas. Journal, 1(2), 3-4."
+    assert (
+        entry.references[0].citation
+        == "Author, A. (2020). Title with colon: subtitle, and commas. Journal, 1(2), 3-4."
+    )
     assert entry.references[0].locator == "section 1: overview, table 2"
 
 
@@ -349,7 +380,10 @@ def test_library_api_returns_localized_layered_explanation_and_review_queue() ->
         references=[_reference(verified=False)],
         assumptions=["normality"],
     )
-    library = Library([needs_review, _entry("normality", EntryKind.ASSUMPTION)], help_keys={"welch_t": "welch-t-test"})
+    library = Library(
+        [needs_review, _entry("normality", EntryKind.ASSUMPTION)],
+        help_keys={"welch_t": "welch-t-test"},
+    )
 
     explanation = library.explain("welch-t-test", "ko")
 
@@ -375,7 +409,9 @@ def test_validators_pass_on_closed_controlled_library() -> None:
 
     assert validate_slug_integrity(library.entries()).ok
     assert validate_link_integrity(library).ok
-    assert validate_coverage({"welch_t", "cronbach_alpha"}, library.help_keys, library).ok
+    assert validate_coverage(
+        {"welch_t", "cronbach_alpha"}, library.help_keys, library
+    ).ok
     assert validate_citation_honesty(library).ok
 
 
@@ -383,12 +419,24 @@ def test_validators_flag_controlled_broken_cases() -> None:
     broken_entries = [
         _entry("BadSlug", EntryKind.CONCEPT),
         _entry("BadSlug", EntryKind.CONCEPT),
-        _entry("verified-without-source", EntryKind.CONCEPT, references=[], status=VerificationStatus.VERIFIED),
-        _entry("needs-review-entry", EntryKind.CONCEPT, references=[_reference(False)], status=VerificationStatus.NEEDS_REVIEW),
+        _entry(
+            "verified-without-source",
+            EntryKind.CONCEPT,
+            references=[],
+            status=VerificationStatus.VERIFIED,
+        ),
+        _entry(
+            "needs-review-entry",
+            EntryKind.CONCEPT,
+            references=[_reference(False)],
+            status=VerificationStatus.NEEDS_REVIEW,
+        ),
     ]
     broken_library = Library(
         [
-            _entry("welch-t-test", EntryKind.METHOD, assumptions=["missing-assumption"]),
+            _entry(
+                "welch-t-test", EntryKind.METHOD, assumptions=["missing-assumption"]
+            ),
             _entry("cronbach-alpha", EntryKind.STATISTIC),
         ],
         help_keys={"welch_t": "missing-method"},
@@ -396,13 +444,26 @@ def test_validators_flag_controlled_broken_cases() -> None:
 
     slug_report = validate_slug_integrity(broken_entries)
     link_report = validate_link_integrity(broken_library)
-    coverage_report = validate_coverage({"welch_t", "missing_engine_key"}, broken_library.help_keys, broken_library)
+    coverage_report = validate_coverage(
+        {"welch_t", "missing_engine_key"}, broken_library.help_keys, broken_library
+    )
     citation_report = validate_citation_honesty(Library(broken_entries, help_keys={}))
 
-    assert {issue.code for issue in slug_report.issues} >= {"duplicate_slug", "invalid_slug"}
-    assert {issue.code for issue in link_report.issues} >= {"missing_entry_link", "missing_help_key_target"}
-    assert {issue.code for issue in coverage_report.issues} >= {"missing_vocabulary_key", "missing_help_key_target"}
-    assert {issue.code for issue in citation_report.issues} >= {"verified_without_verified_reference"}
+    assert {issue.code for issue in slug_report.issues} >= {
+        "duplicate_slug",
+        "invalid_slug",
+    }
+    assert {issue.code for issue in link_report.issues} >= {
+        "missing_entry_link",
+        "missing_help_key_target",
+    }
+    assert {issue.code for issue in coverage_report.issues} >= {
+        "missing_vocabulary_key",
+        "missing_help_key_target",
+    }
+    assert {issue.code for issue in citation_report.issues} >= {
+        "verified_without_verified_reference"
+    }
     assert citation_report.needs_review == ("needs-review-entry",)
 
 
@@ -412,10 +473,30 @@ def test_engine_vocabulary_is_derived_from_actual_user_facing_outputs() -> None:
 
     assert ENGINE_VOCABULARY == actual_terms
     assert {"b", "se", "t", "df", "alpha_if_deleted"} <= actual_terms
-    assert {"reliability.v1", "ttest.v1", "mwu.v1", "regression.v1", "report.apa.v1"} & actual_terms == set()
-    assert {"stats.reliability", "stats.compare_groups", "stats.regression_ols"} & actual_terms == set()
-    assert {"model_test", "classical_f", "robust_wald_f", "HC3", "classical"} & actual_terms == set()
-    uncovered = sorted(term for term in actual_terms if library.resolve_help_key(term) not in library.all_slugs())
+    assert {
+        "reliability.v1",
+        "ttest.v1",
+        "mwu.v1",
+        "regression.v1",
+        "report.apa.v1",
+    } & actual_terms == set()
+    assert {
+        "stats.reliability",
+        "stats.compare_groups",
+        "stats.regression_ols",
+    } & actual_terms == set()
+    assert {
+        "model_test",
+        "classical_f",
+        "robust_wald_f",
+        "HC3",
+        "classical",
+    } & actual_terms == set()
+    uncovered = sorted(
+        term
+        for term in actual_terms
+        if library.resolve_help_key(term) not in library.all_slugs()
+    )
     assert uncovered == []
 
 
@@ -423,7 +504,10 @@ def test_real_seed_fixtures_load_cleanly() -> None:
     library = load_library()
 
     assert {"welch-t-test", "cronbach-alpha"} <= library.all_slugs()
-    assert library.get("welch-t-test").verification_status is VerificationStatus.NEEDS_REVIEW
+    assert (
+        library.get("welch-t-test").verification_status
+        is VerificationStatus.NEEDS_REVIEW
+    )
     assert library.get("welch-t-test").references[0].verified is False
     assert library.resolve_help_key("welch_t") == "welch-t-test"
     assert library.resolve_help_key("cronbach_alpha") == "cronbach-alpha"
