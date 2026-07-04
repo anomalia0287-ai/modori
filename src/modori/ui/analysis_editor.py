@@ -58,7 +58,16 @@ class AnalysisSelectionEditor:
                 pipeline_version=pipeline_version,
             )
         try:
-            self._pipeline_ops.edit_params(command.step_id, command.params)
+            replace_analysis = getattr(self._pipeline_ops, "replace_managed_analysis_steps", None)
+            pipeline = self._pipeline_ops.step_collection()
+            if callable(replace_analysis) and pipeline is not None and hasattr(pipeline, "add"):
+                replace_analysis(
+                    step_id=command.step_id,
+                    step_type=command.step_type,
+                    params=command.params,
+                )
+            else:
+                self._pipeline_ops.edit_params(command.step_id, command.params)
         except Exception:
             return CommandResult(
                 ok=False,

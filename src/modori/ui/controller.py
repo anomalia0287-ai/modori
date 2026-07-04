@@ -13,6 +13,10 @@ from modori.ui.paths import local_path_from_qml
 from modori.ui.pipeline_ops import PipelineOperations
 from modori.ui.pipeline_state import UiPipelineState
 from modori.ui.preview_models import models_for_dataset, models_for_table_preview
+from modori.ui.recommendation_controller import (
+    RecommendationControllerMixin,
+    empty_recommendation_state,
+)
 from modori.ui.result_state import UiResultState
 from modori.ui.run_tracker import UiRunTracker
 from modori.ui.session import UiSessionState
@@ -20,7 +24,14 @@ from modori.ui.settings import UiSettingsStore
 from modori.ui.worker import EngineJobResult, SerializedEngineWorker
 
 
-class UiController(QObject):
+def export_report_from_pipeline(
+    pipeline: object,
+    options: ReportExportOptions,
+) -> Path:
+    return PipelineOperations(pipeline).export_report(options)
+
+
+class UiController(QObject, RecommendationControllerMixin):
     stateChanged = Signal()
     workerResultReady = Signal(object)
 
@@ -62,6 +73,7 @@ class UiController(QObject):
         self._data_model = None
         self._variable_model = None
         self._data_view_notice = ""
+        self._recommendation_state = empty_recommendation_state()
         self.resultsModel: list[Any] = self._result_state.results_model
         self._run_tracker = UiRunTracker()
         self._worker = worker or SerializedEngineWorker()
@@ -218,6 +230,7 @@ class UiController(QObject):
             pipeline_version=self._pipeline_state.pipeline_version,
         )
         if not load_result.command.ok:
+            self._clear_recommendations()
             self._last_error = load_result.command.message_ko
             self._last_message = ""
             self._pipeline_state.mark_ready_unless_empty()
@@ -226,8 +239,9 @@ class UiController(QObject):
 
         self.pipeline = load_result.pipeline
         self._services.replace_pipeline(load_result.pipeline)
+        self._refresh_recommendations()
         if load_result.path is not None:
-            self._remember_recent_file(load_result.path)
+            self._session.remember_recent_file(load_result.path)
         self._pipeline_state.mark_pipeline_replaced(self._services.pipeline_ops)
         self.stepsModel = self._pipeline_state.steps_model
         self._result_state.clear()
@@ -278,6 +292,7 @@ class UiController(QObject):
     def confirmPendingImport(self) -> bool:
         pending_path = self._services.import_flow.require_pending_path()
         if pending_path is None:
+            self._clear_recommendations()
             self._last_error = self._services.import_flow.preview_text
             self._last_message = ""
             self.stateChanged.emit()
@@ -373,6 +388,12 @@ class UiController(QObject):
     def rerun(self) -> CommandResult:
         if self.pipeline is None:
             return self._command_error("다시 실행할 분석이 없습니다.", "no_pipeline")
+        validation = self._services.run_validator.validate(self._services.pipeline_ops)
+        if not validation.ok:
+            return self._command_error(
+                validation.message_ko,
+                validation.error_code or "invalid_run_configuration",
+            )
         run_id = self._run_tracker.submit(
             worker=self._worker,
             pipeline_version=self._pipeline_state.pipeline_version,
@@ -395,7 +416,7 @@ class UiController(QObject):
         return self.rerun().ok
 
     def exportReport(self, options: ReportExportOptions) -> CommandResult:
-        exporter = self._report_exporter or self._export_report_from_pipeline
+        exporter = self._report_exporter or export_report_from_pipeline
         result = self._services.report_export_service.export(
             pipeline=self.pipeline,
             options=options,
@@ -483,6 +504,15 @@ class UiController(QObject):
             self._last_message = ""
             self.stateChanged.emit()
             return True
+        validation = self._services.result_payload_validator.validate(result.payload)
+        if not validation.ok:
+            self._pipeline_state.mark_error()
+            self._result_state.clear()
+            self.resultsModel = self._result_state.results_model
+            self._last_error = validation.message_ko
+            self._last_message = ""
+            self.stateChanged.emit()
+            return True
         self._refresh_dataset_models()
         previous_chart_paths, chart_paths = self._result_state.bind_payload(
             result.payload,
@@ -504,7 +534,6 @@ class UiController(QObject):
         if result is None:
             return False
         return self.apply_worker_result(result)
-
     def _apply_step_edit_result(self, result: CommandResult) -> CommandResult:
         if not result.ok:
             self._last_error = result.message_ko
@@ -540,13 +569,6 @@ class UiController(QObject):
             pipeline_version=self._pipeline_state.pipeline_version,
         )
 
-    def _export_report_from_pipeline(
-        self,
-        pipeline: object,
-        options: ReportExportOptions,
-    ) -> Path:
-        return PipelineOperations(pipeline).export_report(options)
-
     def _refresh_dataset_models(self) -> None:
         current_dataset = self._services.pipeline_ops.current_dataset()
         if current_dataset is None:
@@ -569,7 +591,3 @@ class UiController(QObject):
         self._variable_model = models.variable_model
         self._data_view_notice = models.notice
         return True
-
-    def _remember_recent_file(self, path: Path) -> None:
-        self._session.remember_recent_file(path)
-

@@ -55,7 +55,11 @@ def _run_engine_smoke(data_path: Path, output_path: Path) -> int:
         controller = UiController()
         opened = controller.openDataFile(data_path, ImportOptions(confirm_new_session=True))
         if opened.ok:
-            rerun = controller.rerun()
+            rerun = (
+                controller.runPreparedRecommendation()
+                if controller.recommendationCount > 0
+                else controller.rerun()
+            )
             waited = controller.waitForLastRun(timeout=30)
         else:
             rerun = None

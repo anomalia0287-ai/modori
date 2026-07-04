@@ -6,6 +6,8 @@ from pathlib import Path
 
 from modori.ui.contracts import CommandResult, ImportOptions
 from modori.ui.service_contracts import DataSessionPipelineOps
+from modori.core import Dataset, Pipeline
+from modori.steps import ImportStep
 from modori.workflow import AnalysisPreferences, build_reference_slice_pipeline
 
 
@@ -31,6 +33,24 @@ class ReferencePipelineFactory:
             mode=self._mode_provider(),
             preferences=AnalysisPreferences(),
         )
+
+
+class ImportSessionPipelineFactory:
+    def __call__(self, path: Path, options: ImportOptions) -> object:
+        _ = options
+        pipeline = Pipeline(Dataset.empty())
+        pipeline.add(
+            ImportStep(
+                id="import",
+                title="Import data",
+                params={
+                    "path": str(path),
+                    "file_type": path.suffix.lower().lstrip("."),
+                },
+            )
+        )
+        pipeline.recompute(dirty_from="import")
+        return pipeline
 
 
 class DataSessionLoader:

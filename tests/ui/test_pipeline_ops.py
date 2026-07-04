@@ -6,6 +6,7 @@ import pytest
 
 from modori.ui.contracts import DisplayResult, ReportExportOptions
 from modori.ui.pipeline_ops import PipelineOperations
+from modori.workflow import AnalysisPreferences, build_reference_slice_pipeline
 
 
 class FakeVariable:
@@ -57,6 +58,24 @@ class FakePipeline:
         self.recomputed = True
 
 
+def _write_reference_slice_csv(path: Path) -> None:
+    lines = ["q1,q2,q3,q4,q5,q6,q7,q8,group"]
+    rows = [
+        [3, 2, 3, 2, 4, 4, 4, 4, 1],
+        [3, 2, 4, 2, 4, 4, 2, 4, 1],
+        [3, 3, 2, 3, 2, 2, 2, 2, 1],
+        [4, 3, 4, 2, 3, 4, 4, 3, 1],
+        [3, 3, 3, 4, 3, 2, 4, 2, 1],
+        [4, 4, 5, 3, 4, 4, 4, 5, 2],
+        [4, 4, 5, 3, 4, 4, 4, 3, 2],
+        [5, 4, 4, 5, 4, 4, 5, 5, 2],
+        [4, 3, 5, 5, 4, 5, 5, 5, 2],
+        [4, 5, 5, 4, 5, 3, 5, 5, 2],
+    ]
+    lines.extend(",".join(str(value) for value in row) for row in rows)
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
 def test_pipeline_operations_exposes_ui_safe_pipeline_queries() -> None:
     pipeline = FakePipeline()
     ops = PipelineOperations(pipeline)
@@ -75,6 +94,42 @@ def test_pipeline_operations_inserts_metadata_step_after_origin() -> None:
     PipelineOperations(pipeline).insert_metadata_step("score", step)
 
     assert pipeline.insertions == [("import", step, "metadata:score")]
+
+
+def test_replace_managed_analysis_steps_refreshes_dataset_before_worker_recompute(
+    tmp_path,
+) -> None:
+    data_path = tmp_path / "survey.csv"
+    _write_reference_slice_csv(data_path)
+    pipeline = build_reference_slice_pipeline(
+        data_path=data_path,
+        output_dir=tmp_path / "report",
+        mode="guided",
+        preferences=AnalysisPreferences(),
+    )
+    pipeline.recompute(dirty_from=None)
+    ops = PipelineOperations(pipeline)
+
+    assert {"q3_R", "q7_R", "job_sat"} <= ops.variable_keys()
+
+    ops.replace_managed_analysis_steps(
+        step_id="reliability",
+        step_type="stats.reliability",
+        params={"items": ["q1", "q2", "q4"], "scale_name": "selected_scale"},
+    )
+
+    assert [step.id for step in pipeline.steps] == ["import", "reliability", "report"]
+    assert pipeline.steps[1].params == {
+        "items": ["q1", "q2", "q4"],
+        "scale_name": "selected_scale",
+    }
+    assert pipeline.steps[2].params["include"] == ["reliability:selected_scale"]
+    assert pipeline.analysis_objects == {}
+    assert {"q1", "q2", "q3", "q4", "group"} <= ops.variable_keys()
+    assert {"q3_R", "q7_R", "job_sat"}.isdisjoint(ops.variable_keys())
+    assert {"q3_R", "q7_R", "job_sat"}.isdisjoint(
+        set(pipeline.current_dataset.df.columns)
+    )
 
 
 def test_pipeline_operations_returns_display_results_by_known_analysis_kind(monkeypatch) -> None:

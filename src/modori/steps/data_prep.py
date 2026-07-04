@@ -76,7 +76,8 @@ def metadata_variables(
         measure = _infer_measure(frame[column])
         if isinstance(variable_measure, dict) and column in variable_measure:
             metadata_measure = str(variable_measure[column]).lower()
-            if metadata_measure in {item.value for item in Measure}:
+            valid_measure_values = {item.value for item in Measure}
+            if metadata_measure in valid_measure_values:
                 measure = Measure(metadata_measure)
         variables[str(column)] = Variable(
             name=str(column),

@@ -1,8 +1,45 @@
+import re
 from pathlib import Path
 
 
 def qml_text(relative: str) -> str:
     return Path("src/modori/ui/qml").joinpath(relative).read_text(encoding="utf-8")
+
+
+def qml_block_at(source: str, opening_brace: int) -> str:
+    depth = 0
+    for index in range(opening_brace, len(source)):
+        char = source[index]
+        if char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if depth == 0:
+                return source[opening_brace : index + 1]
+    raise AssertionError("QML block was not closed")
+
+
+def qml_object_block(source: str, marker: str) -> str:
+    marker_index = source.index(marker)
+    return qml_block_at(source, source.index("{", marker_index))
+
+
+def qml_handler_block(source: str, marker: str) -> str:
+    marker_index = source.index(marker)
+    return qml_block_at(source, source.index("{", marker_index))
+
+
+def controller_method_calls(block: str) -> list[str]:
+    return re.findall(r"uiController\.([A-Za-z_]\w*)\s*\(", block)
+
+
+def assert_no_hidden_run_calls(block: str) -> None:
+    forbidden_run_methods = {
+        "rerunNow",
+        "runPreparedRecommendationNow",
+        "runPreparedRecommendation",
+    }
+    assert not (set(controller_method_calls(block)) & forbidden_run_methods)
 
 
 def test_work_screen_wires_required_shell_components() -> None:
@@ -52,3 +89,34 @@ def test_controller_rerun_uses_worker_queue() -> None:
     assert result.run_id == 1
     assert controller.status == "running"
     assert len(fake_worker.calls) == 1
+
+
+def test_no_hidden_rerun_calls_in_import_or_recommendation_selection() -> None:
+    main = qml_text("Main.qml")
+    guide = qml_text("components/GuideRail.qml")
+
+    import_dialog_block = qml_object_block(main, "ImportDialog")
+    file_dialog_block = qml_object_block(main, "FileDialog {")
+    file_dialog_accepted_block = qml_handler_block(file_dialog_block, "onAccepted:")
+    selection_call = guide.index("uiController.selectRecommendationAt(index)")
+    selection_handler_start = guide.rfind("onClicked: {", 0, selection_call)
+    assert selection_handler_start != -1
+    recommendation_selection_block = qml_block_at(
+        guide, guide.index("{", selection_handler_start)
+    )
+
+    assert_no_hidden_run_calls(import_dialog_block)
+    assert_no_hidden_run_calls(file_dialog_block)
+    assert_no_hidden_run_calls(file_dialog_accepted_block)
+    assert_no_hidden_run_calls(recommendation_selection_block)
+
+    assert "confirmPendingImport" in controller_method_calls(import_dialog_block)
+    assert "previewDataFilePath" in controller_method_calls(file_dialog_accepted_block)
+    assert controller_method_calls(recommendation_selection_block) == [
+        "selectRecommendationAt"
+    ]
+    assert "runPreparedRecommendationNow" in controller_method_calls(
+        qml_object_block(
+            guide, 'text: root.manualSelectionMode ? appBootstrap.text("guide.run_manual") : appBootstrap.text("guide.run_recommended")'
+        )
+    )

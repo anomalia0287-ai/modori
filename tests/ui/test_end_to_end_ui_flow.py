@@ -47,18 +47,50 @@ def test_default_controller_reference_flow_runs_to_report(tmp_path) -> None:
     opened = controller.openDataFile(data_path, ImportOptions(confirm_new_session=True))
     assert opened.ok is True
 
-    rerun = controller.rerun()
+    rerun = controller.runPreparedRecommendation()
     assert rerun.ok is True
     assert controller.waitForLastRun(timeout=10) is True
 
     result_ids = [result.result_id for result in controller.resultsModel]
-    assert "reliability:job_sat" in result_ids
-    assert "comparison:job_sat:group" in result_ids
+    assert "reliability:selected_scale" in result_ids
     assert controller.stale is False
 
     exported = controller.exportReport(ReportExportOptions(language="ko"))
     assert exported.ok is True
     assert Path(exported.result_ids[0]).exists()
+
+
+def test_safe_caution_regression_recommendation_runs(tmp_path) -> None:
+    import pandas as pd
+
+    from modori.ui.contracts import ImportOptions
+    from modori.ui.controller import UiController
+
+    data_path = tmp_path / "safe-caution-regression.csv"
+    pd.DataFrame(
+        {
+            "score": [1.2, 2.1, 2.4, 3.0, 3.8, 4.1, 4.0, 4.7, 5.2, 5.0, 5.8, 6.1],
+            "age": list(range(18, 30)),
+        }
+    ).to_csv(data_path, index=False)
+    controller = UiController()
+
+    opened = controller.openDataFile(data_path, ImportOptions(confirm_new_session=True))
+    assert opened.ok is True
+
+    caution_index = next(
+        index
+        for index, candidate in enumerate(controller._recommendation_state.candidates)
+        if candidate.level == "주의 필요"
+    )
+    assert controller.selectRecommendationAt(caution_index) is True
+
+    rerun = controller.runPreparedRecommendation()
+    assert rerun.ok is True
+    assert controller.waitForLastRun(timeout=10) is True
+    assert controller.status == "ready"
+    assert controller.lastError == ""
+    assert [result.result_id for result in controller.resultsModel] == ["regression"]
 
 
 def test_app_launcher_exposes_ui_controller_context() -> None:

@@ -7,14 +7,17 @@ from pathlib import Path
 from modori.knowledge import Library
 from modori.ui.analysis_editor import AnalysisSelectionEditor
 from modori.ui.contracts import ImportOptions, ReportExportOptions
-from modori.ui.data_session import DataSessionLoader, ReferencePipelineFactory
+from modori.ui.data_session import DataSessionLoader, ImportSessionPipelineFactory
 from modori.ui.explanation_service import ExplanationService
 from modori.ui.explanations import ExplanationPresenter
 from modori.ui.import_flow import UiImportFlow
 from modori.ui.metadata_editor import VariableMetadataEditor
 from modori.ui.pipeline_ops import PipelineOperations
+from modori.recommendations import RecommendationService
 from modori.ui.report_export import ReportExportService
 from modori.ui.result_binding import ResultBindingPresenter
+from modori.ui.result_validation import ResultPayloadValidator
+from modori.ui.run_validation import RunConfigurationValidator
 
 
 PipelineFactory = Callable[[Path, ImportOptions], object]
@@ -30,8 +33,11 @@ class UiControllerServices:
     import_flow: UiImportFlow
     report_export_service: ReportExportService
     result_binding_presenter: ResultBindingPresenter
+    result_payload_validator: ResultPayloadValidator
     explanation_service: ExplanationService
     explanation_presenter: ExplanationPresenter
+    recommendation_service: RecommendationService
+    run_validator: RunConfigurationValidator
 
     @classmethod
     def build(
@@ -48,15 +54,18 @@ class UiControllerServices:
             analysis_editor=AnalysisSelectionEditor(pipeline_ops),
             metadata_editor=VariableMetadataEditor(pipeline_ops),
             data_session_loader=DataSessionLoader(
-                pipeline_factory or ReferencePipelineFactory(mode_provider)
+                pipeline_factory or ImportSessionPipelineFactory()
             ),
             import_flow=UiImportFlow(),
             report_export_service=ReportExportService(),
             result_binding_presenter=ResultBindingPresenter(),
+            result_payload_validator=ResultPayloadValidator(),
             explanation_service=ExplanationService(
                 library_factory=(lambda: library) if library is not None else None
             ),
             explanation_presenter=ExplanationPresenter(),
+            recommendation_service=RecommendationService(),
+            run_validator=RunConfigurationValidator(),
         )
 
     def replace_pipeline(self, pipeline: object | None) -> None:

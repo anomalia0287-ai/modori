@@ -24,11 +24,13 @@ def test_controller_exposes_qml_operated_bridge(tmp_path) -> None:
 def test_main_qml_wires_entry_file_dialog_and_work_transition() -> None:
     main = qml_text("Main.qml")
     entry = qml_text("screens/EntryScreen.qml")
+    work = qml_text("screens/WorkScreen.qml")
 
     assert "FileDialog" in main
     assert "uiController.previewDataFilePath" in main
     assert "uiController.confirmPendingImport" in main
-    assert "uiController.rerunNow" in main
+    assert "onClicked: uiController.rerunNow()" in work
+    assert "onRerunRequested: uiController.rerunNow()" in work
     assert "currentScreen" in main
     assert "currentScreen = \"work\"" in main
     assert "guidedRequested" in entry
@@ -158,12 +160,12 @@ def test_controller_bridge_runs_reference_flow_from_path(tmp_path) -> None:
 
     assert controller.chooseMode("guided") is True
     assert controller.openDataFilePath(str(data_path)) is True
-    assert controller.rerunNow() is True
+    assert controller.runPreparedRecommendationNow() is True
     assert controller.waitForLastRun(timeout=10) is True
     assert controller.dataModel is not None
     assert controller.dataModel.rowCount() == 20
     assert controller.variableModel is not None
-    assert controller.variableModel.rowCount() >= 10
+    assert controller.variableModel.rowCount() >= 9
     assert controller.resultSummary
     assert controller.exportReportNow() is True
     assert controller.reportPath.endswith("report.docx")
