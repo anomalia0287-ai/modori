@@ -289,13 +289,19 @@ class CompareGroupsStep(Step):
             and min(len(first), len(second)) < nonparametric_cutoff
         ):
             return "mann_whitney", "normality violated + small sample"
-        if variance_unequal:
-            return "welch_t", "unequal variance -> Welch correction"
-        if normality_violated and preset == "classic":
-            return "student_t", "classic policy: nonparametric auto-reroute off"
-        if normality_violated and preset == "custom":
-            return "student_t", "custom policy: nonparametric cutoff not met"
-        return "student_t", "assumptions met"
+        if preset == "classic":
+            if variance_unequal:
+                return "welch_t", "unequal variance -> Welch correction"
+            if normality_violated:
+                return "student_t", "classic policy: nonparametric auto-reroute off"
+            return "student_t", "assumptions met"
+        if preset == "custom" and policy.get("default_test") == "student_t":
+            if variance_unequal:
+                return "welch_t", "unequal variance -> Welch correction"
+            if normality_violated:
+                return "student_t", "custom policy: nonparametric cutoff not met"
+            return "student_t", "custom policy: default_test student_t"
+        return "welch_t", "Welch-first policy"
 
     @staticmethod
     def _assumptions(first: pd.Series, second: pd.Series) -> dict[str, float]:

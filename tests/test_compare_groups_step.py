@@ -103,7 +103,7 @@ def compare_step_with_policy(policy: dict) -> CompareGroupsStep:
     )
 
 
-def test_compare_groups_routes_to_student_t_when_assumptions_hold() -> None:
+def test_compare_groups_routes_to_welch_when_assumptions_hold() -> None:
     result = (
         compare_step()
         .compute_context_free(
@@ -116,8 +116,8 @@ def test_compare_groups_routes_to_student_t_when_assumptions_hold() -> None:
     )
 
     assert isinstance(result, ComparisonResult)
-    assert result.test_name == "student_t"
-    assert result.route_reason == "assumptions met"
+    assert result.test_name == "welch_t"
+    assert result.route_reason == "Welch-first policy"
     assert result.statistic == pytest.approx(-4.714, abs=0.001)
     assert result.df == pytest.approx(18.0, abs=0.001)
     assert result.p_value == pytest.approx(0.000173, abs=0.000001)
@@ -183,13 +183,17 @@ def test_compare_groups_matches_pingouin_mixed_anova_public_dataset() -> None:
 
     result = step.compute_context_free(dataset).analysis
 
+    control = frame.loc[frame["Group"] == "Control", "Scores"]
+    meditation = frame.loc[frame["Group"] == "Meditation", "Scores"]
+    reference = pg.ttest(control, meditation, correction=True).iloc[0]
+
     # Pingouin packaged dataset reference: mixed_anova, August scores,
-    # Control vs Meditation, pg.ttest(correction=False).
-    assert result.test_name == "student_t"
-    assert result.route_reason == "assumptions met"
-    assert result.statistic == pytest.approx(0.31602196533393784, abs=1e-12)
-    assert result.df == pytest.approx(58.0, abs=1e-12)
-    assert result.p_value == pytest.approx(0.7531203054939072, abs=1e-12)
+    # Control vs Meditation, pg.ttest(correction=True).
+    assert result.test_name == "welch_t"
+    assert result.route_reason == "Welch-first policy"
+    assert result.statistic == pytest.approx(reference["T"], abs=1e-12)
+    assert result.df == pytest.approx(reference["dof"], abs=1e-12)
+    assert result.p_value == pytest.approx(reference["p_val"], abs=1e-12)
     assert result.effect_value == pytest.approx(0.08159652058493858, abs=1e-12)
 
 
@@ -206,7 +210,7 @@ def test_compare_groups_routes_to_welch_when_variance_is_unequal() -> None:
     )
 
     assert result.test_name == "welch_t"
-    assert result.route_reason == "unequal variance -> Welch correction"
+    assert result.route_reason == "Welch-first policy"
     assert result.statistic == pytest.approx(-1.569, abs=0.001)
     assert result.df == pytest.approx(29.530, abs=0.001)
     assert result.p_value == pytest.approx(0.127196, abs=0.000001)
@@ -427,6 +431,7 @@ def test_compare_groups_custom_policy_uses_custom_nonparametric_cutoff() -> None
                 "normality_p": 0.05,
                 "nonparametric_n_cutoff": 5,
                 "use_levene": True,
+                "default_test": "student_t",
             }
         )
         .compute_context_free(
@@ -489,7 +494,7 @@ def test_modern_routing_uses_nonparametric_cutoff_boundary() -> None:
         "mann_whitney",
         "normality violated + small sample",
     )
-    assert (route_30, reason_30) == ("student_t", "assumptions met")
+    assert (route_30, reason_30) == ("welch_t", "Welch-first policy")
 
 
 def test_modern_routing_uses_strict_p_value_boundaries() -> None:
@@ -514,16 +519,16 @@ def test_modern_routing_uses_strict_p_value_boundaries() -> None:
     }
 
     assert step._route(first, second, normality_at_threshold) == (
-        "student_t",
-        "assumptions met",
+        "welch_t",
+        "Welch-first policy",
     )
     assert step._route(first, second, levene_at_threshold) == (
-        "student_t",
-        "assumptions met",
+        "welch_t",
+        "Welch-first policy",
     )
     assert step._route(first, second, levene_below_threshold) == (
         "welch_t",
-        "unequal variance -> Welch correction",
+        "Welch-first policy",
     )
 
 
@@ -543,5 +548,5 @@ def test_compare_groups_writes_analysis_object_for_pipeline() -> None:
         pipeline.analysis_objects["comparison:job_sat:group"].groups["control"].n == 10
     )
     assert pipeline.step_results["compare"].notes == [
-        "Selected Student's t-test because assumptions met."
+        "Selected Welch's t-test because Welch-first policy."
     ]
