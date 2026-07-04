@@ -79,7 +79,9 @@ def get_capability(key: str) -> AnalysisCapability:
 def require_executable(key: str) -> AnalysisCapability:
     capability = get_capability(key)
     if capability.status is not AnalysisStatus.EXECUTABLE:
-        raise ValueError(f"{capability.label} is not executable in Survey Pipeline V1: {capability.reason}")
+        raise ValueError(
+            f"{capability.label} is not executable in Survey Pipeline V1: {capability.reason}"
+        )
     return capability
 
 
