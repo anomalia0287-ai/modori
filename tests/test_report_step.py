@@ -107,9 +107,9 @@ def _png_pixels_per_meter(path: Path) -> tuple[int, int, int]:
     assert data.startswith(b"\x89PNG\r\n\x1a\n")
     index = 8
     while index < len(data):
-        length = struct.unpack(">I", data[index:index + 4])[0]
-        chunk_type = data[index + 4:index + 8]
-        chunk_data = data[index + 8:index + 8 + length]
+        length = struct.unpack(">I", data[index : index + 4])[0]
+        chunk_type = data[index + 4 : index + 8]
+        chunk_data = data[index + 8 : index + 8 + length]
         if chunk_type == b"pHYs":
             x_ppm, y_ppm, unit = struct.unpack(">IIB", chunk_data)
             return x_ppm, y_ppm, unit
@@ -145,15 +145,19 @@ def test_report_step_generates_korean_apa_prose_figures_and_docx(tmp_path) -> No
     assert isinstance(report, ReportResult)
     assert Path(report.docx_path).exists()
     assert any("Cronbach's \u03b1 = .97" in sentence for sentence in report.prose)
-    assert any("독립표본 t검정 결과" in sentence for sentence in report.prose)
+    assert any(
+        "독립표본 t검정(Welch 보정) 결과" in sentence for sentence in report.prose
+    )
     assert any("직무만족 점수 차이" in sentence for sentence in report.prose)
     assert any("p < .001" in sentence for sentence in report.prose)
     assert any("Cohen's d = -2.11" in sentence for sentence in report.prose)
     assert "reliability:job_sat" in report.tables
     assert report.tables["reliability:job_sat"][0]["item"] == "q1"
     assert "comparison:job_sat:group" in report.tables
-    assert report.tables["comparison:job_sat:group"][0]["test"] == "student_t"
-    assert sorted(Path(path).suffix for paths in report.figure_paths.values() for path in paths) == [
+    assert report.tables["comparison:job_sat:group"][0]["test"] == "welch_t"
+    assert sorted(
+        Path(path).suffix for paths in report.figure_paths.values() for path in paths
+    ) == [
         ".eps",
         ".eps",
         ".png",
@@ -161,8 +165,14 @@ def test_report_step_generates_korean_apa_prose_figures_and_docx(tmp_path) -> No
         ".svg",
         ".svg",
     ]
-    assert all(Path(path).exists() for paths in report.figure_paths.values() for path in paths)
-    assert all(Path(path).stat().st_size > 0 for paths in report.figure_paths.values() for path in paths)
+    assert all(
+        Path(path).exists() for paths in report.figure_paths.values() for path in paths
+    )
+    assert all(
+        Path(path).stat().st_size > 0
+        for paths in report.figure_paths.values()
+        for path in paths
+    )
     png_paths = [
         Path(path)
         for paths in report.figure_paths.values()
@@ -186,7 +196,10 @@ def test_report_step_generates_korean_apa_prose_figures_and_docx(tmp_path) -> No
     assert all(image.shape[0] >= 100 and image.shape[1] >= 100 for image in png_images)
     assert all(_png_pixels_per_meter(path) == (11811, 11811, 1) for path in png_paths)
     assert all(ET.parse(path).getroot().tag.endswith("svg") for path in svg_paths)
-    assert all(path.read_text(encoding="utf-8", errors="ignore").startswith("%!PS-Adobe") for path in eps_paths)
+    assert all(
+        path.read_text(encoding="utf-8", errors="ignore").startswith("%!PS-Adobe")
+        for path in eps_paths
+    )
     document = Document(report.docx_path)
     assert len(document.inline_shapes) == len(png_paths)
     assert all(shape.width > 0 and shape.height > 0 for shape in document.inline_shapes)
@@ -198,13 +211,11 @@ def test_report_step_generates_korean_apa_prose_figures_and_docx(tmp_path) -> No
         for row in table.rows
         for cell in row.cells
     ]
-    assert "student_t" in table_cells
+    assert "welch_t" in table_cells
     assert "cohen_d" in table_cells
     with ZipFile(report.docx_path) as docx_archive:
         embedded_media = [
-            name
-            for name in docx_archive.namelist()
-            if name.startswith("word/media/")
+            name for name in docx_archive.namelist() if name.startswith("word/media/")
         ]
     assert len(embedded_media) == len(png_paths)
 
@@ -308,6 +319,9 @@ def test_public_reference_data_runs_from_csv_import_to_report(tmp_path) -> None:
         .loc[lambda frame: frame["Time"] == "August", ["Scores", "Group"]]
         .reset_index(drop=True)
     )
+    control = august_scores.loc[august_scores["Group"] == "Control", "Scores"]
+    meditation = august_scores.loc[august_scores["Group"] == "Meditation", "Scores"]
+    ttest_reference = pg.ttest(control, meditation, correction=True).iloc[0]
     repeated_items = pd.concat([cronbach_wide] * 4, ignore_index=True).iloc[
         : len(august_scores)
     ]
@@ -370,9 +384,11 @@ def test_public_reference_data_runs_from_csv_import_to_report(tmp_path) -> None:
         abs=1e-12,
     )
     assert reliability.alpha_ci == pytest.approx((0.418, 0.730), abs=0.001)
-    assert comparison.test_name == "student_t"
-    assert comparison.statistic == pytest.approx(0.31602196533393784, abs=1e-12)
-    assert comparison.p_value == pytest.approx(0.7531203054939072, abs=1e-12)
+    assert comparison.test_name == "welch_t"
+    assert comparison.route_reason == "Welch-first policy"
+    assert comparison.statistic == pytest.approx(ttest_reference["T"], abs=1e-12)
+    assert comparison.df == pytest.approx(ttest_reference["dof"], abs=1e-12)
+    assert comparison.p_value == pytest.approx(ttest_reference["p_val"], abs=1e-12)
     assert Path(report.docx_path).exists()
     assert any("Cronbach's \u03b1 = .59" in sentence for sentence in report.prose)
     assert any("통계적으로 유의하지 않았다" in sentence for sentence in report.prose)
@@ -385,8 +401,8 @@ def test_psych_bfi_public_survey_runs_from_csv_import_to_report(tmp_path) -> Non
     keyed_frame["A1_R"] = 7 - keyed_frame["A1"]
     agree_items = ["A1_R", "A2", "A3", "A4", "A5"]
     valid_agree = keyed_frame[agree_items].notna().sum(axis=1) >= 4
-    keyed_frame["agree"] = keyed_frame[agree_items].mean(axis=1, skipna=True).where(
-        valid_agree
+    keyed_frame["agree"] = (
+        keyed_frame[agree_items].mean(axis=1, skipna=True).where(valid_agree)
     )
 
     complete_reliability = keyed_frame[agree_items].dropna()
@@ -403,14 +419,10 @@ def test_psych_bfi_public_survey_runs_from_csv_import_to_report(tmp_path) -> Non
     first_term = first_variance / len(gender_1)
     second_term = second_variance / len(gender_2)
     welch_df = (first_term + second_term) ** 2 / (
-        first_term**2 / (len(gender_1) - 1)
-        + second_term**2 / (len(gender_2) - 1)
+        first_term**2 / (len(gender_1) - 1) + second_term**2 / (len(gender_2) - 1)
     )
     pooled_sd = (
-        (
-            (len(gender_1) - 1) * first_variance
-            + (len(gender_2) - 1) * second_variance
-        )
+        ((len(gender_1) - 1) * first_variance + (len(gender_2) - 1) * second_variance)
         / (len(gender_1) + len(gender_2) - 2)
     ) ** 0.5
     signed_cohen_d = (gender_1.mean() - gender_2.mean()) / pooled_sd
@@ -484,7 +496,7 @@ def test_psych_bfi_public_survey_runs_from_csv_import_to_report(tmp_path) -> Non
     assert reliability.cronbach_alpha == pytest.approx(alpha_manual, abs=1e-12)
     assert reliability.cronbach_alpha == pytest.approx(0.7037558943748362, abs=1e-12)
     assert comparison.test_name == "welch_t"
-    assert comparison.route_reason == "unequal variance -> Welch correction"
+    assert comparison.route_reason == "Welch-first policy"
     assert comparison.statistic == pytest.approx(welch.statistic, abs=1e-12)
     assert comparison.df == pytest.approx(welch_df, abs=1e-9)
     assert comparison.effect_value == pytest.approx(signed_cohen_d, abs=1e-12)
@@ -546,11 +558,15 @@ def test_report_step_rejects_output_filename_path_traversal(tmp_path) -> None:
         )
     )
 
-    with pytest.raises(ValueError, match="Report filename must not contain path separators"):
+    with pytest.raises(
+        ValueError, match="Report filename must not contain path separators"
+    ):
         pipeline.recompute(dirty_from=None)
 
 
-@pytest.mark.parametrize("filename", ["../escape.docx", "/escape.docx", "C:/escape.docx"])
+@pytest.mark.parametrize(
+    "filename", ["../escape.docx", "/escape.docx", "C:/escape.docx"]
+)
 def test_report_step_rejects_absolute_or_forward_slash_filenames(
     tmp_path,
     filename,
@@ -576,7 +592,9 @@ def test_report_step_rejects_absolute_or_forward_slash_filenames(
         )
     )
 
-    with pytest.raises(ValueError, match="Report filename must not contain path separators"):
+    with pytest.raises(
+        ValueError, match="Report filename must not contain path separators"
+    ):
         pipeline.recompute(dirty_from=None)
 
 
@@ -604,7 +622,9 @@ def test_report_step_rejects_output_dir_that_is_an_existing_file(tmp_path) -> No
         )
     )
 
-    with pytest.raises(ValueError, match="Report output_dir exists and is not a directory"):
+    with pytest.raises(
+        ValueError, match="Report output_dir exists and is not a directory"
+    ):
         pipeline.recompute(dirty_from=None)
 
 
@@ -639,7 +659,9 @@ def test_report_step_rejects_existing_docx_symlink_destination(tmp_path) -> None
         )
     )
 
-    with pytest.raises(ValueError, match="Report output path must not be a symbolic link"):
+    with pytest.raises(
+        ValueError, match="Report output path must not be a symbolic link"
+    ):
         pipeline.recompute(dirty_from=None)
 
     assert outside.read_text(encoding="utf-8") == "outside"
@@ -674,7 +696,9 @@ def test_report_step_rejects_symlink_output_dir(tmp_path) -> None:
         )
     )
 
-    with pytest.raises(ValueError, match="Report output_dir must not be a symbolic link"):
+    with pytest.raises(
+        ValueError, match="Report output_dir must not be a symbolic link"
+    ):
         pipeline.recompute(dirty_from=None)
 
     assert not (outside_dir / "report.docx").exists()
@@ -721,7 +745,9 @@ def test_report_step_reports_missing_upstream_analysis_key_clearly(tmp_path) -> 
         )
     )
 
-    with pytest.raises(ValueError, match="Missing analysis result: reliability:missing"):
+    with pytest.raises(
+        ValueError, match="Missing analysis result: reliability:missing"
+    ):
         pipeline.recompute(dirty_from=None)
 
 
@@ -919,12 +945,17 @@ def test_report_step_uses_distinct_figure_paths_across_recompute(tmp_path) -> No
         )
     )
     pipeline.recompute(dirty_from=None)
-    first_paths = set(pipeline.analysis_objects["report"].figure_paths["reliability:job_sat"])
+    first_paths = set(
+        pipeline.analysis_objects["report"].figure_paths["reliability:job_sat"]
+    )
 
     pipeline.recompute(dirty_from="report")
-    second_paths = set(pipeline.analysis_objects["report"].figure_paths["reliability:job_sat"])
+    second_paths = set(
+        pipeline.analysis_objects["report"].figure_paths["reliability:job_sat"]
+    )
 
     assert first_paths.isdisjoint(second_paths)
+
 
 @pytest.mark.parametrize("param_name", ["output_docx", "docx_path", "output_path"])
 def test_report_step_rejects_direct_output_path_aliases(param_name, tmp_path) -> None:
