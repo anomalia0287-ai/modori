@@ -631,6 +631,52 @@ def _render_diagnostic_chart(spec: ChartSpec, output_path: str | Path) -> None:
     plt.close(fig)
 
 
+def _render_paired_line_chart(spec: ChartSpec, output_path: str | Path) -> None:
+    _configure_fonts()
+
+    before_values = [float(value) for value in spec.data.get("before", [])]
+    after_values = [float(value) for value in spec.data.get("after", [])]
+    if not before_values or len(before_values) != len(after_values):
+        raise ValueError(
+            "paired_line chart requires equal-length before and after values"
+        )
+
+    before_label = str(spec.data.get("before_label", "Before"))
+    after_label = str(spec.data.get("after_label", "After"))
+    mean_before = sum(before_values) / len(before_values)
+    mean_after = sum(after_values) / len(after_values)
+
+    fig, ax = plt.subplots(figsize=(7, 4.5), constrained_layout=True)
+    for before, after in zip(before_values, after_values):
+        ax.plot([0, 1], [before, after], color="#4C78A8", alpha=0.25, linewidth=1)
+
+    ax.scatter(
+        [0] * len(before_values),
+        before_values,
+        color="#4C78A8",
+        alpha=0.45,
+        s=22,
+    )
+    ax.scatter(
+        [1] * len(after_values),
+        after_values,
+        color="#4C78A8",
+        alpha=0.45,
+        s=22,
+    )
+    ax.plot([0, 1], [mean_before, mean_after], color="#F58518", linewidth=2.5)
+    ax.scatter([0, 1], [mean_before, mean_after], color="#F58518", s=55, zorder=3)
+    ax.set_xticks([0, 1])
+    ax.set_xticklabels([before_label, after_label])
+    ax.set_xlim(-0.2, 1.2)
+    ax.set_xlabel(spec.x_label)
+    ax.set_ylabel(spec.y_label)
+    ax.set_title(spec.title)
+
+    fig.savefig(output_path, dpi=300)
+    plt.close(fig)
+
+
 def _render_single_or_bundle(
     spec: ChartSpec,
     output_path: str | Path,
@@ -667,6 +713,10 @@ def render_chart(
         )
     if spec.type in {"horizontal_bar", "mean_ci_jitter", "box"}:
         return _render_single_or_bundle(spec, output_path, key, _render_legacy_chart)
+    if spec.type == "paired_line":
+        return _render_single_or_bundle(
+            spec, output_path, key, _render_paired_line_chart
+        )
     raise ValueError(f"Unsupported chart type: {spec.type}")
 
 

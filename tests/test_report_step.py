@@ -16,6 +16,7 @@ from modori.steps import (
     CompareGroupsStep,
     ComposeScaleStep,
     ImportStep,
+    PairedComparisonStep,
     RecodeReverseStep,
     ReliabilityStep,
     ReportStep,
@@ -99,6 +100,38 @@ def reliability_result_with_chart(chart_type: str) -> ReliabilityResult:
             x_label="x",
             y_label="y",
         ),
+    )
+
+
+def paired_report_dataset() -> Dataset:
+    frame = pd.DataFrame(
+        {
+            "pre": [10, 11, 12, 13, 14, 15],
+            "post": [11, 12, 13, 14, 24, 25],
+        }
+    )
+    return Dataset(
+        df=frame,
+        variables={
+            "pre": Variable(
+                name="pre",
+                label="Pre score",
+                measure=Measure.SCALE,
+                value_labels={},
+                missing_values=[],
+                dtype=str(frame["pre"].dtype),
+                origin_step_id=None,
+            ),
+            "post": Variable(
+                name="post",
+                label="Post score",
+                measure=Measure.SCALE,
+                value_labels={},
+                missing_values=[],
+                dtype=str(frame["post"].dtype),
+                origin_step_id=None,
+            ),
+        },
     )
 
 
@@ -218,6 +251,46 @@ def test_report_step_generates_korean_apa_prose_figures_and_docx(tmp_path) -> No
             name for name in docx_archive.namelist() if name.startswith("word/media/")
         ]
     assert len(embedded_media) == len(png_paths)
+
+
+def test_report_step_renders_paired_wilcoxon_figures_by_default(tmp_path) -> None:
+    pipeline = Pipeline(paired_report_dataset())
+    pipeline.add(
+        PairedComparisonStep(
+            id="paired",
+            title="Compare paired scores",
+            params={"before": "pre", "after": "post"},
+        )
+    )
+    pipeline.add(
+        ReportStep(
+            id="report",
+            title="APA report",
+            params={
+                "include": ["comparison:pre:post:paired"],
+                "output_dir": str(tmp_path),
+                "filename": "paired-report.docx",
+                "language": "en",
+            },
+        )
+    )
+
+    pipeline.recompute(dirty_from=None)
+
+    comparison = pipeline.analysis_objects["comparison:pre:post:paired"]
+    report = pipeline.analysis_objects["report"]
+    figure_paths = report.figure_paths["comparison:pre:post:paired"]
+
+    assert comparison.test_name == "wilcoxon"
+    assert isinstance(report, ReportResult)
+    assert Path(report.docx_path).exists()
+    assert sorted(Path(path).suffix for path in figure_paths) == [
+        ".eps",
+        ".png",
+        ".svg",
+    ]
+    assert all(Path(path).exists() for path in figure_paths)
+    assert all(Path(path).stat().st_size > 0 for path in figure_paths)
 
 
 def test_report_step_can_export_without_figures(tmp_path) -> None:
