@@ -8,6 +8,14 @@ from modori.analysis_catalog import (
 )
 
 
+DEFERRED_KEYS = (
+    "repeated_measures_anova",
+    "friedman",
+    "mediation",
+    "moderated_mediation",
+)
+
+
 def test_survey_v1_exposes_only_supported_executable_comparisons() -> None:
     keys = survey_v1_executable_keys()
 
@@ -19,15 +27,25 @@ def test_survey_v1_exposes_only_supported_executable_comparisons() -> None:
     assert "friedman" not in keys
 
 
-def test_deferred_advanced_analyses_fail_closed() -> None:
-    capability = get_capability("repeated_measures_anova")
+@pytest.mark.parametrize("key", DEFERRED_KEYS)
+def test_deferred_advanced_analyses_are_registered(key: str) -> None:
+    capability = get_capability(key)
 
     assert capability.status is AnalysisStatus.DEFERRED
+
+
+def test_repeated_measures_anova_explains_v1_deferment() -> None:
+    capability = get_capability("repeated_measures_anova")
+
     assert "sphericity" in capability.reason
     assert "Greenhouse-Geisser" in capability.reason
     assert "Friedman" in capability.reason
+
+
+@pytest.mark.parametrize("key", DEFERRED_KEYS)
+def test_deferred_advanced_analyses_fail_closed(key: str) -> None:
     with pytest.raises(ValueError, match="not executable in Survey Pipeline V1"):
-        require_executable("repeated_measures_anova")
+        require_executable(key)
 
 
 def test_mediation_is_deferred_with_external_verification_paths() -> None:
