@@ -27,7 +27,7 @@ if %errorlevel% neq 0 (
     exit /b 5
 )
 
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT%"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT%" -RebuildPayload
 set "RC=%ERRORLEVEL%"
 echo.
 echo Attach script exit code: %RC%

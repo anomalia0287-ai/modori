@@ -5,7 +5,9 @@ param(
     [string]$WorkspaceRoot = "C:\Users\V\Desktop\TongTong",
     [string]$PayloadRoot = "C:\VM\ModoriPayload",
     [string]$PayloadVhdPath = "C:\VM\ModoriPayload\ModoriPayloadV2.vhdx",
-    [UInt64]$PayloadVhdSizeBytes = 4GB
+    [string]$LegacyPayloadVhdPath = "C:\VM\ModoriPayload\ModoriPayload.vhdx",
+    [UInt64]$PayloadVhdSizeBytes = 4GB,
+    [switch]$RebuildPayload
 )
 
 $ErrorActionPreference = "Stop"
@@ -113,6 +115,61 @@ function Assert-ExistingPayloadVhd {
     }
 }
 
+function Get-NewestSourceWriteTimeUtc {
+    param([Parameter(Mandatory = $true)][string[]]$Paths)
+
+    $newest = $null
+    foreach ($path in $Paths) {
+        $item = Get-Item -LiteralPath $path
+        if ($item.PSIsContainer) {
+            $newestChild = Get-ChildItem -LiteralPath $path -Recurse -File |
+                Sort-Object LastWriteTimeUtc -Descending |
+                Select-Object -First 1
+            if ($newestChild) {
+                $writeTime = $newestChild.LastWriteTimeUtc
+            } else {
+                $writeTime = $item.LastWriteTimeUtc
+            }
+        } else {
+            $writeTime = $item.LastWriteTimeUtc
+        }
+
+        if (-not $newest -or $writeTime -gt $newest) {
+            $newest = $writeTime
+        }
+    }
+
+    return $newest
+}
+
+function Assert-PayloadVhdIsCurrent {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][datetime]$NewestSourceWriteTimeUtc
+    )
+
+    $payloadVhd = Get-Item -LiteralPath $Path
+    if ($NewestSourceWriteTimeUtc -gt $payloadVhd.LastWriteTimeUtc.AddSeconds(1)) {
+        throw "Existing payload VHDX is older than the packaged app; rerun this script with -RebuildPayload."
+    }
+}
+
+function Backup-ExistingPayloadVhd {
+    param(
+        [Parameter(Mandatory = $true)][string]$PayloadVhdPath,
+        [Parameter(Mandatory = $true)][string]$PayloadRoot
+    )
+
+    $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
+    $backupPath = Join-Path $PayloadRoot "ModoriPayloadV2.before-rebuild-$timestamp.vhdx"
+    if (Test-Path -LiteralPath $backupPath) {
+        throw "Payload V2 backup path already exists: $backupPath"
+    }
+
+    Write-Host "Backing up existing payload VHDX to: $backupPath"
+    Move-Item -LiteralPath $PayloadVhdPath -Destination $backupPath
+}
+
 Assert-Administrator
 
 New-Item -ItemType Directory -Force -Path $PayloadRoot | Out-Null
@@ -140,15 +197,46 @@ Assert-Path -Path $sourceApp -Label "Packaged app folder"
 foreach ($sample in $samples) {
     Assert-Path -Path $sample -Label "Sample file"
 }
+$sourcePaths = @($sourceApp) + $samples
+$newestSourceWriteTimeUtc = Get-NewestSourceWriteTimeUtc -Paths $sourcePaths
 
 $vm = Get-VM -Name $VMName -ErrorAction Stop
 Write-Host "VM: $($vm.Name) / $($vm.State)"
 
-$attachedDisk = Get-VMHardDiskDrive -VMName $VMName |
+$attachedPayloadDisks = Get-VMHardDiskDrive -VMName $VMName |
     Where-Object { $_.Path -eq $PayloadVhdPath } |
-    Select-Object -First 1
+    Select-Object
 
-if ($attachedDisk) {
+if ($RebuildPayload) {
+    Write-Section "Payload rebuild requested"
+    if ($vm.State -ne "Off") {
+        throw "VM must be Off before rebuilding Payload V2. Shut down Windows inside the VM, wait until Hyper-V Manager shows Off, then rerun this script."
+    }
+
+    if ($attachedPayloadDisks) {
+        Write-Section "Remove existing Payload V2 disk"
+        foreach ($attachedPayloadDisk in $attachedPayloadDisks) {
+            Remove-VMHardDiskDrive -VMHardDiskDrive $attachedPayloadDisk
+            Write-Host "Removed VM disk attachment: $($attachedPayloadDisk.Path)"
+        }
+    }
+
+    $legacyPayloadDisks = Get-VMHardDiskDrive -VMName $VMName |
+        Where-Object { $_.Path -eq $LegacyPayloadVhdPath } |
+        Select-Object
+    if ($legacyPayloadDisks) {
+        Write-Section "Remove legacy Payload V1 disk"
+        foreach ($legacyPayloadDisk in $legacyPayloadDisks) {
+            Remove-VMHardDiskDrive -VMHardDiskDrive $legacyPayloadDisk
+            Write-Host "Removed legacy VM disk attachment: $($legacyPayloadDisk.Path)"
+        }
+    }
+
+    if (Test-Path -LiteralPath $PayloadVhdPath) {
+        Backup-ExistingPayloadVhd -PayloadVhdPath $PayloadVhdPath -PayloadRoot $PayloadRoot
+    }
+} elseif ($attachedPayloadDisks) {
+    Assert-PayloadVhdIsCurrent -Path $PayloadVhdPath -NewestSourceWriteTimeUtc $newestSourceWriteTimeUtc
     Write-Host "Payload disk is already attached: $PayloadVhdPath"
     Complete-Success
 }
@@ -158,6 +246,7 @@ if ($vm.State -ne "Off") {
 }
 
 if (Test-Path -LiteralPath $PayloadVhdPath) {
+    Assert-PayloadVhdIsCurrent -Path $PayloadVhdPath -NewestSourceWriteTimeUtc $newestSourceWriteTimeUtc
     Assert-ExistingPayloadVhd -Path $PayloadVhdPath
     Write-Section "Attach existing payload disk"
     Add-VMHardDiskDrive -VMName $VMName -Path $PayloadVhdPath
