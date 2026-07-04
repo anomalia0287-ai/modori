@@ -78,10 +78,8 @@ In scope:
   count guidance.
 - Run frequency, crosstab, chi-square, and exact-test routing.
 - Run correlation analyses, including Spearman routing where appropriate.
-- Run Welch-first two-group comparisons and paired comparisons.
+- Run Welch-first two-group comparisons and two-time paired comparisons.
 - Run ANOVA/ANCOVA with assumption checks and post-hoc routing.
-- Run basic repeated-measures analysis for common within-subject survey designs
-  such as pre/post comparisons, while excluding mixed models and MANOVA from V1.
 - Provide nonparametric alternatives for common assumption failures.
 - Run basic OLS regression with categorical-predictor encoding, VIF diagnostics,
   and safe interaction handling.
@@ -101,6 +99,9 @@ The following are not V1 execution features:
 - Conditional indirect effects.
 - Johnson-Neyman regions.
 - PROCESS-compatible model coverage.
+- Repeated-measures ANOVA or Friedman tests for three or more within-subject
+  levels.
+- Mixed models and MANOVA.
 - Any generated interpretation from an LLM or SLM.
 - External API calls for statistical guidance, routing, or result explanation.
 
@@ -122,6 +123,14 @@ planned as a separate, heavily verified advanced-process module with:
 - Johnson-Neyman support if moderation coverage requires it.
 - Golden tests against trusted PROCESS/R/lavaan outputs.
 - Clear limits for cross-sectional causal interpretation.
+
+Repeated-measures coverage beyond two-time paired comparisons is also V1.x. It
+requires its own gates before exposure:
+
+- Sphericity evaluation for repeated-measures ANOVA.
+- Greenhouse-Geisser correction when sphericity is violated.
+- Friedman routing for nonparametric repeated-measures cases.
+- Golden tests against trusted R/SPSS outputs.
 
 ## Deterministic Guidance Boundary
 
@@ -212,7 +221,6 @@ pipeline is release-ready:
 - Correlation, including Pearson/Spearman routing.
 - Independent Welch t-test.
 - Paired t-test.
-- Basic repeated-measures ANOVA for a narrow, one-within-subject-factor case.
 - Mann-Whitney U.
 - Wilcoxon signed-rank.
 - Kruskal-Wallis.
