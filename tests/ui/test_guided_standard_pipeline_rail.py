@@ -16,8 +16,9 @@ def test_controller_exposes_step_chain_text_after_import(tmp_path) -> None:
     assert controller.openDataFilePath(str(data_path)) is True
 
     assert "Import data" in controller.stepChainText
-    assert "Reliability" in controller.stepChainText
-    assert "APA report" in controller.stepChainText
+    assert "Reliability" not in controller.stepChainText
+    assert "APA report" not in controller.stepChainText
+    assert controller.recommendationCount > 0
 
 
 def test_work_header_exposes_guided_standard_controls() -> None:

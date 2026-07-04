@@ -17,7 +17,8 @@ def test_work_header_has_data_analysis_report_surfaces() -> None:
 def test_guide_rail_has_explicit_committed_run_anchor() -> None:
     guide = qml_text("components/GuideRail.qml")
 
-    assert "guide.run_selected" in guide
+    assert "guide.run_recommended" in guide
+    assert "guide.run_manual" in guide
     assert "guide.other_recommendations" in guide
     assert "guide.manual_selection" in guide
     assert "uiController.runPreparedRecommendationNow" in guide

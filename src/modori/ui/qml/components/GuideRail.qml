@@ -160,8 +160,8 @@ Rectangle {
             }
 
             Button {
-                text: appBootstrap.text("guide.run_selected")
-                Accessible.name: appBootstrap.text("guide.run_selected")
+                text: root.manualSelectionMode ? appBootstrap.text("guide.run_manual") : appBootstrap.text("guide.run_recommended")
+                Accessible.name: text
                 enabled: root.manualSelectionMode ? root.canCommitSelection : root.canEditSelection && root.recommendationAvailable
                 Layout.fillWidth: true
                 onClicked: {

@@ -13,7 +13,7 @@ from modori.ui.explanations import ExplanationPresenter
 from modori.ui.import_flow import UiImportFlow
 from modori.ui.metadata_editor import VariableMetadataEditor
 from modori.ui.pipeline_ops import PipelineOperations
-from modori.ui.recommendations import RecommendationService
+from modori.recommendations import RecommendationService
 from modori.ui.report_export import ReportExportService
 from modori.ui.result_binding import ResultBindingPresenter
 from modori.ui.result_validation import ResultPayloadValidator

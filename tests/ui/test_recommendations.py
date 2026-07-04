@@ -3,7 +3,7 @@ from __future__ import annotations
 import pandas as pd
 
 from modori.core import Dataset, Measure, Variable
-from modori.ui.recommendations import RecommendationService
+from modori.recommendations import RecommendationService
 
 
 def _variable(

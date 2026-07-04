@@ -117,6 +117,6 @@ def test_no_hidden_rerun_calls_in_import_or_recommendation_selection() -> None:
     ]
     assert "runPreparedRecommendationNow" in controller_method_calls(
         qml_object_block(
-            guide, 'text: appBootstrap.text("guide.run_selected")'
+            guide, 'text: root.manualSelectionMode ? appBootstrap.text("guide.run_manual") : appBootstrap.text("guide.run_recommended")'
         )
     )

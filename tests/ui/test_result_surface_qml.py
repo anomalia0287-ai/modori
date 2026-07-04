@@ -14,7 +14,7 @@ def test_controller_exposes_result_table_text_after_run(tmp_path) -> None:
     controller = UiController()
 
     assert controller.openDataFilePath(str(data_path)) is True
-    assert controller.rerunNow() is True
+    assert controller.runPreparedRecommendationNow() is True
     assert controller.waitForLastRun(timeout=10) is True
 
     assert controller.resultTableText
