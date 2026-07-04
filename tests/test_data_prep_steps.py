@@ -218,6 +218,41 @@ def test_import_step_reads_sav_metadata(tmp_path) -> None:
     assert group.missing_values == [99.0]
 
 
+def test_import_step_treats_unknown_sav_measure_as_inferred_measure(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    path = tmp_path / "survey.sav"
+    path.write_bytes(b"not used by monkeypatched reader")
+
+    class Metadata:
+        column_labels = ["Score"]
+        variable_value_labels = {}
+        missing_ranges = {}
+        variable_measure = {"score": "unknown"}
+
+    def read_table_spy(path_arg, file_type):
+        return pd.DataFrame({"score": [1.1, 2.2, 3.3]}), Metadata()
+
+    monkeypatch.setattr("modori.steps.data_prep.read_table", read_table_spy)
+    monkeypatch.setattr(
+        "modori.steps.data_prep.read_columns",
+        lambda path_arg, file_type: ["score"],
+    )
+    pipeline = Pipeline(Dataset.empty())
+    pipeline.add(
+        ImportStep(
+            id="import",
+            title="Import SAV",
+            params={"path": str(path), "file_type": "sav"},
+        )
+    )
+
+    pipeline.recompute(dirty_from=None)
+
+    assert pipeline.current_dataset.variables["score"].measure is Measure.SCALE
+
+
 def test_import_step_rejects_sav_missing_ranges_that_are_not_point_codes(
     tmp_path,
     monkeypatch,

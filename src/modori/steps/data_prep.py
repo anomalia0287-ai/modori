@@ -75,7 +75,9 @@ def metadata_variables(
                 missing_values.append(float(item))
         measure = _infer_measure(frame[column])
         if isinstance(variable_measure, dict) and column in variable_measure:
-            measure = Measure(str(variable_measure[column]).lower())
+            metadata_measure = str(variable_measure[column]).lower()
+            if metadata_measure in {item.value for item in Measure}:
+                measure = Measure(metadata_measure)
         variables[str(column)] = Variable(
             name=str(column),
             label=label,
