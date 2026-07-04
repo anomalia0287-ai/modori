@@ -136,6 +136,8 @@ def _comparison_mean_difference(result: ComparisonResult) -> float:
 def _comparison_effect_label(result: ComparisonResult) -> str:
     if result.effect_name == "cohen_d":
         return "Cohen's d"
+    if result.effect_name == "cohen_dz":
+        return "Cohen's dz"
     if result.effect_name == "hedges_g":
         return "Hedges' g"
     if result.effect_name == "eta_squared":
@@ -150,6 +152,8 @@ def _comparison_test_label_ko(result: ComparisonResult) -> str:
         return "독립표본 t검정"
     if result.test_name == "paired_t":
         return "대응표본 t검정"
+    if result.test_name == "wilcoxon":
+        return "Wilcoxon 부호순위검정"
     if result.test_name == "anova_oneway":
         return "일원분산분석"
     return result.test_name
@@ -162,9 +166,23 @@ def _comparison_test_label_en(result: ComparisonResult) -> str:
         return "independent-samples t test"
     if result.test_name == "paired_t":
         return "paired-samples t test"
+    if result.test_name == "wilcoxon":
+        return "Wilcoxon signed-rank test"
     if result.test_name == "anova_oneway":
         return "one-way ANOVA"
     return result.test_name
+
+
+def _comparison_significance_ko(result: ComparisonResult) -> str:
+    if result.p_value < 0.05:
+        return "통계적으로 유의하였다"
+    return "통계적으로 유의하지 않았다"
+
+
+def _comparison_significance_en(result: ComparisonResult) -> str:
+    if result.p_value < 0.05:
+        return "a statistically significant"
+    return "no statistically significant"
 
 
 def _comparison_case_count_sentence(result: ComparisonResult, language: str) -> str:
@@ -176,6 +194,16 @@ def _comparison_case_count_sentence(result: ComparisonResult, language: str) -> 
             f"{result.n_dropped} cases were excluded for missing values."
         )
     return f" 분석에는 {result.n_obs}명이 사용되었고 {result.n_dropped}명은 결측으로 제외되었다."
+
+
+def _comparison_paired_labels(result: ComparisonResult) -> tuple[str, str]:
+    groups = _comparison_groups(result)
+    before_fallback = str(groups[0][0]) if len(groups) > 0 else "before"
+    after_fallback = str(groups[1][0]) if len(groups) > 1 else "after"
+    return (
+        result.before_label or before_fallback,
+        result.after_label or after_fallback,
+    )
 
 
 def _comparison_prose(result: ComparisonResult, language: str = "ko") -> str:
@@ -201,7 +229,42 @@ def _comparison_prose(result: ComparisonResult, language: str = "ko") -> str:
             f"SD = {_apa_number(second_group.sd)}, n = {second_group.n})"
         )
 
-    if result.test_name in {"student_t", "welch_t", "paired_t"}:
+    if result.test_name == "paired_t":
+        before_label, after_label = _comparison_paired_labels(result)
+        df_text = _apa_number(result.df, 2) if result.df is not None else ""
+        stat_text = (
+            f"t({df_text}) = {_apa_number(result.statistic)}"
+            if df_text
+            else f"t = {_apa_number(result.statistic)}"
+        )
+        if language == "en":
+            return (
+                f"A {_comparison_test_label_en(result)} showed {_comparison_significance_en(result)} "
+                f"mean difference between {before_label} and {after_label}, "
+                f"{stat_text}, {p_text}{ci_text}, {effect}.{case_count_sentence}"
+            )
+        return (
+            f"{_comparison_test_label_ko(result)} 결과, {before_label}와 {after_label}의 평균 차이는 "
+            f"{_comparison_significance_ko(result)}, {stat_text}, {p_text}{ci_text}, "
+            f"{effect}.{case_count_sentence}"
+        )
+
+    if result.test_name == "wilcoxon":
+        before_label, after_label = _comparison_paired_labels(result)
+        stat_text = f"W = {_apa_number(result.statistic)}"
+        if language == "en":
+            return (
+                f"A {_comparison_test_label_en(result)} showed {_comparison_significance_en(result)} "
+                f"difference between {before_label} and {after_label}, "
+                f"{stat_text}, {p_text}, {effect}.{case_count_sentence}"
+            )
+        return (
+            f"{_comparison_test_label_ko(result)} 결과, {before_label}와 {after_label}의 차이는 "
+            f"{_comparison_significance_ko(result)}, {stat_text}, {p_text}, "
+            f"{effect}.{case_count_sentence}"
+        )
+
+    if result.test_name in {"student_t", "welch_t"}:
         df_text = _apa_number(result.df, 2) if result.df is not None else ""
         stat_text = (
             f"t({df_text}) = {_apa_number(result.statistic)}"

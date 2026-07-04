@@ -1,4 +1,9 @@
+from collections.abc import Callable
+
 import modori.steps.reporting as reporting
+import pandas as pd
+import pytest
+from modori.core import Dataset, Measure, Variable
 from modori.results import (
     ChartSpec,
     CoefficientRow,
@@ -7,6 +12,7 @@ from modori.results import (
     RegressionResult,
     ReliabilityResult,
 )
+from modori.steps import PairedComparisonStep
 from modori.steps.reporting import prose_for
 
 
@@ -60,6 +66,70 @@ def _comparison_result(test_name: str = "student_t") -> ComparisonResult:
         n_total=22,
         n_dropped=2,
     )
+
+
+@pytest.fixture
+def _paired_result() -> Callable[[str], ComparisonResult]:
+    def build(test_name: str = "paired_t") -> ComparisonResult:
+        if test_name == "paired_t":
+            return ComparisonResult(
+                dv="wellbeing",
+                group_var="time",
+                test_name="paired_t",
+                route_reason="paired differences compatible with t-test",
+                groups={
+                    "pre": GroupDesc(n=8, mean=3.125, sd=0.641, median=3.0),
+                    "post": GroupDesc(n=8, mean=3.8125, sd=0.593, median=4.0),
+                },
+                statistic=-2.3456,
+                df=7.0,
+                p_value=0.049,
+                effect_name="cohen_dz",
+                effect_value=-0.8294,
+                mean_diff_ci=(-1.234, -0.141),
+                assumptions={},
+                apa_template_id="paired_t.v1",
+                chart_spec=_dummy_chart("paired_line"),
+                n_obs=8,
+                n_total=9,
+                n_dropped=1,
+                dv_label="행복감",
+                group_label="시점",
+                paired=True,
+                before_label="사전 점수",
+                after_label="사후 점수",
+            )
+        if test_name == "wilcoxon":
+            return ComparisonResult(
+                dv="wellbeing",
+                group_var="time",
+                test_name="wilcoxon",
+                route_reason="non-normal paired differences + small sample",
+                groups={
+                    "pre": GroupDesc(n=8, mean=3.125, sd=0.641, median=3.0),
+                    "post": GroupDesc(n=8, mean=3.8125, sd=0.593, median=4.0),
+                },
+                statistic=4.0,
+                df=None,
+                p_value=0.125,
+                effect_name="rank_biserial",
+                effect_value=-0.374,
+                mean_diff_ci=None,
+                assumptions={},
+                apa_template_id="wilcoxon.v1",
+                chart_spec=_dummy_chart("paired_line"),
+                n_obs=8,
+                n_total=9,
+                n_dropped=1,
+                dv_label="행복감",
+                group_label="시점",
+                paired=True,
+                before_label="사전 점수",
+                after_label="사후 점수",
+            )
+        raise AssertionError(f"Unsupported paired fixture test_name: {test_name}")
+
+    return build
 
 
 def _regression_result() -> RegressionResult:
@@ -156,6 +226,79 @@ def test_comparison_welch_prose_says_welch_correction_once() -> None:
         "독립표본 t검정(Welch 보정) 결과, control(M = 3.09, SD = .30, n = 10)와 treatment(M = 4.05, SD = .32, n = 10)의 job_sat 점수 차이(Mdiff = -.96)는 통계적으로 유의하였다, t(18.00) = -6.95, p < .001, 95% CI [-1.25, -.67], Cohen's d = -3.11. 분석에는 20명이 사용되었고 2명은 결측으로 제외되었다."
     )
     assert prose.count("Welch 보정") == 1
+
+
+def test_comparison_paired_t_prose_is_exactly_locked(
+    _paired_result: Callable[[str], ComparisonResult],
+) -> None:
+    assert (
+        prose_for(_paired_result("paired_t"), "ko")
+        == "대응표본 t검정 결과, 사전 점수와 사후 점수의 평균 차이는 통계적으로 유의하였다, t(7.00) = -2.35, p = .049, 95% CI [-1.23, -.14], Cohen's dz = -.83. 분석에는 8명이 사용되었고 1명은 결측으로 제외되었다."
+    )
+    assert (
+        prose_for(_paired_result("paired_t"), "en")
+        == "A paired-samples t test showed a statistically significant mean difference between 사전 점수 and 사후 점수, t(7.00) = -2.35, p = .049, 95% CI [-1.23, -.14], Cohen's dz = -.83. The analysis used 8 cases; 1 cases were excluded for missing values."
+    )
+
+
+def test_comparison_wilcoxon_prose_is_exactly_locked(
+    _paired_result: Callable[[str], ComparisonResult],
+) -> None:
+    assert (
+        prose_for(_paired_result("wilcoxon"), "ko")
+        == "Wilcoxon 부호순위검정 결과, 사전 점수와 사후 점수의 차이는 통계적으로 유의하지 않았다, W = 4.00, p = .125, rank_biserial = -.37. 분석에는 8명이 사용되었고 1명은 결측으로 제외되었다."
+    )
+    english_prose = prose_for(_paired_result("wilcoxon"), "en")
+
+    assert english_prose == (
+        "A Wilcoxon signed-rank test showed no statistically significant difference between 사전 점수 and 사후 점수, W = 4.00, p = .125, rank_biserial = -.37. The analysis used 8 cases; 1 cases were excluded for missing values."
+    )
+    assert "통계적으로" not in english_prose
+
+
+def test_paired_comparison_step_wilcoxon_result_reports_in_english() -> None:
+    frame = pd.DataFrame(
+        {
+            "pre": [10, 11, 12, 13, 14, 15],
+            "post": [11, 12, 13, 14, 24, 25],
+        }
+    )
+    dataset = Dataset(
+        df=frame,
+        variables={
+            "pre": Variable(
+                name="pre",
+                label="Pre score",
+                measure=Measure.SCALE,
+                value_labels={},
+                missing_values=[],
+                dtype=str(frame["pre"].dtype),
+                origin_step_id=None,
+            ),
+            "post": Variable(
+                name="post",
+                label="Post score",
+                measure=Measure.SCALE,
+                value_labels={},
+                missing_values=[],
+                dtype=str(frame["post"].dtype),
+                origin_step_id=None,
+            ),
+        },
+    )
+    result = (
+        PairedComparisonStep(
+            id="paired",
+            title="Compare paired scores",
+            params={"before": "pre", "after": "post"},
+        )
+        .compute_context_free(dataset)
+        .analysis
+    )
+
+    assert isinstance(result, ComparisonResult)
+    assert result.test_name == "wilcoxon"
+    assert "Wilcoxon signed-rank test" in prose_for(result, "en")
 
 
 def test_regression_prose_is_exactly_locked() -> None:
