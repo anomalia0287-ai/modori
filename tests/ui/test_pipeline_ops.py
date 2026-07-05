@@ -4,6 +4,8 @@ from pathlib import Path
 
 import pytest
 
+from modori.results import ChartSpec, ReliabilityResult
+from modori.ui.chart_assets import ChartAssetResult
 from modori.ui.contracts import DisplayResult, ReportExportOptions
 from modori.ui.pipeline_ops import PipelineOperations
 from modori.workflow import AnalysisPreferences, build_reference_slice_pipeline
@@ -162,6 +164,88 @@ def test_pipeline_operations_returns_display_results_by_known_analysis_kind(monk
     assert isinstance(displays[0], DisplayResult)
     assert displays[0].kind == "reliability"
     assert calls == [("reliability:scale", "reliability")]
+
+
+def test_pipeline_operations_adds_rendered_chart_paths_to_display_results() -> None:
+    chart_path = "C:/cache/charts/reliability_scale.png"
+    chart_spec = ChartSpec(
+        type="horizontal_bar",
+        title="Corrected item-total correlations",
+        data={"values": {"q1": 0.55}},
+        x_label="Correlation",
+        y_label="Item",
+    )
+    result = ReliabilityResult(
+        scale_name="scale",
+        n_items=1,
+        n_cases=10,
+        cronbach_alpha=0.8,
+        alpha_ci=(0.7, 0.9),
+        mcdonald_omega=0.82,
+        item_total_corr={"q1": 0.55},
+        alpha_if_deleted={"q1": 0.75},
+        apa_template_id="reliability.v1",
+        chart_spec=chart_spec,
+    )
+    pipeline = FakePipeline()
+    pipeline.analysis_objects = {"reliability:scale": result}
+
+    class FakeChartRenderer:
+        def __init__(self) -> None:
+            self.calls: list[tuple[str, ChartSpec]] = []
+
+        def render_for_display(
+            self, *, result_id: str, chart_spec: ChartSpec
+        ) -> ChartAssetResult:
+            self.calls.append((result_id, chart_spec))
+            return ChartAssetResult(paths=[chart_path])
+
+    renderer = FakeChartRenderer()
+
+    displays = PipelineOperations(pipeline, chart_renderer=renderer).display_results()
+
+    assert displays[0].chart_paths == [chart_path]
+    assert renderer.calls == [("reliability:scale", chart_spec)]
+
+
+def test_pipeline_operations_preserves_results_when_chart_rendering_fails() -> None:
+    chart_spec = ChartSpec(
+        type="horizontal_bar",
+        title="Corrected item-total correlations",
+        data={"values": {"q1": 0.55}},
+        x_label="Correlation",
+        y_label="Item",
+    )
+    result = ReliabilityResult(
+        scale_name="scale",
+        n_items=1,
+        n_cases=10,
+        cronbach_alpha=0.8,
+        alpha_ci=(0.7, 0.9),
+        mcdonald_omega=0.82,
+        item_total_corr={"q1": 0.55},
+        alpha_if_deleted={"q1": 0.75},
+        apa_template_id="reliability.v1",
+        chart_spec=chart_spec,
+    )
+    pipeline = FakePipeline()
+    pipeline.analysis_objects = {"reliability:scale": result}
+
+    class FailingChartRenderer:
+        def render_for_display(
+            self, *, result_id: str, chart_spec: ChartSpec
+        ) -> ChartAssetResult:
+            return ChartAssetResult(error="자동 그래프를 생성하지 못했습니다.")
+
+    displays = PipelineOperations(
+        pipeline,
+        chart_renderer=FailingChartRenderer(),
+    ).display_results()
+
+    assert displays[0].chart_paths == []
+    assert [note.body for note in displays[0].notes] == [
+        "자동 그래프를 생성하지 못했습니다."
+    ]
 
 
 def test_pipeline_operations_export_report_requires_docx_path(tmp_path) -> None:

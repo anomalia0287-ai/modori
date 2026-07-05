@@ -48,6 +48,23 @@ def test_controller_services_replaces_pipeline_bound_editors() -> None:
     assert services.pipeline_ops.steps() == []
 
 
+def test_controller_services_preserves_chart_renderer_when_pipeline_changes() -> None:
+    first = FakePipeline("first")
+    second = FakePipeline("second")
+    services = UiControllerServices.build(
+        pipeline=first,
+        pipeline_factory=lambda path, options: second,
+        mode_provider=lambda: "guided",
+        library=None,
+    )
+    renderer = services.chart_renderer
+
+    services.replace_pipeline(second)
+
+    assert services.chart_renderer is renderer
+    assert services.pipeline_ops.chart_renderer is renderer
+
+
 def test_controller_services_default_loader_uses_injected_factory(tmp_path) -> None:
     loaded = FakePipeline("loaded")
     calls = []

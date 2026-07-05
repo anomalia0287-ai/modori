@@ -13,6 +13,7 @@ AUDITED_FILE_OPERATION_FILES = {
     "src/modori/cache.py",
     "src/modori/knowledge/loader.py",
     "src/modori/path_policy.py",
+    "src/modori/ui/chart_assets.py",
     "src/modori/steps/reporting.py",
     "src/modori/ui/worker.py",
     "src/modori/ui/resources.py",

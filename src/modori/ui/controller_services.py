@@ -6,6 +6,7 @@ from pathlib import Path
 
 from modori.knowledge import Library
 from modori.ui.analysis_editor import AnalysisSelectionEditor
+from modori.ui.chart_assets import ChartAssetRenderer
 from modori.ui.contracts import ImportOptions, ReportExportOptions
 from modori.ui.data_transform import DataTransformEditor
 from modori.ui.data_session import DataSessionLoader, ImportSessionPipelineFactory
@@ -28,6 +29,7 @@ ReportExporter = Callable[[object, ReportExportOptions], str | Path]
 @dataclass
 class UiControllerServices:
     pipeline_ops: PipelineOperations
+    chart_renderer: ChartAssetRenderer
     analysis_editor: AnalysisSelectionEditor
     metadata_editor: VariableMetadataEditor
     data_transform_editor: DataTransformEditor
@@ -50,9 +52,11 @@ class UiControllerServices:
         mode_provider: Callable[[], str],
         library: Library | None,
     ) -> UiControllerServices:
-        pipeline_ops = PipelineOperations(pipeline)
+        chart_renderer = ChartAssetRenderer()
+        pipeline_ops = PipelineOperations(pipeline, chart_renderer=chart_renderer)
         return cls(
             pipeline_ops=pipeline_ops,
+            chart_renderer=chart_renderer,
             analysis_editor=AnalysisSelectionEditor(pipeline_ops),
             metadata_editor=VariableMetadataEditor(pipeline_ops),
             data_transform_editor=DataTransformEditor(pipeline_ops),
@@ -72,7 +76,10 @@ class UiControllerServices:
         )
 
     def replace_pipeline(self, pipeline: object | None) -> None:
-        self.pipeline_ops = PipelineOperations(pipeline)
+        self.pipeline_ops = PipelineOperations(
+            pipeline,
+            chart_renderer=self.chart_renderer,
+        )
         self.analysis_editor = AnalysisSelectionEditor(self.pipeline_ops)
         self.metadata_editor = VariableMetadataEditor(self.pipeline_ops)
         self.data_transform_editor = DataTransformEditor(self.pipeline_ops)

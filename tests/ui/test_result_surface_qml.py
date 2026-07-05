@@ -5,7 +5,7 @@ def qml_text(relative: str) -> str:
     return Path("src/modori/ui/qml").joinpath(relative).read_text(encoding="utf-8")
 
 
-def test_controller_exposes_result_table_text_after_run(tmp_path) -> None:
+def test_controller_exposes_result_table_and_chart_after_run(tmp_path) -> None:
     from tests.ui.test_end_to_end_ui_flow import write_reference_csv
     from modori.ui.controller import UiController
 
@@ -20,6 +20,9 @@ def test_controller_exposes_result_table_text_after_run(tmp_path) -> None:
     assert controller.resultTableText
     assert "결과 표" in controller.resultTableText
     assert "\t" in controller.resultTableText
+    chart_paths = [Path(path) for path in controller.chartPathsText.splitlines()]
+    assert chart_paths
+    assert all(path.exists() for path in chart_paths)
 
 
 def test_results_panel_uses_structured_table_popover_and_report_dialog() -> None:

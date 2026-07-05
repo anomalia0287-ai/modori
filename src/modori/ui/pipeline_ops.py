@@ -1,17 +1,25 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
-from modori.ui.contracts import DisplayResult, ReportExportOptions
+from modori.ui.chart_assets import ChartAssetRenderer
+from modori.ui.contracts import DisplayNote, DisplayResult, ReportExportOptions
 from modori.ui.results import display_result_from_engine_result
 from modori.steps import CompareGroupsStep, MultipleRegressionStep, ReliabilityStep, ReportStep
 
 
 class PipelineOperations:
-    def __init__(self, pipeline: object | None) -> None:
+    def __init__(
+        self,
+        pipeline: object | None,
+        *,
+        chart_renderer: object | None = None,
+    ) -> None:
         self._pipeline = pipeline
+        self.chart_renderer = chart_renderer or ChartAssetRenderer()
 
     def has_pipeline(self) -> bool:
         return self._pipeline is not None
@@ -178,13 +186,12 @@ class PipelineOperations:
             kind = self._kind_for_result(str(result_id))
             if kind is None:
                 continue
-            displays.append(
-                display_result_from_engine_result(
-                    result,
-                    result_id=str(result_id),
-                    kind=kind,
-                )
+            display = display_result_from_engine_result(
+                result,
+                result_id=str(result_id),
+                kind=kind,
             )
+            displays.append(self._with_display_chart(display, str(result_id), result))
         return displays
 
     def analysis_objects(self) -> Mapping[str, object]:
@@ -194,6 +201,32 @@ class PipelineOperations:
         if isinstance(analysis_objects, Mapping):
             return analysis_objects
         return {}
+
+    def _with_display_chart(
+        self,
+        display: DisplayResult,
+        result_id: str,
+        result: object,
+    ) -> DisplayResult:
+        chart_spec = getattr(result, "chart_spec", None)
+        if chart_spec is None:
+            return display
+        assets = self.chart_renderer.render_for_display(
+            result_id=result_id,
+            chart_spec=chart_spec,
+        )
+        paths = list(getattr(assets, "paths", []))
+        error = getattr(assets, "error", None)
+        if not paths and not error:
+            return display
+        notes = list(display.notes)
+        if error:
+            notes.append(DisplayNote(title="그림", body=str(error)))
+        return replace(
+            display,
+            chart_paths=[*display.chart_paths, *paths],
+            notes=notes,
+        )
 
     def export_report(self, options: ReportExportOptions) -> Path:
         self._apply_report_export_options(options)
