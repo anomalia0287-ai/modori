@@ -115,6 +115,7 @@ Item {
 
                         TabButton { text: appBootstrap.text("work.data_view") }
                         TabButton { text: appBootstrap.text("work.variable_view") }
+                        TabButton { text: appBootstrap.text("work.transform_view") }
                     }
 
                     StackLayout {
@@ -124,6 +125,7 @@ Item {
 
                         DataTable {}
                         VariableTable {}
+                        TransformPanel {}
                     }
                 }
             }

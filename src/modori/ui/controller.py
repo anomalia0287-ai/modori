@@ -346,6 +346,34 @@ class UiController(QObject, RecommendationControllerMixin):
     def changeVariableMeasure(self, variable_key: str, measure: str) -> bool:
         return self.updateVariableMetadata(variable_key, {"measure": measure}).ok
 
+    @Slot(str, str, str, result=bool)
+    def updateVariableMetadataFromText(
+        self,
+        variable_key: str,
+        label: str,
+        missing_codes_text: str,
+    ) -> bool:
+        patch: dict[str, object] = {}
+        if label.strip():
+            patch["label"] = label.strip()
+        if missing_codes_text.strip():
+            try:
+                patch["missing_codes"] = [
+                    float(item.strip())
+                    for item in missing_codes_text.split(",")
+                    if item.strip()
+                ]
+            except ValueError:
+                self._command_error(
+                    "결측 코드는 숫자 목록이어야 합니다.",
+                    "invalid_metadata_patch",
+                )
+                return False
+        if not patch:
+            self._command_error("변경할 속성이 없습니다.", "invalid_metadata_patch")
+            return False
+        return self.updateVariableMetadata(variable_key, patch).ok
+
     def applyReverseCodeTransform(self, payload: Mapping[str, Any]) -> CommandResult:
         result = self._services.data_transform_editor.reverse_code(
             payload,

@@ -6,6 +6,10 @@ Item {
     id: root
     property string selectedVariableKey: ""
 
+    function hasText(value) {
+        return String(value).trim().length > 0
+    }
+
     function measureIndex(measureValue) {
         if (measureValue === "ordinal") {
             return 1
@@ -19,6 +23,8 @@ Item {
     function selectVariable(variableKey, measureValue) {
         root.selectedVariableKey = variableKey
         measureBox.currentIndex = root.measureIndex(measureValue)
+        labelField.text = ""
+        missingCodesField.text = ""
     }
 
     ColumnLayout {
@@ -49,6 +55,34 @@ Item {
                 text: appBootstrap.text("variable.measure_edit")
                 enabled: root.selectedVariableKey.length > 0 && uiController.status !== "running"
                 onClicked: uiController.changeVariableMeasure(root.selectedVariableKey, measureBox.currentText)
+            }
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 8
+
+            TextField {
+                id: labelField
+                Layout.fillWidth: true
+                placeholderText: appBootstrap.text("variable.label_placeholder")
+                Accessible.name: appBootstrap.text("variable.label_placeholder")
+                selectByMouse: true
+            }
+
+            TextField {
+                id: missingCodesField
+                Layout.preferredWidth: 180
+                placeholderText: appBootstrap.text("variable.missing_codes_placeholder")
+                Accessible.name: appBootstrap.text("variable.missing_codes_placeholder")
+                selectByMouse: true
+            }
+
+            Button {
+                text: appBootstrap.text("variable.metadata_apply")
+                Accessible.name: appBootstrap.text("variable.metadata_apply")
+                enabled: root.selectedVariableKey.length > 0 && uiController.status !== "running" && (root.hasText(labelField.text) || root.hasText(missingCodesField.text))
+                onClicked: uiController.updateVariableMetadataFromText(root.selectedVariableKey, labelField.text, missingCodesField.text)
             }
         }
 
