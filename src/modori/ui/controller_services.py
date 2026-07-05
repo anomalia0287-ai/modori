@@ -7,6 +7,7 @@ from pathlib import Path
 from modori.knowledge import Library
 from modori.ui.analysis_editor import AnalysisSelectionEditor
 from modori.ui.contracts import ImportOptions, ReportExportOptions
+from modori.ui.data_transform import DataTransformEditor
 from modori.ui.data_session import DataSessionLoader, ImportSessionPipelineFactory
 from modori.ui.explanation_service import ExplanationService
 from modori.ui.explanations import ExplanationPresenter
@@ -29,6 +30,7 @@ class UiControllerServices:
     pipeline_ops: PipelineOperations
     analysis_editor: AnalysisSelectionEditor
     metadata_editor: VariableMetadataEditor
+    data_transform_editor: DataTransformEditor
     data_session_loader: DataSessionLoader
     import_flow: UiImportFlow
     report_export_service: ReportExportService
@@ -53,6 +55,7 @@ class UiControllerServices:
             pipeline_ops=pipeline_ops,
             analysis_editor=AnalysisSelectionEditor(pipeline_ops),
             metadata_editor=VariableMetadataEditor(pipeline_ops),
+            data_transform_editor=DataTransformEditor(pipeline_ops),
             data_session_loader=DataSessionLoader(
                 pipeline_factory or ImportSessionPipelineFactory()
             ),
@@ -72,3 +75,4 @@ class UiControllerServices:
         self.pipeline_ops = PipelineOperations(pipeline)
         self.analysis_editor = AnalysisSelectionEditor(self.pipeline_ops)
         self.metadata_editor = VariableMetadataEditor(self.pipeline_ops)
+        self.data_transform_editor = DataTransformEditor(self.pipeline_ops)
