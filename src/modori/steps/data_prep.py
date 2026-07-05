@@ -146,7 +146,7 @@ class RecodeReverseStep(Step):
         new_variables: dict[str, Variable] = {}
 
         for column in columns:
-            output = f"{column}_R"
+            output = f"{column}{self._suffix()}"
             source = ctx.dataset.frame_for_compute([column])[column]
             new_columns[output] = (scale_min + scale_max) - source
             source_variable = ctx.dataset.variables[column]
@@ -177,13 +177,16 @@ class RecodeReverseStep(Step):
         return set(self.params["columns"])
 
     def writes(self) -> set[str]:
-        return {f"{column}_R" for column in self.params["columns"]}
+        return {f"{column}{self._suffix()}" for column in self.params["columns"]}
 
     def provenance(self) -> str:
         return (
             f"reverse-coded {', '.join(self.params['columns'])} "
-            f"on a {self.params['scale_max']}-point scale"
+            f"on a {self.params['scale_min']}-{self.params['scale_max']} scale"
         )
+
+    def _suffix(self) -> str:
+        return str(self.params.get("suffix", "_R"))
 
 
 @dataclass

@@ -23,6 +23,21 @@ class MetadataPipelineOps(Protocol):
     def insert_metadata_step(self, variable_key: str, step: object) -> None: ...
 
 
+class DataTransformPipelineOps(Protocol):
+    def has_pipeline(self) -> bool: ...
+
+    def has_variable(self, variable_key: str) -> bool: ...
+
+    def any_output_exists(
+        self,
+        output_keys: list[str],
+        *,
+        exclude_step_id: str | None = None,
+    ) -> bool: ...
+
+    def insert_or_replace_transform_step(self, step: object) -> None: ...
+
+
 class DataSessionPipelineOps(Protocol):
     def has_downstream_steps(self) -> bool: ...
 
