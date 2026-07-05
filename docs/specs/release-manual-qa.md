@@ -4,6 +4,9 @@ Status: release QA evidence for the `release/readiness-1-9` lane.
 
 Date: 2026-06-29.
 
+Latest supplemental evidence: 2026-07-05, recorded in
+`docs\superpowers\handoffs\2026-07-05-release-lane-chart-vm-handoff.md`.
+
 Environment:
 
 - OS shell: Windows PowerShell.
@@ -175,6 +178,20 @@ packaged `dist\Modori\Modori.exe`.
   PyInstaller omitted Matplotlib SVG/PS backends. The package build now includes
   `matplotlib.backends.backend_agg`, `backend_svg`, and `backend_ps`; packaged
   engine smoke covers this path.
+
+## 2026-07-05 Supplemental VM QA
+
+| Item | Status | Evidence |
+| --- | --- | --- |
+| automatic analysis chart display | Pass for current release-lane package | Commit `53f8335` renders analysis `chart_spec` into managed cache PNG paths for the result panel. Local default gate reported `527 passed, 2 skipped`; packaged gate reported `package-tool-ok`, `package-launch-smoke-ok`, and `package-engine-smoke-ok`. |
+| clean VM payload refresh | Pass for host attach evidence | `C:\VM\ModoriPayload\attach-payload-v2.log` recorded `VM: Modori-CleanWin-QA-Direct / Off`, payload rebuild, `Path: C:\VM\ModoriPayload\ModoriPayloadV2.vhdx`, and `Done` ending at `2026-07-05 17:04:42` local time. |
+| clean VM visible UI | Pass for user-operated manual evidence | After the payload rebuild, the user reported the VM app flow works. This is manual UI evidence; the post-`53f8335` inside-VM JSON was not pasted into this document. |
+
+Current package SHA256:
+
+```text
+A4FE941EF6170E735B107D75244A4A2562722E881F293224B576A517E0796888
+```
 
 ## Release Interpretation
 

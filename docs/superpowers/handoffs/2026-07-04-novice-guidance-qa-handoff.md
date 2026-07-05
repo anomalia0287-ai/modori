@@ -1,5 +1,11 @@
 # 2026-07-04 Novice Guidance QA Handoff
 
+> Current release-lane status has moved forward. For the latest verified package,
+> automatic chart display fix, and clean-VM evidence, read
+> `docs\superpowers\handoffs\2026-07-05-release-lane-chart-vm-handoff.md`.
+> This document remains useful as historical context for the novice guidance
+> merge and the earlier path-confusion incident.
+
 ## Current Release-Lane Status
 
 This handoff was originally written before the novice guidance work was merged

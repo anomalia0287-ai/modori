@@ -154,7 +154,7 @@ Every release-readiness claim must cite:
 
 ## Current Incident Reference
 
-The 2026-07-03 recovery handoff remains the active incident handoff for the
+The 2026-07-03 recovery handoff remains the historical incident record for the
 clean Windows VM lane:
 
 - `docs\superpowers\handoffs\2026-07-03-clean-win-vm-verification-handoff.md`
@@ -163,5 +163,9 @@ The associated risk note is:
 
 - `docs\specs\release-verification-risk-2026-07-03.md`
 
-These documents record the current incomplete state. This runbook defines how
-future sessions must interpret and recover that state.
+The latest release-lane package and clean-VM evidence is recorded in:
+
+- `docs\superpowers\handoffs\2026-07-05-release-lane-chart-vm-handoff.md`
+
+This runbook defines how future sessions must interpret and recover release QA
+state when a new package or gate changes.

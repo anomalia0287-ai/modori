@@ -1,6 +1,7 @@
 # Release Verification Risk Note - 2026-07-03
 
-Status: active risk note for the clean-Windows release verification lane.
+Status: resolved for the 2026-07-05 release-lane package; retained as a release
+verification risk record.
 
 ## Decision
 
@@ -67,12 +68,29 @@ Host packaged engine smoke with the corrected reference workbook:
 }
 ```
 
+Resolution update from 2026-07-05:
+
+- Current release-lane commit: `53f8335 fix: show automatic analysis charts`
+- Current package SHA256:
+  `A4FE941EF6170E735B107D75244A4A2562722E881F293224B576A517E0796888`
+- Host attach log `C:\VM\ModoriPayload\attach-payload-v2.log` recorded
+  `VM: Modori-CleanWin-QA-Direct / Off`, payload rebuild, attach path
+  `C:\VM\ModoriPayload\ModoriPayloadV2.vhdx`, and `Done` at
+  `2026-07-05 17:04:42` local time.
+- Current `ModoriPayloadV2.vhdx` was observed at length `809500672`,
+  LastWriteTime `2026-07-05 17:10:53` local time.
+- The user completed the VM UI check after the payload rebuild and reported
+  that it works, including the automatic chart display path.
+
 ## Risk Interpretation
 
 The incident does not prove a statistical calculation defect in Modori. It proves
 that the verification process was capable of producing a false release signal.
-Until VM evidence is re-run with `MODORIQA2`, release-readiness claims remain
-blocked.
+For the 2026-07-05 package anchored at commit `53f8335`, the `MODORIQA2` clean-VM
+path has been rerun and the prior VM-evidence blocker is no longer open.
+
+Future product changes require a fresh package rebuild and fresh VM evidence.
+Do not reuse this risk resolution for a different commit or package hash.
 
 For a commercial statistical product, the target is not merely that the app
 runs. The target is that each claimed analysis path has an external or

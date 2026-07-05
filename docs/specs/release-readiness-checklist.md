@@ -2,6 +2,24 @@
 
 Status: working release gate document for the `release/readiness-1-9` lane.
 
+Latest release-lane evidence handoff:
+
+```text
+docs\superpowers\handoffs\2026-07-05-release-lane-chart-vm-handoff.md
+```
+
+Current verified anchor from 2026-07-05:
+
+- Commit: `53f8335 fix: show automatic analysis charts`
+- Package: `C:\Users\V\Desktop\TongTong\dist\Modori\Modori.exe`
+- SHA256:
+  `A4FE941EF6170E735B107D75244A4A2562722E881F293224B576A517E0796888`
+- Default gate: `527 passed, 2 skipped`
+- Packaged gate: `package-tool-ok`, `package-launch-smoke-ok`,
+  `package-engine-smoke-ok`
+- Clean VM: payload rebuilt for `Modori-CleanWin-QA-Direct`, `MODORIQA2`;
+  user confirmed the app and automatic chart display work after the rebuild.
+
 ## Default Gate
 
 Run the default gate before claiming a local build is healthy:
@@ -70,7 +88,13 @@ The runbook is binding for the manual and clean-VM portions of release
 readiness. Incident handoffs may add current state, but they do not replace the
 runbook.
 
-Current active incident handoff:
+Latest release-lane handoff:
+
+```text
+docs\superpowers\handoffs\2026-07-05-release-lane-chart-vm-handoff.md
+```
+
+Historical clean-VM recovery incident handoff:
 
 ```text
 docs\superpowers\handoffs\2026-07-03-clean-win-vm-verification-handoff.md
