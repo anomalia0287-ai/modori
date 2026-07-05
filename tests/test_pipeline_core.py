@@ -453,6 +453,80 @@ def test_pipeline_json_round_trip_preserves_source_steps_and_results() -> None:
     pd.testing.assert_frame_equal(restored.current_dataset.df, pipeline.current_dataset.df)
 
 
+def test_pipeline_json_round_trip_preserves_data_transform_steps(tmp_path) -> None:
+    from modori.steps import (
+        ComposeScaleStep,
+        ImportStep,
+        RecodeReverseStep,
+        VariableMetadataPatchStep,
+    )
+
+    data_path = tmp_path / "survey.csv"
+    pd.DataFrame({"q1": [1, 2], "q2": [2, 3], "q3": [5, 4]}).to_csv(
+        data_path,
+        index=False,
+    )
+    pipeline = Pipeline(Dataset.empty())
+    pipeline.add(
+        ImportStep(
+            id="import",
+            title="Import CSV",
+            params={"path": str(data_path), "file_type": "csv"},
+        )
+    )
+    pipeline.insert_after(
+        "import",
+        VariableMetadataPatchStep(
+            id="metadata:q3",
+            title="Edit metadata: q3",
+            params={
+                "variable_key": "q3",
+                "measure": "ordinal",
+                "missing_values": [],
+            },
+        ),
+    )
+    pipeline.add(
+        RecodeReverseStep(
+            id="transform:reverse",
+            title="Reverse-code items",
+            params={
+                "columns": ["q3"],
+                "scale_min": 1,
+                "scale_max": 5,
+                "suffix": "_R",
+            },
+        )
+    )
+    pipeline.add(
+        ComposeScaleStep(
+            id="transform:scale_score",
+            title="Compose scale score",
+            params={
+                "items": ["q1", "q2", "q3_R"],
+                "name": "score",
+                "method": "mean",
+                "missing_policy": {"preset": "survey", "min_valid": 0.8},
+            },
+        )
+    )
+    pipeline.recompute(dirty_from=None)
+
+    restored = Pipeline.from_json(pipeline.to_json(), trust_project_file=True)
+    restored.recompute(dirty_from=None)
+
+    assert [step.id for step in restored.steps] == [
+        "import",
+        "metadata:q3",
+        "transform:reverse",
+        "transform:scale_score",
+    ]
+    pd.testing.assert_frame_equal(restored.current_dataset.df, pipeline.current_dataset.df)
+    assert restored.current_dataset.df["q3"].tolist() == [5, 4]
+    assert restored.current_dataset.df["q3_R"].tolist() == [1.0, 2.0]
+    assert restored.current_dataset.df["score"].tolist() == [4 / 3, 7 / 3]
+
+
 def test_pipeline_json_round_trip_uses_strict_json_for_native_missing_values() -> None:
     pipeline = Pipeline(
         Dataset(

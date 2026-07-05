@@ -11,6 +11,17 @@ Item {
         spacing: 0
 
         Label {
+            text: appBootstrap.text("transform.source_protected")
+            color: "#486157"
+            wrapMode: Text.WordWrap
+            Layout.fillWidth: true
+            Layout.leftMargin: 12
+            Layout.rightMargin: 12
+            Layout.topMargin: 8
+            Layout.bottomMargin: 4
+        }
+
+        Label {
             text: uiController.dataViewNotice
             color: "#486157"
             visible: uiController.dataViewNotice.length > 0

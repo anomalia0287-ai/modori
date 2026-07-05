@@ -55,6 +55,28 @@ class PipelineOperations:
         variables = self.variables()
         return isinstance(variables, Mapping) and variable_key in variables
 
+    def any_output_exists(
+        self,
+        output_keys: list[str],
+        *,
+        exclude_step_id: str | None = None,
+    ) -> bool:
+        variable_keys = self.variable_keys()
+        if variable_keys is None:
+            return False
+        if exclude_step_id is not None:
+            excluded_step = next(
+                (
+                    step
+                    for step in self.steps()
+                    if self._step_id(step) == exclude_step_id
+                ),
+                None,
+            )
+            if excluded_step is not None:
+                variable_keys -= set(self._declared_writes(excluded_step))
+        return any(output_key in variable_keys for output_key in output_keys)
+
     def has_downstream_steps(self) -> bool:
         return len(self.steps()) > 1
 
@@ -108,6 +130,24 @@ class PipelineOperations:
             after_step_id,
             step,
             dirty_from=str(getattr(step, "id")),
+        )
+
+    def insert_or_replace_transform_step(self, step: object) -> None:
+        if self._pipeline is None:
+            raise RuntimeError("Pipeline does not support transform insertion")
+        step_id = str(getattr(step, "id"))
+        if self.has_step(step_id):
+            self.edit_params(step_id, dict(getattr(step, "params")))
+            return
+        after_step_id = self._last_data_prep_step_id()
+        if after_step_id is None:
+            raise RuntimeError("Pipeline does not support transform insertion")
+        if not hasattr(self._pipeline, "insert_after_and_recompute"):
+            raise RuntimeError("Pipeline does not support transform insertion")
+        self._pipeline.insert_after_and_recompute(
+            after_step_id,
+            step,
+            dirty_from=step_id,
         )
 
     def metadata_insert_after_step_id(self, variable_key: str) -> str | None:
@@ -188,6 +228,25 @@ class PipelineOperations:
             "stats.regression_ols",
             "report.apa",
         }
+
+    def _last_data_prep_step_id(self) -> str | None:
+        candidate = None
+        data_step_types = {
+            "import.table",
+            "data.variable_metadata_patch",
+            "data.recode_reverse",
+            "data.compose_scale",
+        }
+        for step in self.steps():
+            if self._step_type(step) in data_step_types:
+                candidate = self._step_id(step)
+        return candidate
+
+    def _declared_writes(self, step: object) -> set[str]:
+        writes = getattr(step, "writes", None)
+        if not callable(writes):
+            return set()
+        return {str(key) for key in writes()}
 
     def _replace_steps_preserving_cached_imports(self, preserved_steps: list[object]) -> None:
         preserved_ids = {self._step_id(step) for step in preserved_steps}

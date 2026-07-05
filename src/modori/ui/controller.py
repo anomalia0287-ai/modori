@@ -8,6 +8,7 @@ from PySide6.QtCore import Property, QObject, Signal, Slot
 from modori.knowledge import Library
 from modori.ui.contracts import CommandResult, ExplainResult, ImportOptions, ReportExportOptions
 from modori.ui.controller_services import UiControllerServices
+from modori.ui.data_transform_controller import DataTransformControllerMixin
 from modori.ui.patches import PatchValidationError, parse_step_patch
 from modori.ui.paths import local_path_from_qml
 from modori.ui.pipeline_ops import PipelineOperations
@@ -31,7 +32,7 @@ def export_report_from_pipeline(
     return PipelineOperations(pipeline).export_report(options)
 
 
-class UiController(QObject, RecommendationControllerMixin):
+class UiController(QObject, RecommendationControllerMixin, DataTransformControllerMixin):
     stateChanged = Signal()
     workerResultReady = Signal(object)
 
@@ -342,10 +343,6 @@ class UiController(QObject, RecommendationControllerMixin):
             changed_step_ids=result.changed_step_ids,
         )
 
-    @Slot(str, str, result=bool)
-    def changeVariableMeasure(self, variable_key: str, measure: str) -> bool:
-        return self.updateVariableMetadata(variable_key, {"measure": measure}).ok
-
     def configureReliabilitySelection(self, item_keys_text: str) -> CommandResult:
         result = self._services.analysis_editor.reliability(
             item_keys_text,
@@ -534,6 +531,7 @@ class UiController(QObject, RecommendationControllerMixin):
         if result is None:
             return False
         return self.apply_worker_result(result)
+
     def _apply_step_edit_result(self, result: CommandResult) -> CommandResult:
         if not result.ok:
             self._last_error = result.message_ko
