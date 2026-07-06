@@ -295,7 +295,12 @@ class UiController(
 
     @Slot(result=bool)
     @Slot(bool, result=bool)
-    def confirmPendingImport(self, drop_aggregate_rows: bool = False) -> bool:
+    @Slot(bool, bool, result=bool)
+    def confirmPendingImport(
+        self,
+        drop_aggregate_rows: bool = False,
+        drop_duplicate_rows: bool = False,
+    ) -> bool:
         pending_path = self._services.import_flow.require_pending_path()
         if pending_path is None:
             self._clear_recommendations()
@@ -309,6 +314,7 @@ class UiController(
                 confirm_new_session=True,
                 table_layout=self._services.import_flow.table_layout,
                 drop_aggregate_rows=bool(drop_aggregate_rows),
+                drop_duplicate_rows=bool(drop_duplicate_rows),
             ),
         )
         return result.ok

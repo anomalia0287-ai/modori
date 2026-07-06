@@ -36,12 +36,14 @@ def read_table(
     *,
     layout: TableLayoutOverride | None = None,
     drop_aggregate_rows: bool = False,
+    drop_duplicate_rows: bool = False,
 ) -> tuple[pd.DataFrame, Any | None]:
     return read_full(
         path,
         file_type,
         layout=layout,
         drop_aggregate_rows=drop_aggregate_rows,
+        drop_duplicate_rows=drop_duplicate_rows,
     )
 
 
@@ -147,11 +149,14 @@ class ImportStep(Step):
         file_type = _file_type_from_params(path, self.params)
         layout = _layout_override_from_params(self.params)
         drop_aggregate_rows = bool(self.params.get("drop_aggregate_rows", False))
+        drop_duplicate_rows = bool(self.params.get("drop_duplicate_rows", False))
         read_kwargs: dict[str, Any] = {}
         if layout is not None:
             read_kwargs["layout"] = layout
         if drop_aggregate_rows:
             read_kwargs["drop_aggregate_rows"] = True
+        if drop_duplicate_rows:
+            read_kwargs["drop_duplicate_rows"] = True
         table = read_table(path, file_type, **read_kwargs)
         frame, metadata = table
         frame = frame.rename(columns={column: str(column) for column in frame.columns})

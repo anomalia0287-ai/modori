@@ -14,6 +14,7 @@ class UiImportFlow:
         self.table_preview: TablePreviewResult | None = None
         self.table_layout: dict[str, object] | None = None
         self.drop_aggregate_rows = False
+        self.drop_duplicate_rows = False
 
     def preview(
         self,
@@ -21,12 +22,15 @@ class UiImportFlow:
         layout: TableLayoutOverride | None = None,
         *,
         drop_aggregate_rows: bool = False,
+        drop_duplicate_rows: bool = False,
     ) -> bool:
         preview_kwargs: dict[str, object] = {}
         if layout is not None:
             preview_kwargs["layout"] = layout
         if drop_aggregate_rows:
             preview_kwargs["drop_aggregate_rows"] = True
+        if drop_duplicate_rows:
+            preview_kwargs["drop_duplicate_rows"] = True
         preview = self._preview_service.preview(path, **preview_kwargs)
         previous_pending_path = self.pending_path
         self.preview_text = preview.text
@@ -35,11 +39,13 @@ class UiImportFlow:
             self.table_preview = getattr(preview, "table_preview", None)
             self.table_layout = _table_layout_params(layout)
             self.drop_aggregate_rows = bool(drop_aggregate_rows)
+            self.drop_duplicate_rows = bool(drop_duplicate_rows)
         else:
             self.pending_path = previous_pending_path if layout is not None else preview.pending_path
             self.table_preview = None
             self.table_layout = None
             self.drop_aggregate_rows = False
+            self.drop_duplicate_rows = False
         return bool(preview.ok)
 
     def require_pending_path(self) -> Path | None:

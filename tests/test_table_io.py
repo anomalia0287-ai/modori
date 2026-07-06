@@ -1081,3 +1081,46 @@ def test_preview_inference_report_exposes_leading_rows_for_merged_xlsx(tmp_path)
     assert report.leading_rows[0] == ("대학 현황",)
     assert report.leading_rows[3] == ("순번", "학과", "재학생(A)", "재학생(A)")
     assert report.leading_rows[5] == ("1", "사회학과", "40", "5")
+
+
+def test_read_warns_about_fully_duplicated_rows_by_default(tmp_path) -> None:
+    path = tmp_path / "dupes.csv"
+    path.write_text("지역,인구\n종로구,100\n종로구,100\n중구,200\n", encoding="utf-8")
+
+    preview = read_preview(path, "csv")
+    full = read_full(path, "csv")
+
+    expected = "완전히 동일한 중복 행 1개를 감지했습니다. 필요한 경우 가져오기 창에서 제외할 수 있습니다."
+    assert expected in preview.warnings
+    assert expected in full.warnings
+    assert full.row_count == 3
+
+
+def test_read_drops_duplicate_rows_only_on_explicit_option(tmp_path) -> None:
+    path = tmp_path / "dupes.csv"
+    path.write_text("지역,인구\n종로구,100\n종로구,100\n중구,200\n중구,200\n", encoding="utf-8")
+
+    full = read_full(path, "csv", drop_duplicate_rows=True)
+
+    assert "중복 행 2개를 제외했습니다." in full.warnings
+    assert full.row_count == 2
+    assert list(full.frame["지역"]) == ["종로구", "중구"]
+
+
+def test_duplicate_detection_treats_missing_cells_as_equal(tmp_path) -> None:
+    path = tmp_path / "dupes.csv"
+    path.write_text("지역,인구\n종로구,\n종로구,\n", encoding="utf-8")
+
+    preview = read_preview(path, "csv", drop_duplicate_rows=True)
+
+    assert "중복 행 1개를 제외했습니다." in preview.warnings
+    assert preview.row_count == 1
+
+
+def test_clean_table_gets_no_duplicate_warning(tmp_path) -> None:
+    path = tmp_path / "clean.csv"
+    path.write_text("지역,인구\n종로구,100\n중구,200\n", encoding="utf-8")
+
+    full = read_full(path, "csv")
+
+    assert not any("중복 행" in warning for warning in full.warnings)

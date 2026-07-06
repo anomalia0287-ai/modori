@@ -60,6 +60,7 @@ class ImportPreviewService:
         *,
         layout: TableLayoutOverride | None = None,
         drop_aggregate_rows: bool = False,
+        drop_duplicate_rows: bool = False,
     ) -> ImportPreview:
         file_type = path.suffix.lower().lstrip(".")
         if file_type not in self.supported_file_types:
@@ -70,6 +71,7 @@ class ImportPreviewService:
                 file_type,
                 layout=layout,
                 drop_aggregate_rows=drop_aggregate_rows,
+                drop_duplicate_rows=drop_duplicate_rows,
             )
         except TableReadError as exc:
             return ImportPreview(ok=False, text=exc.message_ko)

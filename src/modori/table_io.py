@@ -150,6 +150,10 @@ _AGGREGATE_CONTEXT_LABELS = frozenset({"전체", "계"})
 _ROW_NUMBER_MARKERS = frozenset({"-", "－", "–", "—"})
 _AGGREGATE_ROW_DETECTED_MESSAGE = "집계/합계 행 {count}개를 감지했습니다. 필요한 경우 가져오기 창에서 제외할 수 있습니다."
 _AGGREGATE_ROW_DROPPED_MESSAGE = "집계/합계 행 {count}개를 제외했습니다."
+_DUPLICATE_ROW_DETECTED_MESSAGE = (
+    "완전히 동일한 중복 행 {count}개를 감지했습니다. 필요한 경우 가져오기 창에서 제외할 수 있습니다."
+)
+_DUPLICATE_ROW_DROPPED_MESSAGE = "중복 행 {count}개를 제외했습니다."
 _REVIEW_MAX_ROWS = 25
 _REVIEW_MAX_CELLS = 8
 _REVIEW_MAX_CELL_CHARS = 60
@@ -170,6 +174,7 @@ def read_full(
     limits: FullReadLimits = DEFAULT_FULL_READ_LIMITS,
     layout: TableLayoutOverride | None = None,
     drop_aggregate_rows: bool = False,
+    drop_duplicate_rows: bool = False,
 ) -> TableReadResult:
     normalized = normalize_file_type(path, file_type)
     _enforce_file_size(path, limits.max_file_bytes)
@@ -247,7 +252,11 @@ def read_full(
         frame,
         drop=drop_aggregate_rows,
     )
-    warnings = _merge_warnings(warnings, aggregate_warnings)
+    frame, duplicate_warnings = _apply_duplicate_row_policy(
+        frame,
+        drop=drop_duplicate_rows,
+    )
+    warnings = _merge_warnings(warnings, aggregate_warnings, duplicate_warnings)
     _enforce_shape_limits(frame, limits)
     return TableReadResult(
         frame=frame,
@@ -330,6 +339,7 @@ def read_preview(
     limits: PreviewReadLimits = DEFAULT_PREVIEW_READ_LIMITS,
     layout: TableLayoutOverride | None = None,
     drop_aggregate_rows: bool = False,
+    drop_duplicate_rows: bool = False,
 ) -> TablePreviewResult:
     _validate_preview_limits(limits)
     normalized = normalize_file_type(path, file_type)
@@ -344,6 +354,7 @@ def read_preview(
             warnings=warnings,
             inference_report=inference_report,
             drop_aggregate_rows=drop_aggregate_rows,
+            drop_duplicate_rows=drop_duplicate_rows,
         )
     if normalized == "xlsx":
         _enforce_file_size(path, limits.max_file_bytes)
@@ -356,6 +367,7 @@ def read_preview(
             warnings=warnings,
             inference_report=inference_report,
             drop_aggregate_rows=drop_aggregate_rows,
+            drop_duplicate_rows=drop_duplicate_rows,
         )
     if normalized == "xls":
         _enforce_file_size(path, limits.max_file_bytes)
@@ -376,6 +388,7 @@ def read_preview(
             warnings=warnings,
             inference_report=inference_report,
             drop_aggregate_rows=drop_aggregate_rows,
+            drop_duplicate_rows=drop_duplicate_rows,
         )
     if normalized == "sav":
         import pyreadstat
@@ -405,6 +418,7 @@ def read_preview(
             preview_limit=_preview_row_limit(limits),
             warnings=warnings,
             drop_aggregate_rows=drop_aggregate_rows,
+            drop_duplicate_rows=drop_duplicate_rows,
         )
     raise ValueError(f"Unsupported table file type: {normalized}")
 
@@ -1306,6 +1320,25 @@ def _apply_aggregate_row_policy(
     return frame, (_AGGREGATE_ROW_DETECTED_MESSAGE.format(count=count),)
 
 
+def _apply_duplicate_row_policy(
+    frame: pd.DataFrame,
+    *,
+    drop: bool,
+) -> tuple[pd.DataFrame, tuple[str, ...]]:
+    if frame.empty:
+        return frame, ()
+    row_mask = frame.duplicated(keep="first")
+    count = int(row_mask.sum())
+    if count == 0:
+        return frame, ()
+    if drop:
+        return (
+            frame.loc[~row_mask].reset_index(drop=True),
+            (_DUPLICATE_ROW_DROPPED_MESSAGE.format(count=count),),
+        )
+    return frame, (_DUPLICATE_ROW_DETECTED_MESSAGE.format(count=count),)
+
+
 def _aggregate_row_mask(frame: pd.DataFrame) -> pd.Series:
     if frame.empty:
         return pd.Series(False, index=frame.index)
@@ -1467,16 +1500,21 @@ def _preview_result(
     warnings: tuple[str, ...] = (),
     inference_report: TableInferenceReport | None = None,
     drop_aggregate_rows: bool = False,
+    drop_duplicate_rows: bool = False,
 ) -> TablePreviewResult:
     frame, aggregate_warnings = _apply_aggregate_row_policy(
         frame,
         drop=drop_aggregate_rows,
     )
+    frame, duplicate_warnings = _apply_duplicate_row_policy(
+        frame,
+        drop=drop_duplicate_rows,
+    )
     return TablePreviewResult(
         frame=frame,
         metadata=metadata,
         source=source,
-        warnings=_merge_warnings(warnings, aggregate_warnings),
+        warnings=_merge_warnings(warnings, aggregate_warnings, duplicate_warnings),
         inference_report=inference_report,
         preview_limit=preview_limit,
         sample_rows=_sample_rows(frame),

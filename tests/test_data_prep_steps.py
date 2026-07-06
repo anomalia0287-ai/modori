@@ -699,3 +699,28 @@ def test_compose_scale_rejects_min_valid_outside_valid_ratio_range(
 
     with pytest.raises(ValueError, match="min_valid must be greater than 0 and at most 1"):
         step.compute_context_free(likert_dataset())
+
+
+def test_import_step_drops_duplicate_rows_on_param(tmp_path) -> None:
+    path = tmp_path / "dupes.csv"
+    path.write_text("지역,인구\n종로구,100\n종로구,100\n중구,200\n", encoding="utf-8")
+    pipeline = Pipeline(Dataset.empty())
+    pipeline.add(
+        ImportStep(
+            id="import",
+            title="Import CSV",
+            params={
+                "path": str(path),
+                "file_type": "csv",
+                "drop_duplicate_rows": True,
+            },
+        )
+    )
+
+    pipeline.recompute(dirty_from=None)
+
+    assert pipeline.current_dataset.df.to_dict(orient="records") == [
+        {"지역": "종로구", "인구": 100},
+        {"지역": "중구", "인구": 200},
+    ]
+    assert "중복 행 1개를 제외했습니다." in pipeline.step_results["import"].notes

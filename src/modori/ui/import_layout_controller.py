@@ -24,6 +24,7 @@ class ImportLayoutControllerMixin:
 
     @Slot(int, int, int, str, result=bool)
     @Slot(int, int, int, str, bool, result=bool)
+    @Slot(int, int, int, str, bool, bool, result=bool)
     def previewPendingImportLayout(
         self,
         header_row: int,
@@ -31,6 +32,7 @@ class ImportLayoutControllerMixin:
         data_start_row: int,
         sheet_name: str,
         drop_aggregate_rows: bool = False,
+        drop_duplicate_rows: bool = False,
     ) -> bool:
         pending_path = self._services.import_flow.require_pending_file_path()
         if pending_path is None:
@@ -48,6 +50,7 @@ class ImportLayoutControllerMixin:
             pending_path,
             layout=layout,
             drop_aggregate_rows=drop_aggregate_rows,
+            drop_duplicate_rows=drop_duplicate_rows,
         )
         self._last_error = "" if ok else self._services.import_flow.preview_text
         if not ok:
@@ -62,11 +65,13 @@ class ImportLayoutControllerMixin:
             or import_flow.table_preview is None
             or import_flow.table_layout != _table_layout_params(options.table_layout)
             or import_flow.drop_aggregate_rows != options.drop_aggregate_rows
+            or import_flow.drop_duplicate_rows != options.drop_duplicate_rows
         ):
             if not import_flow.preview(
                 path,
                 layout=_table_layout_override(options.table_layout),
                 drop_aggregate_rows=options.drop_aggregate_rows,
+                drop_duplicate_rows=options.drop_duplicate_rows,
             ):
                 return False
         preview = import_flow.table_preview

@@ -278,3 +278,22 @@ def test_import_review_rows_are_empty_without_preview() -> None:
     from modori.ui.controller import UiController
 
     assert UiController().importReviewRows == []
+
+
+def test_import_flow_supports_duplicate_row_exclusion(tmp_path) -> None:
+    from modori.ui.controller import UiController
+
+    data_path = tmp_path / "dupes.csv"
+    data_path.write_text("지역,인구\n종로구,100\n종로구,100\n중구,200\n", encoding="utf-8")
+    controller = UiController()
+
+    assert controller.previewDataFilePath(str(data_path)) is True
+    assert "완전히 동일한 중복 행 1개를 감지했습니다" in controller.importPreviewText
+
+    assert controller.previewPendingImportLayout(1, 1, 2, "", False, True) is True
+    assert "중복 행 1개를 제외했습니다." in controller.importPreviewText
+
+    assert controller.confirmPendingImport(False, True) is True
+    import_step = controller.pipeline.steps[0]
+    assert import_step.params["drop_duplicate_rows"] is True
+    assert len(controller.pipeline.current_dataset.df) == 2

@@ -45,6 +45,8 @@ class ImportSessionPipelineFactory:
             params["table_layout"] = dict(options.table_layout)
         if options.drop_aggregate_rows:
             params["drop_aggregate_rows"] = True
+        if options.drop_duplicate_rows:
+            params["drop_duplicate_rows"] = True
         pipeline = Pipeline(Dataset.empty())
         pipeline.add(
             ImportStep(

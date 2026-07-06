@@ -13,8 +13,8 @@ Dialog {
     y: Math.round((parent.height - height) / 2)
     width: Math.min(parent.width - theme.dialogViewportMargin * 2, theme.importDialogMaxWidth)
     height: Math.min(parent.height - theme.dialogViewportMargin * 2, theme.importDialogMaxHeight)
-    signal importAccepted(bool dropAggregateRows)
-    signal layoutPreviewRequested(int headerRow, int headerRowCount, int dataStartRow, string sheetName, bool dropAggregateRows)
+    signal importAccepted(bool dropAggregateRows, bool dropDuplicateRows)
+    signal layoutPreviewRequested(int headerRow, int headerRowCount, int dataStartRow, string sheetName, bool dropAggregateRows, bool dropDuplicateRows)
 
     Theme {
         id: theme
@@ -125,6 +125,13 @@ Dialog {
             Accessible.name: appBootstrap.text("dialog.import.drop_aggregate_rows")
         }
 
+        CheckBox {
+            id: dropDuplicateRows
+            text: appBootstrap.text("dialog.import.drop_duplicate_rows")
+            checked: false
+            Accessible.name: appBootstrap.text("dialog.import.drop_duplicate_rows")
+        }
+
         GridLayout {
             Layout.fillWidth: true
             columns: 4
@@ -192,7 +199,8 @@ Dialog {
                         headerRows.value,
                         dataStartRow.value,
                         sheetName.text,
-                        dropAggregateRows.checked
+                        dropAggregateRows.checked,
+                        dropDuplicateRows.checked
                     )
                 }
             }
@@ -213,7 +221,7 @@ Dialog {
                 text: appBootstrap.text("dialog.import.confirm")
                 Accessible.name: appBootstrap.text("dialog.import.confirm")
                 highlighted: true
-                onClicked: root.importAccepted(dropAggregateRows.checked)
+                onClicked: root.importAccepted(dropAggregateRows.checked, dropDuplicateRows.checked)
             }
         }
     }

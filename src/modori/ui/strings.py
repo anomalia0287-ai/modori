@@ -7,6 +7,7 @@ UI_STRINGS_KO = {
     "dialog.import.confirm": "가져오기",
     "dialog.import.data_start_row": "데이터 시작 행",
     "dialog.import.drop_aggregate_rows": "집계/합계 행 제외",
+    "dialog.import.drop_duplicate_rows": "완전히 동일한 중복 행 제외",
     "dialog.import.header_row": "헤더 행",
     "dialog.import.header_rows": "헤더 행 수",
     "dialog.import.preserve_metadata": "값 레이블·결측 코드 그대로 가져오기",
