@@ -34,11 +34,11 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        spacing: 8
+        spacing: theme.spaceSm
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: 8
+            spacing: theme.spaceSm
 
             TextField {
                 id: variableKeyField
@@ -65,7 +65,7 @@ Item {
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: 8
+            spacing: theme.spaceSm
 
             TextField {
                 id: labelField
@@ -77,7 +77,7 @@ Item {
 
             TextField {
                 id: missingCodesField
-                Layout.preferredWidth: 180
+                Layout.preferredWidth: theme.fieldWidthMedium
                 placeholderText: appBootstrap.text("variable.missing_codes_placeholder")
                 Accessible.name: appBootstrap.text("variable.missing_codes_placeholder")
                 selectByMouse: true
@@ -103,8 +103,8 @@ Item {
                 property string variableKey: model.variableKey ?? ""
                 property string measureValue: model.measureValue ?? ""
 
-                implicitWidth: 140
-                implicitHeight: 34
+                implicitWidth: theme.variableCellWidth
+                implicitHeight: theme.variableCellHeight
                 color: root.selectedVariableKey === variableKey ? theme.selectionSurface : theme.paperSurface
                 border.color: theme.lineGrid
 

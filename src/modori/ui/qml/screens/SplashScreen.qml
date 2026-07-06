@@ -20,12 +20,12 @@ Pane {
 
     ColumnLayout {
         anchors.centerIn: parent
-        spacing: 16
+        spacing: theme.spaceContent
 
         Label {
             text: appBootstrap.text("app.title")
             color: theme.onBrand
-            font.pixelSize: 46
+            font.pixelSize: theme.fontSplashTitle
             font.bold: true
             Layout.alignment: Qt.AlignHCenter
         }
@@ -33,7 +33,7 @@ Pane {
         Label {
             text: appBootstrap.text("splash.subtitle")
             color: theme.onBrand
-            font.pixelSize: 18
+            font.pixelSize: theme.fontSplashSubtitle
             Layout.alignment: Qt.AlignHCenter
         }
 
@@ -42,14 +42,14 @@ Pane {
             from: 0
             to: 1
             value: root.reduceEffects ? 1 : 0
-            Layout.preferredWidth: 280
+            Layout.preferredWidth: theme.progressWidth
             Layout.alignment: Qt.AlignHCenter
         }
 
         Label {
             text: appBootstrap.text("privacy.local")
             color: theme.onBrand
-            opacity: 0.85
+            opacity: theme.opacitySplashPrivacy
             Layout.alignment: Qt.AlignHCenter
         }
     }

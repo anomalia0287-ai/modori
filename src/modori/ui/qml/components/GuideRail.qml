@@ -40,13 +40,13 @@ Rectangle {
     ScrollView {
         id: guideScroll
         anchors.fill: parent
-        anchors.margins: 18
+        anchors.margins: theme.spaceLg
         clip: true
         ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
 
         ColumnLayout {
             width: guideScroll.availableWidth
-            spacing: 10
+            spacing: theme.spaceGridColumn
 
             Label {
                 text: appBootstrap.text("guide.title")

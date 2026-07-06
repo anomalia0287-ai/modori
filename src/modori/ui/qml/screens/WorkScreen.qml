@@ -21,23 +21,23 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        spacing: 0
+        spacing: theme.spaceNone
 
         Rectangle {
             color: theme.deepTeal
             Layout.fillWidth: true
-            Layout.preferredHeight: 56
+            Layout.preferredHeight: theme.headerHeight
 
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: 24
-                anchors.rightMargin: 24
-                spacing: 14
+                anchors.leftMargin: theme.spaceXl
+                anchors.rightMargin: theme.spaceXl
+                spacing: theme.spaceHeaderGap
 
                 Label {
                     text: appBootstrap.text("app.title")
                     color: theme.onBrand
-                    font.pixelSize: 20
+                    font.pixelSize: theme.fontSubtitle
                     font.bold: true
                 }
 
@@ -101,9 +101,9 @@ Item {
 
             GuideRail {
                 visible: uiController.mode === "guided"
-                SplitView.preferredWidth: uiController.mode === "guided" ? 260 : 0
-                SplitView.minimumWidth: uiController.mode === "guided" ? 220 : 0
-                SplitView.maximumWidth: uiController.mode === "guided" ? 360 : 0
+                SplitView.preferredWidth: uiController.mode === "guided" ? theme.guideRailPreferredWidth : theme.spaceNone
+                SplitView.minimumWidth: uiController.mode === "guided" ? theme.guideRailMinimumWidth : theme.spaceNone
+                SplitView.maximumWidth: uiController.mode === "guided" ? theme.guideRailMaximumWidth : theme.spaceNone
             }
 
             Rectangle {
@@ -112,7 +112,7 @@ Item {
 
                 ColumnLayout {
                     anchors.fill: parent
-                    spacing: 0
+                    spacing: theme.spaceNone
 
                     TabBar {
                         id: dataTabs
@@ -136,13 +136,13 @@ Item {
             }
 
             ResultsPanel {
-                SplitView.preferredWidth: 360
+                SplitView.preferredWidth: theme.resultsPanelPreferredWidth
             }
         }
 
         PipelineRail {
             Layout.fillWidth: true
-            Layout.preferredHeight: 116
+            Layout.preferredHeight: theme.pipelineHeight
             onRerunRequested: uiController.rerunNow()
         }
     }

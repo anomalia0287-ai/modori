@@ -132,7 +132,9 @@ def test_guided_and_standard_modes_change_visible_work_surface() -> None:
     work = qml_text("screens/WorkScreen.qml")
 
     assert 'visible: uiController.mode === "guided"' in work
-    assert 'SplitView.preferredWidth: uiController.mode === "guided" ? 260 : 0' in work
+    assert 'SplitView.preferredWidth: uiController.mode === "guided" ? theme.guideRailPreferredWidth : theme.spaceNone' in work
+    assert 'SplitView.minimumWidth: uiController.mode === "guided" ? theme.guideRailMinimumWidth : theme.spaceNone' in work
+    assert 'SplitView.maximumWidth: uiController.mode === "guided" ? theme.guideRailMaximumWidth : theme.spaceNone' in work
     assert 'enabled: uiController.mode !== "guided"' in work
     assert 'enabled: uiController.mode !== "standard"' in work
 

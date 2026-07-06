@@ -14,7 +14,7 @@ Dialog {
     }
 
     ColumnLayout {
-        spacing: 12
+        spacing: theme.spaceMd
         anchors.fill: parent
 
         property string selectedLanguage: "ko"
@@ -26,7 +26,7 @@ Dialog {
         }
 
         RowLayout {
-            spacing: 10
+            spacing: theme.spaceGridColumn
 
             RadioButton {
                 text: appBootstrap.text("dialog.report.language.ko")

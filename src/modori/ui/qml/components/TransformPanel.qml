@@ -40,30 +40,30 @@ Item {
 
         ColumnLayout {
             width: transformScroll.availableWidth
-            spacing: 12
+            spacing: theme.spaceMd
 
             Label {
                 text: appBootstrap.text("transform.source_protected")
                 color: theme.textSecondary
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
-                Layout.leftMargin: 12
-                Layout.rightMargin: 12
-                Layout.topMargin: 12
+                Layout.leftMargin: theme.spaceMd
+                Layout.rightMargin: theme.spaceMd
+                Layout.topMargin: theme.spaceMd
             }
 
             GroupBox {
                 title: appBootstrap.text("transform.reverse_title")
                 Layout.fillWidth: true
-                Layout.leftMargin: 12
-                Layout.rightMargin: 12
+                Layout.leftMargin: theme.spaceMd
+                Layout.rightMargin: theme.spaceMd
 
                 GridLayout {
                     columns: 2
                     anchors.left: parent.left
                     anchors.right: parent.right
-                    rowSpacing: 8
-                    columnSpacing: 10
+                    rowSpacing: theme.spaceGridRow
+                    columnSpacing: theme.spaceGridColumn
 
                     Label {
                         text: appBootstrap.text("transform.reverse_columns")
@@ -137,16 +137,16 @@ Item {
             GroupBox {
                 title: appBootstrap.text("transform.scale_title")
                 Layout.fillWidth: true
-                Layout.leftMargin: 12
-                Layout.rightMargin: 12
-                Layout.bottomMargin: 12
+                Layout.leftMargin: theme.spaceMd
+                Layout.rightMargin: theme.spaceMd
+                Layout.bottomMargin: theme.spaceMd
 
                 GridLayout {
                     columns: 2
                     anchors.left: parent.left
                     anchors.right: parent.right
-                    rowSpacing: 8
-                    columnSpacing: 10
+                    rowSpacing: theme.spaceGridRow
+                    columnSpacing: theme.spaceGridColumn
 
                     Label {
                         text: appBootstrap.text("transform.scale_items")

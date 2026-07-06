@@ -8,8 +8,8 @@ Popup {
     property string bodyText: ""
     modal: false
     focus: true
-    width: 420
-    padding: 16
+    width: theme.popoverWidth
+    padding: theme.spaceContent
 
     Theme {
         id: theme
@@ -23,7 +23,7 @@ Popup {
 
     ColumnLayout {
         anchors.fill: parent
-        spacing: 10
+        spacing: theme.spaceGridColumn
 
         Label {
             text: appBootstrap.text("explain.title")
@@ -33,7 +33,7 @@ Popup {
 
         ScrollView {
             Layout.fillWidth: true
-            Layout.preferredHeight: 320
+            Layout.preferredHeight: theme.popoverBodyHeight
 
             Label {
                 text: root.bodyText

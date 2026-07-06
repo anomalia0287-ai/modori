@@ -4,19 +4,25 @@ import QtQuick.Dialogs
 import QtQuick.Layouts
 import "dialogs"
 import "screens"
+import "theme"
 
 ApplicationWindow {
     id: root
-    width: 1180
-    height: 760
     visible: true
     title: appBootstrap.text("app.title")
 
     property bool reduceEffects: uiController.reduceEffects
     property string currentScreen: "splash"
 
+    Theme {
+        id: theme
+    }
+
+    width: theme.windowDefaultWidth
+    height: theme.windowDefaultHeight
+
     Timer {
-        interval: root.reduceEffects ? 100 : 800
+        interval: root.reduceEffects ? theme.splashFastDelayMs : theme.splashDelayMs
         running: true
         repeat: false
         onTriggered: root.currentScreen = "entry"

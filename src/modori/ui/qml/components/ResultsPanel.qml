@@ -98,11 +98,11 @@ Rectangle {
 
                     Rectangle {
                         objectName: "resultStateBadge"
-                        radius: 999
+                        radius: theme.radiusPill
                         color: root.stateBackgroundColor()
-                        border.color: Qt.rgba(root.stateTextColor().r, root.stateTextColor().g, root.stateTextColor().b, 0.25)
-                        Layout.preferredHeight: 22
-                        Layout.preferredWidth: stateBadgeText.implicitWidth + 18
+                        border.color: Qt.rgba(root.stateTextColor().r, root.stateTextColor().g, root.stateTextColor().b, theme.stateBorderAlpha)
+                        Layout.preferredHeight: theme.badgeHeight
+                        Layout.preferredWidth: stateBadgeText.implicitWidth + theme.badgeHorizontalPadding
 
                         Label {
                             id: stateBadgeText
@@ -170,7 +170,7 @@ Rectangle {
                                 : appBootstrap.text("results.empty_message")
                             color: theme.textBody
                             font.pixelSize: theme.fontBody
-                            lineHeight: 1.18
+                            lineHeight: theme.resultSummaryLineHeight
                             wrapMode: Text.WordWrap
                             Layout.fillWidth: true
                         }
@@ -179,7 +179,7 @@ Rectangle {
                             objectName: "resultTableFrame"
                             visible: uiController.resultTableText.length > 0
                             Layout.fillWidth: true
-                            Layout.preferredHeight: 206
+                            Layout.preferredHeight: theme.tablePreviewHeight
                             radius: theme.radiusMedium
                             color: theme.subtleSurface
                             border.color: theme.lineSubtle
@@ -220,7 +220,7 @@ Rectangle {
                             objectName: "resultChartFigure"
                             visible: uiController.chartPathsText.length > 0
                             Layout.fillWidth: true
-                            Layout.preferredHeight: 228
+                            Layout.preferredHeight: theme.chartPreviewHeight
                             radius: theme.radiusMedium
                             color: theme.subtleSurface
                             border.color: theme.lineSubtle

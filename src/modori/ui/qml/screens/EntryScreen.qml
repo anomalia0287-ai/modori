@@ -24,12 +24,12 @@ Pane {
 
     ColumnLayout {
         anchors.centerIn: parent
-        spacing: 18
+        spacing: theme.spaceLg
 
         Label {
             text: appBootstrap.text("app.title")
             color: theme.onBrand
-            font.pixelSize: 44
+            font.pixelSize: theme.fontHero
             font.bold: true
             Layout.alignment: Qt.AlignHCenter
         }
@@ -37,13 +37,13 @@ Pane {
         Label {
             text: appBootstrap.text("app.subtitle")
             color: theme.onBrand
-            opacity: 0.9
-            font.pixelSize: 20
+            opacity: theme.opacityHigh
+            font.pixelSize: theme.fontSubtitle
             Layout.alignment: Qt.AlignHCenter
         }
 
         RowLayout {
-            spacing: 12
+            spacing: theme.spaceMd
             Layout.alignment: Qt.AlignHCenter
 
             Button {
@@ -72,14 +72,14 @@ Pane {
             visible: uiController.lastError.length > 0
             wrapMode: Text.WordWrap
             horizontalAlignment: Text.AlignHCenter
-            Layout.maximumWidth: 420
+            Layout.maximumWidth: theme.popoverWidth
             Layout.alignment: Qt.AlignHCenter
         }
 
         Label {
             text: appBootstrap.text("entry.recent")
             color: theme.onBrand
-            opacity: 0.9
+            opacity: theme.opacityHigh
             font.bold: true
             visible: uiController.recentFilesText.length > 0
             Layout.alignment: Qt.AlignHCenter
@@ -87,7 +87,7 @@ Pane {
 
         ColumnLayout {
             visible: uiController.recentFilesText.length > 0
-            spacing: 6
+            spacing: theme.spaceTight
             Layout.alignment: Qt.AlignHCenter
 
             Repeater {
@@ -105,14 +105,14 @@ Pane {
         Label {
             text: appBootstrap.text("privacy.local")
             color: theme.onBrand
-            opacity: 0.86
+            opacity: theme.opacityPrivacy
             Layout.alignment: Qt.AlignHCenter
         }
 
         Label {
             text: appBootstrap.text("entry.footer")
             color: theme.onBrand
-            opacity: 0.72
+            opacity: theme.opacitySoft
             Layout.alignment: Qt.AlignHCenter
         }
     }

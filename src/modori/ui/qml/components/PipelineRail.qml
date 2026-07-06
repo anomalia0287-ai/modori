@@ -23,15 +23,15 @@ Rectangle {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.leftMargin: 20
-        anchors.rightMargin: 20
-        anchors.topMargin: 10
-        anchors.bottomMargin: 10
-        spacing: 8
+        anchors.leftMargin: theme.spaceRailHorizontal
+        anchors.rightMargin: theme.spaceRailHorizontal
+        anchors.topMargin: theme.spaceGridColumn
+        anchors.bottomMargin: theme.spaceGridColumn
+        spacing: theme.spaceSm
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: 12
+            spacing: theme.spaceMd
 
             Label {
                 text: uiController.stepChainText
@@ -49,13 +49,13 @@ Rectangle {
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: 10
+            spacing: theme.spaceGridColumn
 
             TextField {
                 id: reliabilityItemsField
                 placeholderText: appBootstrap.text("pipeline.items_placeholder")
                 Accessible.name: appBootstrap.text("pipeline.items_accessible")
-                Layout.preferredWidth: 130
+                Layout.preferredWidth: theme.fieldWidthSmall
                 selectByMouse: true
             }
 
@@ -70,7 +70,7 @@ Rectangle {
                 id: comparisonOutcomeField
                 placeholderText: appBootstrap.text("pipeline.outcome_placeholder")
                 Accessible.name: appBootstrap.text("pipeline.outcome_accessible")
-                Layout.preferredWidth: 80
+                Layout.preferredWidth: theme.fieldWidthTiny
                 selectByMouse: true
             }
 
@@ -78,7 +78,7 @@ Rectangle {
                 id: comparisonGroupField
                 placeholderText: appBootstrap.text("pipeline.group_placeholder")
                 Accessible.name: appBootstrap.text("pipeline.group_accessible")
-                Layout.preferredWidth: 80
+                Layout.preferredWidth: theme.fieldWidthTiny
                 selectByMouse: true
             }
 
@@ -96,7 +96,7 @@ Rectangle {
                 id: regressionOutcomeField
                 placeholderText: appBootstrap.text("pipeline.dependent_placeholder")
                 Accessible.name: appBootstrap.text("pipeline.dependent_accessible")
-                Layout.preferredWidth: 80
+                Layout.preferredWidth: theme.fieldWidthTiny
                 selectByMouse: true
             }
 
@@ -104,7 +104,7 @@ Rectangle {
                 id: regressionPredictorsField
                 placeholderText: appBootstrap.text("pipeline.predictors_placeholder")
                 Accessible.name: appBootstrap.text("pipeline.predictors_accessible")
-                Layout.preferredWidth: 130
+                Layout.preferredWidth: theme.fieldWidthSmall
                 selectByMouse: true
             }
 

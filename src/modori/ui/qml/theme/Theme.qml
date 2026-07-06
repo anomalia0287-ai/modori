@@ -44,13 +44,61 @@ QtObject {
     readonly property int radiusLarge: 14
 
     readonly property int spaceXs: 4
+    readonly property int spaceTight: 6
     readonly property int spaceSm: 8
+    readonly property int spaceGridColumn: 10
     readonly property int spaceMd: 12
+    readonly property int spaceHeaderGap: 14
+    readonly property int spaceContent: 16
     readonly property int spaceLg: 18
+    readonly property int spaceRailHorizontal: 20
     readonly property int spaceXl: 24
+    readonly property int spaceNone: 0
+    readonly property int spaceGridRow: 8
 
+    readonly property int fontHero: 44
+    readonly property int fontSplashTitle: 46
+    readonly property int fontSplashSubtitle: 18
+    readonly property int fontSubtitle: 20
+    readonly property int fontOverlay: 22
     readonly property int fontTitle: 16
     readonly property int fontSection: 14
     readonly property int fontBody: 12
     readonly property int fontCaption: 11
+
+    readonly property int windowDefaultWidth: 1180
+    readonly property int windowDefaultHeight: 760
+    readonly property int headerHeight: 56
+    readonly property int pipelineHeight: 116
+    readonly property int resultsPanelPreferredWidth: 360
+    readonly property int guideRailPreferredWidth: 260
+    readonly property int guideRailMinimumWidth: 220
+    readonly property int guideRailMaximumWidth: 360
+    readonly property int dialogViewportMargin: 48
+    readonly property int importDialogMaxWidth: 760
+    readonly property int importDialogMaxHeight: 620
+    readonly property int popoverWidth: 420
+    readonly property int popoverBodyHeight: 320
+    readonly property int progressWidth: 280
+    readonly property int tableCellWidth: 120
+    readonly property int tableCellHeight: 32
+    readonly property int variableCellWidth: 140
+    readonly property int variableCellHeight: 34
+    readonly property int fieldWidthTiny: 80
+    readonly property int fieldWidthSmall: 130
+    readonly property int fieldWidthMedium: 180
+    readonly property int badgeHeight: 22
+    readonly property int badgeHorizontalPadding: 18
+    readonly property int tablePreviewHeight: 206
+    readonly property int chartPreviewHeight: 228
+    readonly property int radiusPill: 999
+    readonly property int splashFastDelayMs: 100
+    readonly property int splashDelayMs: 800
+
+    readonly property real opacityHigh: 0.9
+    readonly property real opacityPrivacy: 0.86
+    readonly property real opacitySplashPrivacy: 0.85
+    readonly property real opacitySoft: 0.72
+    readonly property real stateBorderAlpha: 0.25
+    readonly property real resultSummaryLineHeight: 1.18
 }

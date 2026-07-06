@@ -13,17 +13,17 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        spacing: 0
+        spacing: theme.spaceNone
 
         Label {
             text: appBootstrap.text("transform.source_protected")
             color: theme.textSecondary
             wrapMode: Text.WordWrap
             Layout.fillWidth: true
-            Layout.leftMargin: 12
-            Layout.rightMargin: 12
-            Layout.topMargin: 8
-            Layout.bottomMargin: 4
+            Layout.leftMargin: theme.spaceMd
+            Layout.rightMargin: theme.spaceMd
+            Layout.topMargin: theme.spaceSm
+            Layout.bottomMargin: theme.spaceXs
         }
 
         Label {
@@ -32,10 +32,10 @@ Item {
             visible: uiController.dataViewNotice.length > 0
             elide: Text.ElideRight
             Layout.fillWidth: true
-            Layout.leftMargin: 12
-            Layout.rightMargin: 12
-            Layout.topMargin: 8
-            Layout.bottomMargin: 8
+            Layout.leftMargin: theme.spaceMd
+            Layout.rightMargin: theme.spaceMd
+            Layout.topMargin: theme.spaceSm
+            Layout.bottomMargin: theme.spaceSm
         }
 
         TableView {
@@ -47,8 +47,8 @@ Item {
             Layout.fillHeight: true
 
             delegate: Rectangle {
-                implicitWidth: 120
-                implicitHeight: 32
+                implicitWidth: theme.tableCellWidth
+                implicitHeight: theme.tableCellHeight
                 color: theme.paperSurface
                 border.color: theme.lineGrid
 

@@ -13,7 +13,7 @@ Rectangle {
         anchors.centerIn: parent
         text: appBootstrap.text("loading.calculating")
         color: theme.onBrand
-        font.pixelSize: 22
+        font.pixelSize: theme.fontOverlay
         font.bold: true
     }
 }

@@ -11,8 +11,8 @@ Dialog {
     parent: Overlay.overlay
     x: Math.round((parent.width - width) / 2)
     y: Math.round((parent.height - height) / 2)
-    width: Math.min(parent.width - 96, 760)
-    height: Math.min(parent.height - 96, 620)
+    width: Math.min(parent.width - theme.dialogViewportMargin * 2, theme.importDialogMaxWidth)
+    height: Math.min(parent.height - theme.dialogViewportMargin * 2, theme.importDialogMaxHeight)
     signal importAccepted()
 
     Theme {
@@ -21,7 +21,7 @@ Dialog {
 
     ColumnLayout {
         anchors.fill: parent
-        spacing: 12
+        spacing: theme.spaceMd
 
         ScrollView {
             Layout.fillWidth: true
