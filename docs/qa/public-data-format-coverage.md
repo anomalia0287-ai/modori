@@ -90,11 +90,13 @@ Current loader result after the hardening pass:
   `tests/test_public_data_corpus.py`. It fixes representative KOSIS two-row CSV,
   MOLIT long-preamble CSV, weather text-as-XLS, merged XLSX header, and
   notice-only XLSX patterns without depending on the local desktop D1 folder.
+- Rows whose first non-empty cell is a strong aggregate label such as `합 계`,
+  `합계`, `총계`, or `소계` are detected conservatively. They are kept by
+  default with a visible warning, and the import dialog lets users exclude them
+  before confirming the import.
 
 ## Still Needed
 
-- Decide whether aggregate/summary rows such as `합 계` should be automatically
-  dropped, warned, or kept as data.
 - Improve the manual import-adjustment UI with stronger affordances for
   low-confidence imports: suggested defaults from the inference report,
   validation feedback, and clearer row-number labeling.

@@ -115,3 +115,20 @@ def test_checked_in_public_data_corpus_rejects_notice_only_xlsx() -> None:
     assert exc_info.value.message_ko == (
         "표 데이터가 없습니다. 원본 포털에서 CSV 파일을 다시 받거나 표가 있는 시트를 선택해 주세요."
     )
+
+
+def test_checked_in_public_data_corpus_warns_and_drops_aggregate_rows() -> None:
+    path = FIXTURE_DIR / "aggregate-row.csv"
+
+    kept = read_preview(path, "csv")
+
+    assert "집계/합계 행 1개를 감지했습니다. 필요한 경우 가져오기 창에서 제외할 수 있습니다." in kept.warnings
+    assert kept.sample_rows[0] == {"지역": "합 계", "인구": 300}
+
+    dropped = read_preview(path, "csv", drop_aggregate_rows=True)
+
+    assert "집계/합계 행 1개를 제외했습니다." in dropped.warnings
+    assert dropped.sample_rows == (
+        {"지역": "종로구", "인구": 100},
+        {"지역": "중구", "인구": 200},
+    )

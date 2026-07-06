@@ -24,12 +24,18 @@ class ImportPreviewService:
         path: Path,
         *,
         layout: TableLayoutOverride | None = None,
+        drop_aggregate_rows: bool = False,
     ) -> ImportPreview:
         file_type = path.suffix.lower().lstrip(".")
         if file_type not in self.supported_file_types:
             return ImportPreview(ok=False, text="지원하지 않는 파일 형식입니다.")
         try:
-            table_preview = read_preview(path, file_type, layout=layout)
+            table_preview = read_preview(
+                path,
+                file_type,
+                layout=layout,
+                drop_aggregate_rows=drop_aggregate_rows,
+            )
         except TableReadError as exc:
             return ImportPreview(ok=False, text=exc.message_ko)
         except Exception:

@@ -9,3 +9,5 @@ the table-layout patterns that must stay stable in release gates:
 - MOLIT-style CSV downloads with a long search-condition preamble.
 - Weather-style tab-delimited text using an `.xls` extension.
 - Merged multi-row XLSX headers and notice-only XLSX downloads.
+- Aggregate rows labeled like `합 계`, which must warn by default and be
+  removable by explicit import option.

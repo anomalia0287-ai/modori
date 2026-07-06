@@ -86,6 +86,33 @@ def test_confirm_import_keeps_public_data_warning_visible_in_data_notice(tmp_pat
     assert "표 헤더 앞의 안내 행 3개" in controller.dataViewNotice
 
 
+def test_confirm_import_can_exclude_warned_aggregate_rows(tmp_path) -> None:
+    from modori.ui.controller import UiController
+
+    data_path = tmp_path / "aggregate-row.csv"
+    data_path.write_text(
+        "\n".join(
+            [
+                "지역,인구",
+                "합 계,300",
+                "종로구,100",
+                "중구,200",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    controller = UiController()
+
+    assert controller.previewDataFilePath(str(data_path)) is True
+    assert "집계/합계 행 1개를 감지했습니다." in controller.importPreviewText
+    assert controller.confirmPendingImport(True) is True
+
+    assert controller.dataModel is not None
+    assert controller.dataModel.rowCount() == 2
+    assert "집계/합계 행 1개를 제외했습니다." in controller.dataViewNotice
+
+
 def test_adjust_pending_import_layout_repreviews_and_confirms_same_layout(tmp_path) -> None:
     from modori.ui.controller import UiController
 

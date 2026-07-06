@@ -35,8 +35,14 @@ def read_table(
     file_type: str,
     *,
     layout: TableLayoutOverride | None = None,
+    drop_aggregate_rows: bool = False,
 ) -> tuple[pd.DataFrame, Any | None]:
-    return read_full(path, file_type, layout=layout)
+    return read_full(
+        path,
+        file_type,
+        layout=layout,
+        drop_aggregate_rows=drop_aggregate_rows,
+    )
 
 
 def read_columns(
@@ -140,11 +146,13 @@ class ImportStep(Step):
         path = Path(self.params["path"])
         file_type = _file_type_from_params(path, self.params)
         layout = _layout_override_from_params(self.params)
-        table = (
-            read_table(path, file_type, layout=layout)
-            if layout is not None
-            else read_table(path, file_type)
-        )
+        drop_aggregate_rows = bool(self.params.get("drop_aggregate_rows", False))
+        read_kwargs: dict[str, Any] = {}
+        if layout is not None:
+            read_kwargs["layout"] = layout
+        if drop_aggregate_rows:
+            read_kwargs["drop_aggregate_rows"] = True
+        table = read_table(path, file_type, **read_kwargs)
         frame, metadata = table
         frame = frame.rename(columns={column: str(column) for column in frame.columns})
         variables = metadata_variables(

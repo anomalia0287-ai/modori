@@ -141,6 +141,9 @@ _EMPTY_TABLE_MESSAGE = "표 데이터가 없습니다. 원본 포털에서 CSV �
 _LAYOUT_OVERRIDE_MESSAGE = "사용자 지정 표 레이아웃을 적용했습니다."
 _INVALID_LAYOUT_MESSAGE = "지정한 표 레이아웃을 적용할 수 없습니다. 헤더 행과 데이터 시작 행을 확인해 주세요."
 _MISSING_SHEET_MESSAGE = "지정한 시트를 찾지 못했습니다. 시트 이름을 확인해 주세요."
+_AGGREGATE_ROW_LABELS = frozenset({"합계", "총계", "소계"})
+_AGGREGATE_ROW_DETECTED_MESSAGE = "집계/합계 행 {count}개를 감지했습니다. 필요한 경우 가져오기 창에서 제외할 수 있습니다."
+_AGGREGATE_ROW_DROPPED_MESSAGE = "집계/합계 행 {count}개를 제외했습니다."
 
 
 def normalize_file_type(path: Path, file_type: str | None = None) -> str:
@@ -157,6 +160,7 @@ def read_full(
     *,
     limits: FullReadLimits = DEFAULT_FULL_READ_LIMITS,
     layout: TableLayoutOverride | None = None,
+    drop_aggregate_rows: bool = False,
 ) -> TableReadResult:
     normalized = normalize_file_type(path, file_type)
     _enforce_file_size(path, limits.max_file_bytes)
@@ -230,6 +234,11 @@ def read_full(
         inference_report = None
     else:
         raise ValueError(f"Unsupported table file type: {normalized}")
+    frame, aggregate_warnings = _apply_aggregate_row_policy(
+        frame,
+        drop=drop_aggregate_rows,
+    )
+    warnings = _merge_warnings(warnings, aggregate_warnings)
     _enforce_shape_limits(frame, limits)
     return TableReadResult(
         frame=frame,
@@ -311,6 +320,7 @@ def read_preview(
     *,
     limits: PreviewReadLimits = DEFAULT_PREVIEW_READ_LIMITS,
     layout: TableLayoutOverride | None = None,
+    drop_aggregate_rows: bool = False,
 ) -> TablePreviewResult:
     _validate_preview_limits(limits)
     normalized = normalize_file_type(path, file_type)
@@ -324,6 +334,7 @@ def read_preview(
             preview_limit=_preview_row_limit(limits),
             warnings=warnings,
             inference_report=inference_report,
+            drop_aggregate_rows=drop_aggregate_rows,
         )
     if normalized == "xlsx":
         _enforce_file_size(path, limits.max_file_bytes)
@@ -335,6 +346,7 @@ def read_preview(
             preview_limit=_preview_row_limit(limits),
             warnings=warnings,
             inference_report=inference_report,
+            drop_aggregate_rows=drop_aggregate_rows,
         )
     if normalized == "xls":
         _enforce_file_size(path, limits.max_file_bytes)
@@ -354,6 +366,7 @@ def read_preview(
             preview_limit=_preview_row_limit(limits),
             warnings=warnings,
             inference_report=inference_report,
+            drop_aggregate_rows=drop_aggregate_rows,
         )
     if normalized == "sav":
         import pyreadstat
@@ -382,6 +395,7 @@ def read_preview(
             _table_source(path, normalized),
             preview_limit=_preview_row_limit(limits),
             warnings=warnings,
+            drop_aggregate_rows=drop_aggregate_rows,
         )
     raise ValueError(f"Unsupported table file type: {normalized}")
 
@@ -1231,6 +1245,47 @@ def _sanitize_frame(
     return cleaned, tuple(warnings)
 
 
+def _apply_aggregate_row_policy(
+    frame: pd.DataFrame,
+    *,
+    drop: bool,
+) -> tuple[pd.DataFrame, tuple[str, ...]]:
+    row_mask = _aggregate_row_mask(frame)
+    count = int(row_mask.sum())
+    if count == 0:
+        return frame, ()
+    if drop:
+        return (
+            frame.loc[~row_mask].reset_index(drop=True),
+            (_AGGREGATE_ROW_DROPPED_MESSAGE.format(count=count),),
+        )
+    return frame, (_AGGREGATE_ROW_DETECTED_MESSAGE.format(count=count),)
+
+
+def _aggregate_row_mask(frame: pd.DataFrame) -> pd.Series:
+    if frame.empty:
+        return pd.Series(False, index=frame.index)
+    return frame.apply(_looks_like_aggregate_row, axis=1)
+
+
+def _looks_like_aggregate_row(row: pd.Series) -> bool:
+    for value in row:
+        if _is_blank_value(value):
+            continue
+        return _normalize_aggregate_label(value) in _AGGREGATE_ROW_LABELS
+    return False
+
+
+def _normalize_aggregate_label(value: object) -> str:
+    return "".join(character for character in str(value).strip() if not character.isspace())
+
+
+def _is_blank_value(value: object) -> bool:
+    if pd.isna(value):
+        return True
+    return str(value).strip() == ""
+
+
 def _clean_column_name(value: Any) -> str:
     if value is None:
         return ""
@@ -1353,12 +1408,17 @@ def _preview_result(
     preview_limit: int,
     warnings: tuple[str, ...] = (),
     inference_report: TableInferenceReport | None = None,
+    drop_aggregate_rows: bool = False,
 ) -> TablePreviewResult:
+    frame, aggregate_warnings = _apply_aggregate_row_policy(
+        frame,
+        drop=drop_aggregate_rows,
+    )
     return TablePreviewResult(
         frame=frame,
         metadata=metadata,
         source=source,
-        warnings=warnings,
+        warnings=_merge_warnings(warnings, aggregate_warnings),
         inference_report=inference_report,
         preview_limit=preview_limit,
         sample_rows=_sample_rows(frame),

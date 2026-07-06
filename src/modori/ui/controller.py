@@ -14,7 +14,7 @@ from modori.ui.patches import PatchValidationError, parse_step_patch
 from modori.ui.paths import local_path_from_qml
 from modori.ui.pipeline_ops import PipelineOperations
 from modori.ui.pipeline_state import UiPipelineState
-from modori.ui.preview_models import models_for_dataset, models_for_table_preview
+from modori.ui.preview_models import models_for_dataset
 from modori.ui.recommendation_controller import (
     RecommendationControllerMixin,
     empty_recommendation_state,
@@ -260,7 +260,7 @@ class UiController(
         self._variable_model = None
         self._data_view_notice = ""
         if load_result.path is not None:
-            self._bind_import_preview_models(load_result.path)
+            self._bind_import_preview_models(load_result.path, options)
         self._last_error = ""
         self._last_message = load_result.command.message_ko
         self._report_path = ""
@@ -289,7 +289,8 @@ class UiController(
         return self.openDataFile(recent_path, ImportOptions(confirm_new_session=True)).ok
 
     @Slot(result=bool)
-    def confirmPendingImport(self) -> bool:
+    @Slot(bool, result=bool)
+    def confirmPendingImport(self, drop_aggregate_rows: bool = False) -> bool:
         pending_path = self._services.import_flow.require_pending_path()
         if pending_path is None:
             self._clear_recommendations()
@@ -302,6 +303,7 @@ class UiController(
             ImportOptions(
                 confirm_new_session=True,
                 table_layout=self._services.import_flow.table_layout,
+                drop_aggregate_rows=bool(drop_aggregate_rows),
             ),
         )
         return result.ok
@@ -577,17 +579,3 @@ class UiController(
         self._data_model = models.data_model
         self._variable_model = models.variable_model
         self._data_view_notice = models.notice
-
-    def _bind_import_preview_models(self, path: Path) -> bool:
-        import_flow = self._services.import_flow
-        if import_flow.pending_path != path or import_flow.table_preview is None:
-            if not import_flow.preview(path):
-                return False
-        preview = import_flow.table_preview
-        if preview is None:
-            return False
-        models = models_for_table_preview(preview)
-        self._data_model = models.data_model
-        self._variable_model = models.variable_model
-        self._data_view_notice = models.notice
-        return True

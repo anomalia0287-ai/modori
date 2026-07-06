@@ -13,23 +13,33 @@ class UiImportFlow:
         self.pending_path: Path | None = None
         self.table_preview: TablePreviewResult | None = None
         self.table_layout: dict[str, object] | None = None
+        self.drop_aggregate_rows = False
 
-    def preview(self, path: Path, layout: TableLayoutOverride | None = None) -> bool:
-        preview = (
-            self._preview_service.preview(path, layout=layout)
-            if layout is not None
-            else self._preview_service.preview(path)
-        )
+    def preview(
+        self,
+        path: Path,
+        layout: TableLayoutOverride | None = None,
+        *,
+        drop_aggregate_rows: bool = False,
+    ) -> bool:
+        preview_kwargs: dict[str, object] = {}
+        if layout is not None:
+            preview_kwargs["layout"] = layout
+        if drop_aggregate_rows:
+            preview_kwargs["drop_aggregate_rows"] = True
+        preview = self._preview_service.preview(path, **preview_kwargs)
         previous_pending_path = self.pending_path
         self.preview_text = preview.text
         if preview.ok:
             self.pending_path = preview.pending_path
             self.table_preview = getattr(preview, "table_preview", None)
             self.table_layout = _table_layout_params(layout)
+            self.drop_aggregate_rows = bool(drop_aggregate_rows)
         else:
             self.pending_path = previous_pending_path if layout is not None else preview.pending_path
             self.table_preview = None
             self.table_layout = None
+            self.drop_aggregate_rows = False
         return bool(preview.ok)
 
     def require_pending_path(self) -> Path | None:

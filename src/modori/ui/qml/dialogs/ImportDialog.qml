@@ -13,8 +13,8 @@ Dialog {
     y: Math.round((parent.height - height) / 2)
     width: Math.min(parent.width - theme.dialogViewportMargin * 2, theme.importDialogMaxWidth)
     height: Math.min(parent.height - theme.dialogViewportMargin * 2, theme.importDialogMaxHeight)
-    signal importAccepted()
-    signal layoutPreviewRequested(int headerRow, int headerRowCount, int dataStartRow, string sheetName)
+    signal importAccepted(bool dropAggregateRows)
+    signal layoutPreviewRequested(int headerRow, int headerRowCount, int dataStartRow, string sheetName, bool dropAggregateRows)
 
     Theme {
         id: theme
@@ -49,6 +49,13 @@ Dialog {
             checked: true
             enabled: false
             Accessible.name: appBootstrap.text("dialog.import.preserve_metadata")
+        }
+
+        CheckBox {
+            id: dropAggregateRows
+            text: appBootstrap.text("dialog.import.drop_aggregate_rows")
+            checked: false
+            Accessible.name: appBootstrap.text("dialog.import.drop_aggregate_rows")
         }
 
         GridLayout {
@@ -117,7 +124,8 @@ Dialog {
                         headerRow.value,
                         headerRows.value,
                         dataStartRow.value,
-                        sheetName.text
+                        sheetName.text,
+                        dropAggregateRows.checked
                     )
                 }
             }
@@ -138,7 +146,7 @@ Dialog {
                 text: appBootstrap.text("dialog.import.confirm")
                 Accessible.name: appBootstrap.text("dialog.import.confirm")
                 highlighted: true
-                onClicked: root.importAccepted()
+                onClicked: root.importAccepted(dropAggregateRows.checked)
             }
         }
     }

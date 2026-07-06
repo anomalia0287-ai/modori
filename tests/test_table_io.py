@@ -559,6 +559,35 @@ def test_read_full_flattens_merged_xlsx_header_rows(tmp_path) -> None:
     assert "다중 헤더 3행을 하나의 열 이름으로 합쳤습니다." in result.warnings
 
 
+def test_read_preview_warns_about_aggregate_rows_and_can_drop_them(tmp_path) -> None:
+    path = tmp_path / "aggregate-row.csv"
+    path.write_text(
+        "\n".join(
+            [
+                "지역,인구",
+                "합 계,300",
+                "종로구,100",
+                "중구,200",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    kept = read_preview(path, "csv")
+
+    assert kept.sample_rows[0] == {"지역": "합 계", "인구": 300}
+    assert "집계/합계 행 1개를 감지했습니다. 필요한 경우 가져오기 창에서 제외할 수 있습니다." in kept.warnings
+
+    dropped = read_preview(path, "csv", drop_aggregate_rows=True)
+
+    assert dropped.sample_rows == (
+        {"지역": "종로구", "인구": 100},
+        {"지역": "중구", "인구": 200},
+    )
+    assert "집계/합계 행 1개를 제외했습니다." in dropped.warnings
+
+
 def test_read_preview_reports_merged_xlsx_header_inference(tmp_path) -> None:
     from openpyxl import Workbook
 

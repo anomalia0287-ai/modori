@@ -93,13 +93,16 @@ def test_import_dialog_exposes_manual_layout_preview_controls() -> None:
     main = qml_text("Main.qml")
     dialog = qml_text("dialogs/ImportDialog.qml")
 
-    assert "signal layoutPreviewRequested(int headerRow, int headerRowCount, int dataStartRow, string sheetName)" in dialog
+    assert "signal layoutPreviewRequested(int headerRow, int headerRowCount, int dataStartRow, string sheetName, bool dropAggregateRows)" in dialog
+    assert "signal importAccepted(bool dropAggregateRows)" in dialog
     assert "dialog.import.sheet_name" in dialog
     assert "dialog.import.header_row" in dialog
     assert "dialog.import.header_rows" in dialog
     assert "dialog.import.data_start_row" in dialog
+    assert "dialog.import.drop_aggregate_rows" in dialog
     assert "dialog.import.refresh_preview" in dialog
     assert "uiController.previewPendingImportLayout" in main
+    assert "uiController.confirmPendingImport(dropAggregateRows)" in main
 
 
 def test_data_table_surfaces_imported_dataset_notice() -> None:

@@ -66,11 +66,11 @@ ApplicationWindow {
 
     ImportDialog {
         id: importDialog
-        onLayoutPreviewRequested: function(headerRow, headerRowCount, dataStartRow, sheetName) {
-            uiController.previewPendingImportLayout(headerRow, headerRowCount, dataStartRow, sheetName)
+        onLayoutPreviewRequested: function(headerRow, headerRowCount, dataStartRow, sheetName, dropAggregateRows) {
+            uiController.previewPendingImportLayout(headerRow, headerRowCount, dataStartRow, sheetName, dropAggregateRows)
         }
-        onImportAccepted: {
-            if (uiController.confirmPendingImport()) {
+        onImportAccepted: function(dropAggregateRows) {
+            if (uiController.confirmPendingImport(dropAggregateRows)) {
                 root.currentScreen = "work"
                 importDialog.close()
             }

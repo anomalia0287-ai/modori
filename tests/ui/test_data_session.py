@@ -108,3 +108,17 @@ def test_import_session_pipeline_factory_persists_table_layout_options(tmp_path)
         "header_row_count": 1,
     }
     assert pipeline.current_dataset.df.columns.tolist() == ["city", "value"]
+
+
+def test_import_session_pipeline_factory_persists_aggregate_row_option(tmp_path) -> None:
+    data_path = tmp_path / "aggregate-row.csv"
+    data_path.write_text("지역,인구\n합 계,300\n종로구,100\n", encoding="utf-8")
+
+    pipeline = ImportSessionPipelineFactory()(
+        data_path,
+        ImportOptions(confirm_new_session=True, drop_aggregate_rows=True),
+    )
+
+    import_step = pipeline.steps[0]
+    assert import_step.params["drop_aggregate_rows"] is True
+    assert pipeline.current_dataset.df.to_dict(orient="records") == [{"지역": "종로구", "인구": 100}]

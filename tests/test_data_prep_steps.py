@@ -150,6 +150,45 @@ def test_import_step_applies_table_layout_override_params(tmp_path) -> None:
     assert "사용자 지정 표 레이아웃을 적용했습니다." in pipeline.step_results["import"].notes
 
 
+def test_import_step_drops_aggregate_rows_when_requested(tmp_path) -> None:
+    path = tmp_path / "aggregate-row.csv"
+    path.write_text(
+        "\n".join(
+            [
+                "지역,인구",
+                "합 계,300",
+                "종로구,100",
+                "중구,200",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    pipeline = Pipeline(Dataset.empty())
+    pipeline.add(
+        ImportStep(
+            id="import",
+            title="Import CSV",
+            params={
+                "path": str(path),
+                "file_type": "csv",
+                "drop_aggregate_rows": True,
+            },
+        )
+    )
+
+    pipeline.recompute(dirty_from=None)
+
+    assert pipeline.current_dataset.df.to_dict(orient="records") == [
+        {"지역": "종로구", "인구": 100},
+        {"지역": "중구", "인구": 200},
+    ]
+    assert pipeline.step_results["import"].notes == [
+        "Imported 2 rows, 2 columns, and 0 missing cells.",
+        "집계/합계 행 1개를 제외했습니다.",
+    ]
+
+
 def test_pipeline_rejects_duplicate_dynamic_import_writes_at_recompute(
     tmp_path,
 ) -> None:

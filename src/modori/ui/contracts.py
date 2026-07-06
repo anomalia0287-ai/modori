@@ -48,6 +48,7 @@ class ImportOptions:
     preserve_sav_metadata: bool = True
     confirm_new_session: bool = False
     table_layout: dict[str, Any] | None = None
+    drop_aggregate_rows: bool = False
 
 
 @dataclass(frozen=True)
