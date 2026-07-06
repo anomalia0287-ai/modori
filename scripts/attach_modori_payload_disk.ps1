@@ -71,10 +71,17 @@ function Assert-PayloadDriveContents {
         (Join-Path $DriveRoot "Samples\visible-import-reference.csv"),
         (Join-Path $DriveRoot "Samples\visible-import-reference.xlsx"),
         (Join-Path $DriveRoot "Samples\visible-import-reference.sav"),
+        (Join-Path $DriveRoot "Samples\public_data_formats\kosis-two-row.csv"),
+        (Join-Path $DriveRoot "Samples\public_data_formats\molit-deep-preamble.csv"),
+        (Join-Path $DriveRoot "Samples\public_data_formats\weather-text-xls.xls"),
+        (Join-Path $DriveRoot "Samples\public_data_formats\merged-public-header.xlsx"),
+        (Join-Path $DriveRoot "Samples\public_data_formats\aggregate-row.csv"),
+        (Join-Path $DriveRoot "Samples\public_data_formats\notice-only.xlsx"),
         (Join-Path $DriveRoot "README.txt"),
         (Join-Path $DriveRoot "QA_CONTRACT.txt"),
         (Join-Path $DriveRoot "Run-Modori.bat"),
-        (Join-Path $DriveRoot "Run-Engine-Smoke-XLSX.bat")
+        (Join-Path $DriveRoot "Run-Engine-Smoke-XLSX.bat"),
+        (Join-Path $DriveRoot "Run-Public-Data-Smoke.bat")
     )
 
     foreach ($requiredPath in $requiredPaths) {
@@ -87,6 +94,14 @@ function Assert-PayloadDriveContents {
     }
     if ($engineSmokeBatch -match "--engine-smoke.*visible-import-reference\.xlsx") {
         throw "Engine smoke batch incorrectly references the visible import workbook"
+    }
+
+    $publicDataSmokeBatch = Get-Content -LiteralPath (Join-Path $DriveRoot "Run-Public-Data-Smoke.bat") -Raw
+    if ($publicDataSmokeBatch -notmatch "--public-data-smoke") {
+        throw "Public data smoke batch does not run --public-data-smoke"
+    }
+    if ($publicDataSmokeBatch -notmatch "Samples\\public_data_formats") {
+        throw "Public data smoke batch does not reference public_data_formats fixtures"
     }
 }
 
@@ -185,6 +200,7 @@ try {
 
 $sourceApp = Join-Path $WorkspaceRoot "dist\Modori"
 $fixturesRoot = Join-Path $WorkspaceRoot ".visual-qa\clean-win-vm-payload"
+$publicDataFixtures = Join-Path $WorkspaceRoot "tests\fixtures\public_data_formats"
 $samples = @(
     (Join-Path $fixturesRoot "engine-smoke-reference.xlsx"),
     (Join-Path $fixturesRoot "visible-import-reference.csv"),
@@ -197,7 +213,8 @@ Assert-Path -Path $sourceApp -Label "Packaged app folder"
 foreach ($sample in $samples) {
     Assert-Path -Path $sample -Label "Sample file"
 }
-$sourcePaths = @($sourceApp) + $samples
+Assert-Path -Path $publicDataFixtures -Label "Public data fixture folder"
+$sourcePaths = @($sourceApp, $publicDataFixtures) + $samples
 $newestSourceWriteTimeUtc = Get-NewestSourceWriteTimeUtc -Paths $sourcePaths
 
 $vm = Get-VM -Name $VMName -ErrorAction Stop
@@ -273,6 +290,7 @@ try {
     New-Item -ItemType Directory -Force -Path $sampleTarget | Out-Null
     Copy-Item -LiteralPath $sourceApp -Destination $appTarget -Recurse
     Copy-Item -LiteralPath $samples -Destination $sampleTarget
+    Copy-Item -LiteralPath $publicDataFixtures -Destination (Join-Path $sampleTarget "public_data_formats") -Recurse
 
     $readme = @"
 Modori clean Windows QA payload
@@ -280,12 +298,19 @@ Modori clean Windows QA payload
 1. Run Run-Modori.bat to start the app.
 2. Use files in the Samples folder for import tests.
 3. Run Run-Engine-Smoke-XLSX.bat for a non-UI engine smoke test.
+4. Run Run-Public-Data-Smoke.bat for Korean public-data import contract checks.
 
 Expected sample files:
 - Samples\engine-smoke-reference.xlsx
 - Samples\visible-import-reference.csv
 - Samples\visible-import-reference.xlsx
 - Samples\visible-import-reference.sav
+- Samples\public_data_formats\kosis-two-row.csv
+- Samples\public_data_formats\molit-deep-preamble.csv
+- Samples\public_data_formats\weather-text-xls.xls
+- Samples\public_data_formats\merged-public-header.xlsx
+- Samples\public_data_formats\aggregate-row.csv
+- Samples\public_data_formats\notice-only.xlsx
 "@
     Set-Content -LiteralPath (Join-Path $driveRoot "README.txt") -Value $readme -Encoding ASCII
 
@@ -300,8 +325,17 @@ Import visibility samples:
 - Samples\visible-import-reference.xlsx
 - Samples\visible-import-reference.sav
 
+Public data import contract samples:
+- Samples\public_data_formats\kosis-two-row.csv
+- Samples\public_data_formats\molit-deep-preamble.csv
+- Samples\public_data_formats\weather-text-xls.xls
+- Samples\public_data_formats\merged-public-header.xlsx
+- Samples\public_data_formats\aggregate-row.csv
+- Samples\public_data_formats\notice-only.xlsx
+
 Rules:
 - Run-Engine-Smoke-XLSX.bat must use only the engine smoke sample.
+- Run-Public-Data-Smoke.bat must validate public-data import contracts, not just app launch.
 - Run-Modori.bat is for visible UI verification.
 - Visible import samples are not a substitute for engine smoke.
 "@
@@ -326,6 +360,19 @@ pause
 exit /b %RESULT%
 "@
     Set-Content -LiteralPath (Join-Path $driveRoot "Run-Engine-Smoke-XLSX.bat") -Value $engineSmoke -Encoding ASCII
+
+$publicDataSmoke = @"
+@echo off
+set ROOT=%~dp0
+start /wait "" "%ROOT%Modori\Modori.exe" --public-data-smoke "%ROOT%Samples\public_data_formats" "%USERPROFILE%\Desktop\modori-public-data-smoke.json"
+set RESULT=%ERRORLEVEL%
+echo Exit code: %RESULT%
+echo Output: %USERPROFILE%\Desktop\modori-public-data-smoke.json
+if exist "%USERPROFILE%\Desktop\modori-public-data-smoke.json" type "%USERPROFILE%\Desktop\modori-public-data-smoke.json"
+pause
+exit /b %RESULT%
+"@
+    Set-Content -LiteralPath (Join-Path $driveRoot "Run-Public-Data-Smoke.bat") -Value $publicDataSmoke -Encoding ASCII
 
     Write-Section "Validate new payload contents"
     Assert-PayloadDriveContents -DriveRoot $driveRoot

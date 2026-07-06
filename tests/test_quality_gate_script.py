@@ -42,6 +42,7 @@ def test_quality_gate_can_opt_into_package_build_and_launch() -> None:
     assert ["scripts/package_windows.py"] in commands
     assert ["scripts/package_launch_smoke.py"] in commands
     assert ["scripts/package_engine_smoke.py"] in commands
+    assert ["scripts/package_public_data_smoke.py"] in commands
 
 
 def test_release_checklist_documents_dependency_release_gate() -> None:

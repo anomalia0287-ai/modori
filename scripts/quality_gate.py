@@ -28,6 +28,7 @@ def quality_commands(
     if include_packaged_launch:
         commands.append(["scripts/package_launch_smoke.py"])
         commands.append(["scripts/package_engine_smoke.py"])
+        commands.append(["scripts/package_public_data_smoke.py"])
     if include_pip_audit:
         commands.append(
             [

@@ -18,8 +18,10 @@ def test_payload_script_writes_a_human_readable_contract_file() -> None:
     assert "QA_CONTRACT.txt" in text
     assert "engine-smoke-reference.xlsx" in text
     assert "visible-import-reference.xlsx" in text
+    assert "public_data_formats" in text
     assert "Engine smoke sample" in text
     assert "Import visibility samples" in text
+    assert "Public data import contract samples" in text
 
 
 def test_engine_smoke_batch_uses_engine_reference_not_import_reference() -> None:
@@ -32,6 +34,18 @@ def test_engine_smoke_batch_uses_engine_reference_not_import_reference() -> None
     assert "Samples\\visible-import-reference.xlsx" not in engine_block
     assert "type \"%USERPROFILE%\\Desktop\\modori-engine-smoke.json\"" in engine_block
     assert "exit /b %RESULT%" in engine_block
+
+
+def test_public_data_smoke_batch_uses_public_data_fixtures_and_writes_json() -> None:
+    text = _payload_script_text()
+    smoke_block = text.split('$publicDataSmoke = @"', maxsplit=1)[1].split('"@', maxsplit=1)[0]
+
+    assert "start /wait" in smoke_block
+    assert "--public-data-smoke" in smoke_block
+    assert "Samples\\public_data_formats" in smoke_block
+    assert "modori-public-data-smoke.json" in smoke_block
+    assert "type \"%USERPROFILE%\\Desktop\\modori-public-data-smoke.json\"" in smoke_block
+    assert "exit /b %RESULT%" in smoke_block
 
 
 def test_attach_wrapper_requires_explicit_admin_instead_of_hidden_self_elevation() -> None:
@@ -62,6 +76,9 @@ def test_existing_payload_vhdx_is_validated_before_attach() -> None:
     assert "Mount-VHD -Path $Path -ReadOnly -PassThru" in text
     assert "QA_CONTRACT.txt" in text
     assert "Run-Engine-Smoke-XLSX.bat" in text
+    assert "Run-Public-Data-Smoke.bat" in text
+    assert "Samples\\public_data_formats\\kosis-two-row.csv" in text
+    assert "Samples\\public_data_formats\\notice-only.xlsx" in text
 
 
 def test_payload_attach_requires_vm_off_to_avoid_hot_add_detection_drift() -> None:

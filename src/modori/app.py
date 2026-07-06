@@ -10,6 +10,7 @@ from PySide6.QtCore import Property, QObject, QUrl, Signal, Slot
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine
 
+from modori.public_data_smoke import run_public_data_import_smoke
 from modori.ui.contracts import ImportOptions
 from modori.ui.controller import UiController
 from modori.ui.resources import root_qml_path
@@ -36,6 +37,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     selected_argv = list(sys.argv if argv is None else argv)
     if len(selected_argv) == 4 and selected_argv[1] == "--engine-smoke":
         return _run_engine_smoke(Path(selected_argv[2]), Path(selected_argv[3]))
+    if len(selected_argv) == 4 and selected_argv[1] == "--public-data-smoke":
+        return run_public_data_import_smoke(Path(selected_argv[2]), Path(selected_argv[3]))
 
     app = QGuiApplication(selected_argv)
     engine = QQmlApplicationEngine()

@@ -12,7 +12,8 @@ using one of these operations without being added to this audited allowlist.
 | File | Operations | Boundary |
 | --- | --- | --- |
 | `src/modori/path_policy.py` | `resolve` | Central path validation helper. Rejects relative paths and symlink/junction ancestors before returning configured paths. |
-| `src/modori/app.py` | `mkdir`, `write_text` | Hidden `--engine-smoke` packaging gate only. The normal QML app path does not invoke this branch; the CLI writes a diagnostic JSON payload to the caller-supplied smoke output path for release verification. |
+| `src/modori/app.py` | `mkdir`, `write_text` | Hidden `--engine-smoke` and `--public-data-smoke` packaging gates only. The normal QML app path does not invoke these branches; the CLI writes diagnostic JSON payloads to caller-supplied smoke output paths for release verification. |
+| `src/modori/public_data_smoke.py` | `mkdir`, `write_text` | Hidden public-data release verification helper used only through `--public-data-smoke`. It reads checked-in or payload fixtures and writes one diagnostic JSON result to the caller-supplied smoke output path. |
 | `src/modori/cache.py` | `resolve`, `mkdir`, `write_text`, `unlink` | Cache roots are selected through `resolve_secure_directory_path` where possible. `_ensure_cache_dir` creates only the selected cache directory, rejects link/junction targets, probes writability with a random temp filename, and deletes only that probe. |
 | `src/modori/ui/chart_assets.py` | `mkdir`, `unlink` | Result-panel chart preview writes a random PNG filename only under the managed `cache/charts` directory. Failure cleanup deletes only that just-selected partial PNG path and returns a display note instead of touching user files. |
 | `src/modori/ui/settings.py` | `resolve`, `mkdir`, `write_text`, `replace`, `unlink` | Settings path is either a secure absolute `.json` file or the managed cache. Writes go to a same-directory random temp file and then atomically replace the target; cleanup deletes only that temp path. |
@@ -25,6 +26,7 @@ using one of these operations without being added to this audited allowlist.
 | `scripts/package_windows.py` | `mkdir` | Local release-build setup under the workspace `.tmp` directory. Not user-data cleanup. |
 | `scripts/package_launch_smoke.py` | `mkdir`, `resolve` | Local smoke-test setup under the workspace `.tmp` directory and explicit executable/cwd normalization. Not product runtime deletion. |
 | `scripts/package_engine_smoke.py` | `mkdir`, `resolve` | Local packaged-engine smoke setup under the workspace `.tmp/packaged-engine-smoke` directory. It creates a deterministic reference workbook and reads the packaged app's smoke JSON; it does not delete user data. |
+| `scripts/package_public_data_smoke.py` | `mkdir`, `resolve` | Local packaged public-data import smoke setup under the workspace `.tmp/packaged-public-data-smoke` directory. It runs the packaged app against checked-in public-data fixtures and reads the smoke JSON; it does not delete user data. |
 | `scripts/stress_matrix.py` | `mkdir`, `write_text` | Local stress evidence generation under caller-selected output paths; release checklist uses ignored `.stress-matrix`. It creates deterministic synthetic datasets, JSON results, and report artifacts, not user-data cleanup. |
 
 ## Decisions
