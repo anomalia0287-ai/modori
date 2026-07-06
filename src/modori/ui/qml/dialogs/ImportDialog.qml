@@ -14,6 +14,7 @@ Dialog {
     width: Math.min(parent.width - theme.dialogViewportMargin * 2, theme.importDialogMaxWidth)
     height: Math.min(parent.height - theme.dialogViewportMargin * 2, theme.importDialogMaxHeight)
     signal importAccepted()
+    signal layoutPreviewRequested(int headerRow, int headerRowCount, int dataStartRow, string sheetName)
 
     Theme {
         id: theme
@@ -48,6 +49,78 @@ Dialog {
             checked: true
             enabled: false
             Accessible.name: appBootstrap.text("dialog.import.preserve_metadata")
+        }
+
+        GridLayout {
+            Layout.fillWidth: true
+            columns: 4
+            columnSpacing: theme.spaceSm
+            rowSpacing: theme.spaceXs
+
+            Label {
+                text: appBootstrap.text("dialog.import.sheet_name")
+            }
+
+            TextField {
+                id: sheetName
+                Layout.fillWidth: true
+                placeholderText: appBootstrap.text("dialog.import.sheet_name")
+                Accessible.name: appBootstrap.text("dialog.import.sheet_name")
+            }
+
+            Label {
+                text: appBootstrap.text("dialog.import.header_row")
+            }
+
+            SpinBox {
+                id: headerRow
+                from: 1
+                to: 999
+                value: 1
+                editable: true
+                Accessible.name: appBootstrap.text("dialog.import.header_row")
+            }
+
+            Label {
+                text: appBootstrap.text("dialog.import.header_rows")
+            }
+
+            SpinBox {
+                id: headerRows
+                from: 1
+                to: 3
+                value: 1
+                editable: true
+                Accessible.name: appBootstrap.text("dialog.import.header_rows")
+            }
+
+            Label {
+                text: appBootstrap.text("dialog.import.data_start_row")
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+
+                SpinBox {
+                    id: dataStartRow
+                    from: 1
+                    to: 999
+                    value: 2
+                    editable: true
+                    Accessible.name: appBootstrap.text("dialog.import.data_start_row")
+                }
+
+                Button {
+                    text: appBootstrap.text("dialog.import.refresh_preview")
+                    Accessible.name: appBootstrap.text("dialog.import.refresh_preview")
+                    onClicked: root.layoutPreviewRequested(
+                        headerRow.value,
+                        headerRows.value,
+                        dataStartRow.value,
+                        sheetName.text
+                    )
+                }
+            }
         }
 
         RowLayout {

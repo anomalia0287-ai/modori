@@ -86,6 +86,36 @@ def test_confirm_import_keeps_public_data_warning_visible_in_data_notice(tmp_pat
     assert "표 헤더 앞의 안내 행 3개" in controller.dataViewNotice
 
 
+def test_adjust_pending_import_layout_repreviews_and_confirms_same_layout(tmp_path) -> None:
+    from modori.ui.controller import UiController
+
+    data_path = tmp_path / "manual-layout.csv"
+    data_path.write_text(
+        "\n".join(
+            [
+                "다운로드 조건,2026-07-06",
+                "이 행은 표가 아닙니다,확인용",
+                "city,value",
+                "Seoul,10",
+                "Busan,20",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    controller = UiController()
+
+    assert controller.previewDataFilePath(str(data_path)) is True
+    assert controller.previewPendingImportLayout(3, 1, 4, "") is True
+    assert "사용자 지정 표 레이아웃을 적용했습니다." in controller.importPreviewText
+    assert controller.confirmPendingImport() is True
+
+    assert controller.dataModel is not None
+    assert controller.dataModel.rowCount() == 2
+    assert controller.dataModel.columnCount() == 2
+    assert "가져온 데이터 미리보기: 2행 · 2열" in controller.dataViewNotice
+
+
 def test_recent_files_persist_to_settings_file(tmp_path, monkeypatch) -> None:
     from tests.ui.test_end_to_end_ui_flow import write_reference_csv
     from modori.ui.controller import UiController

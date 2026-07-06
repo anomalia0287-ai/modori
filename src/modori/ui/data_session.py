@@ -37,16 +37,18 @@ class ReferencePipelineFactory:
 
 class ImportSessionPipelineFactory:
     def __call__(self, path: Path, options: ImportOptions) -> object:
-        _ = options
+        params = {
+            "path": str(path),
+            "file_type": path.suffix.lower().lstrip("."),
+        }
+        if options.table_layout:
+            params["table_layout"] = dict(options.table_layout)
         pipeline = Pipeline(Dataset.empty())
         pipeline.add(
             ImportStep(
                 id="import",
                 title="Import data",
-                params={
-                    "path": str(path),
-                    "file_type": path.suffix.lower().lstrip("."),
-                },
+                params=params,
             )
         )
         pipeline.recompute(dirty_from="import")

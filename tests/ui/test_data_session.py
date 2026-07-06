@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from modori.ui.contracts import ImportOptions
-from modori.ui.data_session import DataSessionLoader
+from modori.ui.data_session import DataSessionLoader, ImportSessionPipelineFactory
 
 
 class FakePipelineOps:
@@ -74,3 +74,37 @@ def test_data_session_loader_returns_replacement_pipeline_on_success(tmp_path) -
     assert result.command.pipeline_version == 2
     assert result.pipeline is pipeline
     assert result.path == data_path
+
+
+def test_import_session_pipeline_factory_persists_table_layout_options(tmp_path) -> None:
+    data_path = tmp_path / "manual-layout.csv"
+    data_path.write_text(
+        "\n".join(
+            [
+                "다운로드 조건,2026-07-06",
+                "이 행은 표가 아닙니다,확인용",
+                "city,value",
+                "Seoul,10",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    pipeline = ImportSessionPipelineFactory()(
+        data_path,
+        ImportOptions(
+            confirm_new_session=True,
+            table_layout={
+                "header_row_index": 2,
+                "header_row_count": 1,
+            },
+        ),
+    )
+
+    import_step = pipeline.steps[0]
+    assert import_step.params["table_layout"] == {
+        "header_row_index": 2,
+        "header_row_count": 1,
+    }
+    assert pipeline.current_dataset.df.columns.tolist() == ["city", "value"]

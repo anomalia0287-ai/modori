@@ -7,6 +7,7 @@ from modori.table_io import (
     FullReadLimits,
     PreviewReadLimits,
     TableHeaderResult,
+    TableLayoutOverride,
     TablePreviewResult,
     TableReadResult,
     read_full,
@@ -84,6 +85,30 @@ def test_read_header_result_exposes_xlsx_source_context_and_compat_header(tmp_pa
     assert result.source.sheet_name == "Responses"
     assert result.source.sheet_names == ("Responses", "Codebook")
     assert read_header(path, "xlsx") == ["q1", "q2"]
+
+
+def test_read_header_applies_user_csv_layout_override(tmp_path) -> None:
+    path = tmp_path / "manual-layout.csv"
+    path.write_text(
+        "\n".join(
+            [
+                "다운로드 조건,2026-07-06",
+                "이 행은 표가 아닙니다,확인용",
+                "city,value",
+                "Seoul,10",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    columns = read_header(
+        path,
+        "csv",
+        layout=TableLayoutOverride(header_row_index=2, header_row_count=1),
+    )
+
+    assert columns == ["city", "value"]
 
 
 def test_xlsx_full_header_and_preview_use_same_active_sheet(tmp_path) -> None:
@@ -367,6 +392,72 @@ def test_read_preview_reports_plain_csv_inference(tmp_path) -> None:
     assert report.reasons == ("첫 번째 행을 헤더로 인식했습니다.",)
 
 
+def test_read_preview_applies_user_csv_header_override(tmp_path) -> None:
+    path = tmp_path / "manual-layout.csv"
+    text = "\n".join(
+        [
+            "다운로드 조건,2026-07-06",
+            "이 행은 표가 아닙니다,확인용",
+            "city,value",
+            "Seoul,10",
+            "Busan,20",
+        ]
+    )
+    path.write_text(text + "\n", encoding="utf-8")
+
+    result = read_preview(
+        path,
+        "csv",
+        layout=TableLayoutOverride(header_row_index=2, header_row_count=1),
+    )
+
+    assert result.columns == ("city", "value")
+    assert result.sample_rows == (
+        {"city": "Seoul", "value": 10},
+        {"city": "Busan", "value": 20},
+    )
+    report = result.inference_report
+    assert report is not None
+    assert report.header_row_index == 2
+    assert report.header_row_count == 1
+    assert report.data_start_row_index == 3
+    assert report.confidence == "high"
+    assert "사용자 지정 표 레이아웃을 적용했습니다." in report.reasons
+
+
+def test_read_full_applies_user_csv_data_start_override(tmp_path) -> None:
+    path = tmp_path / "manual-data-start.csv"
+    text = "\n".join(
+        [
+            "city,value",
+            "주석,아래부터 데이터",
+            "Seoul,10",
+            "Busan,20",
+        ]
+    )
+    path.write_text(text + "\n", encoding="utf-8")
+
+    result = read_full(
+        path,
+        "csv",
+        layout=TableLayoutOverride(
+            header_row_index=0,
+            header_row_count=1,
+            data_start_row_index=2,
+        ),
+    )
+
+    assert result.columns == ("city", "value")
+    assert result.frame.to_dict(orient="records") == [
+        {"city": "Seoul", "value": 10},
+        {"city": "Busan", "value": 20},
+    ]
+    report = result.inference_report
+    assert report is not None
+    assert report.data_start_row_index == 2
+    assert "사용자 지정 표 레이아웃을 적용했습니다." in report.reasons
+
+
 def test_read_preview_reports_medium_confidence_for_deep_preamble(tmp_path) -> None:
     path = tmp_path / "real-estate.csv"
     preamble = [f"검색조건 {index}: 값" for index in range(15)]
@@ -486,6 +577,39 @@ def test_read_preview_reports_merged_xlsx_header_inference(tmp_path) -> None:
     assert report.requires_user_confirmation is False
     assert "표 헤더 앞의 안내 행 3개를 건너뛰었습니다." in report.reasons
     assert "다중 헤더 3행을 하나의 열 이름으로 합쳤습니다." in report.reasons
+
+
+def test_read_preview_applies_user_xlsx_sheet_override(tmp_path) -> None:
+    from openpyxl import Workbook
+
+    path = tmp_path / "multi-sheet-public.xlsx"
+    workbook = Workbook()
+    notice = workbook.active
+    notice.title = "안내"
+    notice.append(["□ 안내문만 있는 시트입니다."])
+    data = workbook.create_sheet("자료")
+    data.append(["city", "value"])
+    data.append(["Seoul", 10])
+    data.append(["Busan", 20])
+    workbook.save(path)
+    workbook.close()
+
+    result = read_preview(
+        path,
+        "xlsx",
+        layout=TableLayoutOverride(sheet_name="자료"),
+    )
+
+    assert result.source.sheet_name == "자료"
+    assert result.columns == ("city", "value")
+    assert result.sample_rows == (
+        {"city": "Seoul", "value": 10},
+        {"city": "Busan", "value": 20},
+    )
+    report = result.inference_report
+    assert report is not None
+    assert report.sheet_name == "자료"
+    assert "사용자 지정 표 레이아웃을 적용했습니다." in report.reasons
 
 
 def test_read_preview_reads_tab_delimited_text_with_xls_extension(tmp_path) -> None:

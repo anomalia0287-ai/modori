@@ -24,6 +24,14 @@ class TableReadSource:
 
 
 @dataclass(frozen=True)
+class TableLayoutOverride:
+    sheet_name: str | None = None
+    header_row_index: int | None = None
+    header_row_count: int | None = None
+    data_start_row_index: int | None = None
+
+
+@dataclass(frozen=True)
 class TableInferenceReport:
     file_type: str
     header_row_index: int
@@ -110,6 +118,7 @@ class _DelimitedReadContext:
     header_row_count: int
     data_start_row_index: int
     header_cells: tuple[Any, ...]
+    layout_overridden: bool = False
     warnings: tuple[str, ...] = ()
 
 
@@ -121,6 +130,7 @@ class _XlsxReadContext:
     data_start_row_index: int
     header_cells: tuple[Any, ...]
     header_rows: tuple[tuple[Any, ...], ...] = ()
+    layout_overridden: bool = False
     warnings: tuple[str, ...] = ()
 
 
@@ -128,6 +138,7 @@ DEFAULT_PREVIEW_READ_LIMITS = PreviewReadLimits()
 DEFAULT_FULL_READ_LIMITS = FullReadLimits()
 _LEGACY_XLS_MESSAGE = "구형 Excel(.xls) 파일은 현재 지원하지 않습니다. Excel에서 .xlsx 또는 .csv로 저장한 뒤 다시 열어 주세요."
 _EMPTY_TABLE_MESSAGE = "표 데이터가 없습니다. 원본 포털에서 CSV 파일을 다시 받거나 표가 있는 시트를 선택해 주세요."
+_LAYOUT_OVERRIDE_MESSAGE = "사용자 지정 표 레이아웃을 적용했습니다."
 
 
 def normalize_file_type(path: Path, file_type: str | None = None) -> str:
@@ -143,11 +154,12 @@ def read_full(
     file_type: str | None = None,
     *,
     limits: FullReadLimits = DEFAULT_FULL_READ_LIMITS,
+    layout: TableLayoutOverride | None = None,
 ) -> TableReadResult:
     normalized = normalize_file_type(path, file_type)
     _enforce_file_size(path, limits.max_file_bytes)
     if normalized == "csv":
-        context = _csv_read_context(path)
+        context = _csv_read_context(path, layout)
         read_kwargs = _csv_read_kwargs(context)
         if limits.max_rows is not None:
             read_kwargs["nrows"] = limits.max_rows + 1
@@ -163,9 +175,13 @@ def read_full(
         )
     elif normalized == "xlsx":
         if _xlsx_needs_limited_read(limits):
-            frame, source, warnings, inference_report = _read_xlsx_limited(path, limits)
+            frame, source, warnings, inference_report = _read_xlsx_limited(
+                path,
+                limits,
+                layout=layout,
+            )
         else:
-            context = _xlsx_read_context(path)
+            context = _xlsx_read_context(path, layout)
             source = context.source
             frame = pd.read_excel(path, **_xlsx_read_kwargs(context))
             frame, cleanup_warnings = _sanitize_frame(frame, context.header_cells)
@@ -222,20 +238,30 @@ def read_full(
     )
 
 
-def read_header(path: Path, file_type: str | None = None) -> list[str]:
-    return list(read_header_result(path, file_type).columns)
+def read_header(
+    path: Path,
+    file_type: str | None = None,
+    *,
+    layout: TableLayoutOverride | None = None,
+) -> list[str]:
+    return list(read_header_result(path, file_type, layout=layout).columns)
 
 
-def read_header_result(path: Path, file_type: str | None = None) -> TableHeaderResult:
+def read_header_result(
+    path: Path,
+    file_type: str | None = None,
+    *,
+    layout: TableLayoutOverride | None = None,
+) -> TableHeaderResult:
     normalized = normalize_file_type(path, file_type)
     if normalized == "csv":
-        context = _csv_read_context(path)
+        context = _csv_read_context(path, layout)
         frame = pd.read_csv(path, nrows=0, **_csv_read_kwargs(context))
         frame, _ = _sanitize_frame(frame, context.header_cells)
         columns = frame.columns
         source = _table_source(path, normalized)
     elif normalized == "xlsx":
-        context = _safe_xlsx_read_context(path)
+        context = _safe_xlsx_read_context(path, layout)
         source = context.source
         frame = pd.read_excel(
             path,
@@ -246,7 +272,7 @@ def read_header_result(path: Path, file_type: str | None = None) -> TableHeaderR
         columns = frame.columns
     elif normalized == "xls":
         if _is_text_table_file(path):
-            context = _csv_read_context(path)
+            context = _csv_read_context(path, layout)
             frame = pd.read_csv(path, nrows=0, **_csv_read_kwargs(context))
             frame, _ = _sanitize_frame(frame, context.header_cells)
             columns = frame.columns
@@ -282,12 +308,13 @@ def read_preview(
     file_type: str | None = None,
     *,
     limits: PreviewReadLimits = DEFAULT_PREVIEW_READ_LIMITS,
+    layout: TableLayoutOverride | None = None,
 ) -> TablePreviewResult:
     _validate_preview_limits(limits)
     normalized = normalize_file_type(path, file_type)
     if normalized == "csv":
         _enforce_file_size(path, limits.max_file_bytes)
-        frame, warnings, inference_report = _read_csv_preview(path, limits)
+        frame, warnings, inference_report = _read_csv_preview(path, limits, layout)
         return _preview_result(
             frame,
             None,
@@ -298,7 +325,7 @@ def read_preview(
         )
     if normalized == "xlsx":
         _enforce_file_size(path, limits.max_file_bytes)
-        frame, source, warnings, inference_report = _read_xlsx_preview(path, limits)
+        frame, source, warnings, inference_report = _read_xlsx_preview(path, limits, layout)
         return _preview_result(
             frame,
             None,
@@ -360,8 +387,9 @@ def read_preview(
 def _read_csv_preview(
     path: Path,
     limits: PreviewReadLimits,
+    layout: TableLayoutOverride | None = None,
 ) -> tuple[pd.DataFrame, tuple[str, ...], TableInferenceReport]:
-    return _read_delimited_preview(path, limits)
+    return _read_delimited_preview(path, limits, layout=layout)
 
 
 def _read_delimited_full(
@@ -369,9 +397,10 @@ def _read_delimited_full(
     limits: FullReadLimits,
     *,
     file_type: str = "csv",
+    layout: TableLayoutOverride | None = None,
     source_warning: tuple[str, ...] = (),
 ) -> TableReadResult:
-    context = _csv_read_context(path)
+    context = _csv_read_context(path, layout)
     read_kwargs = _csv_read_kwargs(context)
     if limits.max_rows is not None:
         read_kwargs["nrows"] = limits.max_rows + 1
@@ -397,9 +426,10 @@ def _read_delimited_preview(
     limits: PreviewReadLimits,
     *,
     file_type: str = "csv",
+    layout: TableLayoutOverride | None = None,
     source_warning: tuple[str, ...] = (),
 ) -> tuple[pd.DataFrame, tuple[str, ...], TableInferenceReport]:
-    context = _csv_read_context(path)
+    context = _csv_read_context(path, layout)
     header = pd.read_csv(path, nrows=0, **_csv_read_kwargs(context))
     selected_columns, warnings = _limited_preview_columns(
         tuple(str(column) for column in header.columns),
@@ -463,19 +493,26 @@ def _read_excel_preview(
 def _read_xlsx_preview(
     path: Path,
     limits: PreviewReadLimits,
+    layout: TableLayoutOverride | None = None,
 ) -> tuple[pd.DataFrame, TableReadSource, tuple[str, ...], TableInferenceReport]:
-    return _read_xlsx_rows(path, _preview_row_limit(limits), _preview_column_limit(limits))
+    return _read_xlsx_rows(
+        path,
+        _preview_row_limit(limits),
+        _preview_column_limit(limits),
+        layout=layout,
+    )
 
 
 def _read_xlsx_limited(
     path: Path,
     limits: FullReadLimits,
     context: _XlsxReadContext | None = None,
+    layout: TableLayoutOverride | None = None,
 ) -> tuple[pd.DataFrame, TableReadSource, tuple[str, ...], TableInferenceReport]:
     workbook = _load_xlsx_workbook(path)
     try:
-        worksheet = workbook.active
-        context = context or _xlsx_read_context_from_workbook(path, workbook, worksheet)
+        worksheet = _xlsx_layout_worksheet(workbook, layout)
+        context = context or _xlsx_read_context_from_workbook(path, workbook, worksheet, layout)
         iterator = worksheet.iter_rows(values_only=True)
         _skip_rows(iterator, context.data_start_row_index)
         columns = _xlsx_columns(context.header_cells)
@@ -502,11 +539,12 @@ def _read_xlsx_rows(
     path: Path,
     max_rows: int,
     max_columns: int | None = None,
+    layout: TableLayoutOverride | None = None,
 ) -> tuple[pd.DataFrame, TableReadSource, tuple[str, ...], TableInferenceReport]:
-    context = _xlsx_read_context(path)
+    context = _xlsx_read_context(path, layout)
     workbook = _load_xlsx_workbook(path)
     try:
-        worksheet = workbook.active
+        worksheet = _xlsx_layout_worksheet(workbook, layout)
         iterator = worksheet.iter_rows(values_only=True)
         _skip_rows(iterator, context.data_start_row_index)
         if not context.header_cells:
@@ -545,7 +583,7 @@ def _load_xlsx_workbook(path: Path):
     return load_workbook(path, read_only=True, data_only=True)
 
 
-def _csv_read_context(path: Path) -> _DelimitedReadContext:
+def _csv_read_context(path: Path, layout: TableLayoutOverride | None = None) -> _DelimitedReadContext:
     sample = path.read_bytes()[:128 * 1024]
     if not sample:
         return _DelimitedReadContext(
@@ -560,10 +598,23 @@ def _csv_read_context(path: Path) -> _DelimitedReadContext:
     text = sample.decode(encoding, errors="strict")
     delimiter = _detect_delimiter(text)
     rows = _parse_delimited_sample(text, delimiter)
-    header_row_index, header_row_count = _detect_header_layout(rows)
+    layout_overridden = layout is not None and layout.header_row_index is not None
+    if layout_overridden:
+        header_row_index = int(layout.header_row_index)
+        header_row_count = int(layout.header_row_count or 1)
+        data_start_row_index = int(
+            layout.data_start_row_index
+            if layout.data_start_row_index is not None
+            else header_row_index + header_row_count
+        )
+    else:
+        header_row_index, header_row_count = _detect_header_layout(rows)
+        data_start_row_index = header_row_index + header_row_count
     header_rows = tuple(rows[header_row_index : header_row_index + header_row_count])
     header_cells = _flatten_header_rows(header_rows)
     warnings = list(encoding_warnings)
+    if layout_overridden:
+        warnings.append(_LAYOUT_OVERRIDE_MESSAGE)
     if delimiter != ",":
         warnings.append(f"CSV 구분자: {_delimiter_label(delimiter)}")
     warnings.extend(_header_offset_warnings(header_row_index))
@@ -573,8 +624,9 @@ def _csv_read_context(path: Path) -> _DelimitedReadContext:
         delimiter=delimiter,
         header_row_index=header_row_index,
         header_row_count=header_row_count,
-        data_start_row_index=header_row_index + header_row_count,
+        data_start_row_index=data_start_row_index,
         header_cells=header_cells,
+        layout_overridden=layout_overridden,
         warnings=tuple(warnings),
     )
 
@@ -626,7 +678,10 @@ def _csv_read_kwargs(context: _DelimitedReadContext) -> dict[str, Any]:
     if context.delimiter != ",":
         kwargs["sep"] = context.delimiter
         kwargs["engine"] = "python"
-    if context.header_row_count > 1:
+    if (
+        context.header_row_count > 1
+        or context.data_start_row_index != context.header_row_index + context.header_row_count
+    ):
         kwargs["skiprows"] = context.data_start_row_index
         kwargs["header"] = None
         kwargs["names"] = list(context.header_cells)
@@ -651,18 +706,29 @@ def _delimited_inference_report(
         confidence=_table_inference_confidence(
             column_count,
             header_row_index=context.header_row_index,
+            layout_overridden=context.layout_overridden,
         ),
         reasons=_table_inference_reasons(
             header_row_index=context.header_row_index,
             header_row_count=context.header_row_count,
-            extra_reasons=extra_reasons,
+            extra_reasons=(
+                *extra_reasons,
+                *((_LAYOUT_OVERRIDE_MESSAGE,) if context.layout_overridden else ()),
+            ),
         ),
     )
 
 
-def _table_inference_confidence(column_count: int, *, header_row_index: int) -> str:
+def _table_inference_confidence(
+    column_count: int,
+    *,
+    header_row_index: int,
+    layout_overridden: bool = False,
+) -> str:
     if column_count < 2:
         return "low"
+    if layout_overridden:
+        return "high"
     if header_row_index >= 10:
         return "medium"
     return "high"
@@ -683,9 +749,12 @@ def _table_inference_reasons(
     return tuple(reasons)
 
 
-def _safe_xlsx_read_context(path: Path) -> _XlsxReadContext:
+def _safe_xlsx_read_context(
+    path: Path,
+    layout: TableLayoutOverride | None = None,
+) -> _XlsxReadContext:
     try:
-        return _xlsx_read_context(path)
+        return _xlsx_read_context(path, layout)
     except Exception:
         return _XlsxReadContext(
             source=_table_source(path, "xlsx"),
@@ -696,35 +765,59 @@ def _safe_xlsx_read_context(path: Path) -> _XlsxReadContext:
         )
 
 
-def _xlsx_read_context(path: Path) -> _XlsxReadContext:
+def _xlsx_read_context(path: Path, layout: TableLayoutOverride | None = None) -> _XlsxReadContext:
     workbook = _load_xlsx_workbook(path)
     try:
-        worksheet = workbook.active
-        return _xlsx_read_context_from_workbook(path, workbook, worksheet)
+        worksheet = _xlsx_layout_worksheet(workbook, layout)
+        return _xlsx_read_context_from_workbook(path, workbook, worksheet, layout)
     finally:
         workbook.close()
+
+
+def _xlsx_layout_worksheet(workbook: Any, layout: TableLayoutOverride | None) -> Any:
+    if layout is not None and layout.sheet_name:
+        return workbook[layout.sheet_name]
+    return workbook.active
 
 
 def _xlsx_read_context_from_workbook(
     path: Path,
     workbook: Any,
     worksheet: Any,
+    layout: TableLayoutOverride | None = None,
 ) -> _XlsxReadContext:
     source = _xlsx_source_from_workbook(path, workbook, worksheet)
     rows: list[tuple[Any, ...]] = []
     for _, row in zip(range(30), worksheet.iter_rows(values_only=True), strict=False):
         rows.append(tuple(row))
-    header_row_index, header_row_count = _detect_header_layout(rows)
+    layout_overridden = layout is not None and (
+        bool(layout.sheet_name)
+        or layout.header_row_index is not None
+        or layout.data_start_row_index is not None
+    )
+    if layout is not None and layout.header_row_index is not None:
+        header_row_index = int(layout.header_row_index)
+        header_row_count = int(layout.header_row_count or 1)
+        data_start_row_index = int(
+            layout.data_start_row_index
+            if layout.data_start_row_index is not None
+            else header_row_index + header_row_count
+        )
+    else:
+        header_row_index, header_row_count = _detect_header_layout(rows)
+        data_start_row_index = header_row_index + header_row_count
     header_rows = tuple(rows[header_row_index : header_row_index + header_row_count])
     header_cells = _flatten_header_rows(header_rows)
     return _XlsxReadContext(
         source=source,
         header_row_index=header_row_index,
         header_row_count=header_row_count,
-        data_start_row_index=header_row_index + header_row_count,
+        data_start_row_index=data_start_row_index,
         header_cells=header_cells,
         header_rows=header_rows,
+        layout_overridden=layout_overridden,
         warnings=_merge_warnings(
+            ((_LAYOUT_OVERRIDE_MESSAGE,) if layout_overridden else ()),
             tuple(_header_offset_warnings(header_row_index)),
             tuple(_multi_header_warnings(header_row_count)),
         ),
@@ -754,10 +847,12 @@ def _xlsx_inference_report(context: _XlsxReadContext, *, column_count: int) -> T
         confidence=_table_inference_confidence(
             column_count,
             header_row_index=context.header_row_index,
+            layout_overridden=context.layout_overridden,
         ),
         reasons=_table_inference_reasons(
             header_row_index=context.header_row_index,
             header_row_count=context.header_row_count,
+            extra_reasons=((_LAYOUT_OVERRIDE_MESSAGE,) if context.layout_overridden else ()),
         ),
     )
 

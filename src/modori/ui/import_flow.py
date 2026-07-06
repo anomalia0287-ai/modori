@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from modori.table_io import TablePreviewResult
+from modori.table_io import TableLayoutOverride, TablePreviewResult
 from modori.ui.importing import ImportPreviewService
 
 
@@ -12,12 +12,18 @@ class UiImportFlow:
         self.preview_text = ""
         self.pending_path: Path | None = None
         self.table_preview: TablePreviewResult | None = None
+        self.table_layout: dict[str, object] | None = None
 
-    def preview(self, path: Path) -> bool:
-        preview = self._preview_service.preview(path)
+    def preview(self, path: Path, layout: TableLayoutOverride | None = None) -> bool:
+        preview = (
+            self._preview_service.preview(path, layout=layout)
+            if layout is not None
+            else self._preview_service.preview(path)
+        )
         self.preview_text = preview.text
         self.pending_path = preview.pending_path
         self.table_preview = getattr(preview, "table_preview", None)
+        self.table_layout = _table_layout_params(layout) if preview.ok else None
         return bool(preview.ok)
 
     def require_pending_path(self) -> Path | None:
@@ -25,3 +31,18 @@ class UiImportFlow:
             self.preview_text = "가져올 파일이 선택되지 않았습니다."
             return None
         return self.pending_path
+
+
+def _table_layout_params(layout: TableLayoutOverride | None) -> dict[str, object] | None:
+    if layout is None:
+        return None
+    params: dict[str, object] = {}
+    if layout.sheet_name:
+        params["sheet_name"] = layout.sheet_name
+    if layout.header_row_index is not None:
+        params["header_row_index"] = layout.header_row_index
+    if layout.header_row_count is not None:
+        params["header_row_count"] = layout.header_row_count
+    if layout.data_start_row_index is not None:
+        params["data_start_row_index"] = layout.data_start_row_index
+    return params or None

@@ -8,7 +8,7 @@ from typing import Any
 import pandas as pd
 
 from modori.core import Measure, PipelineContext, Step, StepResult, Variable
-from modori.table_io import read_full, read_header
+from modori.table_io import TableLayoutOverride, read_full, read_header
 
 
 def _dtype_name(series: pd.Series) -> str:
@@ -30,12 +30,22 @@ def _infer_measure(series: pd.Series) -> Measure:
     return Measure.NOMINAL
 
 
-def read_table(path: Path, file_type: str) -> tuple[pd.DataFrame, Any | None]:
-    return read_full(path, file_type)
+def read_table(
+    path: Path,
+    file_type: str,
+    *,
+    layout: TableLayoutOverride | None = None,
+) -> tuple[pd.DataFrame, Any | None]:
+    return read_full(path, file_type, layout=layout)
 
 
-def read_columns(path: Path, file_type: str) -> list[str]:
-    return read_header(path, file_type)
+def read_columns(
+    path: Path,
+    file_type: str,
+    *,
+    layout: TableLayoutOverride | None = None,
+) -> list[str]:
+    return read_header(path, file_type, layout=layout)
 
 
 def _file_type_from_params(path: Path, params: dict[str, Any]) -> str:
@@ -43,6 +53,35 @@ def _file_type_from_params(path: Path, params: dict[str, Any]) -> str:
     if explicit:
         return str(explicit).lower().lstrip(".")
     return path.suffix.lower().lstrip(".")
+
+
+def _layout_override_from_params(params: dict[str, Any]) -> TableLayoutOverride | None:
+    raw = params.get("table_layout")
+    if raw is None:
+        return None
+    if isinstance(raw, TableLayoutOverride):
+        return raw
+    if not isinstance(raw, Mapping):
+        return None
+    return TableLayoutOverride(
+        sheet_name=_optional_str(raw.get("sheet_name")),
+        header_row_index=_optional_int(raw.get("header_row_index")),
+        header_row_count=_optional_int(raw.get("header_row_count")),
+        data_start_row_index=_optional_int(raw.get("data_start_row_index")),
+    )
+
+
+def _optional_str(value: object) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
+
+
+def _optional_int(value: object) -> int | None:
+    if value is None:
+        return None
+    return int(value)
 
 
 def metadata_variables(
@@ -100,7 +139,12 @@ class ImportStep(Step):
     def compute(self, ctx: PipelineContext) -> StepResult:
         path = Path(self.params["path"])
         file_type = _file_type_from_params(path, self.params)
-        table = read_table(path, file_type)
+        layout = _layout_override_from_params(self.params)
+        table = (
+            read_table(path, file_type, layout=layout)
+            if layout is not None
+            else read_table(path, file_type)
+        )
         frame, metadata = table
         frame = frame.rename(columns={column: str(column) for column in frame.columns})
         variables = metadata_variables(
@@ -127,7 +171,13 @@ class ImportStep(Step):
     def writes(self) -> set[str]:
         path = Path(self.params["path"])
         file_type = _file_type_from_params(path, self.params)
-        return set(read_columns(path, file_type))
+        layout = _layout_override_from_params(self.params)
+        columns = (
+            read_columns(path, file_type, layout=layout)
+            if layout is not None
+            else read_columns(path, file_type)
+        )
+        return set(columns)
 
     def provenance(self) -> str:
         return f"imported {self.params['path']}"

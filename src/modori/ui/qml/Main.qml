@@ -66,6 +66,9 @@ ApplicationWindow {
 
     ImportDialog {
         id: importDialog
+        onLayoutPreviewRequested: function(headerRow, headerRowCount, dataStartRow, sheetName) {
+            uiController.previewPendingImportLayout(headerRow, headerRowCount, dataStartRow, sheetName)
+        }
         onImportAccepted: {
             if (uiController.confirmPendingImport()) {
                 root.currentScreen = "work"
@@ -81,7 +84,7 @@ ApplicationWindow {
     FileDialog {
         id: dataFileDialog
         title: appBootstrap.text("entry.open_data")
-        nameFilters: ["Data files (*.csv *.xlsx *.sav)"]
+        nameFilters: ["Data files (*.csv *.xlsx *.xls *.sav)"]
         onAccepted: {
             if (uiController.previewDataFilePath(selectedFile.toString())) {
                 importDialog.open()

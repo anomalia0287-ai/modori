@@ -50,6 +50,9 @@ until a stable no-session URL is captured.
   data-start row, confidence, and Korean reason messages. The import preview UI
   shows a compact inference summary so users can see why rows were skipped or
   merged.
+- The import dialog now has manual layout controls for sheet name, header row,
+  header row count, and data-start row. Confirming the import reuses the same
+  override that was used for the refreshed preview.
 
 ## D1 Local Corpus Check
 
@@ -87,9 +90,9 @@ Current loader result after the hardening pass:
 
 - Decide whether aggregate/summary rows such as `합 계` should be automatically
   dropped, warned, or kept as data.
-- Add a manual import-adjustment UI for low-confidence or user-disputed
-  inferences: sheet selection, header row, data start row, and multi-header
-  toggle.
+- Improve the manual import-adjustment UI with stronger affordances for
+  low-confidence imports: suggested defaults from the inference report,
+  validation feedback, and clearer row-number labeling.
 - Add a persistent checked-in minimal corpus for the D1-derived patterns if the
   team wants release gates that do not depend on a local desktop folder.
 - HWP/PDF table extraction is explicitly out of current table-import scope.

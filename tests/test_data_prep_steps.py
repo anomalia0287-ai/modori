@@ -109,6 +109,47 @@ def test_import_step_includes_public_data_loader_warnings_in_notes(tmp_path) -> 
     ]
 
 
+def test_import_step_applies_table_layout_override_params(tmp_path) -> None:
+    path = tmp_path / "manual-layout.csv"
+    path.write_text(
+        "\n".join(
+            [
+                "다운로드 조건,2026-07-06",
+                "이 행은 표가 아닙니다,확인용",
+                "city,value",
+                "Seoul,10",
+                "Busan,20",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    import_step = ImportStep(
+        id="import",
+        title="Import CSV",
+        params={
+            "path": str(path),
+            "file_type": "csv",
+            "table_layout": {
+                "header_row_index": 2,
+                "header_row_count": 1,
+            },
+        },
+    )
+    pipeline = Pipeline(Dataset.empty())
+    pipeline.add(import_step)
+
+    pipeline.recompute(dirty_from=None)
+
+    assert pipeline.current_dataset.df.columns.tolist() == ["city", "value"]
+    assert pipeline.current_dataset.df.to_dict(orient="records") == [
+        {"city": "Seoul", "value": 10},
+        {"city": "Busan", "value": 20},
+    ]
+    assert import_step.writes() == {"city", "value"}
+    assert "사용자 지정 표 레이아웃을 적용했습니다." in pipeline.step_results["import"].notes
+
+
 def test_pipeline_rejects_duplicate_dynamic_import_writes_at_recompute(
     tmp_path,
 ) -> None:

@@ -27,6 +27,7 @@ def test_main_qml_wires_entry_file_dialog_and_work_transition() -> None:
     work = qml_text("screens/WorkScreen.qml")
 
     assert "FileDialog" in main
+    assert "Data files (*.csv *.xlsx *.xls *.sav)" in main
     assert "uiController.previewDataFilePath" in main
     assert "uiController.confirmPendingImport" in main
     assert "onClicked: uiController.rerunNow()" in work
@@ -86,6 +87,19 @@ def test_import_dialog_keeps_long_preview_scrollable_and_actions_fixed() -> None
     assert "Layout.fillHeight: true" in dialog
     assert "dialog.import.cancel" in dialog
     assert "dialog.import.confirm" in dialog
+
+
+def test_import_dialog_exposes_manual_layout_preview_controls() -> None:
+    main = qml_text("Main.qml")
+    dialog = qml_text("dialogs/ImportDialog.qml")
+
+    assert "signal layoutPreviewRequested(int headerRow, int headerRowCount, int dataStartRow, string sheetName)" in dialog
+    assert "dialog.import.sheet_name" in dialog
+    assert "dialog.import.header_row" in dialog
+    assert "dialog.import.header_rows" in dialog
+    assert "dialog.import.data_start_row" in dialog
+    assert "dialog.import.refresh_preview" in dialog
+    assert "uiController.previewPendingImportLayout" in main
 
 
 def test_data_table_surfaces_imported_dataset_notice() -> None:

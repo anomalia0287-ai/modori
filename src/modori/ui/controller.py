@@ -9,6 +9,7 @@ from modori.knowledge import Library
 from modori.ui.contracts import CommandResult, ExplainResult, ImportOptions, ReportExportOptions
 from modori.ui.controller_services import UiControllerServices
 from modori.ui.data_transform_controller import DataTransformControllerMixin
+from modori.ui.import_layout_controller import ImportLayoutControllerMixin
 from modori.ui.patches import PatchValidationError, parse_step_patch
 from modori.ui.paths import local_path_from_qml
 from modori.ui.pipeline_ops import PipelineOperations
@@ -32,7 +33,12 @@ def export_report_from_pipeline(
     return PipelineOperations(pipeline).export_report(options)
 
 
-class UiController(QObject, RecommendationControllerMixin, DataTransformControllerMixin):
+class UiController(
+    QObject,
+    RecommendationControllerMixin,
+    DataTransformControllerMixin,
+    ImportLayoutControllerMixin,
+):
     stateChanged = Signal()
     workerResultReady = Signal(object)
 
@@ -282,16 +288,6 @@ class UiController(QObject, RecommendationControllerMixin, DataTransformControll
             return self._command_error("최근 파일을 찾을 수 없습니다.", "recent_file_missing").ok
         return self.openDataFile(recent_path, ImportOptions(confirm_new_session=True)).ok
 
-    @Slot(str, result=bool)
-    def previewDataFilePath(self, path: str) -> bool:
-        local_path = local_path_from_qml(path)
-        ok = self._services.import_flow.preview(local_path)
-        self._last_error = "" if ok else self._services.import_flow.preview_text
-        if not ok:
-            self._last_message = ""
-        self.stateChanged.emit()
-        return ok
-
     @Slot(result=bool)
     def confirmPendingImport(self) -> bool:
         pending_path = self._services.import_flow.require_pending_path()
@@ -303,7 +299,10 @@ class UiController(QObject, RecommendationControllerMixin, DataTransformControll
             return False
         result = self.openDataFile(
             pending_path,
-            ImportOptions(confirm_new_session=True),
+            ImportOptions(
+                confirm_new_session=True,
+                table_layout=self._services.import_flow.table_layout,
+            ),
         )
         return result.ok
 
