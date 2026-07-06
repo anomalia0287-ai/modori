@@ -100,7 +100,8 @@ class ImportStep(Step):
     def compute(self, ctx: PipelineContext) -> StepResult:
         path = Path(self.params["path"])
         file_type = _file_type_from_params(path, self.params)
-        frame, metadata = read_table(path, file_type)
+        table = read_table(path, file_type)
+        frame, metadata = table
         frame = frame.rename(columns={column: str(column) for column in frame.columns})
         variables = metadata_variables(
             frame,
@@ -108,14 +109,16 @@ class ImportStep(Step):
             metadata=metadata,
         )
         missing_cells = int(frame.isna().sum().sum())
+        notes = [
+            f"Imported {len(frame)} rows, {len(frame.columns)} columns, "
+            f"and {missing_cells} missing cells."
+        ]
+        notes.extend(getattr(table, "warnings", ()))
         return StepResult(
             new_columns={column: frame[column] for column in frame.columns},
             new_variables=variables,
             analysis=None,
-            notes=[
-                f"Imported {len(frame)} rows, {len(frame.columns)} columns, "
-                f"and {missing_cells} missing cells."
-            ],
+            notes=notes,
         )
 
     def reads(self) -> set[str]:

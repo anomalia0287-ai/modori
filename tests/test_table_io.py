@@ -169,6 +169,99 @@ def test_read_preview_limits_xlsx_columns(tmp_path) -> None:
     assert result.warnings == ("미리보기 열 제한: 3개 중 2개 열만 표시합니다.",)
 
 
+def test_read_full_decodes_cp949_public_csv(tmp_path) -> None:
+    path = tmp_path / "public.csv"
+    text = "자치구,연도,인구\n종로구,2024,140000\n중구,2024,120000\n"
+    path.write_bytes(text.encode("cp949"))
+
+    result = read_full(path, "csv")
+
+    assert result.columns == ("자치구", "연도", "인구")
+    assert result.frame.to_dict(orient="list") == {
+        "자치구": ["종로구", "중구"],
+        "연도": [2024, 2024],
+        "인구": [140000, 120000],
+    }
+    assert "CSV 인코딩: cp949" in result.warnings
+
+
+def test_read_preview_skips_public_csv_metadata_rows(tmp_path) -> None:
+    path = tmp_path / "public-with-preamble.csv"
+    path.write_text(
+        "\n".join(
+            [
+                "서울시 인구 현황",
+                "자료기준일: 2024-12-31",
+                "단위: 명",
+                "자치구,연도,인구",
+                "종로구,2024,\"140,000\"",
+                "중구,2024,\"120,000\"",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    result = read_preview(path, "csv", limits=PreviewReadLimits(max_rows=2))
+
+    assert result.columns == ("자치구", "연도", "인구")
+    assert result.sample_rows == (
+        {"자치구": "종로구", "연도": 2024, "인구": "140,000"},
+        {"자치구": "중구", "연도": 2024, "인구": "120,000"},
+    )
+    assert "표 헤더 앞의 안내 행 3개를 건너뛰었습니다." in result.warnings
+
+
+def test_read_full_skips_xlsx_metadata_rows(tmp_path) -> None:
+    from openpyxl import Workbook
+
+    path = tmp_path / "public-with-preamble.xlsx"
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.title = "공개자료"
+    worksheet.append(["서울시 시설 현황"])
+    worksheet.append(["자료기준일", "2024-12-31"])
+    worksheet.append(["단위", "개소"])
+    worksheet.append(["자치구", "연도", "시설수"])
+    worksheet.append(["종로구", 2024, 12])
+    worksheet.append(["중구", 2024, 10])
+    workbook.save(path)
+    workbook.close()
+
+    result = read_full(path, "xlsx")
+
+    assert result.columns == ("자치구", "연도", "시설수")
+    assert result.frame.to_dict(orient="list") == {
+        "자치구": ["종로구", "중구"],
+        "연도": [2024, 2024],
+        "시설수": [12, 10],
+    }
+    assert "표 헤더 앞의 안내 행 3개를 건너뛰었습니다." in result.warnings
+
+
+def test_read_full_sanitizes_blank_and_duplicate_xlsx_headers(tmp_path) -> None:
+    from openpyxl import Workbook
+
+    path = tmp_path / "public-duplicate-headers.xlsx"
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.append(["자치구", None, "인구", "인구"])
+    worksheet.append(["종로구", None, 140000, 150000])
+    workbook.save(path)
+    workbook.close()
+
+    result = read_full(path, "xlsx")
+
+    assert result.columns == ("자치구", "인구", "인구_2")
+    assert result.frame.to_dict(orient="list") == {
+        "자치구": ["종로구"],
+        "인구": [140000],
+        "인구_2": [150000],
+    }
+    assert "빈 열 1개를 제외했습니다." in result.warnings
+    assert "중복 열 이름 1개를 고유한 이름으로 바꿨습니다." in result.warnings
+
+
 def test_read_full_rejects_csv_when_explicit_row_limit_is_exceeded(tmp_path) -> None:
     path = tmp_path / "survey.csv"
     pd.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]}).to_csv(path, index=False)

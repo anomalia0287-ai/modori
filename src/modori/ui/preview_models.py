@@ -32,13 +32,13 @@ def models_for_table_preview(preview: TablePreviewResult) -> VisibleDatasetModel
     frame = preview.frame.rename(columns={column: str(column) for column in preview.frame.columns})
     variables = metadata_variables(frame, origin_step_id="preview", metadata=preview.metadata)
     preview_dataset = SimpleNamespace(df=frame, variables=variables)
+    notice = f"가져온 데이터 미리보기: {preview.previewed_rows}행 · {len(preview.columns)}열"
+    if preview.warnings:
+        notice = f"{notice} · 확인: {preview.warnings[0]}"
     return VisibleDatasetModels(
         data_model=DataTableModel(DatasetTableProvider(preview_dataset)),
         variable_model=VariableTableModel(variable_records_from_dataset(preview_dataset)),
-        notice=(
-            f"가져온 데이터 미리보기: {preview.previewed_rows}행 · "
-            f"{len(preview.columns)}열"
-        ),
+        notice=notice,
     )
 
 

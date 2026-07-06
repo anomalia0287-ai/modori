@@ -57,6 +57,30 @@ def test_import_preview_service_surfaces_preview_limit_warning(tmp_path) -> None
     assert "미리보기 열 제한: 51개 중 50개 열만 표시합니다." in preview.text
 
 
+def test_import_preview_service_surfaces_public_data_header_warning(tmp_path) -> None:
+    data_path = tmp_path / "public-with-preamble.csv"
+    data_path.write_text(
+        "\n".join(
+            [
+                "서울시 인구 현황",
+                "자료기준일: 2024-12-31",
+                "단위: 명",
+                "자치구,연도,인구",
+                "종로구,2024,140000",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    preview = ImportPreviewService().preview(data_path)
+
+    assert preview.ok is True
+    assert "표 헤더 앞의 안내 행 3개를 건너뛰었습니다." in preview.text
+    assert "자치구" in preview.text
+    assert "종로구" in preview.text
+
+
 def test_import_preview_service_reads_bounded_csv_preview(tmp_path, monkeypatch) -> None:
     data_path = tmp_path / "large-survey.csv"
     data_path.write_text("score\n1\n2\n", encoding="utf-8")

@@ -60,6 +60,32 @@ def test_confirm_import_binds_preview_models_before_analysis_runs(tmp_path) -> N
     assert controller.resultSummary == ""
 
 
+def test_confirm_import_keeps_public_data_warning_visible_in_data_notice(tmp_path) -> None:
+    from modori.ui.controller import UiController
+
+    data_path = tmp_path / "public-with-preamble.csv"
+    data_path.write_text(
+        "\n".join(
+            [
+                "서울시 인구 현황",
+                "자료기준일: 2024-12-31",
+                "단위: 명",
+                "자치구,연도,인구",
+                "종로구,2024,140000",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    controller = UiController()
+
+    assert controller.previewDataFilePath(str(data_path)) is True
+    assert controller.confirmPendingImport() is True
+
+    assert "가져온 데이터 미리보기: 1행 · 3열" in controller.dataViewNotice
+    assert "표 헤더 앞의 안내 행 3개" in controller.dataViewNotice
+
+
 def test_recent_files_persist_to_settings_file(tmp_path, monkeypatch) -> None:
     from tests.ui.test_end_to_end_ui_flow import write_reference_csv
     from modori.ui.controller import UiController

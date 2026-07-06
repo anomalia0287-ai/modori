@@ -76,6 +76,39 @@ def test_import_step_reads_csv_into_dataset_with_metadata_and_notes(tmp_path) ->
     ]
 
 
+def test_import_step_includes_public_data_loader_warnings_in_notes(tmp_path) -> None:
+    path = tmp_path / "public-with-preamble.csv"
+    path.write_text(
+        "\n".join(
+            [
+                "서울시 인구 현황",
+                "자료기준일: 2024-12-31",
+                "단위: 명",
+                "자치구,연도,인구",
+                "종로구,2024,140000",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    pipeline = Pipeline(Dataset.empty())
+    pipeline.add(
+        ImportStep(
+            id="import",
+            title="Import CSV",
+            params={"path": str(path), "file_type": "csv"},
+        )
+    )
+
+    pipeline.recompute(dirty_from=None)
+
+    assert pipeline.current_dataset.df.columns.tolist() == ["자치구", "연도", "인구"]
+    assert pipeline.step_results["import"].notes == [
+        "Imported 1 rows, 3 columns, and 0 missing cells.",
+        "표 헤더 앞의 안내 행 3개를 건너뛰었습니다.",
+    ]
+
+
 def test_pipeline_rejects_duplicate_dynamic_import_writes_at_recompute(
     tmp_path,
 ) -> None:
