@@ -119,7 +119,6 @@ class UiController(QObject, RecommendationControllerMixin, DataTransformControll
     @Property(str, notify=stateChanged)
     def resultTableText(self) -> str:
         return self._result_state.table_text
-
     @Property(str, notify=stateChanged)
     def resultNotesText(self) -> str:
         return self._result_state.notes_text
@@ -147,6 +146,10 @@ class UiController(QObject, RecommendationControllerMixin, DataTransformControll
     @Property(str, notify=stateChanged)
     def recentFilesText(self) -> str:
         return self._session.recent_files_text
+
+    @Property(QObject, notify=stateChanged)
+    def recentFilesModel(self) -> QObject:
+        return self._session.recent_files_model
 
     @Property(bool, notify=stateChanged)
     def recentFilesEnabled(self) -> bool:

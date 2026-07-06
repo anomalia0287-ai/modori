@@ -4,7 +4,7 @@ import QtQuick.Layouts
 
 Item {
     id: root
-    property string editPolicyText: "셀 직접 수정은 재현 가능한 편집 단계가 준비된 뒤 활성화됩니다."
+    property string editPolicyText: appBootstrap.text("data.edit_policy")
 
     ColumnLayout {
         anchors.fill: parent

@@ -2,9 +2,16 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import "../dialogs"
+import "../theme"
 
 Rectangle {
-    color: "#F8FBF9"
+    id: root
+    color: theme.porcelainBackground
+    Accessible.name: appBootstrap.text("results.title")
+
+    Theme {
+        id: theme
+    }
 
     ExplainPopover {
         id: explainPopover
@@ -14,114 +21,280 @@ Rectangle {
         id: reportExportDialog
     }
 
+    function hasResults() {
+        return uiController.resultSummary.length > 0
+    }
+
+    function stateLabel() {
+        if (uiController.lastError.length > 0) {
+            return appBootstrap.text("results.error_prefix").trim()
+        }
+        if (uiController.status === "running") {
+            return appBootstrap.text("results.running")
+        }
+        if (uiController.stale && root.hasResults()) {
+            return appBootstrap.text("results.stale")
+        }
+        if (root.hasResults()) {
+            return appBootstrap.text("results.latest")
+        }
+        return appBootstrap.text("results.empty")
+    }
+
+    function stateTextColor() {
+        if (uiController.lastError.length > 0) {
+            return theme.danger
+        }
+        if (uiController.stale && root.hasResults()) {
+            return theme.warning
+        }
+        if (root.hasResults()) {
+            return theme.actionTeal
+        }
+        return theme.textMuted
+    }
+
+    function stateBackgroundColor() {
+        if (uiController.lastError.length > 0) {
+            return theme.dangerSurface
+        }
+        if (uiController.stale && root.hasResults()) {
+            return theme.warningSurface
+        }
+        if (root.hasResults()) {
+            return theme.aqua
+        }
+        return "#EEF2F1"
+    }
+
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 18
-        spacing: 12
+        anchors.margins: theme.spaceMd
+        spacing: theme.spaceMd
 
-        Label {
-            text: appBootstrap.text("results.title")
-            font.bold: true
-            color: "#0B4A43"
-        }
-
-        Label {
-            text: appBootstrap.text("results.stale")
-            visible: uiController.stale && uiController.resultSummary.length > 0
-            color: "#A86700"
-            font.bold: true
+        Rectangle {
+            objectName: "resultsReportPreview"
             Layout.fillWidth: true
-        }
+            Layout.fillHeight: true
+            radius: theme.radiusLarge
+            color: theme.paperSurface
+            border.color: theme.lineSubtle
 
-        Label {
-            text: appBootstrap.text("results.error_prefix") + uiController.lastError
-            visible: uiController.lastError.length > 0
-            color: "#B00020"
-            font.bold: true
-            wrapMode: Text.WordWrap
-            Layout.fillWidth: true
-        }
+            ColumnLayout {
+                anchors.fill: parent
+                anchors.margins: theme.spaceLg
+                spacing: theme.spaceMd
 
-        Label {
-            text: uiController.lastMessage
-            visible: uiController.lastMessage.length > 0
-            color: "#0B4A43"
-            font.bold: true
-            wrapMode: Text.WordWrap
-            Layout.fillWidth: true
-        }
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: theme.spaceSm
 
-        Label {
-            text: uiController.resultSummary.length > 0
-                ? uiController.resultSummary
-                : "분석을 실행하면 결과가 여기에 표시됩니다."
-            color: "#4B5A54"
-            wrapMode: Text.WordWrap
-            Layout.fillWidth: true
-        }
+                    Label {
+                        text: appBootstrap.text("results.report_preview")
+                        color: theme.deepTeal
+                        font.pixelSize: theme.fontSection
+                        font.bold: true
+                    }
 
-        TextArea {
-            text: uiController.resultTableText
-            visible: uiController.resultTableText.length > 0
-            readOnly: true
-            wrapMode: TextEdit.NoWrap
-            font.family: "Consolas"
-            Layout.fillWidth: true
-            Layout.preferredHeight: 180
-        }
+                    Rectangle {
+                        objectName: "resultStateBadge"
+                        radius: 999
+                        color: root.stateBackgroundColor()
+                        border.color: Qt.rgba(root.stateTextColor().r, root.stateTextColor().g, root.stateTextColor().b, 0.25)
+                        Layout.preferredHeight: 22
+                        Layout.preferredWidth: stateBadgeText.implicitWidth + 18
 
-        Image {
-            source: uiController.chartSourceText
-            visible: uiController.chartPathsText.length > 0
-            fillMode: Image.PreserveAspectFit
-            Layout.fillWidth: true
-            Layout.preferredHeight: 180
-        }
+                        Label {
+                            id: stateBadgeText
+                            anchors.centerIn: parent
+                            text: root.stateLabel()
+                            color: root.stateTextColor()
+                            font.pixelSize: theme.fontCaption
+                            font.bold: true
+                        }
+                    }
 
-        Label {
-            text: uiController.chartPathsText
-            visible: uiController.chartPathsText.length > 0
-            color: "#4B5A54"
-            wrapMode: Text.WordWrap
-            Layout.fillWidth: true
-        }
+                    Item {
+                        Layout.fillWidth: true
+                    }
 
-        Label {
-            text: uiController.resultNotesText
-            visible: uiController.resultNotesText.length > 0
-            color: "#A86700"
-            wrapMode: Text.WordWrap
-            Layout.fillWidth: true
-        }
+                    Button {
+                        text: appBootstrap.text("dialog.report.export_word")
+                        Accessible.name: appBootstrap.text("dialog.report.export_word")
+                        enabled: uiController.resultSummary.length > 0
+                        onClicked: reportExportDialog.open()
+                    }
+                }
 
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 8
+                ScrollView {
+                    id: resultScroll
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    clip: true
+                    ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
 
-            Button {
-                text: appBootstrap.text("results.why_this_test")
-                Accessible.name: appBootstrap.text("results.why_this_test")
-                visible: uiController.explainModeEnabled
-                onClicked: {
-                    explainPopover.bodyText = uiController.explainRichText("ui.result.cronbach_alpha", "ko")
-                    explainPopover.open()
+                    ColumnLayout {
+                        width: resultScroll.availableWidth
+                        spacing: theme.spaceMd
+
+                        Label {
+                            text: appBootstrap.text("results.stale")
+                            visible: uiController.stale && uiController.resultSummary.length > 0
+                            color: theme.warning
+                            font.bold: true
+                            wrapMode: Text.WordWrap
+                            Layout.fillWidth: true
+                        }
+
+                        Label {
+                            text: appBootstrap.text("results.error_prefix") + uiController.lastError
+                            visible: uiController.lastError.length > 0
+                            color: theme.danger
+                            font.bold: true
+                            wrapMode: Text.WordWrap
+                            Layout.fillWidth: true
+                        }
+
+                        Label {
+                            text: uiController.lastMessage
+                            visible: uiController.lastMessage.length > 0
+                            color: theme.deepTeal
+                            font.bold: true
+                            wrapMode: Text.WordWrap
+                            Layout.fillWidth: true
+                        }
+
+                        Label {
+                            text: uiController.resultSummary.length > 0
+                                ? uiController.resultSummary
+                                : appBootstrap.text("results.empty_message")
+                            color: theme.textBody
+                            font.pixelSize: theme.fontBody
+                            lineHeight: 1.18
+                            wrapMode: Text.WordWrap
+                            Layout.fillWidth: true
+                        }
+
+                        Rectangle {
+                            objectName: "resultTableFrame"
+                            visible: uiController.resultTableText.length > 0
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 206
+                            radius: theme.radiusMedium
+                            color: "#FAFCFB"
+                            border.color: theme.lineSubtle
+
+                            ColumnLayout {
+                                anchors.fill: parent
+                                anchors.margins: theme.spaceSm
+                                spacing: theme.spaceSm
+
+                                Label {
+                                    text: appBootstrap.text("results.table")
+                                    color: theme.textMuted
+                                    font.pixelSize: theme.fontCaption
+                                    font.italic: true
+                                    Layout.fillWidth: true
+                                }
+
+                                TextArea {
+                                    text: uiController.resultTableText
+                                    readOnly: true
+                                    selectByMouse: true
+                                    wrapMode: TextEdit.NoWrap
+                                    font.family: "Consolas"
+                                    font.pixelSize: theme.fontBody
+                                    color: theme.textStrong
+                                    Layout.fillWidth: true
+                                    Layout.fillHeight: true
+                                    background: Rectangle {
+                                        color: theme.paperSurface
+                                        border.color: theme.lineSubtle
+                                        radius: theme.radiusSmall
+                                    }
+                                }
+                            }
+                        }
+
+                        Rectangle {
+                            objectName: "resultChartFigure"
+                            visible: uiController.chartPathsText.length > 0
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 228
+                            radius: theme.radiusMedium
+                            color: "#FAFCFB"
+                            border.color: theme.lineSubtle
+
+                            ColumnLayout {
+                                anchors.fill: parent
+                                anchors.margins: theme.spaceSm
+                                spacing: theme.spaceSm
+
+                                Label {
+                                    text: appBootstrap.text("results.figure")
+                                    color: theme.textMuted
+                                    font.pixelSize: theme.fontCaption
+                                    font.italic: true
+                                    Layout.fillWidth: true
+                                }
+
+                                Image {
+                                    source: uiController.chartSourceText
+                                    fillMode: Image.PreserveAspectFit
+                                    Layout.fillWidth: true
+                                    Layout.fillHeight: true
+                                }
+                            }
+                        }
+
+                        Label {
+                            text: appBootstrap.text("results.path") + ": " + uiController.chartPathsText
+                            visible: uiController.chartPathsText.length > 0
+                            color: theme.textSoft
+                            font.pixelSize: theme.fontCaption
+                            wrapMode: Text.WordWrap
+                            Layout.fillWidth: true
+                        }
+
+                        Label {
+                            text: appBootstrap.text("results.notes") + ": " + uiController.resultNotesText
+                            visible: uiController.resultNotesText.length > 0
+                            color: theme.warning
+                            font.pixelSize: theme.fontCaption
+                            wrapMode: Text.WordWrap
+                            Layout.fillWidth: true
+                        }
+
+                        Label {
+                            text: uiController.reportPath
+                            visible: uiController.reportPath.length > 0
+                            color: theme.deepTeal
+                            font.pixelSize: theme.fontCaption
+                            wrapMode: Text.WordWrap
+                            Layout.fillWidth: true
+                        }
+                    }
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: theme.spaceSm
+
+                    Button {
+                        text: appBootstrap.text("results.why_this_test")
+                        Accessible.name: appBootstrap.text("results.why_this_test")
+                        visible: uiController.explainModeEnabled
+                        onClicked: {
+                            explainPopover.bodyText = uiController.explainRichText("ui.result.cronbach_alpha", "ko")
+                            explainPopover.open()
+                        }
+                    }
+
+                    Item {
+                        Layout.fillWidth: true
+                    }
                 }
             }
-
-            Button {
-                text: appBootstrap.text("dialog.report.export_word")
-                Accessible.name: appBootstrap.text("dialog.report.export_word")
-                enabled: uiController.resultSummary.length > 0
-                onClicked: reportExportDialog.open()
-            }
-        }
-
-        Label {
-            text: uiController.reportPath
-            visible: uiController.reportPath.length > 0
-            color: "#0B4A43"
-            wrapMode: Text.WordWrap
-            Layout.fillWidth: true
         }
     }
 }

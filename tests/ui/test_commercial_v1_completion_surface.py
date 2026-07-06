@@ -26,22 +26,27 @@ def test_recent_files_surface_updates_after_import(tmp_path, monkeypatch) -> Non
     controller = UiController()
 
     assert controller.recentFilesText == ""
+    assert controller.recentFilesModel is controller.recentFilesModel
     assert controller.openDataFilePath(str(data_path)) is True
 
     assert "survey.csv" in controller.recentFilesText
+    assert controller.recentFilesModel.rowCount() == 1
+    assert controller.recentFilesModel.data(controller.recentFilesModel.index(0, 0)) == "survey.csv"
+    assert controller.recentFilesModel is controller.recentFilesModel
 
 
 def test_entry_screen_displays_recent_files() -> None:
     entry = qml_text("screens/EntryScreen.qml")
 
-    assert "uiController.recentFilesText" in entry
+    assert "uiController.recentFilesModel" in entry
+    assert "recentFilesText.split" not in entry
     assert "entry.recent" in entry
 
 
 def test_data_table_discloses_read_only_edit_policy() -> None:
     data_table = qml_text("components/DataTable.qml")
 
-    assert "셀 직접 수정은 재현 가능한 편집 단계가 준비된 뒤 활성화됩니다." in data_table
+    assert 'appBootstrap.text("data.edit_policy")' in data_table
 
 
 def test_qa_document_records_current_verdict() -> None:

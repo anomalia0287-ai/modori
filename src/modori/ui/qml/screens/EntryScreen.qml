@@ -86,11 +86,11 @@ Pane {
             Layout.alignment: Qt.AlignHCenter
 
             Repeater {
-                model: uiController.recentFilesText.length > 0 ? uiController.recentFilesText.split("\n") : []
+                model: uiController.recentFilesModel
 
                 Button {
-                    text: modelData
-                    Accessible.name: modelData
+                    text: model.display
+                    Accessible.name: model.display
                     Layout.alignment: Qt.AlignHCenter
                     onClicked: root.recentFileRequested(index)
                 }

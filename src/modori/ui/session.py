@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from PySide6.QtCore import QStringListModel
+
 from modori.ui.settings import UiSettingsStore
 
 
@@ -22,6 +24,7 @@ class UiSessionState:
         self._recent_files_enabled = bool(settings.get("recent_files_enabled", True))
         self._recent_files = list(settings.get("recent_files", []))[:5]
         self._explain_mode_enabled = bool(settings.get("explain_mode_enabled", True))
+        self._recent_files_model = QStringListModel(self.recent_file_labels)
 
     @property
     def reduce_effects(self) -> bool:
@@ -36,11 +39,7 @@ class UiSessionState:
         return list(self._recent_files)
 
     @property
-    def explain_mode_enabled(self) -> bool:
-        return self._explain_mode_enabled
-
-    @property
-    def recent_files_text(self) -> str:
+    def recent_file_labels(self) -> list[str]:
         names = [Path(path).name for path in self._recent_files]
         duplicate_names = {name for name in names if names.count(name) > 1}
         labels = []
@@ -50,7 +49,19 @@ class UiSessionState:
                 labels.append(f"{recent_path.name} - {self._compact_parent_hint(recent_path)}")
             else:
                 labels.append(recent_path.name)
-        return "\n".join(labels)
+        return labels
+
+    @property
+    def recent_files_model(self) -> QStringListModel:
+        return self._recent_files_model
+
+    @property
+    def explain_mode_enabled(self) -> bool:
+        return self._explain_mode_enabled
+
+    @property
+    def recent_files_text(self) -> str:
+        return "\n".join(self.recent_file_labels)
 
     @staticmethod
     def _compact_parent_hint(path: Path, *, max_chars: int = 42) -> str:
@@ -71,6 +82,7 @@ class UiSessionState:
         self._recent_files_enabled = bool(enabled)
         if not self._recent_files_enabled:
             self._recent_files = []
+            self._refresh_recent_files_model()
         self.save()
 
     def set_explain_mode_enabled(self, enabled: bool) -> None:
@@ -84,7 +96,11 @@ class UiSessionState:
         self._recent_files = [existing for existing in self._recent_files if existing != text]
         self._recent_files.insert(0, text)
         self._recent_files = self._recent_files[:5]
+        self._refresh_recent_files_model()
         self.save()
+
+    def _refresh_recent_files_model(self) -> None:
+        self._recent_files_model.setStringList(self.recent_file_labels)
 
     def save(self) -> None:
         self._settings_store.save(
