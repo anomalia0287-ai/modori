@@ -53,6 +53,50 @@ Item {
             }
 
             GroupBox {
+                title: appBootstrap.text("transform.unify_title")
+                Layout.fillWidth: true
+                Layout.leftMargin: theme.spaceMd
+                Layout.rightMargin: theme.spaceMd
+                visible: uiController.valueUnificationSuggestions.length > 0
+
+                ColumnLayout {
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    spacing: theme.spaceSm
+
+                    Repeater {
+                        model: uiController.valueUnificationSuggestions
+
+                        delegate: ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: theme.spaceXs
+
+                            Label {
+                                text: modelData.summary
+                                color: theme.textControl
+                                wrapMode: Text.WordWrap
+                                Layout.fillWidth: true
+                            }
+
+                            Label {
+                                text: modelData.preview
+                                color: theme.textMuted
+                                elide: Text.ElideRight
+                                Layout.fillWidth: true
+                            }
+
+                            Button {
+                                text: appBootstrap.text("transform.unify_apply")
+                                enabled: root.canEditTransform
+                                Accessible.name: appBootstrap.text("transform.unify_apply")
+                                onClicked: uiController.applyValueUnification(modelData.column)
+                            }
+                        }
+                    }
+                }
+            }
+
+            GroupBox {
                 title: appBootstrap.text("transform.reverse_title")
                 Layout.fillWidth: true
                 Layout.leftMargin: theme.spaceMd

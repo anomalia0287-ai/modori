@@ -396,7 +396,59 @@ class ComposeScaleStep(Step):
         return f"composed {self.params['name']} from {len(self.params['items'])} items"
 
 
+@dataclass
+class UnifyValuesStep(Step):
+    step_type = "recode.unify_values"
+
+    def compute(self, ctx: PipelineContext) -> StepResult:
+        column = str(self.params["column"])
+        mapping = {str(key): str(value) for key, value in dict(self.params["mapping"]).items()}
+        if not mapping:
+            raise ValueError("UnifyValuesStep mapping must not be empty")
+        output = f"{column}{self._suffix()}"
+        source = ctx.dataset.frame_for_compute([column])[column]
+        unified = source.map(lambda value: mapping.get(value, value) if isinstance(value, str) else value)
+        replaced = int((source != unified).sum())
+        source_variable = ctx.dataset.variables[column]
+        new_variables = {
+            output: Variable(
+                name=output,
+                label=f"{source_variable.label or column} (unified)",
+                measure=source_variable.measure,
+                value_labels={},
+                missing_values=[],
+                dtype=source_variable.dtype,
+                origin_step_id=self.id,
+            )
+        }
+        return StepResult(
+            new_columns={output: unified},
+            new_variables=new_variables,
+            analysis=None,
+            notes=[
+                f"Unified {replaced} values in {column} "
+                f"into {len(set(mapping.values()))} canonical labels."
+            ],
+        )
+
+    def reads(self) -> set[str]:
+        return {str(self.params["column"])}
+
+    def writes(self) -> set[str]:
+        return {f"{self.params['column']}{self._suffix()}"}
+
+    def provenance(self) -> str:
+        return (
+            f"unified {len(self.params['mapping'])} value variants "
+            f"in {self.params['column']}"
+        )
+
+    def _suffix(self) -> str:
+        return str(self.params.get("suffix", "_정리"))
+
+
 Step.register_type(ImportStep.step_type, ImportStep)
+Step.register_type(UnifyValuesStep.step_type, UnifyValuesStep)
 Step.register_type(RecodeReverseStep.step_type, RecodeReverseStep)
 Step.register_type(VariableMetadataPatchStep.step_type, VariableMetadataPatchStep)
 Step.register_type(ComposeScaleStep.step_type, ComposeScaleStep)

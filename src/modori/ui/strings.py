@@ -111,6 +111,8 @@ UI_STRINGS_KO = {
     "transform.scale_policy": "결측 처리",
     "transform.scale_title": "척도 점수 만들기",
     "transform.source_protected": "원본 데이터는 직접 수정하지 않습니다. 변환은 새 단계와 새 변수로 기록됩니다.",
+    "transform.unify_apply": "값 통일 적용",
+    "transform.unify_title": "표기 통일 제안",
     "variable.key_accessible": "변수 키",
     "variable.key_placeholder": "변수 키",
     "variable.label_placeholder": "변수 레이블",

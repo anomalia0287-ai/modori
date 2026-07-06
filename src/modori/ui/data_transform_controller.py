@@ -99,6 +99,28 @@ class DataTransformControllerMixin:
             }
         ).ok
 
+    @Slot(str, result=bool)
+    def applyValueUnification(self, column: str) -> bool:
+        suggestion = next(
+            (
+                entry
+                for entry in self.valueUnificationSuggestions
+                if entry.get("column") == column
+            ),
+            None,
+        )
+        if suggestion is None:
+            self._command_error(
+                "통일할 값 제안이 없습니다.",
+                "no_unification_suggestion",
+            )
+            return False
+        result = self._services.data_transform_editor.unify_values(
+            {"column": column, "mapping": suggestion["mapping"]},
+            pipeline_version=self._pipeline_state.pipeline_version,
+        )
+        return self._apply_transform_result(result).ok
+
     def _apply_transform_result(self, result: CommandResult) -> CommandResult:
         if not result.ok:
             self._last_error = result.message_ko

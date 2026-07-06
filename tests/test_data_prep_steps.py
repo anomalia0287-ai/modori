@@ -724,3 +724,70 @@ def test_import_step_drops_duplicate_rows_on_param(tmp_path) -> None:
         {"지역": "중구", "인구": 200},
     ]
     assert "중복 행 1개를 제외했습니다." in pipeline.step_results["import"].notes
+
+
+def test_unify_values_step_writes_suffixed_column_without_touching_source(tmp_path) -> None:
+    from modori.steps import UnifyValuesStep
+
+    path = tmp_path / "regions.csv"
+    path.write_text(
+        "지역,인구\n서울특별시,100\n서울 특별시,200\n부산광역시,300\n",
+        encoding="utf-8",
+    )
+    pipeline = Pipeline(Dataset.empty())
+    pipeline.add(
+        ImportStep(
+            id="import",
+            title="Import CSV",
+            params={"path": str(path), "file_type": "csv"},
+        )
+    )
+    pipeline.add(
+        UnifyValuesStep(
+            id="transform:unify:지역",
+            title="Unify region labels",
+            params={
+                "column": "지역",
+                "mapping": {"서울 특별시": "서울특별시"},
+            },
+        )
+    )
+
+    pipeline.recompute(dirty_from=None)
+
+    frame = pipeline.current_dataset.df
+    assert list(frame["지역"]) == ["서울특별시", "서울 특별시", "부산광역시"]
+    assert list(frame["지역_정리"]) == ["서울특별시", "서울특별시", "부산광역시"]
+    notes = pipeline.step_results["transform:unify:지역"].notes
+    assert any("1" in note for note in notes)
+
+
+def test_unify_values_step_is_replay_deterministic(tmp_path) -> None:
+    from modori.steps import UnifyValuesStep
+
+    path = tmp_path / "regions.csv"
+    path.write_text("지역,인구\n중구 ,100\n중구,200\n", encoding="utf-8")
+
+    def build() -> Pipeline:
+        pipeline = Pipeline(Dataset.empty())
+        pipeline.add(
+            ImportStep(
+                id="import",
+                title="Import CSV",
+                params={"path": str(path), "file_type": "csv"},
+            )
+        )
+        pipeline.add(
+            UnifyValuesStep(
+                id="transform:unify:지역",
+                title="Unify region labels",
+                params={"column": "지역", "mapping": {"중구 ": "중구"}},
+            )
+        )
+        pipeline.recompute(dirty_from=None)
+        return pipeline
+
+    first = build().current_dataset.df["지역_정리"]
+    second = build().current_dataset.df["지역_정리"]
+
+    assert list(first) == list(second) == ["중구", "중구"]

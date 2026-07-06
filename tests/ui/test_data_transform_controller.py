@@ -78,3 +78,35 @@ def test_controller_rejects_invalid_transform_without_version_bump(
     assert result.error_code == "invalid_transform"
     assert controller.pipeline_version == before_version
     assert "score" not in controller.pipeline.current_dataset.df.columns
+
+
+def test_value_unification_suggestion_flow(tmp_path) -> None:
+    from modori.ui.controller import UiController
+
+    data_path = tmp_path / "regions.csv"
+    data_path.write_text(
+        "지역,인구\n서울특별시,100\n서울 특별시,200\n부산광역시,300\n",
+        encoding="utf-8",
+    )
+    controller = UiController()
+    assert controller.openDataFilePath(str(data_path)) is True
+
+    suggestions = controller.valueUnificationSuggestions
+    assert len(suggestions) == 1
+    assert suggestions[0]["column"] == "지역"
+    assert suggestions[0]["mapping"] == {"서울 특별시": "서울특별시"}
+
+    assert controller.applyValueUnification("지역") is True
+
+    frame = controller.pipeline.current_dataset.df
+    assert frame["지역_정리"].tolist() == ["서울특별시", "서울특별시", "부산광역시"]
+    assert controller.valueUnificationSuggestions == []
+
+
+def test_apply_value_unification_without_suggestion_sets_error() -> None:
+    from modori.ui.controller import UiController
+
+    controller = UiController()
+
+    assert controller.applyValueUnification("지역") is False
+    assert controller.lastError != ""

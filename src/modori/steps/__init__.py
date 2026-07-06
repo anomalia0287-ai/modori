@@ -4,6 +4,7 @@ from modori.steps.data_prep import (
     ComposeScaleStep,
     ImportStep,
     RecodeReverseStep,
+    UnifyValuesStep,
     VariableMetadataPatchStep,
 )
 from modori.steps.reporting import ReportStep
@@ -21,6 +22,7 @@ __all__ = [
     "MultipleRegressionStep",
     "PairedComparisonStep",
     "RecodeReverseStep",
+    "UnifyValuesStep",
     "RegressionCsvImportStep",
     "VariableMetadataPatchStep",
     "ReliabilityStep",

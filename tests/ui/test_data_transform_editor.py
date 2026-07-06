@@ -127,3 +127,68 @@ def test_scale_score_rejects_invalid_custom_min_valid_without_mutating_pipeline(
     assert result.error_code == "invalid_transform"
     assert pipeline.steps == before_steps
     assert "score" not in pipeline.current_dataset.df.columns
+
+
+def _pipeline_with_region_variants(tmp_path: Path) -> Pipeline:
+    data_path = tmp_path / "regions.csv"
+    data_path.write_text(
+        "지역,인구\n서울특별시,100\n서울 특별시,200\n부산광역시,300\n",
+        encoding="utf-8",
+    )
+    pipeline = Pipeline(Dataset.empty())
+    pipeline.add(
+        ImportStep(
+            id="import",
+            title="Import CSV",
+            params={"path": str(data_path), "file_type": "csv"},
+        )
+    )
+    pipeline.recompute(dirty_from=None)
+    return pipeline
+
+
+def test_unify_values_transform_inserts_step(tmp_path: Path) -> None:
+    pipeline = _pipeline_with_region_variants(tmp_path)
+    editor = DataTransformEditor(PipelineOperations(pipeline))
+
+    result = editor.unify_values(
+        {"column": "지역", "mapping": {"서울 특별시": "서울특별시"}},
+        pipeline_version=3,
+    )
+
+    assert result.ok is True
+    assert result.changed_step_ids == ["transform:unify:지역"]
+    assert pipeline.steps[-1].step_type == "recode.unify_values"
+    assert pipeline.current_dataset.df["지역_정리"].tolist() == [
+        "서울특별시",
+        "서울특별시",
+        "부산광역시",
+    ]
+    assert pipeline.current_dataset.df["지역"].tolist() == [
+        "서울특별시",
+        "서울 특별시",
+        "부산광역시",
+    ]
+
+
+def test_unify_values_rejects_unknown_column(tmp_path: Path) -> None:
+    pipeline = _pipeline_with_region_variants(tmp_path)
+    editor = DataTransformEditor(PipelineOperations(pipeline))
+
+    result = editor.unify_values(
+        {"column": "없는열", "mapping": {"a": "b"}},
+        pipeline_version=3,
+    )
+
+    assert result.ok is False
+    assert result.error_code == "unknown_variable"
+
+
+def test_unify_values_rejects_empty_mapping(tmp_path: Path) -> None:
+    pipeline = _pipeline_with_region_variants(tmp_path)
+    editor = DataTransformEditor(PipelineOperations(pipeline))
+
+    result = editor.unify_values({"column": "지역", "mapping": {}}, pipeline_version=3)
+
+    assert result.ok is False
+    assert result.error_code == "invalid_transform"

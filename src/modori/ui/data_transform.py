@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-from modori.steps import ComposeScaleStep, RecodeReverseStep
+from modori.steps import ComposeScaleStep, RecodeReverseStep, UnifyValuesStep
 from modori.ui.contracts import CommandResult
 from modori.ui.service_contracts import DataTransformPipelineOps
 
@@ -137,6 +137,72 @@ class DataTransformEditor:
                 "name": name,
                 "method": method,
                 "missing_policy": missing_policy,
+            },
+        )
+        return self._insert_or_edit(step, pipeline_version)
+
+    def unify_values(
+        self,
+        payload: Mapping[str, Any],
+        *,
+        pipeline_version: int,
+    ) -> CommandResult:
+        if not self._pipeline_ops.has_pipeline():
+            return self._error("변환할 데이터가 없습니다.", "no_pipeline", pipeline_version)
+
+        try:
+            column = str(payload["column"]).strip()
+            raw_mapping = payload["mapping"]
+            suffix = str(payload.get("suffix", "_정리"))
+        except (KeyError, TypeError):
+            return self._error(
+                "값 통일 설정을 확인해 주세요.",
+                "invalid_transform",
+                pipeline_version,
+            )
+
+        if (
+            not column
+            or not isinstance(raw_mapping, Mapping)
+            or not raw_mapping
+            or not suffix
+        ):
+            return self._error(
+                "값 통일 설정을 확인해 주세요.",
+                "invalid_transform",
+                pipeline_version,
+            )
+        mapping = {str(key): str(value) for key, value in raw_mapping.items()}
+        if any(not key or not value for key, value in mapping.items()):
+            return self._error(
+                "값 통일 설정을 확인해 주세요.",
+                "invalid_transform",
+                pipeline_version,
+            )
+
+        if not self._pipeline_ops.has_variable(column):
+            return self._error(
+                "알 수 없는 변수입니다: " + column,
+                "unknown_variable",
+                pipeline_version,
+            )
+
+        step_id = f"transform:unify:{column}"
+        output = f"{column}{suffix}"
+        if self._pipeline_ops.any_output_exists([output], exclude_step_id=step_id):
+            return self._error(
+                "새 변수명이 기존 변수와 충돌합니다.",
+                "output_name_conflict",
+                pipeline_version,
+            )
+
+        step = UnifyValuesStep(
+            id=step_id,
+            title="Unify value variants",
+            params={
+                "column": column,
+                "mapping": mapping,
+                "suffix": suffix,
             },
         )
         return self._insert_or_edit(step, pipeline_version)
