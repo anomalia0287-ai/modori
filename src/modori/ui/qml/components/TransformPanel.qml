@@ -1,10 +1,15 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import "../theme"
 
 Item {
     id: root
     property bool canEditTransform: uiController.status !== "empty" && uiController.status !== "running"
+
+    Theme {
+        id: theme
+    }
 
     function hasText(value) {
         return String(value).trim().length > 0
@@ -39,7 +44,7 @@ Item {
 
             Label {
                 text: appBootstrap.text("transform.source_protected")
-                color: "#486157"
+                color: theme.textSecondary
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
                 Layout.leftMargin: 12
@@ -62,7 +67,7 @@ Item {
 
                     Label {
                         text: appBootstrap.text("transform.reverse_columns")
-                        color: "#26352F"
+                        color: theme.textControl
                     }
 
                     TextField {
@@ -75,7 +80,7 @@ Item {
 
                     Label {
                         text: appBootstrap.text("transform.scale_min")
-                        color: "#26352F"
+                        color: theme.textControl
                     }
 
                     SpinBox {
@@ -88,7 +93,7 @@ Item {
 
                     Label {
                         text: appBootstrap.text("transform.scale_max")
-                        color: "#26352F"
+                        color: theme.textControl
                     }
 
                     SpinBox {
@@ -101,7 +106,7 @@ Item {
 
                     Label {
                         text: appBootstrap.text("transform.reverse_suffix")
-                        color: "#26352F"
+                        color: theme.textControl
                     }
 
                     TextField {
@@ -145,7 +150,7 @@ Item {
 
                     Label {
                         text: appBootstrap.text("transform.scale_items")
-                        color: "#26352F"
+                        color: theme.textControl
                     }
 
                     TextField {
@@ -158,7 +163,7 @@ Item {
 
                     Label {
                         text: appBootstrap.text("transform.scale_name")
-                        color: "#26352F"
+                        color: theme.textControl
                     }
 
                     TextField {
@@ -171,7 +176,7 @@ Item {
 
                     Label {
                         text: appBootstrap.text("transform.scale_method")
-                        color: "#26352F"
+                        color: theme.textControl
                     }
 
                     ComboBox {
@@ -185,7 +190,7 @@ Item {
 
                     Label {
                         text: appBootstrap.text("transform.scale_policy")
-                        color: "#26352F"
+                        color: theme.textControl
                     }
 
                     ComboBox {
@@ -200,7 +205,7 @@ Item {
 
                     Label {
                         text: appBootstrap.text("transform.min_valid")
-                        color: "#26352F"
+                        color: theme.textControl
                     }
 
                     SpinBox {

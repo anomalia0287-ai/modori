@@ -1,16 +1,21 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import "../theme"
 
 Rectangle {
     id: root
-    color: "#FFFFFF"
-    border.color: "#D9E5DF"
+    color: theme.paperSurface
+    border.color: theme.lineRail
 
     signal rerunRequested()
 
     property bool canRunPipeline: uiController.status !== "empty" && uiController.status !== "running"
     property bool canEditSelection: uiController.status !== "empty" && uiController.status !== "running"
+
+    Theme {
+        id: theme
+    }
 
     function hasText(value) {
         return String(value).trim().length > 0
@@ -30,7 +35,7 @@ Rectangle {
 
             Label {
                 text: uiController.stepChainText
-                color: "#26352F"
+                color: theme.textControl
                 Layout.fillWidth: true
             }
 

@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import "../theme"
 
 Pane {
     id: root
@@ -10,10 +11,14 @@ Pane {
     signal openDataRequested()
     signal recentFileRequested(int index)
 
+    Theme {
+        id: theme
+    }
+
     background: Rectangle {
         gradient: Gradient {
-            GradientStop { position: 0.0; color: root.reduceEffects ? "#0B4A43" : "#0B4A43" }
-            GradientStop { position: 1.0; color: root.reduceEffects ? "#0F6E56" : "#D88A2D" }
+            GradientStop { position: 0.0; color: theme.deepTeal }
+            GradientStop { position: 1.0; color: root.reduceEffects ? theme.brandTeal : theme.orange }
         }
     }
 
@@ -23,7 +28,7 @@ Pane {
 
         Label {
             text: appBootstrap.text("app.title")
-            color: "white"
+            color: theme.onBrand
             font.pixelSize: 44
             font.bold: true
             Layout.alignment: Qt.AlignHCenter
@@ -31,7 +36,7 @@ Pane {
 
         Label {
             text: appBootstrap.text("app.subtitle")
-            color: "white"
+            color: theme.onBrand
             opacity: 0.9
             font.pixelSize: 20
             Layout.alignment: Qt.AlignHCenter
@@ -63,7 +68,7 @@ Pane {
 
         Label {
             text: uiController.lastError
-            color: "#FFE6E6"
+            color: theme.onBrandDanger
             visible: uiController.lastError.length > 0
             wrapMode: Text.WordWrap
             horizontalAlignment: Text.AlignHCenter
@@ -73,7 +78,7 @@ Pane {
 
         Label {
             text: appBootstrap.text("entry.recent")
-            color: "white"
+            color: theme.onBrand
             opacity: 0.9
             font.bold: true
             visible: uiController.recentFilesText.length > 0
@@ -99,14 +104,14 @@ Pane {
 
         Label {
             text: appBootstrap.text("privacy.local")
-            color: "white"
+            color: theme.onBrand
             opacity: 0.86
             Layout.alignment: Qt.AlignHCenter
         }
 
         Label {
             text: appBootstrap.text("entry.footer")
-            color: "white"
+            color: theme.onBrand
             opacity: 0.72
             Layout.alignment: Qt.AlignHCenter
         }

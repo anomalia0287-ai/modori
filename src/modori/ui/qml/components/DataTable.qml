@@ -1,10 +1,15 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import "../theme"
 
 Item {
     id: root
     property string editPolicyText: appBootstrap.text("data.edit_policy")
+
+    Theme {
+        id: theme
+    }
 
     ColumnLayout {
         anchors.fill: parent
@@ -12,7 +17,7 @@ Item {
 
         Label {
             text: appBootstrap.text("transform.source_protected")
-            color: "#486157"
+            color: theme.textSecondary
             wrapMode: Text.WordWrap
             Layout.fillWidth: true
             Layout.leftMargin: 12
@@ -23,7 +28,7 @@ Item {
 
         Label {
             text: uiController.dataViewNotice
-            color: "#486157"
+            color: theme.textSecondary
             visible: uiController.dataViewNotice.length > 0
             elide: Text.ElideRight
             Layout.fillWidth: true
@@ -44,13 +49,13 @@ Item {
             delegate: Rectangle {
                 implicitWidth: 120
                 implicitHeight: 32
-                color: "#FFFFFF"
-                border.color: "#E4ECE8"
+                color: theme.paperSurface
+                border.color: theme.lineGrid
 
                 Text {
                     anchors.centerIn: parent
                     text: model.display ?? ""
-                    color: "#17211D"
+                    color: theme.textTable
                     elide: Text.ElideRight
                 }
             }

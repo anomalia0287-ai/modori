@@ -64,7 +64,7 @@ Rectangle {
         if (root.hasResults()) {
             return theme.aqua
         }
-        return "#EEF2F1"
+        return theme.quietSurface
     }
 
     ColumnLayout {
@@ -181,7 +181,7 @@ Rectangle {
                             Layout.fillWidth: true
                             Layout.preferredHeight: 206
                             radius: theme.radiusMedium
-                            color: "#FAFCFB"
+                            color: theme.subtleSurface
                             border.color: theme.lineSubtle
 
                             ColumnLayout {
@@ -222,7 +222,7 @@ Rectangle {
                             Layout.fillWidth: true
                             Layout.preferredHeight: 228
                             radius: theme.radiusMedium
-                            color: "#FAFCFB"
+                            color: theme.subtleSurface
                             border.color: theme.lineSubtle
 
                             ColumnLayout {

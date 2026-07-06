@@ -1,10 +1,11 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import "../theme"
 
 Rectangle {
     id: root
-    color: "#EFF7F3"
+    color: theme.guideSurface
     property string guideNote: ""
     property string selectedIntent: ""
     property bool manualSelectionMode: false
@@ -14,6 +15,10 @@ Rectangle {
     property bool canCommitSelection: root.canEditSelection && root.selectedIntent === "reliability" && root.hasText(reliabilityItemsField.text)
         || root.canEditSelection && root.selectedIntent === "comparison" && root.hasText(outcomeKeyField.text) && root.hasText(groupKeyField.text)
         || root.canEditSelection && root.selectedIntent === "regression" && root.hasText(outcomeKeyField.text) && root.hasText(predictorKeysField.text)
+
+    Theme {
+        id: theme
+    }
 
     function hasText(value) {
         return String(value).trim().length > 0
@@ -46,12 +51,12 @@ Rectangle {
             Label {
                 text: appBootstrap.text("guide.title")
                 font.bold: true
-                color: "#0B4A43"
+                color: theme.deepTeal
             }
 
             Label {
                 text: appBootstrap.text("guide.question")
-                color: "#26352F"
+                color: theme.textControl
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
             }
@@ -59,13 +64,13 @@ Rectangle {
             Label {
                 text: appBootstrap.text("guide.default_recommendation")
                 font.bold: true
-                color: "#0B4A43"
+                color: theme.deepTeal
                 Layout.fillWidth: true
             }
 
             Label {
                 text: uiController.recommendationTitle.length > 0 ? uiController.recommendationTitle : appBootstrap.text("guide.no_recommendation")
-                color: "#26352F"
+                color: theme.textControl
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
             }
@@ -73,7 +78,7 @@ Rectangle {
             Label {
                 text: appBootstrap.text("guide.level") + ": " + uiController.recommendationLevel
                 visible: uiController.recommendationLevel.length > 0
-                color: "#3A5F58"
+                color: theme.textLevel
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
             }
@@ -81,7 +86,7 @@ Rectangle {
             Label {
                 text: appBootstrap.text("guide.reason") + ": " + uiController.recommendationReason
                 visible: uiController.recommendationReason.length > 0
-                color: "#26352F"
+                color: theme.textControl
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
             }
@@ -223,7 +228,7 @@ Rectangle {
             Label {
                 text: root.guideNote
                 visible: uiController.explainModeEnabled && root.guideNote.length > 0
-                color: "#26352F"
+                color: theme.textControl
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
             }

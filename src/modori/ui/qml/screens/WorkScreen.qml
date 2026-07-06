@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import "../components"
+import "../theme"
 
 Item {
     id: root
@@ -9,9 +10,13 @@ Item {
     signal openDataRequested()
     signal reportRequested()
 
+    Theme {
+        id: theme
+    }
+
     Rectangle {
         anchors.fill: parent
-        color: "#F7FAF8"
+        color: theme.flatBackground
     }
 
     ColumnLayout {
@@ -19,7 +24,7 @@ Item {
         spacing: 0
 
         Rectangle {
-            color: "#0B4A43"
+            color: theme.deepTeal
             Layout.fillWidth: true
             Layout.preferredHeight: 56
 
@@ -31,7 +36,7 @@ Item {
 
                 Label {
                     text: appBootstrap.text("app.title")
-                    color: "white"
+                    color: theme.onBrand
                     font.pixelSize: 20
                     font.bold: true
                 }
@@ -103,7 +108,7 @@ Item {
 
             Rectangle {
                 SplitView.fillWidth: true
-                color: "#FFFFFF"
+                color: theme.paperSurface
 
                 ColumnLayout {
                     anchors.fill: parent

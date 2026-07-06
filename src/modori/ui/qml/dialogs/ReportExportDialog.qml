@@ -1,12 +1,17 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import "../theme"
 
 Dialog {
     id: root
     title: appBootstrap.text("dialog.report.title")
     modal: true
     standardButtons: Dialog.Close
+
+    Theme {
+        id: theme
+    }
 
     ColumnLayout {
         spacing: 12
@@ -75,7 +80,7 @@ Dialog {
         Label {
             text: appBootstrap.text("results.error_prefix") + uiController.lastError
             visible: uiController.lastError.length > 0
-            color: "#B00020"
+            color: theme.danger
             font.bold: true
             wrapMode: Text.WordWrap
             Layout.fillWidth: true
@@ -84,7 +89,7 @@ Dialog {
         Label {
             text: uiController.reportPath
             visible: uiController.reportPath.length > 0
-            color: "#0B4A43"
+            color: theme.deepTeal
             wrapMode: Text.WordWrap
             Layout.fillWidth: true
         }

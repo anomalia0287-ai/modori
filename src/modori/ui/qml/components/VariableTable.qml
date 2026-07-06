@@ -1,10 +1,15 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import "../theme"
 
 Item {
     id: root
     property string selectedVariableKey: ""
+
+    Theme {
+        id: theme
+    }
 
     function hasText(value) {
         return String(value).trim().length > 0
@@ -100,8 +105,8 @@ Item {
 
                 implicitWidth: 140
                 implicitHeight: 34
-                color: root.selectedVariableKey === variableKey ? "#E3F1EC" : "#FFFFFF"
-                border.color: "#E4ECE8"
+                color: root.selectedVariableKey === variableKey ? theme.selectionSurface : theme.paperSurface
+                border.color: theme.lineGrid
 
                 MouseArea {
                     anchors.fill: parent
@@ -111,7 +116,7 @@ Item {
                 Text {
                     anchors.centerIn: parent
                     text: model.display ?? ""
-                    color: "#17211D"
+                    color: theme.textTable
                     elide: Text.ElideRight
                 }
             }

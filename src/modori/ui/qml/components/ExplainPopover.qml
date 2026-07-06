@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import "../theme"
 
 Popup {
     id: root
@@ -10,10 +11,14 @@ Popup {
     width: 420
     padding: 16
 
+    Theme {
+        id: theme
+    }
+
     background: Rectangle {
-        color: "#F8FBF9"
-        border.color: "#9FC7B9"
-        radius: 14
+        color: theme.popoverSurface
+        border.color: theme.linePopover
+        radius: theme.radiusLarge
     }
 
     ColumnLayout {
@@ -23,7 +28,7 @@ Popup {
         Label {
             text: appBootstrap.text("explain.title")
             font.bold: true
-            color: "#0B4A43"
+            color: theme.deepTeal
         }
 
         ScrollView {
@@ -32,7 +37,7 @@ Popup {
 
             Label {
                 text: root.bodyText
-                color: "#26352F"
+                color: theme.textControl
                 wrapMode: Text.WordWrap
                 width: parent.width
             }

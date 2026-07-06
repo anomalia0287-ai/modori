@@ -1,13 +1,18 @@
 import QtQuick
 import QtQuick.Controls
+import "../theme"
 
 Rectangle {
-    color: "#800B4A43"
+    color: theme.brandScrim
+
+    Theme {
+        id: theme
+    }
 
     Label {
         anchors.centerIn: parent
         text: appBootstrap.text("loading.calculating")
-        color: "white"
+        color: theme.onBrand
         font.pixelSize: 22
         font.bold: true
     }

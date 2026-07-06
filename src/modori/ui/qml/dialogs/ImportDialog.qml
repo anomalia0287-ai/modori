@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import "../theme"
 
 Dialog {
     id: root
@@ -14,6 +15,10 @@ Dialog {
     height: Math.min(parent.height - 96, 620)
     signal importAccepted()
 
+    Theme {
+        id: theme
+    }
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 12
@@ -25,15 +30,15 @@ Dialog {
 
             TextArea {
                 text: uiController.importPreviewText
-                color: "#26352F"
+                color: theme.textControl
                 readOnly: true
                 selectByMouse: true
                 wrapMode: TextEdit.Wrap
                 Accessible.name: appBootstrap.text("dialog.import.preview_accessible")
                 background: Rectangle {
-                    color: "#F7FAF8"
-                    border.color: "#D9E4DF"
-                    radius: 4
+                    color: theme.flatBackground
+                    border.color: theme.lineDialog
+                    radius: theme.radiusSmall
                 }
             }
         }
