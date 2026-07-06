@@ -85,6 +85,11 @@ Current loader result after the hardening pass:
 - Successful previews include an explainable inference summary such as
   "header 2 rows, data starts at row 3, confidence high" plus the warning/reason
   that justified the automatic choice.
+- A checked-in minimal corpus now lives under
+  `tests/fixtures/public_data_formats`, with a default-gate regression test in
+  `tests/test_public_data_corpus.py`. It fixes representative KOSIS two-row CSV,
+  MOLIT long-preamble CSV, weather text-as-XLS, merged XLSX header, and
+  notice-only XLSX patterns without depending on the local desktop D1 folder.
 
 ## Still Needed
 
@@ -93,6 +98,4 @@ Current loader result after the hardening pass:
 - Improve the manual import-adjustment UI with stronger affordances for
   low-confidence imports: suggested defaults from the inference report,
   validation feedback, and clearer row-number labeling.
-- Add a persistent checked-in minimal corpus for the D1-derived patterns if the
-  team wants release gates that do not depend on a local desktop folder.
 - HWP/PDF table extraction is explicitly out of current table-import scope.
