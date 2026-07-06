@@ -141,7 +141,10 @@ _EMPTY_TABLE_MESSAGE = "표 데이터가 없습니다. 원본 포털에서 CSV �
 _LAYOUT_OVERRIDE_MESSAGE = "사용자 지정 표 레이아웃을 적용했습니다."
 _INVALID_LAYOUT_MESSAGE = "지정한 표 레이아웃을 적용할 수 없습니다. 헤더 행과 데이터 시작 행을 확인해 주세요."
 _MISSING_SHEET_MESSAGE = "지정한 시트를 찾지 못했습니다. 시트 이름을 확인해 주세요."
-_AGGREGATE_ROW_LABELS = frozenset({"합계", "총계", "소계"})
+_HEADER_INFERENCE_MESSAGE = "표 헤더를 자동으로 찾지 못했습니다. 가져오기 창에서 헤더 행을 지정해 주세요."
+_AGGREGATE_ROW_LABELS = frozenset({"합계", "총계", "소계", "총합계", "합계액"})
+_AGGREGATE_CONTEXT_LABELS = frozenset({"전체", "계"})
+_ROW_NUMBER_MARKERS = frozenset({"-", "－", "–", "—"})
 _AGGREGATE_ROW_DETECTED_MESSAGE = "집계/합계 행 {count}개를 감지했습니다. 필요한 경우 가져오기 창에서 제외할 수 있습니다."
 _AGGREGATE_ROW_DROPPED_MESSAGE = "집계/합계 행 {count}개를 제외했습니다."
 
@@ -966,6 +969,8 @@ def _detect_header_layout(rows: list[tuple[Any, ...]]) -> tuple[int, int]:
                 best_index = index
                 best_count = count
                 best_score = score
+    if best_score == float("-inf") and any(_row_width(row) >= 2 for row in rows):
+        raise TableReadError(_HEADER_INFERENCE_MESSAGE)
     return best_index, best_count
 
 
@@ -1130,11 +1135,22 @@ def _row_width(row: tuple[Any, ...]) -> int:
 
 def _looks_like_metadata_row(non_empty: list[str]) -> bool:
     if len(non_empty) > 2:
-        return False
+        marker_text = " ".join(non_empty)
+        return any(marker in marker_text for marker in ("검색조건", "검색 조건", "조회조건"))
     marker_text = " ".join(non_empty)
     return any(
         marker in marker_text
-        for marker in ("자료기준", "기준일", "단위", "출처", "제공기관", "저작권")
+        for marker in (
+            "자료기준",
+            "기준일",
+            "단위",
+            "출처",
+            "제공기관",
+            "저작권",
+            "검색조건",
+            "검색 조건",
+            "조회조건",
+        )
     )
 
 
@@ -1269,15 +1285,29 @@ def _aggregate_row_mask(frame: pd.DataFrame) -> pd.Series:
 
 
 def _looks_like_aggregate_row(row: pd.Series) -> bool:
-    for value in row:
-        if _is_blank_value(value):
-            continue
-        return _normalize_aggregate_label(value) in _AGGREGATE_ROW_LABELS
+    labels = tuple(
+        _normalize_aggregate_label(value)
+        for value in row
+        if not _is_blank_value(value)
+    )
+    if not labels:
+        return False
+    first = labels[0]
+    if first in _AGGREGATE_ROW_LABELS:
+        return True
+    if _is_row_number_marker(first) and len(labels) > 1:
+        return labels[1] in _AGGREGATE_ROW_LABELS
+    if first == "전국":
+        return any(label in _AGGREGATE_CONTEXT_LABELS for label in labels[1:3])
     return False
 
 
 def _normalize_aggregate_label(value: object) -> str:
     return "".join(character for character in str(value).strip() if not character.isspace())
+
+
+def _is_row_number_marker(label: str) -> bool:
+    return label in _ROW_NUMBER_MARKERS or label.isdecimal()
 
 
 def _is_blank_value(value: object) -> bool:

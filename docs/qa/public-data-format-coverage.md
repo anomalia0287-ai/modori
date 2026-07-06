@@ -43,6 +43,8 @@ until a stable no-session URL is captured.
 - Three-row merged XLSX headers are flattened into unique column names.
 - Files with an `.xls` extension but tabular text content are read as delimited
   text and surfaced with a warning.
+- CP949-encoded Korean CSV files are exercised by the packaged public-data
+  smoke fixture set, not only by in-memory unit tests.
 - Legacy binary `.xls` files are supported through `xlrd`.
 - One-cell or header-only XLSX downloads are rejected with a specific "no table
   data" message instead of being treated as a successful import.
@@ -93,15 +95,24 @@ Current loader result after the hardening pass:
 - The same corpus is now exercised by `--public-data-smoke`, the packaged
   `scripts/package_public_data_smoke.py` gate, and the clean-VM payload batch
   `Run-Public-Data-Smoke.bat`. This smoke does not merely check that files open;
-  it asserts header inference, column names, sample cell values, warnings,
-  aggregate-row drop behavior, and expected notice-only rejection.
+  it asserts preview inference, full-import row counts, column names, sample
+  cell values, warnings, aggregate-row drop behavior, and expected notice-only
+  rejection on both preview and full import paths.
 - Rows whose first non-empty cell is a strong aggregate label such as `합 계`,
-  `합계`, `총계`, or `소계` are detected conservatively. They are kept by
+  `합계`, `총계`, `총합계`, `합계액`, or `소계` are detected conservatively.
+  Numbered/dash-prefixed subtotal rows such as `1 / 소계` and KOSIS nationwide
+  total rows shaped like `전국 / 전체 / 계` are also detected. They are kept by
   default with a visible warning, and the import dialog lets users exclude them
   before confirming the import.
+- If same-width search-condition rows extend past the automatic header scan
+  window, the loader now rejects the table with a user-facing manual-layout
+  instruction instead of silently treating the first preamble row as a high
+  confidence header.
 
 ## Still Needed
 
+- Regenerate Payload V2 as administrator and rerun `Run-Public-Data-Smoke.bat`
+  inside the clean Windows VM. Host/package tests are not VM evidence.
 - Improve the manual import-adjustment UI with stronger affordances for
   low-confidence imports: suggested defaults from the inference report,
   validation feedback, and clearer row-number labeling.

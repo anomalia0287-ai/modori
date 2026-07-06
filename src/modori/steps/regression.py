@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -14,7 +15,7 @@ from statsmodels.stats.stattools import durbin_watson
 
 from modori.core import Dataset, Measure, PipelineContext, Step, StepResult, Variable
 from modori.results import ChartSpec, CoefficientRow, RegressionResult
-from modori.table_io import read_full, read_header
+from modori.table_io import TableLayoutOverride, read_full, read_header
 
 
 REGRESSION_ENGINE_VOCABULARY = frozenset(
@@ -59,6 +60,42 @@ def _as_float(value: Any, label: str) -> float:
     return scalar
 
 
+def _file_type_from_params(path: Path, params: dict[str, Any]) -> str:
+    explicit = params.get("file_type")
+    if explicit:
+        return str(explicit).lower().lstrip(".")
+    return path.suffix.lower().lstrip(".")
+
+
+def _layout_override_from_params(params: dict[str, Any]) -> TableLayoutOverride | None:
+    raw = params.get("table_layout")
+    if raw is None:
+        return None
+    if isinstance(raw, TableLayoutOverride):
+        return raw
+    if not isinstance(raw, Mapping):
+        return None
+    return TableLayoutOverride(
+        sheet_name=_optional_str(raw.get("sheet_name")),
+        header_row_index=_optional_int(raw.get("header_row_index")),
+        header_row_count=_optional_int(raw.get("header_row_count")),
+        data_start_row_index=_optional_int(raw.get("data_start_row_index")),
+    )
+
+
+def _optional_str(value: object) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
+
+
+def _optional_int(value: object) -> int | None:
+    if value is None:
+        return None
+    return int(value)
+
+
 @dataclass
 class RegressionCsvImportStep(Step):
     step_type = "import.regression_table"
@@ -67,8 +104,17 @@ class RegressionCsvImportStep(Step):
 
     def compute(self, ctx: PipelineContext) -> StepResult:
         path = Path(self.params["path"])
+        file_type = _file_type_from_params(path, self.params)
+        layout = _layout_override_from_params(self.params)
+        drop_aggregate_rows = bool(self.params.get("drop_aggregate_rows", False))
         scale_columns = {str(column) for column in self.params.get("scale_columns", [])}
-        frame, _ = read_full(path)
+        table = read_full(
+            path,
+            file_type,
+            layout=layout,
+            drop_aggregate_rows=drop_aggregate_rows,
+        )
+        frame = table.frame
         frame = frame.rename(columns={column: str(column) for column in frame.columns})
         variables: dict[str, Variable] = {}
         for column in frame.columns:
@@ -90,7 +136,10 @@ class RegressionCsvImportStep(Step):
             new_columns={str(column): frame[column] for column in frame.columns},
             new_variables=variables,
             analysis=None,
-            notes=[f"Imported {len(frame)} rows and {len(frame.columns)} columns for regression."],
+            notes=[
+                f"Imported {len(frame)} rows and {len(frame.columns)} columns for regression.",
+                *table.warnings,
+            ],
         )
 
     def reads(self) -> set[str]:
@@ -98,7 +147,9 @@ class RegressionCsvImportStep(Step):
 
     def writes(self) -> set[str]:
         path = Path(self.params["path"])
-        return set(read_header(path))
+        file_type = _file_type_from_params(path, self.params)
+        layout = _layout_override_from_params(self.params)
+        return set(read_header(path, file_type, layout=layout))
 
 
 @dataclass

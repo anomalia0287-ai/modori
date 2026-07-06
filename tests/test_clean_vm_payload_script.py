@@ -78,6 +78,7 @@ def test_existing_payload_vhdx_is_validated_before_attach() -> None:
     assert "Run-Engine-Smoke-XLSX.bat" in text
     assert "Run-Public-Data-Smoke.bat" in text
     assert "Samples\\public_data_formats\\kosis-two-row.csv" in text
+    assert "Samples\\public_data_formats\\cp949-public.csv" in text
     assert "Samples\\public_data_formats\\notice-only.xlsx" in text
 
 

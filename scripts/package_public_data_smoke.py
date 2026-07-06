@@ -8,6 +8,16 @@ from collections.abc import Sequence
 from pathlib import Path
 
 
+_REQUIRED_HARDENED_CASE_NAMES = frozenset(
+    {
+        "kosis-two-row-csv",
+        "kosis-two-row-drop",
+        "cp949-public-csv",
+        "notice-only-xlsx-reject",
+    }
+)
+
+
 def run_public_data_smoke(
     executable: str | Path,
     *,
@@ -40,11 +50,74 @@ def run_public_data_smoke(
         return completed.returncode
 
     payload = json.loads(output_path.read_text(encoding="utf-8"))
-    if payload.get("ok") is not True or payload.get("case_count") != 7:
+    cases = payload.get("cases")
+    case_count = payload.get("case_count")
+    if not _payload_has_hardened_contracts(payload, cases, case_count):
         print(json.dumps(payload, ensure_ascii=False, sort_keys=True), file=sys.stderr)
         return 1
     print("package-public-data-smoke-ok")
     return 0
+
+
+def _payload_has_hardened_contracts(
+    payload: dict[str, object],
+    cases: object,
+    case_count: object,
+) -> bool:
+    if payload.get("ok") is not True:
+        return False
+    if not isinstance(cases, list) or not cases or case_count != len(cases):
+        return False
+    if any(not isinstance(case, dict) or case.get("ok") is not True for case in cases):
+        return False
+    names = {str(case.get("name")) for case in cases}
+    if not _REQUIRED_HARDENED_CASE_NAMES.issubset(names):
+        return False
+    by_name = {str(case.get("name")): case for case in cases}
+    if not _has_warning(by_name["kosis-two-row-csv"], "집계/합계 행 1개를 감지했습니다."):
+        return False
+    if _full_import_sample_contains(by_name["kosis-two-row-drop"], "행정구역별(1)", "전국"):
+        return False
+    if not _has_full_import_warning(by_name["cp949-public-csv"], "CSV 인코딩: cp949"):
+        return False
+    for case in cases:
+        if case.get("status") == "expected_reject":
+            if not case.get("preview_error") or not case.get("full_import_error"):
+                return False
+            continue
+        if not isinstance(case.get("full_import"), dict):
+            return False
+    return True
+
+
+def _has_warning(case: dict[str, object], expected: str) -> bool:
+    warnings = case.get("warnings")
+    if not isinstance(warnings, list):
+        return False
+    return any(expected in str(warning) for warning in warnings)
+
+
+def _has_full_import_warning(case: dict[str, object], expected: str) -> bool:
+    full_import = case.get("full_import")
+    if not isinstance(full_import, dict):
+        return False
+    warnings = full_import.get("warnings")
+    if not isinstance(warnings, list):
+        return False
+    return any(expected in str(warning) for warning in warnings)
+
+
+def _full_import_sample_contains(case: dict[str, object], column: str, value: object) -> bool:
+    full_import = case.get("full_import")
+    if not isinstance(full_import, dict):
+        return False
+    sample_rows = full_import.get("sample_rows")
+    if not isinstance(sample_rows, list):
+        return False
+    return any(
+        isinstance(row, dict) and row.get(column) == value
+        for row in sample_rows
+    )
 
 
 def main(argv: Sequence[str] | None = None) -> int:

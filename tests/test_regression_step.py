@@ -81,6 +81,41 @@ def test_regression_import_writes_reads_only_csv_header(tmp_path, monkeypatch) -
     assert calls == [{"nrows": 0}]
 
 
+def test_regression_import_step_drops_aggregate_rows_when_requested(tmp_path) -> None:
+    path = tmp_path / "regression-public.csv"
+    path.write_text(
+        "\n".join(
+            [
+                "지역,y,x",
+                "합 계,30,3",
+                "종로구,10,1",
+                "중구,20,2",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    step = RegressionCsvImportStep(
+        id="reg-import",
+        title="Regression import",
+        params={
+            "path": str(path),
+            "file_type": "csv",
+            "scale_columns": ["y", "x"],
+            "drop_aggregate_rows": True,
+        },
+    )
+
+    result = step.compute_context_free(Dataset.empty())
+
+    assert result.new_columns["지역"].tolist() == ["종로구", "중구"]
+    assert result.new_columns["y"].tolist() == [10, 20]
+    assert result.notes == [
+        "Imported 2 rows and 3 columns for regression.",
+        "집계/합계 행 1개를 제외했습니다.",
+    ]
+
+
 def numpy_ols_reference(frame: pd.DataFrame, dv: str, predictors: list[str]) -> dict[str, np.ndarray | float]:
     y = frame[dv].to_numpy(dtype=float)
     x = np.column_stack([np.ones(len(frame)), frame[predictors].to_numpy(dtype=float)])

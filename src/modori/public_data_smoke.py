@@ -5,7 +5,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from modori.table_io import TableReadError, read_preview
+import pandas as pd
+
+from modori.table_io import TableReadError, read_full, read_preview
 
 
 @dataclass(frozen=True)
@@ -19,6 +21,7 @@ class PublicDataSmokeCase:
     header_row_count: int | None = None
     data_start_row_index: int | None = None
     confidence: str | None = None
+    full_row_count: int | None = None
     required_warnings: tuple[str, ...] = ()
     drop_aggregate_rows: bool = False
     expected_error: str | None = None
@@ -51,7 +54,44 @@ PUBLIC_DATA_SMOKE_CASES: tuple[PublicDataSmokeCase, ...] = (
         header_row_count=2,
         data_start_row_index=2,
         confidence="high",
-        required_warnings=("다중 헤더 2행을 하나의 열 이름으로 합쳤습니다.",),
+        full_row_count=2,
+        required_warnings=(
+            "다중 헤더 2행을 하나의 열 이름으로 합쳤습니다.",
+            "집계/합계 행 1개를 감지했습니다. 필요한 경우 가져오기 창에서 제외할 수 있습니다.",
+        ),
+    ),
+    PublicDataSmokeCase(
+        name="kosis-two-row-drop",
+        file_name="kosis-two-row.csv",
+        file_type="csv",
+        columns=(
+            "행정구역별(1)",
+            "특성별(1)",
+            "특성별(2)",
+            "2025 계 (%)",
+            "2025 매우 만족",
+            "2025 약간 만족",
+        ),
+        sample_rows=(
+            {
+                "행정구역별(1)": "서울특별시",
+                "특성별(1)": "전체",
+                "특성별(2)": "계",
+                "2025 계 (%)": 100.0,
+                "2025 매우 만족": 11.0,
+                "2025 약간 만족": 30.3,
+            },
+        ),
+        header_row_index=0,
+        header_row_count=2,
+        data_start_row_index=2,
+        confidence="high",
+        full_row_count=1,
+        required_warnings=(
+            "다중 헤더 2행을 하나의 열 이름으로 합쳤습니다.",
+            "집계/합계 행 1개를 제외했습니다.",
+        ),
+        drop_aggregate_rows=True,
     ),
     PublicDataSmokeCase(
         name="molit-deep-preamble-csv",
@@ -63,6 +103,7 @@ PUBLIC_DATA_SMOKE_CASES: tuple[PublicDataSmokeCase, ...] = (
         header_row_count=1,
         data_start_row_index=16,
         confidence="medium",
+        full_row_count=1,
         required_warnings=("표 헤더 앞의 안내 행 15개를 건너뛰었습니다.",),
     ),
     PublicDataSmokeCase(
@@ -75,7 +116,24 @@ PUBLIC_DATA_SMOKE_CASES: tuple[PublicDataSmokeCase, ...] = (
         header_row_count=1,
         data_start_row_index=1,
         confidence="high",
+        full_row_count=1,
         required_warnings=("XLS 확장자이지만 텍스트 표로 읽었습니다.",),
+    ),
+    PublicDataSmokeCase(
+        name="cp949-public-csv",
+        file_name="cp949-public.csv",
+        file_type="csv",
+        columns=("자치구", "연도", "인구"),
+        sample_rows=(
+            {"자치구": "종로구", "연도": 2024, "인구": 140000},
+            {"자치구": "중구", "연도": 2024, "인구": 120000},
+        ),
+        header_row_index=0,
+        header_row_count=1,
+        data_start_row_index=1,
+        confidence="high",
+        full_row_count=2,
+        required_warnings=("CSV 인코딩: cp949",),
     ),
     PublicDataSmokeCase(
         name="merged-public-header-xlsx",
@@ -105,6 +163,7 @@ PUBLIC_DATA_SMOKE_CASES: tuple[PublicDataSmokeCase, ...] = (
         header_row_count=3,
         data_start_row_index=6,
         confidence="high",
+        full_row_count=2,
         required_warnings=(
             "표 헤더 앞의 안내 행 3개를 건너뛰었습니다.",
             "다중 헤더 3행을 하나의 열 이름으로 합쳤습니다.",
@@ -121,6 +180,7 @@ PUBLIC_DATA_SMOKE_CASES: tuple[PublicDataSmokeCase, ...] = (
         header_row_count=1,
         data_start_row_index=1,
         confidence="high",
+        full_row_count=3,
         required_warnings=("집계/합계 행 1개를 감지했습니다. 필요한 경우 가져오기 창에서 제외할 수 있습니다.",),
     ),
     PublicDataSmokeCase(
@@ -133,6 +193,7 @@ PUBLIC_DATA_SMOKE_CASES: tuple[PublicDataSmokeCase, ...] = (
         header_row_count=1,
         data_start_row_index=1,
         confidence="high",
+        full_row_count=2,
         required_warnings=("집계/합계 행 1개를 제외했습니다.",),
         drop_aggregate_rows=True,
     ),
@@ -167,6 +228,8 @@ def public_data_import_smoke_payload(fixture_dir: Path) -> dict[str, Any]:
 
 def _run_case(fixture_dir: Path, case: PublicDataSmokeCase) -> dict[str, Any]:
     path = fixture_dir / case.file_name
+    if case.expected_error is not None:
+        return _run_expected_reject_case(path, case)
     try:
         preview = read_preview(
             path,
@@ -190,20 +253,29 @@ def _run_case(fixture_dir: Path, case: PublicDataSmokeCase) -> dict[str, Any]:
             "file_name": case.file_name,
             "error": f"{type(exc).__name__}: {exc}",
         }
-    if case.expected_error is not None:
-        return {
-            "name": case.name,
-            "ok": False,
-            "status": "unexpected_success",
-            "file_name": case.file_name,
-            "columns": list(preview.columns),
+    full_import = None
+    full_failures: list[str] = []
+    try:
+        full = read_full(
+            path,
+            case.file_type,
+            drop_aggregate_rows=case.drop_aggregate_rows,
+        )
+        full_import = {
+            "row_count": full.row_count,
+            "columns": list(full.columns),
+            "sample_rows": _sample_rows(full.frame, len(case.sample_rows)),
+            "warnings": list(full.warnings),
         }
-    failures = _preview_contract_failures(preview, case)
+        full_failures = _full_import_contract_failures(full, case)
+    except Exception as exc:
+        full_failures = [f"full import exception: {type(exc).__name__}: {exc}"]
+    failures = _preview_contract_failures(preview, case) + full_failures
     report = preview.inference_report
     return {
         "name": case.name,
         "ok": not failures,
-        "status": "preview_ok" if not failures else "contract_mismatch",
+        "status": "preview_and_full_import_ok" if not failures else "contract_mismatch",
         "file_name": case.file_name,
         "columns": list(preview.columns),
         "sample_rows": list(preview.sample_rows[: len(case.sample_rows)]),
@@ -216,8 +288,50 @@ def _run_case(fixture_dir: Path, case: PublicDataSmokeCase) -> dict[str, Any]:
             "data_start_row_index": report.data_start_row_index,
             "confidence": report.confidence,
         },
+        "full_import": full_import,
         "failures": failures,
     }
+
+
+def _run_expected_reject_case(path: Path, case: PublicDataSmokeCase) -> dict[str, Any]:
+    preview_error = _read_error_message(
+        lambda: read_preview(
+            path,
+            case.file_type,
+            drop_aggregate_rows=case.drop_aggregate_rows,
+        )
+    )
+    full_import_error = _read_error_message(
+        lambda: read_full(
+            path,
+            case.file_type,
+            drop_aggregate_rows=case.drop_aggregate_rows,
+        )
+    )
+    failures = []
+    if preview_error != case.expected_error:
+        failures.append(f"preview error mismatch: {preview_error!r}")
+    if full_import_error != case.expected_error:
+        failures.append(f"full import error mismatch: {full_import_error!r}")
+    return {
+        "name": case.name,
+        "ok": not failures,
+        "status": "expected_reject" if not failures else "contract_mismatch",
+        "file_name": case.file_name,
+        "preview_error": preview_error,
+        "full_import_error": full_import_error,
+        "failures": failures,
+    }
+
+
+def _read_error_message(read: Any) -> str | None:
+    try:
+        read()
+    except TableReadError as exc:
+        return exc.message_ko
+    except Exception as exc:
+        return f"{type(exc).__name__}: {exc}"
+    return None
 
 
 def _preview_contract_failures(
@@ -246,3 +360,31 @@ def _preview_contract_failures(
         if report.confidence != case.confidence:
             failures.append(f"confidence mismatch: {report.confidence!r}")
     return failures
+
+
+def _full_import_contract_failures(full: Any, case: PublicDataSmokeCase) -> list[str]:
+    failures: list[str] = []
+    if tuple(full.columns) != case.columns:
+        failures.append(f"full columns mismatch: {tuple(full.columns)!r}")
+    if case.full_row_count is not None and full.row_count != case.full_row_count:
+        failures.append(f"full row_count mismatch: {full.row_count!r}")
+    actual_rows = tuple(_sample_rows(full.frame, len(case.sample_rows)))
+    if actual_rows != case.sample_rows:
+        failures.append(f"full sample rows mismatch: {actual_rows!r}")
+    for warning in case.required_warnings:
+        if warning not in full.warnings:
+            failures.append(f"full missing warning: {warning}")
+    return failures
+
+
+def _sample_rows(frame: Any, limit: int) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for row in frame.head(limit).to_dict(orient="records"):
+        rows.append({str(key): _display_cell(value) for key, value in row.items()})
+    return rows
+
+
+def _display_cell(value: Any) -> Any:
+    if pd.isna(value):
+        return None
+    return value

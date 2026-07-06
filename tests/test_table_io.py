@@ -588,6 +588,77 @@ def test_read_preview_warns_about_aggregate_rows_and_can_drop_them(tmp_path) -> 
     assert "집계/합계 행 1개를 제외했습니다." in dropped.warnings
 
 
+def test_read_preview_warns_and_drops_kosis_nationwide_total_row(tmp_path) -> None:
+    path = tmp_path / "kosis-two-row.csv"
+    text = "\n".join(
+        [
+            "행정구역별(1),특성별(1),특성별(2),2025,2025,2025",
+            "행정구역별(1),특성별(1),특성별(2),계 (%),매우 만족,약간 만족",
+            "전국,전체,계,100.0,11.5,27.9",
+            "서울특별시,전체,계,100.0,11.0,30.3",
+        ]
+    )
+    path.write_text(text + "\n", encoding="utf-8")
+
+    kept = read_preview(path, "csv")
+
+    assert kept.sample_rows[0]["행정구역별(1)"] == "전국"
+    assert "집계/합계 행 1개를 감지했습니다. 필요한 경우 가져오기 창에서 제외할 수 있습니다." in kept.warnings
+
+    dropped = read_preview(path, "csv", drop_aggregate_rows=True)
+
+    assert dropped.sample_rows == (
+        {
+            "행정구역별(1)": "서울특별시",
+            "특성별(1)": "전체",
+            "특성별(2)": "계",
+            "2025 계 (%)": 100.0,
+            "2025 매우 만족": 11.0,
+            "2025 약간 만족": 30.3,
+        },
+    )
+    assert "집계/합계 행 1개를 제외했습니다." in dropped.warnings
+
+
+def test_read_full_detects_aggregate_labels_after_row_number_markers(tmp_path) -> None:
+    path = tmp_path / "numbered-aggregate-row.csv"
+    path.write_text(
+        "\n".join(
+            [
+                "순번,지역,인구",
+                "1,소계,300",
+                "2,종로구,100",
+                "-,총합계,300",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    result = read_full(path, "csv", drop_aggregate_rows=True)
+
+    assert result.frame.to_dict(orient="records") == [
+        {"순번": "2", "지역": "종로구", "인구": 100},
+    ]
+    assert "집계/합계 행 2개를 제외했습니다." in result.warnings
+
+
+def test_read_preview_rejects_long_same_width_preamble_instead_of_high_confidence_misread(
+    tmp_path,
+) -> None:
+    path = tmp_path / "long-preamble.csv"
+    lines = [f"검색조건 {index},값,메모" for index in range(21)]
+    lines.extend(["시군구,번지,거래금액", "서울특별시 종로구,1-1,100000"])
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    with pytest.raises(TableReadError) as exc_info:
+        read_preview(path, "csv")
+
+    assert exc_info.value.message_ko == (
+        "표 헤더를 자동으로 찾지 못했습니다. 가져오기 창에서 헤더 행을 지정해 주세요."
+    )
+
+
 def test_read_preview_reports_merged_xlsx_header_inference(tmp_path) -> None:
     from openpyxl import Workbook
 

@@ -72,6 +72,7 @@ function Assert-PayloadDriveContents {
         (Join-Path $DriveRoot "Samples\visible-import-reference.xlsx"),
         (Join-Path $DriveRoot "Samples\visible-import-reference.sav"),
         (Join-Path $DriveRoot "Samples\public_data_formats\kosis-two-row.csv"),
+        (Join-Path $DriveRoot "Samples\public_data_formats\cp949-public.csv"),
         (Join-Path $DriveRoot "Samples\public_data_formats\molit-deep-preamble.csv"),
         (Join-Path $DriveRoot "Samples\public_data_formats\weather-text-xls.xls"),
         (Join-Path $DriveRoot "Samples\public_data_formats\merged-public-header.xlsx"),
@@ -306,6 +307,7 @@ Expected sample files:
 - Samples\visible-import-reference.xlsx
 - Samples\visible-import-reference.sav
 - Samples\public_data_formats\kosis-two-row.csv
+- Samples\public_data_formats\cp949-public.csv
 - Samples\public_data_formats\molit-deep-preamble.csv
 - Samples\public_data_formats\weather-text-xls.xls
 - Samples\public_data_formats\merged-public-header.xlsx
@@ -327,6 +329,7 @@ Import visibility samples:
 
 Public data import contract samples:
 - Samples\public_data_formats\kosis-two-row.csv
+- Samples\public_data_formats\cp949-public.csv
 - Samples\public_data_formats\molit-deep-preamble.csv
 - Samples\public_data_formats\weather-text-xls.xls
 - Samples\public_data_formats\merged-public-header.xlsx

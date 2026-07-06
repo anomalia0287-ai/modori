@@ -20,7 +20,12 @@ Current package:
 
 Current package SHA256:
 
-`91CD3BD59F35FD8660A985E3FC695CA7EE0964FBEB62780A9DAD7F8FF6079620`
+`EB9A59A29BD5760F0C5C64303867B459BDF0B7B355524E8DFCD9570E4E8FEA05`
+
+Recovery note: this package was rebuilt from the hardened public-data smoke
+working tree after the Fable 5 review response. Host package evidence exists;
+clean-VM evidence still does not exist until Payload V2 is regenerated and the
+VM runs `Run-Public-Data-Smoke.bat`.
 
 Worktree state at handoff time:
 
@@ -74,6 +79,12 @@ Important recent release-lane commits:
 
 ## Public-Data Import Smoke Added
 
+Audit recovery update: the original smoke was too narrow because it only called
+`read_preview`. The hardened smoke must exercise both the preview path and the
+full import path (`read_full`) for every successful fixture, and expected reject
+fixtures must reject on both paths. The release claim is frozen until the
+hardened package and clean-VM evidence exist.
+
 New runtime module:
 
 `src\modori\public_data_smoke.py`
@@ -104,42 +115,54 @@ The public-data smoke validates checked-in fixtures under:
 
 `tests\fixtures\public_data_formats`
 
-The smoke cases are intentionally contract-based, not just open/read checks:
+The hardened smoke cases are intentionally contract-based, not just open/read
+checks. Successful cases assert preview inference plus full-import row counts,
+columns, sample rows, and warnings:
 
 1. `kosis-two-row.csv`
    - verifies KOSIS-style two-row header flattening;
    - verifies inferred header row count and data start row;
    - verifies columns such as `2025 계 (%)`, `2025 매우 만족`;
-   - verifies sample cell values.
+   - verifies sample cell values;
+   - verifies `전국 / 전체 / 계` is warned as an aggregate row by default.
 
-2. `molit-deep-preamble.csv`
+2. `kosis-two-row.csv` drop path
+   - verifies explicit aggregate-row exclusion removes the nationwide total row;
+   - verifies the remaining sample row starts with `서울특별시`.
+
+3. `molit-deep-preamble.csv`
    - verifies 15 leading search-condition rows are skipped;
    - verifies header row index `15`, data start row index `16`;
    - verifies sample values.
 
-3. `weather-text-xls.xls`
+4. `weather-text-xls.xls`
    - verifies `.xls` extension but tab-delimited text fallback;
    - verifies tab delimiter warning;
    - verifies sample numeric/weather value `25.1`.
 
-4. `merged-public-header.xlsx`
+5. `cp949-public.csv`
+   - verifies CP949 decoding in the packaged fixture set;
+   - verifies full-import rows and `CSV 인코딩: cp949` warning.
+
+6. `merged-public-header.xlsx`
    - verifies 3-row merged XLSX header flattening;
    - verifies columns such as `재학생(A) 계 정원내`;
    - verifies aggregate-row warning on `합 계`;
    - verifies sample values.
 
-5. `aggregate-row.csv` warning path
+7. `aggregate-row.csv` warning path
    - verifies `합 계` is kept by default;
    - verifies warning: `집계/합계 행 1개를 감지했습니다...`.
 
-6. `aggregate-row.csv` drop path
+8. `aggregate-row.csv` drop path
    - verifies explicit drop option removes `합 계`;
    - verifies remaining sample rows `종로구`, `중구`;
    - verifies drop warning.
 
-7. `notice-only.xlsx`
+9. `notice-only.xlsx`
    - verifies expected rejection with:
      `표 데이터가 없습니다. 원본 포털에서 CSV 파일을 다시 받거나 표가 있는 시트를 선택해 주세요.`
+   - verifies the same rejection on full import, not only preview.
 
 ## Verification Completed Before Handoff
 
@@ -187,11 +210,63 @@ Result:
 - `package-engine-smoke-ok`
 - `package-public-data-smoke-ok`
 
-Packaged public-data smoke JSON observed at:
+Recovery note: these results prove only the pre-audit 7-case preview smoke.
+After the hardened smoke changes, rerun the package gate and quote the new
+output. The hardened smoke currently expects 9 cases and full-import contract
+data in each successful case.
+
+## Recovery Verification Completed
+
+Commands run after the hardened smoke changes:
+
+```powershell
+$env:PYTHONPATH=(Resolve-Path 'src').Path
+C:\Users\V\Desktop\TongTong\.venv\Scripts\python.exe -m pytest -q -p no:cacheprovider tests\test_table_io.py tests\test_public_data_corpus.py tests\test_public_data_smoke.py tests\test_data_prep_steps.py tests\test_regression_step.py tests\test_regression_workflow.py tests\test_package_public_data_smoke_script.py tests\test_clean_vm_payload_script.py tests\test_quality_gate_script.py
+```
+
+Result:
+
+`126 passed, 1 skipped`
+
+```powershell
+C:\Users\V\Desktop\TongTong\.venv\Scripts\python.exe -m ruff check src tests scripts
+```
+
+Result:
+
+`All checks passed`
+
+```powershell
+C:\Users\V\Desktop\TongTong\.venv\Scripts\python.exe scripts\package_windows.py
+C:\Users\V\Desktop\TongTong\.venv\Scripts\python.exe scripts\package_public_data_smoke.py
+C:\Users\V\Desktop\TongTong\.venv\Scripts\python.exe scripts\package_launch_smoke.py
+C:\Users\V\Desktop\TongTong\.venv\Scripts\python.exe scripts\package_engine_smoke.py
+```
+
+Results:
+
+- `package-public-data-smoke-ok`
+- `package-launch-smoke-ok`
+- `package-engine-smoke-ok`
+- package SHA256: `EB9A59A29BD5760F0C5C64303867B459BDF0B7B355524E8DFCD9570E4E8FEA05`
+
+The packaged public-data smoke JSON at
+`.tmp\packaged-public-data-smoke\result.json` has:
+
+- `"ok": true`
+- `"case_count": 9`
+- `kosis-two-row-csv` warnings include aggregate-row detection
+- `kosis-two-row-drop` full-import sample rows exclude `전국`
+- `cp949-public-csv` full-import warnings include `CSV 인코딩: cp949`
+- every successful case includes `full_import`
+- `notice-only-xlsx-reject` includes both `preview_error` and
+  `full_import_error`
+
+Pre-recovery packaged public-data smoke JSON observed at:
 
 `.tmp\packaged-public-data-smoke\result.json`
 
-Observed summary:
+Observed pre-recovery summary:
 
 - `ok: true`
 - `case_count: 7`
@@ -220,10 +295,14 @@ but Windows returned:
 
 Therefore:
 
-- the package has the new public-data smoke;
-- the payload script has the new public-data smoke batch generation;
-- the current VM-attached payload may not contain `Run-Public-Data-Smoke.bat`;
-- no VM-internal public-data smoke evidence exists yet.
+- the pre-audit package had the preview-only public-data smoke;
+- the source tree and rebuilt package now have the hardened preview +
+  full-import public-data smoke;
+- the payload script has the public-data smoke batch generation and must be
+  rerun after the hardened package rebuild;
+- the current VM-attached payload may not contain the hardened
+  `Run-Public-Data-Smoke.bat`/fixture set;
+- no hardened VM-internal public-data smoke evidence exists yet.
 
 Do not claim VM public-data verification is complete until the next section is
 done and evidence is captured.
@@ -262,13 +341,16 @@ Expected VM public-data output:
   `C:\Users\modoriqa\Desktop\modori-public-data-smoke.json`;
 - JSON has:
   - `"ok": true`;
-  - `"case_count": 7`;
+  - `"case_count": 9`;
   - each case has `"ok": true`.
 
 If the user pastes the JSON, verify that it includes meaningful contract data,
 not just `ok: true`. Check at least:
 
 - `kosis-two-row-csv` columns include `2025 계 (%)`;
+- `kosis-two-row-csv` warnings include aggregate-row detection;
+- `kosis-two-row-drop` full-import sample rows exclude `전국`;
+- `cp949-public-csv` full-import warnings include `CSV 인코딩: cp949`;
 - `molit-deep-preamble-csv` inference has `header_row_index: 15`;
 - `weather-text-xls` sample has `기온(°C): 25.1`;
 - `merged-public-header-xlsx` includes aggregate warning;
@@ -335,4 +417,3 @@ C:\Users\V\Desktop\TongTong\.venv\Scripts\python.exe scripts\quality_gate.py --w
 - Do not delete or stage `prototypes/` unless explicitly requested.
 - Do not use the old novice worktree path; current release work is in
   `C:\Users\V\Desktop\TongTong`.
-
