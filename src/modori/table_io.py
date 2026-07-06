@@ -139,6 +139,8 @@ DEFAULT_FULL_READ_LIMITS = FullReadLimits()
 _LEGACY_XLS_MESSAGE = "구형 Excel(.xls) 파일은 현재 지원하지 않습니다. Excel에서 .xlsx 또는 .csv로 저장한 뒤 다시 열어 주세요."
 _EMPTY_TABLE_MESSAGE = "표 데이터가 없습니다. 원본 포털에서 CSV 파일을 다시 받거나 표가 있는 시트를 선택해 주세요."
 _LAYOUT_OVERRIDE_MESSAGE = "사용자 지정 표 레이아웃을 적용했습니다."
+_INVALID_LAYOUT_MESSAGE = "지정한 표 레이아웃을 적용할 수 없습니다. 헤더 행과 데이터 시작 행을 확인해 주세요."
+_MISSING_SHEET_MESSAGE = "지정한 시트를 찾지 못했습니다. 시트 이름을 확인해 주세요."
 
 
 def normalize_file_type(path: Path, file_type: str | None = None) -> str:
@@ -607,6 +609,12 @@ def _csv_read_context(path: Path, layout: TableLayoutOverride | None = None) -> 
             if layout.data_start_row_index is not None
             else header_row_index + header_row_count
         )
+        _validate_layout_bounds(
+            row_count=len(rows),
+            header_row_index=header_row_index,
+            header_row_count=header_row_count,
+            data_start_row_index=data_start_row_index,
+        )
     else:
         header_row_index, header_row_count = _detect_header_layout(rows)
         data_start_row_index = header_row_index + header_row_count
@@ -669,6 +677,23 @@ def _parse_delimited_sample(text: str, delimiter: str) -> list[tuple[Any, ...]]:
         if len(rows) >= 30:
             break
     return rows
+
+
+def _validate_layout_bounds(
+    *,
+    row_count: int,
+    header_row_index: int,
+    header_row_count: int,
+    data_start_row_index: int,
+) -> None:
+    if (
+        header_row_index < 0
+        or header_row_count < 1
+        or header_row_index + header_row_count > row_count
+        or data_start_row_index < header_row_index + header_row_count
+        or data_start_row_index > row_count
+    ):
+        raise TableReadError(_INVALID_LAYOUT_MESSAGE)
 
 
 def _csv_read_kwargs(context: _DelimitedReadContext) -> dict[str, Any]:
@@ -776,7 +801,10 @@ def _xlsx_read_context(path: Path, layout: TableLayoutOverride | None = None) ->
 
 def _xlsx_layout_worksheet(workbook: Any, layout: TableLayoutOverride | None) -> Any:
     if layout is not None and layout.sheet_name:
-        return workbook[layout.sheet_name]
+        try:
+            return workbook[layout.sheet_name]
+        except KeyError as exc:
+            raise TableReadError(_MISSING_SHEET_MESSAGE) from exc
     return workbook.active
 
 
@@ -802,6 +830,12 @@ def _xlsx_read_context_from_workbook(
             layout.data_start_row_index
             if layout.data_start_row_index is not None
             else header_row_index + header_row_count
+        )
+        _validate_layout_bounds(
+            row_count=len(rows),
+            header_row_index=header_row_index,
+            header_row_count=header_row_count,
+            data_start_row_index=data_start_row_index,
         )
     else:
         header_row_index, header_row_count = _detect_header_layout(rows)

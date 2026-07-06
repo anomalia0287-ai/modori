@@ -9,6 +9,7 @@ from modori.table_io import (
     TableHeaderResult,
     TableLayoutOverride,
     TablePreviewResult,
+    TableReadError,
     TableReadResult,
     read_full,
     read_header,
@@ -425,6 +426,20 @@ def test_read_preview_applies_user_csv_header_override(tmp_path) -> None:
     assert "사용자 지정 표 레이아웃을 적용했습니다." in report.reasons
 
 
+def test_read_preview_rejects_out_of_range_csv_layout_override(tmp_path) -> None:
+    path = tmp_path / "manual-layout.csv"
+    path.write_text("city,value\nSeoul,10\n", encoding="utf-8")
+
+    with pytest.raises(TableReadError) as exc_info:
+        read_preview(
+            path,
+            "csv",
+            layout=TableLayoutOverride(header_row_index=10, header_row_count=1),
+        )
+
+    assert exc_info.value.message_ko == "지정한 표 레이아웃을 적용할 수 없습니다. 헤더 행과 데이터 시작 행을 확인해 주세요."
+
+
 def test_read_full_applies_user_csv_data_start_override(tmp_path) -> None:
     path = tmp_path / "manual-data-start.csv"
     text = "\n".join(
@@ -610,6 +625,28 @@ def test_read_preview_applies_user_xlsx_sheet_override(tmp_path) -> None:
     assert report is not None
     assert report.sheet_name == "자료"
     assert "사용자 지정 표 레이아웃을 적용했습니다." in report.reasons
+
+
+def test_read_preview_rejects_missing_xlsx_sheet_override(tmp_path) -> None:
+    from openpyxl import Workbook
+
+    path = tmp_path / "multi-sheet-public.xlsx"
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.title = "자료"
+    worksheet.append(["city", "value"])
+    worksheet.append(["Seoul", 10])
+    workbook.save(path)
+    workbook.close()
+
+    with pytest.raises(TableReadError) as exc_info:
+        read_preview(
+            path,
+            "xlsx",
+            layout=TableLayoutOverride(sheet_name="없는시트"),
+        )
+
+    assert exc_info.value.message_ko == "지정한 시트를 찾지 못했습니다. 시트 이름을 확인해 주세요."
 
 
 def test_read_preview_reads_tab_delimited_text_with_xls_extension(tmp_path) -> None:
