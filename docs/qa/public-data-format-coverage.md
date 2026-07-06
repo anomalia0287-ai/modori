@@ -46,6 +46,10 @@ until a stable no-session URL is captured.
 - Legacy binary `.xls` files are supported through `xlrd`.
 - One-cell or header-only XLSX downloads are rejected with a specific "no table
   data" message instead of being treated as a successful import.
+- CSV/XLS/XLSX previews now expose an inference report with header-row count,
+  data-start row, confidence, and Korean reason messages. The import preview UI
+  shows a compact inference summary so users can see why rows were skipped or
+  merged.
 
 ## D1 Local Corpus Check
 
@@ -63,6 +67,9 @@ Corpus shape:
 Current loader result after the hardening pass:
 
 - 27 of 40 files preview successfully.
+- Among successful previews, 17 report `high` inference confidence and 10
+  report `medium` confidence. The medium cases are long-preamble MOLIT
+  transaction CSV files where 15 leading search-condition rows are skipped.
 - The 13 failures are deliberate no-table XLSX downloads that contain only a
   single notice/header cell. They now fail with a user-facing instruction to
   reacquire CSV or a sheet containing a real table.
@@ -72,11 +79,17 @@ Current loader result after the hardening pass:
   an explicit text-fallback warning.
 - The 부산대학교 XLSX merged three-row header now flattens into columns such as
   `재학생(A) 계 정원내`.
+- Successful previews include an explainable inference summary such as
+  "header 2 rows, data starts at row 3, confidence high" plus the warning/reason
+  that justified the automatic choice.
 
 ## Still Needed
 
 - Decide whether aggregate/summary rows such as `합 계` should be automatically
   dropped, warned, or kept as data.
+- Add a manual import-adjustment UI for low-confidence or user-disputed
+  inferences: sheet selection, header row, data start row, and multi-header
+  toggle.
 - Add a persistent checked-in minimal corpus for the D1-derived patterns if the
   team wants release gates that do not depend on a local desktop folder.
 - HWP/PDF table extraction is explicitly out of current table-import scope.

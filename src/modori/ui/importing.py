@@ -70,13 +70,30 @@ class ImportPreviewService:
             lines.append(f"시트: {preview.source.sheet_name}")
         if preview.source.sheet_names:
             lines.append(f"전체 시트: {', '.join(preview.source.sheet_names)}")
-        lines.extend(preview.warnings)
+        inference_lines, inference_reasons = ImportPreviewService._inference_lines(preview)
+        lines.extend(inference_lines)
+        lines.extend(warning for warning in preview.warnings if warning not in inference_reasons)
         lines.extend(variable_lines)
         sample_lines = ImportPreviewService._sample_lines(preview)
         if sample_lines:
             lines.append("샘플 행")
             lines.extend(sample_lines)
         return "\n".join(lines)
+
+    @staticmethod
+    def _inference_lines(preview: TablePreviewResult) -> tuple[list[str], set[str]]:
+        report = preview.inference_report
+        if report is None:
+            return [], set()
+        lines = [
+            "추론: "
+            f"헤더 {report.header_row_count}행, "
+            f"데이터 시작 {report.data_start_row_index + 1}행, "
+            f"확신 {report.confidence}"
+        ]
+        if report.reasons:
+            lines.append(f"근거: {' / '.join(report.reasons[:3])}")
+        return lines, set(report.reasons)
 
     @staticmethod
     def _sample_lines(preview: TablePreviewResult) -> list[str]:

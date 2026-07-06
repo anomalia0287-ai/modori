@@ -24,11 +24,29 @@ class TableReadSource:
 
 
 @dataclass(frozen=True)
+class TableInferenceReport:
+    file_type: str
+    header_row_index: int
+    header_row_count: int
+    data_start_row_index: int
+    column_count: int
+    confidence: str
+    reasons: tuple[str, ...] = ()
+    sheet_name: str | None = None
+    sheet_names: tuple[str, ...] = ()
+
+    @property
+    def requires_user_confirmation(self) -> bool:
+        return self.confidence == "low"
+
+
+@dataclass(frozen=True)
 class TableReadResult:
     frame: pd.DataFrame
     metadata: Any | None
     source: TableReadSource
     warnings: tuple[str, ...] = ()
+    inference_report: TableInferenceReport | None = None
 
     @property
     def columns(self) -> tuple[str, ...]:
@@ -138,9 +156,14 @@ def read_full(
         metadata = None
         source = _table_source(path, normalized)
         warnings = _merge_warnings(context.warnings, cleanup_warnings)
+        inference_report = _delimited_inference_report(
+            context,
+            file_type=normalized,
+            column_count=len(frame.columns),
+        )
     elif normalized == "xlsx":
         if _xlsx_needs_limited_read(limits):
-            frame, source, warnings = _read_xlsx_limited(path, limits)
+            frame, source, warnings, inference_report = _read_xlsx_limited(path, limits)
         else:
             context = _xlsx_read_context(path)
             source = context.source
@@ -148,18 +171,21 @@ def read_full(
             frame, cleanup_warnings = _sanitize_frame(frame, context.header_cells)
             _reject_notice_only_table(frame, context.header_rows)
             warnings = _merge_warnings(context.warnings, cleanup_warnings)
+            inference_report = _xlsx_inference_report(context, column_count=len(frame.columns))
         metadata = None
     elif normalized == "xls":
         if _is_text_table_file(path):
             result = _read_delimited_full(
                 path,
                 limits,
+                file_type=normalized,
                 source_warning=("XLS 확장자이지만 텍스트 표로 읽었습니다.",),
             )
             frame = result.frame
             metadata = result.metadata
             source = _table_source(path, normalized)
             warnings = result.warnings
+            inference_report = result.inference_report
         else:
             context = _excel_read_context(path, normalized)
             read_kwargs = _excel_read_kwargs(context)
@@ -173,6 +199,7 @@ def read_full(
             source = _table_source(path, normalized)
             frame, cleanup_warnings = _sanitize_frame(frame, context.header_cells)
             warnings = _merge_warnings(context.warnings, cleanup_warnings)
+            inference_report = _xlsx_inference_report(context, column_count=len(frame.columns))
     elif normalized == "sav":
         import pyreadstat
 
@@ -182,10 +209,17 @@ def read_full(
         frame, metadata = pyreadstat.read_sav(path, **read_kwargs)
         source = _table_source(path, normalized)
         warnings = ()
+        inference_report = None
     else:
         raise ValueError(f"Unsupported table file type: {normalized}")
     _enforce_shape_limits(frame, limits)
-    return TableReadResult(frame=frame, metadata=metadata, source=source, warnings=warnings)
+    return TableReadResult(
+        frame=frame,
+        metadata=metadata,
+        source=source,
+        warnings=warnings,
+        inference_report=inference_report,
+    )
 
 
 def read_header(path: Path, file_type: str | None = None) -> list[str]:
@@ -253,40 +287,44 @@ def read_preview(
     normalized = normalize_file_type(path, file_type)
     if normalized == "csv":
         _enforce_file_size(path, limits.max_file_bytes)
-        frame, warnings = _read_csv_preview(path, limits)
+        frame, warnings, inference_report = _read_csv_preview(path, limits)
         return _preview_result(
             frame,
             None,
             _table_source(path, normalized),
             preview_limit=_preview_row_limit(limits),
             warnings=warnings,
+            inference_report=inference_report,
         )
     if normalized == "xlsx":
         _enforce_file_size(path, limits.max_file_bytes)
-        frame, source, warnings = _read_xlsx_preview(path, limits)
+        frame, source, warnings, inference_report = _read_xlsx_preview(path, limits)
         return _preview_result(
             frame,
             None,
             source,
             preview_limit=_preview_row_limit(limits),
             warnings=warnings,
+            inference_report=inference_report,
         )
     if normalized == "xls":
         _enforce_file_size(path, limits.max_file_bytes)
         if _is_text_table_file(path):
-            frame, warnings = _read_delimited_preview(
+            frame, warnings, inference_report = _read_delimited_preview(
                 path,
                 limits,
+                file_type=normalized,
                 source_warning=("XLS 확장자이지만 텍스트 표로 읽었습니다.",),
             )
         else:
-            frame, warnings = _read_excel_preview(path, limits)
+            frame, warnings, inference_report = _read_excel_preview(path, limits)
         return _preview_result(
             frame,
             None,
             _table_source(path, normalized),
             preview_limit=_preview_row_limit(limits),
             warnings=warnings,
+            inference_report=inference_report,
         )
     if normalized == "sav":
         import pyreadstat
@@ -319,7 +357,10 @@ def read_preview(
     raise ValueError(f"Unsupported table file type: {normalized}")
 
 
-def _read_csv_preview(path: Path, limits: PreviewReadLimits) -> tuple[pd.DataFrame, tuple[str, ...]]:
+def _read_csv_preview(
+    path: Path,
+    limits: PreviewReadLimits,
+) -> tuple[pd.DataFrame, tuple[str, ...], TableInferenceReport]:
     return _read_delimited_preview(path, limits)
 
 
@@ -327,6 +368,7 @@ def _read_delimited_full(
     path: Path,
     limits: FullReadLimits,
     *,
+    file_type: str = "csv",
     source_warning: tuple[str, ...] = (),
 ) -> TableReadResult:
     context = _csv_read_context(path)
@@ -341,6 +383,12 @@ def _read_delimited_full(
         metadata=None,
         source=_table_source(path, "csv"),
         warnings=_merge_warnings(source_warning, context.warnings, cleanup_warnings),
+        inference_report=_delimited_inference_report(
+            context,
+            file_type=file_type,
+            column_count=len(frame.columns),
+            extra_reasons=source_warning,
+        ),
     )
 
 
@@ -348,8 +396,9 @@ def _read_delimited_preview(
     path: Path,
     limits: PreviewReadLimits,
     *,
+    file_type: str = "csv",
     source_warning: tuple[str, ...] = (),
-) -> tuple[pd.DataFrame, tuple[str, ...]]:
+) -> tuple[pd.DataFrame, tuple[str, ...], TableInferenceReport]:
     context = _csv_read_context(path)
     header = pd.read_csv(path, nrows=0, **_csv_read_kwargs(context))
     selected_columns, warnings = _limited_preview_columns(
@@ -366,10 +415,22 @@ def _read_delimited_preview(
         header_cells = _selected_header_cells(header.columns, context.header_cells, selected_columns)
     frame = pd.read_csv(path, **read_kwargs)
     frame, cleanup_warnings = _sanitize_frame(frame, header_cells)
-    return frame, _merge_warnings(source_warning, context.warnings, warnings, cleanup_warnings)
+    return (
+        frame,
+        _merge_warnings(source_warning, context.warnings, warnings, cleanup_warnings),
+        _delimited_inference_report(
+            context,
+            file_type=file_type,
+            column_count=len(header.columns),
+            extra_reasons=source_warning,
+        ),
+    )
 
 
-def _read_excel_preview(path: Path, limits: PreviewReadLimits) -> tuple[pd.DataFrame, tuple[str, ...]]:
+def _read_excel_preview(
+    path: Path,
+    limits: PreviewReadLimits,
+) -> tuple[pd.DataFrame, tuple[str, ...], TableInferenceReport]:
     context = _excel_read_context(path, "xls")
     try:
         header = pd.read_excel(path, nrows=0, **_excel_read_kwargs(context))
@@ -392,13 +453,17 @@ def _read_excel_preview(path: Path, limits: PreviewReadLimits) -> tuple[pd.DataF
     except (ImportError, ValueError) as exc:
         raise TableReadError(_LEGACY_XLS_MESSAGE) from exc
     frame, cleanup_warnings = _sanitize_frame(frame, header_cells)
-    return frame, _merge_warnings(context.warnings, warnings, cleanup_warnings)
+    return (
+        frame,
+        _merge_warnings(context.warnings, warnings, cleanup_warnings),
+        _xlsx_inference_report(context, column_count=len(header.columns)),
+    )
 
 
 def _read_xlsx_preview(
     path: Path,
     limits: PreviewReadLimits,
-) -> tuple[pd.DataFrame, TableReadSource, tuple[str, ...]]:
+) -> tuple[pd.DataFrame, TableReadSource, tuple[str, ...], TableInferenceReport]:
     return _read_xlsx_rows(path, _preview_row_limit(limits), _preview_column_limit(limits))
 
 
@@ -406,7 +471,7 @@ def _read_xlsx_limited(
     path: Path,
     limits: FullReadLimits,
     context: _XlsxReadContext | None = None,
-) -> tuple[pd.DataFrame, TableReadSource, tuple[str, ...]]:
+) -> tuple[pd.DataFrame, TableReadSource, tuple[str, ...], TableInferenceReport]:
     workbook = _load_xlsx_workbook(path)
     try:
         worksheet = workbook.active
@@ -423,7 +488,12 @@ def _read_xlsx_limited(
         frame = pd.DataFrame(rows, columns=columns)
         frame, cleanup_warnings = _sanitize_frame(frame, context.header_cells)
         _reject_notice_only_table(frame, context.header_rows)
-        return frame, context.source, _merge_warnings(context.warnings, cleanup_warnings)
+        return (
+            frame,
+            context.source,
+            _merge_warnings(context.warnings, cleanup_warnings),
+            _xlsx_inference_report(context, column_count=len(columns)),
+        )
     finally:
         workbook.close()
 
@@ -432,7 +502,7 @@ def _read_xlsx_rows(
     path: Path,
     max_rows: int,
     max_columns: int | None = None,
-) -> tuple[pd.DataFrame, TableReadSource, tuple[str, ...]]:
+) -> tuple[pd.DataFrame, TableReadSource, tuple[str, ...], TableInferenceReport]:
     context = _xlsx_read_context(path)
     workbook = _load_xlsx_workbook(path)
     try:
@@ -440,8 +510,14 @@ def _read_xlsx_rows(
         iterator = worksheet.iter_rows(values_only=True)
         _skip_rows(iterator, context.data_start_row_index)
         if not context.header_cells:
-            return pd.DataFrame(), context.source, context.warnings
+            return (
+                pd.DataFrame(),
+                context.source,
+                context.warnings,
+                _xlsx_inference_report(context, column_count=0),
+            )
         columns = _xlsx_columns(context.header_cells)
+        inferred_column_count = len(columns)
         selected_columns, warnings = _limited_preview_columns(tuple(columns), max_columns)
         header_cells = context.header_cells
         if selected_columns is not None:
@@ -453,7 +529,12 @@ def _read_xlsx_rows(
         frame = pd.DataFrame(rows, columns=columns)
         frame, cleanup_warnings = _sanitize_frame(frame, header_cells)
         _reject_notice_only_table(frame, context.header_rows)
-        return frame, context.source, _merge_warnings(context.warnings, warnings, cleanup_warnings)
+        return (
+            frame,
+            context.source,
+            _merge_warnings(context.warnings, warnings, cleanup_warnings),
+            _xlsx_inference_report(context, column_count=inferred_column_count),
+        )
     finally:
         workbook.close()
 
@@ -554,6 +635,54 @@ def _csv_read_kwargs(context: _DelimitedReadContext) -> dict[str, Any]:
     return kwargs
 
 
+def _delimited_inference_report(
+    context: _DelimitedReadContext,
+    *,
+    file_type: str,
+    column_count: int,
+    extra_reasons: tuple[str, ...] = (),
+) -> TableInferenceReport:
+    return TableInferenceReport(
+        file_type=file_type,
+        header_row_index=context.header_row_index,
+        header_row_count=context.header_row_count,
+        data_start_row_index=context.data_start_row_index,
+        column_count=column_count,
+        confidence=_table_inference_confidence(
+            column_count,
+            header_row_index=context.header_row_index,
+        ),
+        reasons=_table_inference_reasons(
+            header_row_index=context.header_row_index,
+            header_row_count=context.header_row_count,
+            extra_reasons=extra_reasons,
+        ),
+    )
+
+
+def _table_inference_confidence(column_count: int, *, header_row_index: int) -> str:
+    if column_count < 2:
+        return "low"
+    if header_row_index >= 10:
+        return "medium"
+    return "high"
+
+
+def _table_inference_reasons(
+    *,
+    header_row_index: int,
+    header_row_count: int,
+    extra_reasons: tuple[str, ...] = (),
+) -> tuple[str, ...]:
+    reasons: list[str] = []
+    reasons.extend(extra_reasons)
+    reasons.extend(_header_offset_warnings(header_row_index))
+    reasons.extend(_multi_header_warnings(header_row_count))
+    if not reasons and header_row_index == 0 and header_row_count == 1:
+        reasons.append("첫 번째 행을 헤더로 인식했습니다.")
+    return tuple(reasons)
+
+
 def _safe_xlsx_read_context(path: Path) -> _XlsxReadContext:
     try:
         return _xlsx_read_context(path)
@@ -611,6 +740,26 @@ def _xlsx_read_kwargs(context: _XlsxReadContext) -> dict[str, Any]:
     else:
         kwargs["header"] = context.header_row_index
     return kwargs
+
+
+def _xlsx_inference_report(context: _XlsxReadContext, *, column_count: int) -> TableInferenceReport:
+    return TableInferenceReport(
+        file_type=context.source.file_type,
+        sheet_name=context.source.sheet_name,
+        sheet_names=context.source.sheet_names,
+        header_row_index=context.header_row_index,
+        header_row_count=context.header_row_count,
+        data_start_row_index=context.data_start_row_index,
+        column_count=column_count,
+        confidence=_table_inference_confidence(
+            column_count,
+            header_row_index=context.header_row_index,
+        ),
+        reasons=_table_inference_reasons(
+            header_row_index=context.header_row_index,
+            header_row_count=context.header_row_count,
+        ),
+    )
 
 
 def _excel_read_context(path: Path, file_type: str) -> _XlsxReadContext:
@@ -1074,12 +1223,14 @@ def _preview_result(
     *,
     preview_limit: int,
     warnings: tuple[str, ...] = (),
+    inference_report: TableInferenceReport | None = None,
 ) -> TablePreviewResult:
     return TablePreviewResult(
         frame=frame,
         metadata=metadata,
         source=source,
         warnings=warnings,
+        inference_report=inference_report,
         preview_limit=preview_limit,
         sample_rows=_sample_rows(frame),
     )

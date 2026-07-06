@@ -295,6 +295,32 @@ def test_read_full_flattens_two_row_public_csv_headers(tmp_path) -> None:
     assert "다중 헤더 2행을 하나의 열 이름으로 합쳤습니다." in result.warnings
 
 
+def test_read_preview_reports_two_row_public_csv_inference(tmp_path) -> None:
+    path = tmp_path / "kosis-two-row.csv"
+    text = "\n".join(
+        [
+            "행정구역별(1),특성별(1),특성별(2),2025,2025,2025",
+            "행정구역별(1),특성별(1),특성별(2),계 (%),매우 만족,약간 만족",
+            "전국,전체,계,100.0,11.5,27.9",
+            "서울특별시,전체,계,100.0,11.0,30.3",
+        ]
+    )
+    path.write_bytes((text + "\n").encode("cp949"))
+
+    result = read_preview(path, "csv")
+
+    report = result.inference_report
+    assert report is not None
+    assert report.file_type == "csv"
+    assert report.header_row_index == 0
+    assert report.header_row_count == 2
+    assert report.data_start_row_index == 2
+    assert report.column_count == 6
+    assert report.confidence == "high"
+    assert report.requires_user_confirmation is False
+    assert "다중 헤더 2행을 하나의 열 이름으로 합쳤습니다." in report.reasons
+
+
 def test_read_full_keeps_categorical_survey_rows_as_data(tmp_path) -> None:
     path = tmp_path / "survey.csv"
     text = "\n".join(
@@ -314,6 +340,56 @@ def test_read_full_keeps_categorical_survey_rows_as_data(tmp_path) -> None:
         {"group": "B", "region": "Busan", "score": 2},
     ]
     assert "다중 헤더 2행을 하나의 열 이름으로 합쳤습니다." not in result.warnings
+
+
+def test_read_preview_reports_plain_csv_inference(tmp_path) -> None:
+    path = tmp_path / "survey.csv"
+    text = "\n".join(
+        [
+            "group,region,score",
+            "A,Seoul,1",
+            "B,Busan,2",
+        ]
+    )
+    path.write_text(text + "\n", encoding="utf-8")
+
+    result = read_preview(path, "csv")
+
+    report = result.inference_report
+    assert report is not None
+    assert report.file_type == "csv"
+    assert report.header_row_index == 0
+    assert report.header_row_count == 1
+    assert report.data_start_row_index == 1
+    assert report.column_count == 3
+    assert report.confidence == "high"
+    assert report.requires_user_confirmation is False
+    assert report.reasons == ("첫 번째 행을 헤더로 인식했습니다.",)
+
+
+def test_read_preview_reports_medium_confidence_for_deep_preamble(tmp_path) -> None:
+    path = tmp_path / "real-estate.csv"
+    preamble = [f"검색조건 {index}: 값" for index in range(15)]
+    text = "\n".join(
+        [
+            *preamble,
+            "시군구,번지,거래금액",
+            "서울특별시 종로구,1-1,100000",
+        ]
+    )
+    path.write_text(text + "\n", encoding="utf-8")
+
+    result = read_preview(path, "csv")
+
+    report = result.inference_report
+    assert report is not None
+    assert report.header_row_index == 15
+    assert report.header_row_count == 1
+    assert report.data_start_row_index == 16
+    assert report.column_count == 3
+    assert report.confidence == "medium"
+    assert report.requires_user_confirmation is False
+    assert "표 헤더 앞의 안내 행 15개를 건너뛰었습니다." in report.reasons
 
 
 def test_read_full_keeps_all_text_survey_rows_as_data(tmp_path) -> None:
@@ -377,6 +453,41 @@ def test_read_full_flattens_merged_xlsx_header_rows(tmp_path) -> None:
     assert "다중 헤더 3행을 하나의 열 이름으로 합쳤습니다." in result.warnings
 
 
+def test_read_preview_reports_merged_xlsx_header_inference(tmp_path) -> None:
+    from openpyxl import Workbook
+
+    path = tmp_path / "merged-public-header.xlsx"
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.title = "재적학생"
+    worksheet.append(["2020년_ [재적 학생 현황 (대학원)]"])
+    worksheet.append(["작성자 : 교육혁신과"])
+    worksheet.append([])
+    worksheet.append(["순번", "기준연도", "학과", "재학생(A)", None, None, None])
+    worksheet.append([None, None, None, "계", None, "남", None])
+    worksheet.append([None, None, None, "정원내", "정원외", "정원내", "정원외"])
+    worksheet.append(["합 계", None, None, 3240, 743, 1667, 417])
+    worksheet.append([2, "2020", "ICT융합학과", 0, 37, 0, 27])
+    workbook.save(path)
+    workbook.close()
+
+    result = read_preview(path, "xlsx")
+
+    report = result.inference_report
+    assert report is not None
+    assert report.file_type == "xlsx"
+    assert report.sheet_name == "재적학생"
+    assert report.sheet_names == ("재적학생",)
+    assert report.header_row_index == 3
+    assert report.header_row_count == 3
+    assert report.data_start_row_index == 6
+    assert report.column_count == 7
+    assert report.confidence == "high"
+    assert report.requires_user_confirmation is False
+    assert "표 헤더 앞의 안내 행 3개를 건너뛰었습니다." in report.reasons
+    assert "다중 헤더 3행을 하나의 열 이름으로 합쳤습니다." in report.reasons
+
+
 def test_read_preview_reads_tab_delimited_text_with_xls_extension(tmp_path) -> None:
     path = tmp_path / "weather.xls"
     text = "지점\t지점명\t일시\t기온(°C)\n108\t서울\t2026-07-06 01:00\t25.1\n"
@@ -389,6 +500,15 @@ def test_read_preview_reads_tab_delimited_text_with_xls_extension(tmp_path) -> N
         {"지점": 108, "지점명": "서울", "일시": "2026-07-06 01:00", "기온(°C)": 25.1},
     )
     assert "XLS 확장자이지만 텍스트 표로 읽었습니다." in result.warnings
+    report = result.inference_report
+    assert report is not None
+    assert report.file_type == "xls"
+    assert report.header_row_index == 0
+    assert report.header_row_count == 1
+    assert report.data_start_row_index == 1
+    assert report.column_count == 4
+    assert report.confidence == "high"
+    assert "XLS 확장자이지만 텍스트 표로 읽었습니다." in report.reasons
 
 
 def test_read_preview_uses_excel_reader_for_binary_xls(tmp_path, monkeypatch) -> None:
@@ -410,6 +530,15 @@ def test_read_preview_uses_excel_reader_for_binary_xls(tmp_path, monkeypatch) ->
 
     assert result.columns == ("시도", "값")
     assert result.sample_rows == ({"시도": "서울", "값": 1},)
+    report = result.inference_report
+    assert report is not None
+    assert report.file_type == "xls"
+    assert report.header_row_index == 0
+    assert report.header_row_count == 1
+    assert report.data_start_row_index == 1
+    assert report.column_count == 2
+    assert report.confidence == "high"
+    assert report.reasons == ("첫 번째 행을 헤더로 인식했습니다.",)
 
 
 def test_read_preview_flattens_two_row_binary_xls_headers(tmp_path, monkeypatch) -> None:
@@ -452,6 +581,13 @@ def test_read_preview_flattens_two_row_binary_xls_headers(tmp_path, monkeypatch)
         },
     )
     assert "다중 헤더 2행을 하나의 열 이름으로 합쳤습니다." in result.warnings
+    report = result.inference_report
+    assert report is not None
+    assert report.file_type == "xls"
+    assert report.header_row_count == 2
+    assert report.data_start_row_index == 2
+    assert report.column_count == 4
+    assert "다중 헤더 2행을 하나의 열 이름으로 합쳤습니다." in report.reasons
 
 
 def test_read_full_flattens_two_row_binary_xls_headers(tmp_path, monkeypatch) -> None:

@@ -76,6 +76,8 @@ def test_import_preview_service_surfaces_public_data_header_warning(tmp_path) ->
     preview = ImportPreviewService().preview(data_path)
 
     assert preview.ok is True
+    assert "추론: 헤더 1행, 데이터 시작 5행, 확신 high" in preview.text
+    assert "근거: 표 헤더 앞의 안내 행 3개를 건너뛰었습니다." in preview.text
     assert "표 헤더 앞의 안내 행 3개를 건너뛰었습니다." in preview.text
     assert "자치구" in preview.text
     assert "종로구" in preview.text
@@ -91,6 +93,7 @@ def test_import_preview_service_accepts_text_xls_public_data(tmp_path) -> None:
     assert preview.ok is True
     assert "4 variables" in preview.text
     assert "XLS 확장자이지만 텍스트 표로 읽었습니다." in preview.text
+    assert "근거: XLS 확장자이지만 텍스트 표로 읽었습니다." in preview.text
     assert "지점명=서울" in preview.text
 
 
