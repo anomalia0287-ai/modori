@@ -63,18 +63,25 @@ the package/payload/VM flow is rerun.
 
 ## Design Direction Discussion So Far
 
-The owner wants Claude Design to participate in the visual/product design pass,
-but Claude Design hit a usage limit before returning a design review.
+The owner initially wanted Claude Design to participate in the visual/product
+design pass, but Claude Design hit a usage limit before returning a design
+review.
 
-Agreed role split:
+Current update as of 2026-07-06: the owner has withdrawn Claude-side design
+ownership for now. Do not wait for Claude Design output before planning the
+redesign pass.
 
-- Claude Design: visual direction, mockups, density, typography, color, spacing,
-  component polish, screen-level critique.
-- Codex: product/architecture supervisor, QML/Python boundary protection,
-  reproducibility model protection, implementation feasibility, test/package/VM
-  verification, and final acceptance/rejection of design suggestions.
+Current role split while Claude Design is withdrawn:
 
-Do not treat Claude output as authoritative. Classify each proposal as:
+- Codex: likely primary redesign owner, product/architecture supervisor,
+  QML/Python boundary protection, reproducibility model protection,
+  implementation feasibility, test/package/VM verification, and final
+  acceptance/rejection of design suggestions.
+- Claude Design: optional future external critique only if the owner
+  reintroduces it.
+
+Do not treat any future Claude output as authoritative. If Claude Design is
+reintroduced, classify each proposal as:
 
 - accept;
 - accept with modification;
@@ -132,10 +139,42 @@ Screenshots were captured from the main PC packaged app, not from the VM. The
 owner stated that VM screenshots are not available; if screenshots are needed,
 capture them on the main PC.
 
-Use `PROMPT_FOR_CLAUDE_DESIGN.md` as the prompt when Claude Design becomes
-available again.
+Use `PROMPT_FOR_CLAUDE_DESIGN.md` as the prompt only if Claude Design is
+reintroduced.
 
-## What To Do When Claude Design Returns Output
+## Owner-Provided Redesign Reference
+
+The owner provided an additional external reference folder:
+
+`C:\Users\V\Desktop\폴더 검토 및 UI 개선`
+
+Observed files:
+
+- `.thumbnail`: WebP preview of the redesigned import dialog.
+- `Modori Redesign.dc.html`: design-canvas HTML containing three visual routes.
+- `Modori Redesign-print-1y3tng6.dc.html`: print-oriented copy of the same
+  routes with extra print helper code.
+- `support.js`: generated design-canvas runtime, not a product implementation
+  reference.
+- `uploads\claude-design-packet-2026-07-05\...`: copy of the existing screenshot
+  packet.
+
+The HTML contains these routes, each covering entry, import, guided work/results,
+and transform screens:
+
+- `2a` / Crystal Aurora: most expressive; colorful glass/aurora background.
+- `1a` / Mist Glass: immersive glass surface over a soft aqua background.
+- `1b` / Porcelain Glass: restrained white work surface, data-centered layout,
+  and report-like result panel.
+
+Implementation guidance: use `1b` as the strongest baseline for QML redesign
+because it best matches a professional statistical desktop tool and the current
+thin-shell architecture. Borrow selectively from `2a`/`1a` for the entry/import
+atmosphere only. Do not directly port remote font dependencies, heavy animated
+aurora backgrounds, large blur/backdrop effects, or design-canvas runtime
+assumptions into the product.
+
+## What To Do If Claude Design Is Reintroduced
 
 1. Save or paste the Claude Design output into the current thread.
 2. Review it against the constraints above and `docs\POLICY.md`.
@@ -145,7 +184,7 @@ available again.
    - reason;
    - affected QML/component files;
    - risk and test coverage needed.
-4. Only then start implementation.
+4. Only then start implementation for accepted or modified proposals.
 
 If the owner asks to implement the design pass, prefer a separate branch or
 worktree from `release/readiness-1-9`, for example:
@@ -212,6 +251,6 @@ engineering-focused phrasing.
 
 ## Immediate Next Step
 
-Wait for Claude Design output, or if the owner wants to proceed without it,
-create a design-polish plan from the existing screenshot packet and implement
-screen-by-screen with verification after each meaningful slice.
+If the owner asks Codex to proceed with the redesign, create a design-polish
+plan from the existing screenshot packet and implement screen-by-screen with
+verification after each meaningful slice. Do not block on Claude Design output.
