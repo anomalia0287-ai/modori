@@ -20,13 +20,27 @@ class UiImportFlow:
             if layout is not None
             else self._preview_service.preview(path)
         )
+        previous_pending_path = self.pending_path
         self.preview_text = preview.text
-        self.pending_path = preview.pending_path
-        self.table_preview = getattr(preview, "table_preview", None)
-        self.table_layout = _table_layout_params(layout) if preview.ok else None
+        if preview.ok:
+            self.pending_path = preview.pending_path
+            self.table_preview = getattr(preview, "table_preview", None)
+            self.table_layout = _table_layout_params(layout)
+        else:
+            self.pending_path = previous_pending_path if layout is not None else preview.pending_path
+            self.table_preview = None
+            self.table_layout = None
         return bool(preview.ok)
 
     def require_pending_path(self) -> Path | None:
+        if self.pending_path is None:
+            self.preview_text = "가져올 파일이 선택되지 않았습니다."
+            return None
+        if self.table_preview is None:
+            return None
+        return self.pending_path
+
+    def require_pending_file_path(self) -> Path | None:
         if self.pending_path is None:
             self.preview_text = "가져올 파일이 선택되지 않았습니다."
             return None

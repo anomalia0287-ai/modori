@@ -116,6 +116,31 @@ def test_adjust_pending_import_layout_repreviews_and_confirms_same_layout(tmp_pa
     assert "가져온 데이터 미리보기: 2행 · 2열" in controller.dataViewNotice
 
 
+def test_failed_layout_preview_keeps_pending_file_for_correction(tmp_path) -> None:
+    from openpyxl import Workbook
+
+    from modori.ui.controller import UiController
+
+    data_path = tmp_path / "multi-sheet.xlsx"
+    workbook = Workbook()
+    notice = workbook.active
+    notice.title = "안내"
+    notice.append(["□ 안내문만 있는 시트입니다."])
+    data = workbook.create_sheet("자료")
+    data.append(["city", "value"])
+    data.append(["Seoul", 10])
+    workbook.active = workbook.sheetnames.index("자료")
+    workbook.save(data_path)
+    workbook.close()
+    controller = UiController()
+
+    assert controller.previewDataFilePath(str(data_path)) is True
+    assert controller.previewPendingImportLayout(1, 1, 2, "없는시트") is False
+    assert "지정한 시트를 찾지 못했습니다." in controller.importPreviewText
+    assert controller.previewPendingImportLayout(1, 1, 2, "자료") is True
+    assert "사용자 지정 표 레이아웃을 적용했습니다." in controller.importPreviewText
+
+
 def test_recent_files_persist_to_settings_file(tmp_path, monkeypatch) -> None:
     from tests.ui.test_end_to_end_ui_flow import write_reference_csv
     from modori.ui.controller import UiController

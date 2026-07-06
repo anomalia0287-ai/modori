@@ -25,7 +25,7 @@ class ImportLayoutControllerMixin:
         data_start_row: int,
         sheet_name: str,
     ) -> bool:
-        pending_path = self._services.import_flow.require_pending_path()
+        pending_path = self._services.import_flow.require_pending_file_path()
         if pending_path is None:
             self._last_error = self._services.import_flow.preview_text
             self._last_message = ""
