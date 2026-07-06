@@ -176,7 +176,7 @@ def test_import_step_writes_reads_only_xlsx_header(tmp_path, monkeypatch) -> Non
     )
 
     assert step.writes() == {"q1", "q2"}
-    assert calls == [{"nrows": 0}]
+    assert calls == [{"nrows": 0, "header": 0}]
 
 
 def test_import_step_writes_reads_only_sav_metadata(tmp_path, monkeypatch) -> None:

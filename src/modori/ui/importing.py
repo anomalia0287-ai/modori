@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from modori.steps.data_prep import metadata_variables
-from modori.table_io import TablePreviewResult, read_preview
+from modori.table_io import TablePreviewResult, TableReadError, read_preview
 
 
 @dataclass(frozen=True)
@@ -17,7 +17,7 @@ class ImportPreview:
 
 
 class ImportPreviewService:
-    supported_file_types = {"csv", "xlsx", "sav"}
+    supported_file_types = {"csv", "xlsx", "xls", "sav"}
 
     def preview(self, path: Path) -> ImportPreview:
         file_type = path.suffix.lower().lstrip(".")
@@ -25,6 +25,8 @@ class ImportPreviewService:
             return ImportPreview(ok=False, text="지원하지 않는 파일 형식입니다.")
         try:
             table_preview = read_preview(path, file_type)
+        except TableReadError as exc:
+            return ImportPreview(ok=False, text=exc.message_ko)
         except Exception:
             return ImportPreview(ok=False, text="파일 미리보기를 만들지 못했습니다.")
         frame = table_preview.frame

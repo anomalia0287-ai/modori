@@ -81,6 +81,35 @@ def test_import_preview_service_surfaces_public_data_header_warning(tmp_path) ->
     assert "종로구" in preview.text
 
 
+def test_import_preview_service_accepts_text_xls_public_data(tmp_path) -> None:
+    data_path = tmp_path / "weather.xls"
+    text = "지점\t지점명\t일시\t기온(°C)\n108\t서울\t2026-07-06 01:00\t25.1\n"
+    data_path.write_bytes(text.encode("cp949"))
+
+    preview = ImportPreviewService().preview(data_path)
+
+    assert preview.ok is True
+    assert "4 variables" in preview.text
+    assert "XLS 확장자이지만 텍스트 표로 읽었습니다." in preview.text
+    assert "지점명=서울" in preview.text
+
+
+def test_import_preview_service_rejects_notice_only_xlsx_with_specific_error(tmp_path) -> None:
+    from openpyxl import Workbook
+
+    data_path = tmp_path / "notice-only.xlsx"
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.append(["□ 본 서비스에서 제공하는 정보는 참고용으로만 활용하시기 바랍니다."])
+    workbook.save(data_path)
+    workbook.close()
+
+    preview = ImportPreviewService().preview(data_path)
+
+    assert preview.ok is False
+    assert preview.text == "표 데이터가 없습니다. 원본 포털에서 CSV 파일을 다시 받거나 표가 있는 시트를 선택해 주세요."
+
+
 def test_import_preview_service_reads_bounded_csv_preview(tmp_path, monkeypatch) -> None:
     data_path = tmp_path / "large-survey.csv"
     data_path.write_text("score\n1\n2\n", encoding="utf-8")

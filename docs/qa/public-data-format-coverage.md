@@ -38,9 +38,45 @@ until a stable no-session URL is captured.
 - XLSX files with leading title/date/unit rows before the real header.
 - XLSX files with blank and duplicate headers.
 - UI preview text, data notice, and import-step notes surface loader warnings.
+- Two-row Korean statistical-table headers are flattened into unique column
+  names for CSV and legacy XLS files.
+- Three-row merged XLSX headers are flattened into unique column names.
+- Files with an `.xls` extension but tabular text content are read as delimited
+  text and surfaced with a warning.
+- Legacy binary `.xls` files are supported through `xlrd`.
+- One-cell or header-only XLSX downloads are rejected with a specific "no table
+  data" message instead of being treated as a successful import.
+
+## D1 Local Corpus Check
+
+Local corpus path checked on 2026-07-06:
+`C:\Users\V\Desktop\D1`
+
+Corpus shape:
+
+- 40 files, about 62.7 MB.
+- 15 CSV, 14 XLSX, 11 XLS.
+- Sources include KOSIS-style statistical tables, MOLIT real-estate transaction
+  downloads, KMA weather exports, university status tables, and library
+  statistics.
+
+Current loader result after the hardening pass:
+
+- 27 of 40 files preview successfully.
+- The 13 failures are deliberate no-table XLSX downloads that contain only a
+  single notice/header cell. They now fail with a user-facing instruction to
+  reacquire CSV or a sheet containing a real table.
+- KOSIS-style CSV/XLS two-row headers now flatten into columns such as
+  `2025 계 (%)` and `2025 매우 만족`.
+- Weather `.xls` files that are actually tab-delimited CP949 text now open with
+  an explicit text-fallback warning.
+- The 부산대학교 XLSX merged three-row header now flattens into columns such as
+  `재학생(A) 계 정원내`.
 
 ## Still Needed
 
-- A small real CSV captured from a public portal download.
-- A small real XLSX captured from a public portal download.
+- Decide whether aggregate/summary rows such as `합 계` should be automatically
+  dropped, warned, or kept as data.
+- Add a persistent checked-in minimal corpus for the D1-derived patterns if the
+  team wants release gates that do not depend on a local desktop folder.
 - HWP/PDF table extraction is explicitly out of current table-import scope.

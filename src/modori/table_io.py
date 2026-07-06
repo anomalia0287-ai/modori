@@ -9,6 +9,12 @@ from typing import Any
 import pandas as pd
 
 
+class TableReadError(ValueError):
+    def __init__(self, message_ko: str) -> None:
+        super().__init__(message_ko)
+        self.message_ko = message_ko
+
+
 @dataclass(frozen=True)
 class TableReadSource:
     path: Path
@@ -83,6 +89,8 @@ class _DelimitedReadContext:
     encoding: str | None
     delimiter: str
     header_row_index: int
+    header_row_count: int
+    data_start_row_index: int
     header_cells: tuple[Any, ...]
     warnings: tuple[str, ...] = ()
 
@@ -91,12 +99,17 @@ class _DelimitedReadContext:
 class _XlsxReadContext:
     source: TableReadSource
     header_row_index: int
+    header_row_count: int
+    data_start_row_index: int
     header_cells: tuple[Any, ...]
+    header_rows: tuple[tuple[Any, ...], ...] = ()
     warnings: tuple[str, ...] = ()
 
 
 DEFAULT_PREVIEW_READ_LIMITS = PreviewReadLimits()
 DEFAULT_FULL_READ_LIMITS = FullReadLimits()
+_LEGACY_XLS_MESSAGE = "구형 Excel(.xls) 파일은 현재 지원하지 않습니다. Excel에서 .xlsx 또는 .csv로 저장한 뒤 다시 열어 주세요."
+_EMPTY_TABLE_MESSAGE = "표 데이터가 없습니다. 원본 포털에서 CSV 파일을 다시 받거나 표가 있는 시트를 선택해 주세요."
 
 
 def normalize_file_type(path: Path, file_type: str | None = None) -> str:
@@ -131,23 +144,35 @@ def read_full(
         else:
             context = _xlsx_read_context(path)
             source = context.source
-            frame = pd.read_excel(
-                path,
-                header=context.header_row_index,
-                **_xlsx_read_excel_kwargs(source),
-            )
+            frame = pd.read_excel(path, **_xlsx_read_kwargs(context))
             frame, cleanup_warnings = _sanitize_frame(frame, context.header_cells)
+            _reject_notice_only_table(frame, context.header_rows)
             warnings = _merge_warnings(context.warnings, cleanup_warnings)
         metadata = None
     elif normalized == "xls":
-        read_kwargs = {}
-        if limits.max_rows is not None:
-            read_kwargs["nrows"] = limits.max_rows + 1
-        frame = pd.read_excel(path, **read_kwargs)
-        metadata = None
-        source = _table_source(path, normalized)
-        frame, cleanup_warnings = _sanitize_frame(frame, tuple(frame.columns))
-        warnings = cleanup_warnings
+        if _is_text_table_file(path):
+            result = _read_delimited_full(
+                path,
+                limits,
+                source_warning=("XLS 확장자이지만 텍스트 표로 읽었습니다.",),
+            )
+            frame = result.frame
+            metadata = result.metadata
+            source = _table_source(path, normalized)
+            warnings = result.warnings
+        else:
+            context = _excel_read_context(path, normalized)
+            read_kwargs = _excel_read_kwargs(context)
+            if limits.max_rows is not None:
+                read_kwargs["nrows"] = limits.max_rows + 1
+            try:
+                frame = pd.read_excel(path, **read_kwargs)
+            except ImportError as exc:
+                raise TableReadError(_LEGACY_XLS_MESSAGE) from exc
+            metadata = None
+            source = _table_source(path, normalized)
+            frame, cleanup_warnings = _sanitize_frame(frame, context.header_cells)
+            warnings = _merge_warnings(context.warnings, cleanup_warnings)
     elif normalized == "sav":
         import pyreadstat
 
@@ -178,18 +203,27 @@ def read_header_result(path: Path, file_type: str | None = None) -> TableHeaderR
     elif normalized == "xlsx":
         context = _safe_xlsx_read_context(path)
         source = context.source
-        read_kwargs = _xlsx_read_excel_kwargs(source)
-        if context.header_row_index > 0:
-            read_kwargs["header"] = context.header_row_index
         frame = pd.read_excel(
             path,
             nrows=0,
-            **read_kwargs,
+            **_xlsx_read_kwargs(context),
         )
         frame, _ = _sanitize_frame(frame, context.header_cells)
         columns = frame.columns
     elif normalized == "xls":
-        columns = pd.read_excel(path, nrows=0).columns
+        if _is_text_table_file(path):
+            context = _csv_read_context(path)
+            frame = pd.read_csv(path, nrows=0, **_csv_read_kwargs(context))
+            frame, _ = _sanitize_frame(frame, context.header_cells)
+            columns = frame.columns
+        else:
+            try:
+                context = _excel_read_context(path, normalized)
+                frame = pd.read_excel(path, nrows=0, **_excel_read_kwargs(context))
+                frame, _ = _sanitize_frame(frame, context.header_cells)
+                columns = frame.columns
+            except ImportError as exc:
+                raise TableReadError(_LEGACY_XLS_MESSAGE) from exc
         source = _table_source(path, normalized)
     elif normalized == "sav":
         import pyreadstat
@@ -239,7 +273,14 @@ def read_preview(
         )
     if normalized == "xls":
         _enforce_file_size(path, limits.max_file_bytes)
-        frame, warnings = _read_excel_preview(path, limits)
+        if _is_text_table_file(path):
+            frame, warnings = _read_delimited_preview(
+                path,
+                limits,
+                source_warning=("XLS 확장자이지만 텍스트 표로 읽었습니다.",),
+            )
+        else:
+            frame, warnings = _read_excel_preview(path, limits)
         return _preview_result(
             frame,
             None,
@@ -279,6 +320,36 @@ def read_preview(
 
 
 def _read_csv_preview(path: Path, limits: PreviewReadLimits) -> tuple[pd.DataFrame, tuple[str, ...]]:
+    return _read_delimited_preview(path, limits)
+
+
+def _read_delimited_full(
+    path: Path,
+    limits: FullReadLimits,
+    *,
+    source_warning: tuple[str, ...] = (),
+) -> TableReadResult:
+    context = _csv_read_context(path)
+    read_kwargs = _csv_read_kwargs(context)
+    if limits.max_rows is not None:
+        read_kwargs["nrows"] = limits.max_rows + 1
+    frame = pd.read_csv(path, **read_kwargs)
+    frame, cleanup_warnings = _sanitize_frame(frame, context.header_cells)
+    _enforce_shape_limits(frame, limits)
+    return TableReadResult(
+        frame=frame,
+        metadata=None,
+        source=_table_source(path, "csv"),
+        warnings=_merge_warnings(source_warning, context.warnings, cleanup_warnings),
+    )
+
+
+def _read_delimited_preview(
+    path: Path,
+    limits: PreviewReadLimits,
+    *,
+    source_warning: tuple[str, ...] = (),
+) -> tuple[pd.DataFrame, tuple[str, ...]]:
     context = _csv_read_context(path)
     header = pd.read_csv(path, nrows=0, **_csv_read_kwargs(context))
     selected_columns, warnings = _limited_preview_columns(
@@ -295,19 +366,33 @@ def _read_csv_preview(path: Path, limits: PreviewReadLimits) -> tuple[pd.DataFra
         header_cells = _selected_header_cells(header.columns, context.header_cells, selected_columns)
     frame = pd.read_csv(path, **read_kwargs)
     frame, cleanup_warnings = _sanitize_frame(frame, header_cells)
-    return frame, _merge_warnings(context.warnings, warnings, cleanup_warnings)
+    return frame, _merge_warnings(source_warning, context.warnings, warnings, cleanup_warnings)
 
 
 def _read_excel_preview(path: Path, limits: PreviewReadLimits) -> tuple[pd.DataFrame, tuple[str, ...]]:
-    header = pd.read_excel(path, nrows=0)
+    context = _excel_read_context(path, "xls")
+    try:
+        header = pd.read_excel(path, nrows=0, **_excel_read_kwargs(context))
+    except (ImportError, ValueError) as exc:
+        raise TableReadError(_LEGACY_XLS_MESSAGE) from exc
     selected_columns, warnings = _limited_preview_columns(
         tuple(str(column) for column in header.columns),
         limits,
     )
-    read_kwargs: dict[str, Any] = {"nrows": _preview_row_limit(limits)}
+    read_kwargs: dict[str, Any] = {
+        **_excel_read_kwargs(context),
+        "nrows": _preview_row_limit(limits),
+    }
+    header_cells = context.header_cells
     if selected_columns is not None:
         read_kwargs["usecols"] = list(selected_columns)
-    return pd.read_excel(path, **read_kwargs), warnings
+        header_cells = _selected_header_cells(header.columns, context.header_cells, selected_columns)
+    try:
+        frame = pd.read_excel(path, **read_kwargs)
+    except (ImportError, ValueError) as exc:
+        raise TableReadError(_LEGACY_XLS_MESSAGE) from exc
+    frame, cleanup_warnings = _sanitize_frame(frame, header_cells)
+    return frame, _merge_warnings(context.warnings, warnings, cleanup_warnings)
 
 
 def _read_xlsx_preview(
@@ -327,7 +412,7 @@ def _read_xlsx_limited(
         worksheet = workbook.active
         context = context or _xlsx_read_context_from_workbook(path, workbook, worksheet)
         iterator = worksheet.iter_rows(values_only=True)
-        _skip_rows(iterator, context.header_row_index + 1)
+        _skip_rows(iterator, context.data_start_row_index)
         columns = _xlsx_columns(context.header_cells)
         row_limit = _xlsx_limited_row_read_count(limits, len(columns))
         rows = []
@@ -337,6 +422,7 @@ def _read_xlsx_limited(
                 break
         frame = pd.DataFrame(rows, columns=columns)
         frame, cleanup_warnings = _sanitize_frame(frame, context.header_cells)
+        _reject_notice_only_table(frame, context.header_rows)
         return frame, context.source, _merge_warnings(context.warnings, cleanup_warnings)
     finally:
         workbook.close()
@@ -352,7 +438,7 @@ def _read_xlsx_rows(
     try:
         worksheet = workbook.active
         iterator = worksheet.iter_rows(values_only=True)
-        _skip_rows(iterator, context.header_row_index + 1)
+        _skip_rows(iterator, context.data_start_row_index)
         if not context.header_cells:
             return pd.DataFrame(), context.source, context.warnings
         columns = _xlsx_columns(context.header_cells)
@@ -366,6 +452,7 @@ def _read_xlsx_rows(
             rows.append(list(row[: len(columns)]))
         frame = pd.DataFrame(rows, columns=columns)
         frame, cleanup_warnings = _sanitize_frame(frame, header_cells)
+        _reject_notice_only_table(frame, context.header_rows)
         return frame, context.source, _merge_warnings(context.warnings, warnings, cleanup_warnings)
     finally:
         workbook.close()
@@ -384,22 +471,28 @@ def _csv_read_context(path: Path) -> _DelimitedReadContext:
             encoding=None,
             delimiter=",",
             header_row_index=0,
+            header_row_count=1,
+            data_start_row_index=1,
             header_cells=(),
         )
     encoding, encoding_warnings = _detect_text_encoding(sample)
     text = sample.decode(encoding, errors="strict")
     delimiter = _detect_delimiter(text)
     rows = _parse_delimited_sample(text, delimiter)
-    header_row_index = _detect_header_row_index(rows)
-    header_cells = tuple(rows[header_row_index]) if header_row_index < len(rows) else ()
+    header_row_index, header_row_count = _detect_header_layout(rows)
+    header_rows = tuple(rows[header_row_index : header_row_index + header_row_count])
+    header_cells = _flatten_header_rows(header_rows)
     warnings = list(encoding_warnings)
     if delimiter != ",":
         warnings.append(f"CSV 구분자: {_delimiter_label(delimiter)}")
     warnings.extend(_header_offset_warnings(header_row_index))
+    warnings.extend(_multi_header_warnings(header_row_count))
     return _DelimitedReadContext(
         encoding=None if encoding in {"utf-8", "utf-8-sig"} else encoding,
         delimiter=delimiter,
         header_row_index=header_row_index,
+        header_row_count=header_row_count,
+        data_start_row_index=header_row_index + header_row_count,
         header_cells=header_cells,
         warnings=tuple(warnings),
     )
@@ -452,7 +545,11 @@ def _csv_read_kwargs(context: _DelimitedReadContext) -> dict[str, Any]:
     if context.delimiter != ",":
         kwargs["sep"] = context.delimiter
         kwargs["engine"] = "python"
-    if context.header_row_index > 0:
+    if context.header_row_count > 1:
+        kwargs["skiprows"] = context.data_start_row_index
+        kwargs["header"] = None
+        kwargs["names"] = list(context.header_cells)
+    elif context.header_row_index > 0:
         kwargs["skiprows"] = context.header_row_index
     return kwargs
 
@@ -464,6 +561,8 @@ def _safe_xlsx_read_context(path: Path) -> _XlsxReadContext:
         return _XlsxReadContext(
             source=_table_source(path, "xlsx"),
             header_row_index=0,
+            header_row_count=1,
+            data_start_row_index=1,
             header_cells=(),
         )
 
@@ -486,14 +585,213 @@ def _xlsx_read_context_from_workbook(
     rows: list[tuple[Any, ...]] = []
     for _, row in zip(range(30), worksheet.iter_rows(values_only=True), strict=False):
         rows.append(tuple(row))
-    header_row_index = _detect_header_row_index(rows)
-    header_cells = tuple(rows[header_row_index]) if header_row_index < len(rows) else ()
+    header_row_index, header_row_count = _detect_header_layout(rows)
+    header_rows = tuple(rows[header_row_index : header_row_index + header_row_count])
+    header_cells = _flatten_header_rows(header_rows)
     return _XlsxReadContext(
         source=source,
         header_row_index=header_row_index,
+        header_row_count=header_row_count,
+        data_start_row_index=header_row_index + header_row_count,
         header_cells=header_cells,
-        warnings=tuple(_header_offset_warnings(header_row_index)),
+        header_rows=header_rows,
+        warnings=_merge_warnings(
+            tuple(_header_offset_warnings(header_row_index)),
+            tuple(_multi_header_warnings(header_row_count)),
+        ),
     )
+
+
+def _xlsx_read_kwargs(context: _XlsxReadContext) -> dict[str, Any]:
+    kwargs: dict[str, Any] = dict(_xlsx_read_excel_kwargs(context.source))
+    if context.header_row_count > 1:
+        kwargs["skiprows"] = context.data_start_row_index
+        kwargs["header"] = None
+        kwargs["names"] = list(context.header_cells)
+    else:
+        kwargs["header"] = context.header_row_index
+    return kwargs
+
+
+def _excel_read_context(path: Path, file_type: str) -> _XlsxReadContext:
+    try:
+        sample = pd.read_excel(path, header=None, nrows=30)
+    except ImportError as exc:
+        raise TableReadError(_LEGACY_XLS_MESSAGE) from exc
+    except ValueError as exc:
+        raise TableReadError(_LEGACY_XLS_MESSAGE) from exc
+    rows = _frame_to_rows(sample)
+    header_row_index, header_row_count = _detect_header_layout(rows)
+    header_rows = tuple(rows[header_row_index : header_row_index + header_row_count])
+    header_cells = _flatten_header_rows(header_rows)
+    return _XlsxReadContext(
+        source=_table_source(path, file_type),
+        header_row_index=header_row_index,
+        header_row_count=header_row_count,
+        data_start_row_index=header_row_index + header_row_count,
+        header_cells=header_cells,
+        header_rows=header_rows,
+        warnings=_merge_warnings(
+            tuple(_header_offset_warnings(header_row_index)),
+            tuple(_multi_header_warnings(header_row_count)),
+        ),
+    )
+
+
+def _excel_read_kwargs(context: _XlsxReadContext) -> dict[str, Any]:
+    if context.header_row_count > 1:
+        return {
+            "skiprows": context.data_start_row_index,
+            "header": None,
+            "names": list(context.header_cells),
+        }
+    return {"header": context.header_row_index}
+
+
+def _frame_to_rows(frame: pd.DataFrame) -> list[tuple[Any, ...]]:
+    rows: list[tuple[Any, ...]] = []
+    for row in frame.itertuples(index=False, name=None):
+        rows.append(tuple(None if pd.isna(value) else value for value in row))
+    return rows
+
+
+def _detect_header_layout(rows: list[tuple[Any, ...]]) -> tuple[int, int]:
+    best_index = 0
+    best_count = 1
+    best_score = float("-inf")
+    for index, row in enumerate(rows[:20]):
+        width = _row_width(row)
+        if width < 2:
+            continue
+        for count in range(1, min(3, len(rows) - index) + 1):
+            header_rows = rows[index : index + count]
+            if count > 1 and not _first_header_row_has_multi_level_markers(header_rows):
+                continue
+            if not _header_block_is_plausible(header_rows):
+                continue
+            score = _header_layout_score(rows, index, count)
+            if score > best_score:
+                best_index = index
+                best_count = count
+                best_score = score
+    return best_index, best_count
+
+
+def _header_block_is_plausible(rows: list[tuple[Any, ...]]) -> bool:
+    width = max((_row_width(row) for row in rows), default=0)
+    if width < 2:
+        return False
+    for row in rows:
+        cells = [cell for cell in _trim_cells(row) if cell]
+        if not cells:
+            return False
+        if _looks_like_metadata_row(cells):
+            return False
+        if _looks_like_data_row(cells):
+            return False
+    return True
+
+
+def _first_header_row_has_multi_level_markers(rows: list[tuple[Any, ...]]) -> bool:
+    if len(rows) < 2:
+        return False
+    width = max((_row_width(row) for row in rows), default=0)
+    if width < 2:
+        return False
+    first_row = _header_row_cells(rows[0], width)
+    if any(
+        not first_cell
+        and any(lower_row[index] for lower_row in (_header_row_cells(row, width) for row in rows[1:]))
+        for index, first_cell in enumerate(first_row)
+    ):
+        return True
+    non_empty = [cell for cell in first_row if cell]
+    if len(set(non_empty)) < len(non_empty):
+        return True
+    return sum(1 for cell in non_empty if _is_year_like(cell)) >= 2
+
+
+def _header_row_cells(row: tuple[Any, ...], width: int) -> tuple[str, ...]:
+    cells = ["" if cell is None else str(cell).strip() for cell in row[:width]]
+    if len(cells) < width:
+        cells.extend([""] * (width - len(cells)))
+    return tuple(cells)
+
+
+def _header_layout_score(
+    rows: list[tuple[Any, ...]],
+    index: int,
+    count: int,
+) -> float:
+    header_rows = rows[index : index + count]
+    width = max(_row_width(row) for row in header_rows)
+    names = _flatten_header_rows(tuple(header_rows))
+    score = float(width)
+    score += _following_data_row_score(rows, index + count - 1, width)
+    score += min(len(set(names)), len(names))
+    if count > 1:
+        score += 10 + (count * 3)
+    if index == 0:
+        score += 1
+    else:
+        previous_widths = [_row_width(previous) for previous in rows[max(0, index - 3) : index]]
+        if any(width > previous_width for previous_width in previous_widths):
+            score += 3
+        if any(width == previous_width for previous_width in previous_widths):
+            score -= 12
+    return score
+
+
+def _looks_like_data_row(cells: list[str]) -> bool:
+    numeric_cells = [cell for cell in cells if _is_number_like(cell)]
+    if not numeric_cells:
+        return False
+    if len(numeric_cells) / len(cells) <= 0.35:
+        return False
+    return not all(_is_year_like(cell) for cell in numeric_cells)
+
+
+def _is_year_like(value: str) -> bool:
+    cleaned = value.strip()
+    return len(cleaned) == 4 and cleaned.isdigit() and 1800 <= int(cleaned) <= 2200
+
+
+def _flatten_header_rows(header_rows: tuple[tuple[Any, ...], ...]) -> tuple[str, ...]:
+    if not header_rows:
+        return ()
+    width = max((_row_width(row) for row in header_rows), default=0)
+    if len(header_rows) == 1:
+        row = header_rows[0]
+        cells = ["" if cell is None else str(cell).strip() for cell in row[:width]]
+        if len(cells) < width:
+            cells.extend([""] * (width - len(cells)))
+        return tuple(cells)
+    filled_rows = [_fill_header_row(row, width) for row in header_rows]
+    names: list[str] = []
+    for column_index in range(width):
+        parts: list[str] = []
+        for row in filled_rows:
+            cell = row[column_index] if column_index < len(row) else ""
+            if not cell or cell.lower().startswith("unnamed:"):
+                continue
+            if parts and parts[-1] == cell:
+                continue
+            parts.append(cell)
+        names.append(" ".join(parts).strip() or f"column_{column_index + 1}")
+    return _unique_names(tuple(names))
+
+
+def _fill_header_row(row: tuple[Any, ...], width: int) -> tuple[str, ...]:
+    cells = ["" if cell is None else str(cell).strip() for cell in row[:width]]
+    if len(cells) < width:
+        cells.extend([""] * (width - len(cells)))
+    filled: list[str] = []
+    current = ""
+    for cell in cells:
+        if cell:
+            current = cell
+        filled.append(current)
+    return tuple(filled)
 
 
 def _detect_header_row_index(rows: list[tuple[Any, ...]]) -> int:
@@ -583,6 +881,12 @@ def _header_offset_warnings(header_row_index: int) -> tuple[str, ...]:
     return (f"표 헤더 앞의 안내 행 {header_row_index}개를 건너뛰었습니다.",)
 
 
+def _multi_header_warnings(header_row_count: int) -> tuple[str, ...]:
+    if header_row_count <= 1:
+        return ()
+    return (f"다중 헤더 {header_row_count}행을 하나의 열 이름으로 합쳤습니다.",)
+
+
 def _selected_header_cells(
     columns: Any,
     header_cells: tuple[Any, ...],
@@ -670,6 +974,16 @@ def _is_empty_column(series: pd.Series) -> bool:
     return True
 
 
+def _unique_names(names: tuple[str, ...]) -> tuple[str, ...]:
+    seen: dict[str, int] = {}
+    unique: list[str] = []
+    for name in names:
+        count = seen.get(name, 0)
+        seen[name] = count + 1
+        unique.append(f"{name}_{count + 1}" if count else name)
+    return tuple(unique)
+
+
 def _merge_warnings(*groups: tuple[str, ...]) -> tuple[str, ...]:
     merged: list[str] = []
     for group in groups:
@@ -677,6 +991,42 @@ def _merge_warnings(*groups: tuple[str, ...]) -> tuple[str, ...]:
             if warning and warning not in merged:
                 merged.append(warning)
     return tuple(merged)
+
+
+def _is_text_table_file(path: Path) -> bool:
+    sample = path.read_bytes()[:4096]
+    if not sample:
+        return False
+    if sample.startswith((b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1", b"PK\x03\x04")):
+        return False
+    try:
+        encoding, _ = _detect_text_encoding(sample)
+        text = sample.decode(encoding, errors="strict")
+    except UnicodeDecodeError:
+        return False
+    delimiter = _detect_delimiter(text)
+    rows = _parse_delimited_sample(text, delimiter)
+    return any(_row_width(row) >= 2 for row in rows[:5])
+
+
+def _reject_notice_only_table(frame: pd.DataFrame, header_rows: tuple[tuple[Any, ...], ...]) -> None:
+    if not frame.empty or len(frame.columns) > 1:
+        return
+    header_text = " ".join(
+        str(cell).strip()
+        for row in header_rows
+        for cell in row
+        if cell is not None and str(cell).strip()
+    )
+    if len(frame.columns) <= 1 or not header_text or _looks_like_notice_text(header_text):
+        raise TableReadError(_EMPTY_TABLE_MESSAGE)
+
+
+def _looks_like_notice_text(text: str) -> bool:
+    return any(
+        marker in text
+        for marker in ("□", "참고용", "서비스", "검색조건", "제공하는 정보", "활용하시기")
+    )
 
 
 def _table_source(path: Path, file_type: str) -> TableReadSource:
