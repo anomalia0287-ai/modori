@@ -10,6 +10,7 @@ from modori.ui.contracts import CommandResult, ExplainResult, ImportOptions, Rep
 from modori.ui.controller_services import UiControllerServices
 from modori.ui.data_transform_controller import DataTransformControllerMixin
 from modori.ui.import_layout_controller import ImportLayoutControllerMixin
+from modori.ui.importing import review_rows
 from modori.ui.patches import PatchValidationError, parse_step_patch
 from modori.ui.paths import local_path_from_qml
 from modori.ui.pipeline_ops import PipelineOperations
@@ -144,6 +145,10 @@ class UiController(
     @Property(str, notify=stateChanged)
     def importPreviewText(self) -> str:
         return self._services.import_flow.preview_text
+
+    @Property("QVariantList", notify=stateChanged)
+    def importReviewRows(self) -> list:
+        return review_rows(self._services.import_flow.table_preview)
 
     @Property(str, notify=stateChanged)
     def stepChainText(self) -> str:

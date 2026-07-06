@@ -114,6 +114,9 @@ Current loader result after the hardening pass:
 - Regenerate Payload V2 as administrator and rerun `Run-Public-Data-Smoke.bat`
   inside the clean Windows VM. Host/package tests are not VM evidence.
 - Improve the manual import-adjustment UI with stronger affordances for
-  low-confidence imports: suggested defaults from the inference report,
-  validation feedback, and clearer row-number labeling.
+  low-confidence imports: suggested defaults from the inference report and
+  validation feedback. Row-role review shipped 2026-07-06: the import dialog
+  now renders the raw leading rows with skipped/header/data judgments from
+  `TableInferenceReport.leading_rows`, so wrong inference is visible before
+  the import is confirmed.
 - HWP/PDF table extraction is explicitly out of current table-import scope.

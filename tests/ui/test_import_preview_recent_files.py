@@ -242,3 +242,39 @@ def test_recent_files_can_be_disabled_and_cleared(tmp_path, monkeypatch) -> None
     reloaded = UiController()
     assert reloaded.recentFilesText == ""
     assert reloaded.recentFilesEnabled is False
+
+
+def test_import_preview_exposes_review_rows_with_roles(tmp_path) -> None:
+    from modori.ui.controller import UiController
+
+    data_path = tmp_path / "preamble.csv"
+    lines = ["자료기준: 2026-07-06", "지역,인구", "종로구,100", "중구,200"]
+    data_path.write_text("\n".join(lines), encoding="utf-8")
+    controller = UiController()
+
+    assert controller.previewDataFilePath(str(data_path)) is True
+
+    rows = controller.importReviewRows
+    assert [entry["role"] for entry in rows] == ["skipped", "header", "data", "data"]
+    assert rows[1]["cells"] == "지역 | 인구"
+
+
+def test_import_review_rows_follow_manual_layout_override(tmp_path) -> None:
+    from modori.ui.controller import UiController
+
+    data_path = tmp_path / "preamble.csv"
+    lines = ["자료기준: 2026-07-06", "지역,인구", "종로구,100", "중구,200"]
+    data_path.write_text("\n".join(lines), encoding="utf-8")
+    controller = UiController()
+
+    assert controller.previewDataFilePath(str(data_path)) is True
+    assert controller.previewPendingImportLayout(3, 1, 4, "") is True
+
+    rows = controller.importReviewRows
+    assert [entry["role"] for entry in rows] == ["skipped", "skipped", "header", "data"]
+
+
+def test_import_review_rows_are_empty_without_preview() -> None:
+    from modori.ui.controller import UiController
+
+    assert UiController().importReviewRows == []

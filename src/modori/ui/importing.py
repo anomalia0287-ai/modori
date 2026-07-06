@@ -16,6 +16,41 @@ class ImportPreview:
     table_preview: TablePreviewResult | None = None
 
 
+_REVIEW_ROLE_LABELS_KO = {
+    "skipped": "건너뜀",
+    "header": "헤더",
+    "data": "데이터",
+}
+
+
+def review_rows(preview: TablePreviewResult | None) -> list[dict[str, Any]]:
+    if preview is None:
+        return []
+    report = preview.inference_report
+    if report is None:
+        return []
+    header_start = report.header_row_index
+    header_end = header_start + report.header_row_count
+    data_start = report.data_start_row_index
+    entries: list[dict[str, Any]] = []
+    for index, cells in enumerate(report.leading_rows):
+        if index < header_start or (header_end <= index < data_start):
+            role = "skipped"
+        elif index < header_end:
+            role = "header"
+        else:
+            role = "data"
+        entries.append(
+            {
+                "row_number": index + 1,
+                "role": role,
+                "role_label": _REVIEW_ROLE_LABELS_KO[role],
+                "cells": " | ".join(cell for cell in cells if cell),
+            }
+        )
+    return entries
+
+
 class ImportPreviewService:
     supported_file_types = {"csv", "xlsx", "xls", "sav"}
 

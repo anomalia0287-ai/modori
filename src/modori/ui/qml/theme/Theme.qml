@@ -77,6 +77,9 @@ QtObject {
     readonly property int dialogViewportMargin: 48
     readonly property int importDialogMaxWidth: 760
     readonly property int importDialogMaxHeight: 620
+    readonly property int importReviewMaxHeight: 132
+    readonly property int importReviewRowNumberWidth: 24
+    readonly property int importReviewRowSpacing: 1
     readonly property int popoverWidth: 420
     readonly property int popoverBodyHeight: 320
     readonly property int progressWidth: 280

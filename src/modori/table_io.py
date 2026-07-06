@@ -42,6 +42,7 @@ class TableInferenceReport:
     reasons: tuple[str, ...] = ()
     sheet_name: str | None = None
     sheet_names: tuple[str, ...] = ()
+    leading_rows: tuple[tuple[str, ...], ...] = ()
 
     @property
     def requires_user_confirmation(self) -> bool:
@@ -120,6 +121,7 @@ class _DelimitedReadContext:
     header_cells: tuple[Any, ...]
     layout_overridden: bool = False
     warnings: tuple[str, ...] = ()
+    leading_rows: tuple[tuple[str, ...], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -132,6 +134,7 @@ class _XlsxReadContext:
     header_rows: tuple[tuple[Any, ...], ...] = ()
     layout_overridden: bool = False
     warnings: tuple[str, ...] = ()
+    leading_rows: tuple[tuple[str, ...], ...] = ()
 
 
 DEFAULT_PREVIEW_READ_LIMITS = PreviewReadLimits()
@@ -147,6 +150,9 @@ _AGGREGATE_CONTEXT_LABELS = frozenset({"전체", "계"})
 _ROW_NUMBER_MARKERS = frozenset({"-", "－", "–", "—"})
 _AGGREGATE_ROW_DETECTED_MESSAGE = "집계/합계 행 {count}개를 감지했습니다. 필요한 경우 가져오기 창에서 제외할 수 있습니다."
 _AGGREGATE_ROW_DROPPED_MESSAGE = "집계/합계 행 {count}개를 제외했습니다."
+_REVIEW_MAX_ROWS = 25
+_REVIEW_MAX_CELLS = 8
+_REVIEW_MAX_CELL_CHARS = 60
 
 
 def normalize_file_type(path: Path, file_type: str | None = None) -> str:
@@ -653,6 +659,7 @@ def _csv_read_context(path: Path, layout: TableLayoutOverride | None = None) -> 
         header_cells=header_cells,
         layout_overridden=layout_overridden,
         warnings=tuple(warnings),
+        leading_rows=_leading_review_rows(rows, data_start_row_index),
     )
 
 
@@ -732,6 +739,23 @@ def _csv_read_kwargs(context: _DelimitedReadContext) -> dict[str, Any]:
     return kwargs
 
 
+def _leading_review_rows(
+    rows: list[tuple[Any, ...]],
+    data_start_row_index: int,
+) -> tuple[tuple[str, ...], ...]:
+    limit = min(len(rows), data_start_row_index + 3, _REVIEW_MAX_ROWS)
+    review: list[tuple[str, ...]] = []
+    for row in rows[:limit]:
+        cells = tuple(
+            ("" if cell is None else str(cell).strip())[:_REVIEW_MAX_CELL_CHARS]
+            for cell in row[:_REVIEW_MAX_CELLS]
+        )
+        while cells and not cells[-1]:
+            cells = cells[:-1]
+        review.append(cells)
+    return tuple(review)
+
+
 def _delimited_inference_report(
     context: _DelimitedReadContext,
     *,
@@ -758,6 +782,7 @@ def _delimited_inference_report(
                 *((_LAYOUT_OVERRIDE_MESSAGE,) if context.layout_overridden else ()),
             ),
         ),
+        leading_rows=context.leading_rows,
     )
 
 
@@ -872,6 +897,7 @@ def _xlsx_read_context_from_workbook(
             tuple(_header_offset_warnings(header_row_index)),
             tuple(_multi_header_warnings(header_row_count)),
         ),
+        leading_rows=_leading_review_rows(rows, data_start_row_index),
     )
 
 
@@ -905,6 +931,7 @@ def _xlsx_inference_report(context: _XlsxReadContext, *, column_count: int) -> T
             header_row_count=context.header_row_count,
             extra_reasons=((_LAYOUT_OVERRIDE_MESSAGE,) if context.layout_overridden else ()),
         ),
+        leading_rows=context.leading_rows,
     )
 
 
@@ -930,6 +957,7 @@ def _excel_read_context(path: Path, file_type: str) -> _XlsxReadContext:
             tuple(_header_offset_warnings(header_row_index)),
             tuple(_multi_header_warnings(header_row_count)),
         ),
+        leading_rows=_leading_review_rows(rows, header_row_index + header_row_count),
     )
 
 

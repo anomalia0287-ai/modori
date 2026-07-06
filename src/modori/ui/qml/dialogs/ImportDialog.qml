@@ -44,6 +44,73 @@ Dialog {
             }
         }
 
+        ColumnLayout {
+            Layout.fillWidth: true
+            spacing: theme.spaceXs
+            visible: uiController.importReviewRows.length > 0
+
+            Label {
+                text: appBootstrap.text("dialog.import.review_title")
+                color: theme.textStrong
+                font.bold: true
+            }
+
+            ScrollView {
+                Layout.fillWidth: true
+                Layout.preferredHeight: Math.min(reviewColumn.implicitHeight + theme.spaceSm, theme.importReviewMaxHeight)
+                clip: true
+
+                ColumnLayout {
+                    id: reviewColumn
+                    width: parent.width
+                    spacing: theme.importReviewRowSpacing
+                    Accessible.name: appBootstrap.text("dialog.import.review_accessible")
+
+                    Repeater {
+                        model: uiController.importReviewRows
+
+                        delegate: RowLayout {
+                            Layout.fillWidth: true
+                            spacing: theme.spaceSm
+
+                            Label {
+                                text: modelData.row_number
+                                color: theme.textMuted
+                                Layout.preferredWidth: theme.importReviewRowNumberWidth
+                                horizontalAlignment: Text.AlignRight
+                            }
+
+                            Rectangle {
+                                radius: theme.radiusSmall
+                                color: modelData.role === "header"
+                                    ? theme.selectionSurface
+                                    : modelData.role === "data"
+                                        ? theme.paperSurface
+                                        : theme.quietSurface
+                                border.color: modelData.role === "header" ? theme.linePopover : theme.lineSubtle
+                                implicitWidth: reviewRoleLabel.implicitWidth + theme.spaceSm * 2
+                                implicitHeight: reviewRoleLabel.implicitHeight + theme.spaceXs
+
+                                Label {
+                                    id: reviewRoleLabel
+                                    anchors.centerIn: parent
+                                    text: modelData.role_label
+                                    color: modelData.role === "skipped" ? theme.textMuted : theme.textLevel
+                                }
+                            }
+
+                            Label {
+                                text: modelData.cells
+                                color: modelData.role === "skipped" ? theme.textMuted : theme.textControl
+                                elide: Text.ElideRight
+                                Layout.fillWidth: true
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         CheckBox {
             text: appBootstrap.text("dialog.import.preserve_metadata")
             checked: true

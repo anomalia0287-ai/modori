@@ -1023,3 +1023,61 @@ def test_read_full_passes_sav_row_limit_when_row_limit_is_set(
     read_full(path, "sav", limits=FullReadLimits(max_rows=2))
 
     assert calls == [{"path": path, "row_limit": 3, "user_missing": True}]
+
+
+def test_preview_inference_report_exposes_leading_rows_for_preamble_csv(tmp_path) -> None:
+    path = tmp_path / "preamble.csv"
+    lines = [f"검색조건 {index}: 값" for index in range(3)]
+    lines.extend(["지역,인구", "종로구,100", "중구,200"])
+    path.write_text("\n".join(lines), encoding="utf-8")
+
+    report = read_preview(path, "csv").inference_report
+
+    assert report is not None
+    assert report.header_row_index == 3
+    assert len(report.leading_rows) == 6
+    assert report.leading_rows[0] == ("검색조건 0: 값",)
+    assert report.leading_rows[3] == ("지역", "인구")
+    assert report.leading_rows[4] == ("종로구", "100")
+
+
+def test_preview_inference_leading_rows_are_capped(tmp_path) -> None:
+    path = tmp_path / "wide.csv"
+    header = ",".join(f"c{index}" for index in range(12))
+    long_cell = "x" * 200
+    row = ",".join([long_cell] + [str(index) for index in range(11)])
+    path.write_text("\n".join([header] + [row] * 30), encoding="utf-8")
+
+    report = read_preview(path, "csv").inference_report
+
+    assert report is not None
+    assert len(report.leading_rows) == 4
+    assert all(len(cells) <= 8 for cells in report.leading_rows)
+    assert len(report.leading_rows[1][0]) == 60
+
+
+def test_preview_inference_report_exposes_leading_rows_for_merged_xlsx(tmp_path) -> None:
+    from openpyxl import Workbook
+
+    path = tmp_path / "merged.xlsx"
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.append(["대학 현황"])
+    sheet.append(["기준일: 2026-04-01"])
+    sheet.append([])
+    sheet.append(["순번", "학과", "재학생(A)", "재학생(A)"])
+    sheet.append([None, None, "정원내", "정원외"])
+    sheet.append([1, "사회학과", 40, 5])
+    sheet.append([2, "심리학과", 35, 4])
+    workbook.save(path)
+
+    report = read_preview(path, "xlsx").inference_report
+
+    assert report is not None
+    assert report.header_row_index == 3
+    assert report.header_row_count == 2
+    assert report.data_start_row_index == 5
+    assert len(report.leading_rows) == 7
+    assert report.leading_rows[0] == ("대학 현황",)
+    assert report.leading_rows[3] == ("순번", "학과", "재학생(A)", "재학생(A)")
+    assert report.leading_rows[5] == ("1", "사회학과", "40", "5")

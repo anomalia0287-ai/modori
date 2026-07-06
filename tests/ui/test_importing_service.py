@@ -128,3 +128,25 @@ def test_import_preview_service_reads_bounded_csv_preview(tmp_path, monkeypatch)
 
     assert preview.ok is True
     assert calls == [{"nrows": 0}, {"nrows": 30}]
+
+
+def test_review_rows_label_skipped_header_and_data_rows(tmp_path) -> None:
+    from modori.ui.importing import review_rows
+
+    data_path = tmp_path / "preamble.csv"
+    lines = ["자료기준: 2026-07-06", "지역,인구", "종로구,100", "중구,200"]
+    data_path.write_text("\n".join(lines), encoding="utf-8")
+
+    preview = ImportPreviewService().preview(data_path)
+    rows = review_rows(preview.table_preview)
+
+    assert [entry["role"] for entry in rows] == ["skipped", "header", "data", "data"]
+    assert rows[0]["row_number"] == 1
+    assert rows[1]["cells"] == "지역 | 인구"
+    assert rows[2]["cells"] == "종로구 | 100"
+
+
+def test_review_rows_are_empty_without_inference_report() -> None:
+    from modori.ui.importing import review_rows
+
+    assert review_rows(None) == []
