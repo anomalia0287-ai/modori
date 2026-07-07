@@ -85,6 +85,9 @@ QtObject {
     readonly property int progressWidth: 280
     readonly property int tableCellWidth: 120
     readonly property int tableCellHeight: 32
+    readonly property int gridHeaderHeight: 28
+    readonly property int gridRowLabelWidth: 56
+    readonly property int gridStatusHeight: 28
     readonly property int variableCellWidth: 140
     readonly property int variableCellHeight: 34
     readonly property int fieldWidthTiny: 80

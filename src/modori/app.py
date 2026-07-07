@@ -32,6 +32,16 @@ class AppBootstrap(QObject):
     def text(self, key: str) -> str:
         return UI_STRINGS_KO.get(key, key)
 
+    @Slot(str, result=bool)
+    def copyText(self, text: str) -> bool:
+        if not text:
+            return False
+        clipboard = QGuiApplication.clipboard()
+        if clipboard is None:
+            return False
+        clipboard.setText(str(text))
+        return True
+
 
 def main(argv: Sequence[str] | None = None) -> int:
     selected_argv = list(sys.argv if argv is None else argv)
