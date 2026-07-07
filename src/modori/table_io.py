@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 import csv
+import hashlib
+import json
+from collections.abc import Mapping
 from dataclasses import dataclass
 from io import StringIO
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pandas as pd
@@ -29,6 +33,24 @@ class TableLayoutOverride:
     header_row_index: int | None = None
     header_row_count: int | None = None
     data_start_row_index: int | None = None
+
+
+@dataclass(frozen=True)
+class TableSchema:
+    source: TableReadSource
+    file_type: str
+    layout: TableLayoutOverride | None
+    columns: tuple[str, ...]
+    fingerprint: str
+
+
+@dataclass(frozen=True)
+class ImportSelection:
+    source_columns: tuple[str, ...]
+    included_columns: tuple[str, ...]
+    schema_fingerprint: str
+    schema_version: int = 1
+    created_from: str = "preview"
 
 
 @dataclass(frozen=True)
@@ -159,6 +181,107 @@ _REVIEW_MAX_CELLS = 8
 _REVIEW_MAX_CELL_CHARS = 60
 
 
+def import_selection_from_params(raw: object | None) -> ImportSelection | None:
+    if raw is None:
+        return None
+    if isinstance(raw, ImportSelection):
+        return raw
+    if not isinstance(raw, Mapping):
+        raise TableReadError("가져오기 열 선택 형식이 올바르지 않습니다.")
+    return ImportSelection(
+        schema_version=int(raw.get("schema_version", 1)),
+        source_columns=tuple(str(column) for column in raw.get("source_columns", ())),
+        included_columns=tuple(str(column) for column in raw.get("included_columns", ())),
+        schema_fingerprint=str(raw.get("schema_fingerprint", "")),
+        created_from=str(raw.get("created_from", "preview")),
+    )
+
+
+def read_schema(
+    path: Path,
+    file_type: str | None = None,
+    *,
+    layout: TableLayoutOverride | None = None,
+) -> TableSchema:
+    normalized = normalize_file_type(path, file_type)
+    header = read_header_result(path, normalized, layout=layout)
+    return _schema_from_columns(
+        source=header.source,
+        file_type=normalized,
+        layout=layout,
+        columns=header.columns,
+    )
+
+
+def validate_import_selection(
+    schema: TableSchema,
+    selection: ImportSelection | None,
+) -> tuple[str, ...]:
+    if selection is None:
+        return schema.columns
+    if selection.schema_version != 1:
+        raise TableReadError("지원하지 않는 가져오기 열 선택 형식입니다.")
+    if selection.schema_fingerprint != schema.fingerprint:
+        raise TableReadError("가져오기 열 구성이 변경되었습니다. 열 선택을 다시 확인해 주세요.")
+    if tuple(selection.source_columns) != schema.columns:
+        raise TableReadError("가져오기 열 구성이 변경되었습니다. 열 선택을 다시 확인해 주세요.")
+    included = tuple(str(column) for column in selection.included_columns)
+    if not included:
+        raise TableReadError("가져올 열을 하나 이상 선택해 주세요.")
+    if len(set(included)) != len(included):
+        raise TableReadError("가져오기 열 선택에 중복 열이 있습니다.")
+    missing = [column for column in included if column not in schema.columns]
+    if missing:
+        raise TableReadError(f"선택한 열을 찾지 못했습니다: {', '.join(missing)}")
+    return included
+
+
+def _schema_from_columns(
+    *,
+    source: TableReadSource,
+    file_type: str,
+    layout: TableLayoutOverride | None,
+    columns: tuple[str, ...],
+) -> TableSchema:
+    canonical_columns = tuple(str(column) for column in columns)
+    return TableSchema(
+        source=source,
+        file_type=file_type,
+        layout=layout,
+        columns=canonical_columns,
+        fingerprint=_schema_fingerprint(
+            file_type=file_type,
+            source=source,
+            layout=layout,
+            columns=canonical_columns,
+        ),
+    )
+
+
+def _schema_fingerprint(
+    *,
+    file_type: str,
+    source: TableReadSource,
+    layout: TableLayoutOverride | None,
+    columns: tuple[str, ...],
+) -> str:
+    payload = {
+        "file_type": file_type,
+        "sheet_name": source.sheet_name,
+        "layout": None
+        if layout is None
+        else {
+            "sheet_name": layout.sheet_name,
+            "header_row_index": layout.header_row_index,
+            "header_row_count": layout.header_row_count,
+            "data_start_row_index": layout.data_start_row_index,
+        },
+        "columns": list(columns),
+    }
+    encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True).encode("utf-8")
+    return "sha256:" + hashlib.sha256(encoded).hexdigest()
+
+
 def normalize_file_type(path: Path, file_type: str | None = None) -> str:
     value = file_type if file_type else path.suffix
     normalized = str(value).lower().lstrip(".")
@@ -173,6 +296,7 @@ def read_full(
     *,
     limits: FullReadLimits = DEFAULT_FULL_READ_LIMITS,
     layout: TableLayoutOverride | None = None,
+    selection: ImportSelection | None = None,
     drop_aggregate_rows: bool = False,
     drop_duplicate_rows: bool = False,
 ) -> TableReadResult:
@@ -248,6 +372,16 @@ def read_full(
         inference_report = None
     else:
         raise ValueError(f"Unsupported table file type: {normalized}")
+    if selection is not None:
+        schema = _schema_from_columns(
+            source=source,
+            file_type=normalized,
+            layout=layout,
+            columns=tuple(str(column) for column in frame.columns),
+        )
+        selected_columns = validate_import_selection(schema, selection)
+        frame = _select_frame_columns(frame, selected_columns)
+        metadata = _select_metadata_columns(metadata, selected_columns)
     frame, aggregate_warnings = _apply_aggregate_row_policy(
         frame,
         drop=drop_aggregate_rows,
@@ -272,8 +406,9 @@ def read_header(
     file_type: str | None = None,
     *,
     layout: TableLayoutOverride | None = None,
+    selection: ImportSelection | None = None,
 ) -> list[str]:
-    return list(read_header_result(path, file_type, layout=layout).columns)
+    return list(read_header_result(path, file_type, layout=layout, selection=selection).columns)
 
 
 def read_header_result(
@@ -281,6 +416,7 @@ def read_header_result(
     file_type: str | None = None,
     *,
     layout: TableLayoutOverride | None = None,
+    selection: ImportSelection | None = None,
 ) -> TableHeaderResult:
     normalized = normalize_file_type(path, file_type)
     if normalized == "csv":
@@ -326,8 +462,17 @@ def read_header_result(
         source = _table_source(path, normalized)
     else:
         raise ValueError(f"Unsupported table file type: {normalized}")
+    canonical_columns = tuple(str(column) for column in columns)
+    if selection is not None:
+        schema = _schema_from_columns(
+            source=source,
+            file_type=normalized,
+            layout=layout,
+            columns=canonical_columns,
+        )
+        canonical_columns = validate_import_selection(schema, selection)
     return TableHeaderResult(
-        columns=tuple(str(column) for column in columns),
+        columns=canonical_columns,
         source=source,
     )
 
@@ -338,6 +483,7 @@ def read_preview(
     *,
     limits: PreviewReadLimits = DEFAULT_PREVIEW_READ_LIMITS,
     layout: TableLayoutOverride | None = None,
+    selection: ImportSelection | None = None,
     drop_aggregate_rows: bool = False,
     drop_duplicate_rows: bool = False,
 ) -> TablePreviewResult:
@@ -345,7 +491,7 @@ def read_preview(
     normalized = normalize_file_type(path, file_type)
     if normalized == "csv":
         _enforce_file_size(path, limits.max_file_bytes)
-        frame, warnings, inference_report = _read_csv_preview(path, limits, layout)
+        frame, warnings, inference_report = _read_csv_preview(path, limits, layout, selection)
         return _preview_result(
             frame,
             None,
@@ -353,12 +499,20 @@ def read_preview(
             preview_limit=_preview_row_limit(limits),
             warnings=warnings,
             inference_report=inference_report,
+            selection=selection,
+            layout=layout,
+            file_type=normalized,
             drop_aggregate_rows=drop_aggregate_rows,
             drop_duplicate_rows=drop_duplicate_rows,
         )
     if normalized == "xlsx":
         _enforce_file_size(path, limits.max_file_bytes)
-        frame, source, warnings, inference_report = _read_xlsx_preview(path, limits, layout)
+        frame, source, warnings, inference_report = _read_xlsx_preview(
+            path,
+            limits,
+            layout,
+            selection,
+        )
         return _preview_result(
             frame,
             None,
@@ -366,6 +520,9 @@ def read_preview(
             preview_limit=_preview_row_limit(limits),
             warnings=warnings,
             inference_report=inference_report,
+            selection=selection,
+            layout=layout,
+            file_type=normalized,
             drop_aggregate_rows=drop_aggregate_rows,
             drop_duplicate_rows=drop_duplicate_rows,
         )
@@ -377,9 +534,10 @@ def read_preview(
                 limits,
                 file_type=normalized,
                 source_warning=("XLS 확장자이지만 텍스트 표로 읽었습니다.",),
+                selection=selection,
             )
         else:
-            frame, warnings, inference_report = _read_excel_preview(path, limits)
+            frame, warnings, inference_report = _read_excel_preview(path, limits, selection)
         return _preview_result(
             frame,
             None,
@@ -387,6 +545,9 @@ def read_preview(
             preview_limit=_preview_row_limit(limits),
             warnings=warnings,
             inference_report=inference_report,
+            selection=selection,
+            layout=layout,
+            file_type=normalized,
             drop_aggregate_rows=drop_aggregate_rows,
             drop_duplicate_rows=drop_duplicate_rows,
         )
@@ -400,7 +561,17 @@ def read_preview(
             user_missing=True,
         )
         columns = tuple(str(column) for column in getattr(preview_metadata, "column_names", ()))
-        selected_columns, warnings = _limited_preview_columns(columns, limits)
+        schema = _schema_from_columns(
+            source=_table_source(path, normalized),
+            file_type=normalized,
+            layout=layout,
+            columns=columns,
+        )
+        if selection is None:
+            selected_columns, warnings = _limited_preview_columns(columns, limits)
+        else:
+            selected_columns = validate_import_selection(schema, selection)
+            warnings = ()
         read_kwargs: dict[str, Any] = {
             "row_limit": _preview_row_limit(limits),
             "user_missing": True,
@@ -417,6 +588,9 @@ def read_preview(
             _table_source(path, normalized),
             preview_limit=_preview_row_limit(limits),
             warnings=warnings,
+            selection=None,
+            layout=layout,
+            file_type=normalized,
             drop_aggregate_rows=drop_aggregate_rows,
             drop_duplicate_rows=drop_duplicate_rows,
         )
@@ -427,8 +601,9 @@ def _read_csv_preview(
     path: Path,
     limits: PreviewReadLimits,
     layout: TableLayoutOverride | None = None,
+    selection: ImportSelection | None = None,
 ) -> tuple[pd.DataFrame, tuple[str, ...], TableInferenceReport]:
-    return _read_delimited_preview(path, limits, layout=layout)
+    return _read_delimited_preview(path, limits, layout=layout, selection=selection)
 
 
 def _read_delimited_full(
@@ -467,13 +642,18 @@ def _read_delimited_preview(
     file_type: str = "csv",
     layout: TableLayoutOverride | None = None,
     source_warning: tuple[str, ...] = (),
+    selection: ImportSelection | None = None,
 ) -> tuple[pd.DataFrame, tuple[str, ...], TableInferenceReport]:
     context = _csv_read_context(path, layout)
     header = pd.read_csv(path, nrows=0, **_csv_read_kwargs(context))
-    selected_columns, warnings = _limited_preview_columns(
-        tuple(str(column) for column in header.columns),
-        limits,
-    )
+    if selection is None:
+        selected_columns, warnings = _limited_preview_columns(
+            tuple(str(column) for column in header.columns),
+            limits,
+        )
+    else:
+        selected_columns = None
+        warnings = ()
     read_kwargs: dict[str, Any] = {
         **_csv_read_kwargs(context),
         "nrows": _preview_row_limit(limits),
@@ -499,16 +679,21 @@ def _read_delimited_preview(
 def _read_excel_preview(
     path: Path,
     limits: PreviewReadLimits,
+    selection: ImportSelection | None = None,
 ) -> tuple[pd.DataFrame, tuple[str, ...], TableInferenceReport]:
     context = _excel_read_context(path, "xls")
     try:
         header = pd.read_excel(path, nrows=0, **_excel_read_kwargs(context))
     except (ImportError, ValueError) as exc:
         raise TableReadError(_LEGACY_XLS_MESSAGE) from exc
-    selected_columns, warnings = _limited_preview_columns(
-        tuple(str(column) for column in header.columns),
-        limits,
-    )
+    if selection is None:
+        selected_columns, warnings = _limited_preview_columns(
+            tuple(str(column) for column in header.columns),
+            limits,
+        )
+    else:
+        selected_columns = None
+        warnings = ()
     read_kwargs: dict[str, Any] = {
         **_excel_read_kwargs(context),
         "nrows": _preview_row_limit(limits),
@@ -533,11 +718,12 @@ def _read_xlsx_preview(
     path: Path,
     limits: PreviewReadLimits,
     layout: TableLayoutOverride | None = None,
+    selection: ImportSelection | None = None,
 ) -> tuple[pd.DataFrame, TableReadSource, tuple[str, ...], TableInferenceReport]:
     return _read_xlsx_rows(
         path,
         _preview_row_limit(limits),
-        _preview_column_limit(limits),
+        None if selection is not None else _preview_column_limit(limits),
         layout=layout,
     )
 
@@ -1303,6 +1489,36 @@ def _sanitize_frame(
     return cleaned, tuple(warnings)
 
 
+def _select_frame_columns(
+    frame: pd.DataFrame,
+    selected_columns: tuple[str, ...],
+) -> pd.DataFrame:
+    return frame.loc[:, list(selected_columns)].copy()
+
+
+def _select_metadata_columns(metadata: Any | None, selected_columns: tuple[str, ...]) -> Any | None:
+    if metadata is None:
+        return None
+    column_names = [str(column) for column in getattr(metadata, "column_names", ()) or ()]
+    if not column_names:
+        return metadata
+    index_by_name = {column: index for index, column in enumerate(column_names)}
+    selected_indexes = [index_by_name[column] for column in selected_columns if column in index_by_name]
+    payload = dict(getattr(metadata, "__dict__", {}))
+    payload["column_names"] = list(selected_columns)
+    column_labels = list(getattr(metadata, "column_labels", ()) or ())
+    if column_labels:
+        payload["column_labels"] = [
+            column_labels[index] if index < len(column_labels) else selected_columns[offset]
+            for offset, index in enumerate(selected_indexes)
+        ]
+    for attr in ("variable_value_labels", "missing_ranges", "variable_measure"):
+        value = getattr(metadata, attr, None)
+        if isinstance(value, Mapping):
+            payload[attr] = {column: value[column] for column in selected_columns if column in value}
+    return SimpleNamespace(**payload)
+
+
 def _apply_aggregate_row_policy(
     frame: pd.DataFrame,
     *,
@@ -1499,9 +1715,22 @@ def _preview_result(
     preview_limit: int,
     warnings: tuple[str, ...] = (),
     inference_report: TableInferenceReport | None = None,
+    selection: ImportSelection | None = None,
+    layout: TableLayoutOverride | None = None,
+    file_type: str | None = None,
     drop_aggregate_rows: bool = False,
     drop_duplicate_rows: bool = False,
 ) -> TablePreviewResult:
+    if selection is not None:
+        schema = _schema_from_columns(
+            source=source,
+            file_type=file_type or source.file_type,
+            layout=layout,
+            columns=tuple(str(column) for column in frame.columns),
+        )
+        selected_columns = validate_import_selection(schema, selection)
+        frame = _select_frame_columns(frame, selected_columns)
+        metadata = _select_metadata_columns(metadata, selected_columns)
     frame, aggregate_warnings = _apply_aggregate_row_policy(
         frame,
         drop=drop_aggregate_rows,

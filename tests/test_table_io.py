@@ -5,6 +5,7 @@ from openpyxl import load_workbook
 
 from modori.table_io import (
     FullReadLimits,
+    ImportSelection,
     PreviewReadLimits,
     TableHeaderResult,
     TableLayoutOverride,
@@ -15,6 +16,7 @@ from modori.table_io import (
     read_header,
     read_header_result,
     read_preview,
+    read_schema,
 )
 
 
@@ -86,6 +88,127 @@ def test_read_header_result_exposes_xlsx_source_context_and_compat_header(tmp_pa
     assert result.source.sheet_name == "Responses"
     assert result.source.sheet_names == ("Responses", "Codebook")
     assert read_header(path, "xlsx") == ["q1", "q2"]
+
+
+def test_read_preview_and_full_apply_import_selection_after_sanitized_headers(tmp_path) -> None:
+    path = tmp_path / "curated.csv"
+    path.write_text(
+        "지역,인구,비고\n종로구,100,단위 명\n중구,200,단위 명\n",
+        encoding="utf-8",
+    )
+
+    schema = read_schema(path, "csv")
+    selection = ImportSelection(
+        source_columns=schema.columns,
+        included_columns=("지역", "인구"),
+        schema_fingerprint=schema.fingerprint,
+    )
+
+    preview = read_preview(path, "csv", selection=selection)
+    full = read_full(path, "csv", selection=selection)
+
+    assert preview.columns == ("지역", "인구")
+    assert full.columns == ("지역", "인구")
+    assert preview.sample_rows == (
+        {"지역": "종로구", "인구": 100},
+        {"지역": "중구", "인구": 200},
+    )
+    assert "비고" not in full.frame.columns
+
+
+def test_import_selection_rejects_schema_drift(tmp_path) -> None:
+    path = tmp_path / "curated.csv"
+    path.write_text("지역,인구\n종로구,100\n", encoding="utf-8")
+    schema = read_schema(path, "csv")
+    selection = ImportSelection(
+        source_columns=schema.columns,
+        included_columns=("지역", "인구"),
+        schema_fingerprint=schema.fingerprint,
+    )
+
+    path.write_text("지역,인구,비고\n종로구,100,추가\n", encoding="utf-8")
+
+    with pytest.raises(TableReadError, match="가져오기 열 구성이 변경되었습니다"):
+        read_full(path, "csv", selection=selection)
+
+
+def test_read_header_applies_import_selection(tmp_path) -> None:
+    path = tmp_path / "curated.csv"
+    path.write_text("지역,연도,인구\n종로구,2024,100\n", encoding="utf-8")
+    schema = read_schema(path, "csv")
+    selection = ImportSelection(
+        source_columns=schema.columns,
+        included_columns=("지역", "인구"),
+        schema_fingerprint=schema.fingerprint,
+    )
+
+    assert read_header(path, "csv", selection=selection) == ["지역", "인구"]
+    assert read_header_result(path, "csv", selection=selection).columns == ("지역", "인구")
+
+
+def test_duplicate_row_detection_runs_after_import_selection(tmp_path) -> None:
+    path = tmp_path / "selected-duplicates.csv"
+    path.write_text(
+        "지역,인구,비고\n종로구,100,첫째\n종로구,100,둘째\n중구,200,셋째\n",
+        encoding="utf-8",
+    )
+    schema = read_schema(path, "csv")
+    selection = ImportSelection(
+        source_columns=schema.columns,
+        included_columns=("지역", "인구"),
+        schema_fingerprint=schema.fingerprint,
+    )
+
+    result = read_full(path, "csv", selection=selection, drop_duplicate_rows=True)
+
+    assert result.frame.to_dict(orient="records") == [
+        {"지역": "종로구", "인구": 100},
+        {"지역": "중구", "인구": 200},
+    ]
+    assert "중복 행 1개를 제외했습니다." in result.warnings
+
+
+def test_preview_selection_can_include_column_beyond_default_preview_limit(tmp_path) -> None:
+    columns = [f"c{index}" for index in range(1, 56)]
+    path = tmp_path / "wide.csv"
+    path.write_text(
+        ",".join(columns) + "\n" + ",".join(str(index) for index in range(1, 56)) + "\n",
+        encoding="utf-8",
+    )
+    schema = read_schema(path, "csv")
+    selection = ImportSelection(
+        source_columns=schema.columns,
+        included_columns=("c55", "c1"),
+        schema_fingerprint=schema.fingerprint,
+    )
+
+    preview = read_preview(path, "csv", selection=selection)
+
+    assert preview.columns == ("c55", "c1")
+    assert preview.sample_rows == ({"c55": 55, "c1": 1},)
+    assert not any("미리보기 열 제한" in warning for warning in preview.warnings)
+
+
+def test_sav_import_selection_keeps_metadata_aligned(tmp_path) -> None:
+    path = tmp_path / "selected.sav"
+    pyreadstat.write_sav(
+        pd.DataFrame({"group": [1.0, 2.0], "score": [3.0, 4.0]}),
+        path,
+        column_labels={"group": "Group label", "score": "Score label"},
+        variable_measure={"group": "nominal", "score": "scale"},
+    )
+    schema = read_schema(path, "sav")
+    selection = ImportSelection(
+        source_columns=schema.columns,
+        included_columns=("score",),
+        schema_fingerprint=schema.fingerprint,
+    )
+
+    result = read_full(path, "sav", selection=selection)
+
+    assert result.columns == ("score",)
+    assert getattr(result.metadata, "column_names") == ["score"]
+    assert getattr(result.metadata, "column_labels") == ["Score label"]
 
 
 def test_read_header_applies_user_csv_layout_override(tmp_path) -> None:
