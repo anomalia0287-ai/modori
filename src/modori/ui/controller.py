@@ -162,7 +162,10 @@ class UiController(
 
     @Property("QVariantList", notify=stateChanged)
     def valueRecodeInventory(self) -> list:
-        return value_recode_inventory(self._services.pipeline_ops.current_dataset())
+        return value_recode_inventory(
+            self._services.pipeline_ops.current_dataset(),
+            existing_steps=self._services.pipeline_ops.steps(),
+        )
 
     @Property(str, notify=stateChanged)
     def stepChainText(self) -> str:

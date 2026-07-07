@@ -269,6 +269,8 @@ class PipelineOperations:
             "data.variable_metadata_patch",
             "data.recode_reverse",
             "data.compose_scale",
+            "recode.unify_values",
+            "recode.map_values",
         }
         for step in self.steps():
             if self._step_type(step) in data_step_types:

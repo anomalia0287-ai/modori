@@ -22,6 +22,10 @@ def test_transform_panel_calls_controller_transform_methods() -> None:
     assert "recodeValueRepeater" in transform_panel
     assert "transform.map_new_value" in transform_panel
     assert "transform.map_to_missing" in transform_panel
+    assert "modelData.new_value" in transform_panel
+    assert "modelData.to_missing" in transform_panel
+    assert "transform.map_preview_to" in transform_panel
+    assert "transform.map_summary_rows" in transform_panel
     assert "uiController.mapValuesFromRowsAndText" in transform_panel
     assert "root.recodeRowsPayload().length > 0" in transform_panel
     assert "transform.map_rules_placeholder" in transform_panel

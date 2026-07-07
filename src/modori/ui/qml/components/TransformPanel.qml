@@ -44,6 +44,31 @@ Item {
         return entry.value + " (" + entry.count + ")"
     }
 
+    function recodePreviewText(entry, newValue, toMissing) {
+        if (toMissing) {
+            return entry.count + appBootstrap.text("transform.map_preview_missing")
+        }
+        if (root.hasText(newValue)) {
+            return entry.count + appBootstrap.text("transform.map_preview_to") + newValue
+        }
+        return ""
+    }
+
+    function recodeSummaryText() {
+        var rowCount = root.recodeRowsPayload().length
+        var hasFreeformRules = root.hasText(recodeRules.text) || root.hasText(recodeMissing.text)
+        if (rowCount > 0 && hasFreeformRules) {
+            return rowCount + appBootstrap.text("transform.map_summary_rows_with_text")
+        }
+        if (rowCount > 0) {
+            return rowCount + appBootstrap.text("transform.map_summary_rows")
+        }
+        if (hasFreeformRules) {
+            return appBootstrap.text("transform.map_summary_text")
+        }
+        return ""
+    }
+
     function recodeRowsPayload() {
         var rows = []
         for (var index = 0; index < recodeValueRepeater.count; index += 1) {
@@ -171,35 +196,51 @@ Item {
                                 ? root.selectedRecodeEntry().values.slice(0, 8)
                                 : []
 
-                            delegate: RowLayout {
+                            delegate: ColumnLayout {
                                 required property var modelData
                                 property string sourceValue: String(modelData.value)
                                 property string newValue: recodeNewValue.text
                                 property bool toMissing: recodeToMissing.checked
 
                                 Layout.fillWidth: true
-                                spacing: theme.spaceSm
+                                spacing: theme.spaceXs
+
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: theme.spaceSm
+
+                                    Label {
+                                        text: root.valueCountText(modelData)
+                                        color: theme.textMuted
+                                        elide: Text.ElideRight
+                                        Layout.fillWidth: true
+                                    }
+
+                                    TextField {
+                                        id: recodeNewValue
+                                        text: modelData.new_value ? modelData.new_value : ""
+                                        placeholderText: appBootstrap.text("transform.map_new_value")
+                                        Accessible.name: appBootstrap.text("transform.map_new_value")
+                                        enabled: !recodeToMissing.checked
+                                        Layout.preferredWidth: theme.fieldWidthSmall
+                                        selectByMouse: true
+                                    }
+
+                                    CheckBox {
+                                        id: recodeToMissing
+                                        checked: Boolean(modelData.to_missing)
+                                        text: appBootstrap.text("transform.map_to_missing")
+                                        Accessible.name: appBootstrap.text("transform.map_to_missing")
+                                    }
+                                }
 
                                 Label {
-                                    text: root.valueCountText(modelData)
-                                    color: theme.textMuted
-                                    elide: Text.ElideRight
+                                    visible: root.hasText(root.recodePreviewText(modelData, recodeNewValue.text, recodeToMissing.checked))
+                                    text: root.recodePreviewText(modelData, recodeNewValue.text, recodeToMissing.checked)
+                                    color: theme.textSecondary
+                                    font.pixelSize: theme.fontCaption
+                                    Layout.leftMargin: theme.spaceMd
                                     Layout.fillWidth: true
-                                }
-
-                                TextField {
-                                    id: recodeNewValue
-                                    placeholderText: appBootstrap.text("transform.map_new_value")
-                                    Accessible.name: appBootstrap.text("transform.map_new_value")
-                                    enabled: !recodeToMissing.checked
-                                    Layout.preferredWidth: theme.fieldWidthSmall
-                                    selectByMouse: true
-                                }
-
-                                CheckBox {
-                                    id: recodeToMissing
-                                    text: appBootstrap.text("transform.map_to_missing")
-                                    Accessible.name: appBootstrap.text("transform.map_to_missing")
                                 }
                             }
                         }
@@ -209,6 +250,14 @@ Item {
                             text: root.selectedRecodeEntry() ? root.selectedRecodeEntry().reason : ""
                             color: theme.warning
                             wrapMode: Text.WordWrap
+                            Layout.fillWidth: true
+                        }
+
+                        Label {
+                            visible: root.hasText(root.recodeSummaryText())
+                            text: root.recodeSummaryText()
+                            color: theme.textControl
+                            font.pixelSize: theme.fontCaption
                             Layout.fillWidth: true
                         }
                     }
@@ -248,7 +297,9 @@ Item {
 
                     TextField {
                         id: recodeSuffix
-                        text: appBootstrap.text("transform.map_suffix_default")
+                        text: root.selectedRecodeEntry() && root.selectedRecodeEntry().suffix
+                            ? root.selectedRecodeEntry().suffix
+                            : appBootstrap.text("transform.map_suffix_default")
                         Accessible.name: appBootstrap.text("transform.map_suffix")
                         Layout.fillWidth: true
                         selectByMouse: true

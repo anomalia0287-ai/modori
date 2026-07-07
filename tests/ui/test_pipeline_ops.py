@@ -98,6 +98,21 @@ def test_pipeline_operations_inserts_metadata_step_after_origin() -> None:
     assert pipeline.insertions == [("import", step, "metadata:score")]
 
 
+def test_pipeline_operations_inserts_transform_after_existing_recode_steps() -> None:
+    pipeline = FakePipeline()
+    pipeline.steps = [
+        FakeStep("import", title="Import"),
+        FakeStep("transform:unify:region", "recode.unify_values"),
+        FakeStep("transform:map:region", "recode.map_values"),
+        FakeStep("analysis:reliability", "stats.reliability"),
+    ]
+    step = FakeStep("transform:map:gender", "recode.map_values")
+
+    PipelineOperations(pipeline).insert_or_replace_transform_step(step)
+
+    assert pipeline.insertions == [("transform:map:region", step, "transform:map:gender")]
+
+
 def test_replace_managed_analysis_steps_refreshes_dataset_before_worker_recompute(
     tmp_path,
 ) -> None:

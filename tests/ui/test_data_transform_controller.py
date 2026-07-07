@@ -125,7 +125,12 @@ def test_controller_exposes_value_recode_inventory_and_applies_text_rules(tmp_pa
 
     inventory = {entry["column"]: entry for entry in controller.valueRecodeInventory}
     assert inventory["지역"]["eligible"] is True
-    assert inventory["지역"]["values"][0] == {"value": "서울특별시", "count": 1}
+    assert inventory["지역"]["values"][0] == {
+        "value": "서울특별시",
+        "count": 1,
+        "new_value": "",
+        "to_missing": False,
+    }
     assert inventory["인구"]["eligible"] is False
 
     assert controller.mapValuesFromText(

@@ -42,9 +42,10 @@ def test_value_recode_inventory_lists_eligible_string_categories_by_count() -> N
 
     assert inventory["지역"]["eligible"] is True
     assert inventory["지역"]["output"] == "지역_수정"
+    assert inventory["지역"]["suffix"] == "_수정"
     assert inventory["지역"]["values"] == [
-        {"value": "서울", "count": 2},
-        {"value": "부산", "count": 1},
+        {"value": "서울", "count": 2, "new_value": "", "to_missing": False},
+        {"value": "부산", "count": 1, "new_value": "", "to_missing": False},
     ]
     assert inventory["점수"]["eligible"] is False
     assert inventory["점수"]["reason"] == "숫자 변수는 아직 값 수정을 지원하지 않습니다."
@@ -69,3 +70,35 @@ def test_value_recode_inventory_rejects_labelled_columns_visibly() -> None:
 
     assert entry["eligible"] is False
     assert entry["reason"] == "값 라벨이 있는 변수는 아직 값 수정을 지원하지 않습니다."
+
+
+def test_value_recode_inventory_prefills_existing_map_values_step() -> None:
+    from modori.value_inventory import value_recode_inventory
+
+    dataset = Dataset(
+        df=pd.DataFrame({"지역": ["서울", "부산", "서울 특별시", "무응답"]}),
+        variables={"지역": _variable("지역", measure=Measure.NOMINAL, dtype="string")},
+    )
+
+    [entry] = value_recode_inventory(
+        dataset,
+        existing_steps=[
+            {
+                "id": "transform:map:지역",
+                "step_type": "recode.map_values",
+                "params": {
+                    "column": "지역",
+                    "mapping": {"서울 특별시": "서울"},
+                    "to_missing": ["무응답"],
+                    "suffix": "_정정",
+                },
+            }
+        ],
+    )
+
+    values = {item["value"]: item for item in entry["values"]}
+    assert entry["suffix"] == "_정정"
+    assert values["서울 특별시"]["new_value"] == "서울"
+    assert values["서울 특별시"]["to_missing"] is False
+    assert values["무응답"]["new_value"] == ""
+    assert values["무응답"]["to_missing"] is True
