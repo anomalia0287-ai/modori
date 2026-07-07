@@ -9,7 +9,7 @@ from modori.knowledge import Library
 from modori.ui.contracts import CommandResult, ExplainResult, ImportOptions, ReportExportOptions
 from modori.ui.controller_services import UiControllerServices
 from modori.ui.data_transform_controller import DataTransformControllerMixin
-from modori.ui.import_layout_controller import ImportLayoutControllerMixin, _table_layout_override
+from modori.ui.import_layout_controller import ImportLayoutControllerMixin
 from modori.ui.importing import review_rows
 from modori.value_clustering import unification_suggestions
 from modori.ui.patches import PatchValidationError, parse_step_patch
@@ -301,56 +301,6 @@ class UiController(
         if not recent_path.exists():
             return self._command_error("최근 파일을 찾을 수 없습니다.", "recent_file_missing").ok
         return self.openDataFile(recent_path, ImportOptions(confirm_new_session=True)).ok
-
-    @Slot(result=bool)
-    @Slot(bool, result=bool)
-    @Slot(bool, bool, result=bool)
-    @Slot(bool, bool, "QVariantList", result=bool)
-    def confirmPendingImport(
-        self,
-        drop_aggregate_rows: bool = False,
-        drop_duplicate_rows: bool = False,
-        included_columns: list | None = None,
-    ) -> bool:
-        if included_columns is not None:
-            pending_file_path = self._services.import_flow.require_pending_file_path()
-            if pending_file_path is None:
-                self._clear_recommendations()
-                self._last_error = self._services.import_flow.preview_text
-                self._last_message = ""
-                self.stateChanged.emit()
-                return False
-            ok = self._services.import_flow.preview(
-                pending_file_path,
-                layout=_table_layout_override(self._services.import_flow.table_layout),
-                drop_aggregate_rows=bool(drop_aggregate_rows),
-                drop_duplicate_rows=bool(drop_duplicate_rows),
-                included_columns=included_columns,
-            )
-            if not ok:
-                self._clear_recommendations()
-                self._last_error = self._services.import_flow.preview_text
-                self._last_message = ""
-                self.stateChanged.emit()
-                return False
-        pending_path = self._services.import_flow.require_pending_path()
-        if pending_path is None:
-            self._clear_recommendations()
-            self._last_error = self._services.import_flow.preview_text
-            self._last_message = ""
-            self.stateChanged.emit()
-            return False
-        result = self.openDataFile(
-            pending_path,
-            ImportOptions(
-                confirm_new_session=True,
-                table_layout=self._services.import_flow.table_layout,
-                drop_aggregate_rows=bool(drop_aggregate_rows),
-                drop_duplicate_rows=bool(drop_duplicate_rows),
-                import_selection=self._services.import_flow.import_selection,
-            ),
-        )
-        return result.ok
 
     @Slot(bool, result=bool)
     def setRecentFilesEnabled(self, enabled: bool) -> bool:

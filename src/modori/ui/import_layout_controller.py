@@ -61,6 +61,56 @@ class ImportLayoutControllerMixin:
         self.stateChanged.emit()
         return ok
 
+    @Slot(result=bool)
+    @Slot(bool, result=bool)
+    @Slot(bool, bool, result=bool)
+    @Slot(bool, bool, "QVariantList", result=bool)
+    def confirmPendingImport(
+        self,
+        drop_aggregate_rows: bool = False,
+        drop_duplicate_rows: bool = False,
+        included_columns: list | None = None,
+    ) -> bool:
+        if included_columns is not None:
+            pending_file_path = self._services.import_flow.require_pending_file_path()
+            if pending_file_path is None:
+                self._clear_recommendations()
+                self._last_error = self._services.import_flow.preview_text
+                self._last_message = ""
+                self.stateChanged.emit()
+                return False
+            ok = self._services.import_flow.preview(
+                pending_file_path,
+                layout=_table_layout_override(self._services.import_flow.table_layout),
+                drop_aggregate_rows=bool(drop_aggregate_rows),
+                drop_duplicate_rows=bool(drop_duplicate_rows),
+                included_columns=included_columns,
+            )
+            if not ok:
+                self._clear_recommendations()
+                self._last_error = self._services.import_flow.preview_text
+                self._last_message = ""
+                self.stateChanged.emit()
+                return False
+        pending_path = self._services.import_flow.require_pending_path()
+        if pending_path is None:
+            self._clear_recommendations()
+            self._last_error = self._services.import_flow.preview_text
+            self._last_message = ""
+            self.stateChanged.emit()
+            return False
+        result = self.openDataFile(
+            pending_path,
+            ImportOptions(
+                confirm_new_session=True,
+                table_layout=self._services.import_flow.table_layout,
+                drop_aggregate_rows=bool(drop_aggregate_rows),
+                drop_duplicate_rows=bool(drop_duplicate_rows),
+                import_selection=self._services.import_flow.import_selection,
+            ),
+        )
+        return result.ok
+
     def _bind_import_preview_models(self, path: Path, options: ImportOptions) -> bool:
         import_flow = self._services.import_flow
         if (
