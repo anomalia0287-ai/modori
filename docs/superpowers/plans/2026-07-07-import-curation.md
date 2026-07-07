@@ -8,6 +8,21 @@
 
 **Tech Stack:** Python 3, pandas, pyreadstat, PySide6/QML, pytest, PowerShell clean-VM payload scripts.
 
+## Implementation Status — 2026-07-07
+
+Status: V1 implemented for import-time column inclusion/exclusion and durable
+public-smoke evidence. The unchecked work that remains is not V1 import
+selection; it is clean Windows VM rerun after administrator payload
+regeneration, plus separate future design for column renaming and type review.
+
+Implementation commits: `09c682f`, `287cd37`, `73b0bc5`, `7c6ce5c`,
+`8476d49`.
+
+Latest host/package evidence:
+`scripts/quality_gate.py --with-package-check --with-packaged-launch`
+reported `673 passed, 2 skipped`, `package-launch-smoke-ok`,
+`package-engine-smoke-ok`, and `package-public-data-smoke-ok`.
+
 ## Global Constraints
 
 - Store canonical selected columns as `included_columns`.
@@ -68,7 +83,7 @@
   - `read_preview(..., selection: ImportSelection | None = None, ...) -> TablePreviewResult`
   - `read_full(..., selection: ImportSelection | None = None, ...) -> TableReadResult`
 
-- [ ] **Step 1: Add failing CSV selection tests**
+- [x] **Step 1: Add failing CSV selection tests**
 
 Add to `tests/test_table_io.py`:
 
@@ -113,7 +128,7 @@ def test_import_selection_rejects_schema_drift(tmp_path) -> None:
         read_full(path, "csv", selection=selection)
 ```
 
-- [ ] **Step 2: Run failing tests**
+- [x] **Step 2: Run failing tests**
 
 Run:
 
@@ -123,7 +138,7 @@ Run:
 
 Expected: fail because `ImportSelection`, `read_schema`, and the `selection` parameters do not exist.
 
-- [ ] **Step 3: Implement dataclasses and schema fingerprint**
+- [x] **Step 3: Implement dataclasses and schema fingerprint**
 
 In `src/modori/table_io.py`, add near existing table dataclasses:
 
@@ -176,7 +191,7 @@ def _schema_fingerprint(
     return "sha256:" + hashlib.sha256(encoded).hexdigest()
 ```
 
-- [ ] **Step 4: Implement `read_schema` and selection validation**
+- [x] **Step 4: Implement `read_schema` and selection validation**
 
 Use existing `read_header_result()` to avoid re-reading data rows:
 
@@ -227,7 +242,7 @@ def validate_import_selection(
     return included
 ```
 
-- [ ] **Step 5: Thread selection through read functions**
+- [x] **Step 5: Thread selection through read functions**
 
 Add `selection: ImportSelection | None = None` to `read_header`, `read_header_result`, `read_preview`, `read_full`, `_read_delimited_preview`, `_read_excel_preview`, `_read_xlsx_preview`, `_read_xlsx_limited`, and `_read_delimited_full` only where needed. Use one helper:
 
@@ -241,7 +256,7 @@ def _select_frame_columns(
 
 For V1, apply selection after `_sanitize_frame()` in each branch. This is less memory-efficient than `usecols` for full reads, but it guarantees canonical-name selection across CSV, XLSX, text-as-XLS, and SAV without raw-header ambiguity. Optimization can come after correctness.
 
-- [ ] **Step 6: Run focused table tests**
+- [x] **Step 6: Run focused table tests**
 
 Run:
 
@@ -251,7 +266,7 @@ Run:
 
 Expected: all pass.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 Run:
 
@@ -274,7 +289,7 @@ git commit -m "feat: add import selection schema contract"
 - Consumes: `ImportSelection`, `import_selection_from_params`, `read_schema`, selected `read_full` and `read_header`.
 - Produces: one shared helper for import params used by both import steps.
 
-- [ ] **Step 1: Add failing `ImportStep` tests**
+- [x] **Step 1: Add failing `ImportStep` tests**
 
 Add to `tests/test_data_prep_steps.py`:
 
@@ -314,7 +329,7 @@ def test_import_step_persists_selected_columns_in_compute_and_writes(tmp_path) -
     assert step.writes() == {"지역", "인구"}
 ```
 
-- [ ] **Step 2: Add failing regression import test**
+- [x] **Step 2: Add failing regression import test**
 
 Add to `tests/test_regression_step.py`:
 
@@ -360,7 +375,7 @@ def test_regression_import_step_honors_duplicate_and_column_selection(tmp_path) 
     assert "note" not in pipeline.current_dataset.df.columns
 ```
 
-- [ ] **Step 3: Run failing tests**
+- [x] **Step 3: Run failing tests**
 
 Run:
 
@@ -370,7 +385,7 @@ Run:
 
 Expected: fail because import steps do not parse or pass `import_selection`.
 
-- [ ] **Step 4: Implement shared parameter helper**
+- [x] **Step 4: Implement shared parameter helper**
 
 In `src/modori/steps/data_prep.py`, import `ImportSelection` and `import_selection_from_params` from `modori.table_io`. Add:
 
@@ -397,15 +412,15 @@ def import_read_params_from_step_params(params: dict[str, Any]) -> ImportReadPar
     )
 ```
 
-- [ ] **Step 5: Use helper in `ImportStep`**
+- [x] **Step 5: Use helper in `ImportStep`**
 
 Change `ImportStep.compute()` and `ImportStep.writes()` to use `import_read_params_from_step_params()`. `read_table()` and `read_columns()` must accept `selection`.
 
-- [ ] **Step 6: Use helper in `RegressionCsvImportStep`**
+- [x] **Step 6: Use helper in `RegressionCsvImportStep`**
 
 Import `import_read_params_from_step_params` from `modori.steps.data_prep` and use it in compute/writes. Pass `drop_duplicate_rows` and `selection` to `read_full` and `read_header`.
 
-- [ ] **Step 7: Run import step tests**
+- [x] **Step 7: Run import step tests**
 
 Run:
 
@@ -415,7 +430,7 @@ Run:
 
 Expected: all pass.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 Run:
 
@@ -444,7 +459,7 @@ git commit -m "feat: apply import selection in pipeline imports"
   - `UiController.importColumnRows: QVariantList`
   - controller slots that accept `QVariantList includedColumns`.
 
-- [ ] **Step 1: Add failing UI flow test**
+- [x] **Step 1: Add failing UI flow test**
 
 Add to `tests/ui/test_import_preview_recent_files.py`:
 
@@ -466,7 +481,7 @@ def test_confirm_import_persists_selected_columns_from_preview(tmp_path) -> None
     assert "2열" in controller.dataViewNotice
 ```
 
-- [ ] **Step 2: Run failing test**
+- [x] **Step 2: Run failing test**
 
 Run:
 
@@ -476,7 +491,7 @@ Run:
 
 Expected: fail because slots do not accept `includedColumns`.
 
-- [ ] **Step 3: Extend `ImportOptions`**
+- [x] **Step 3: Extend `ImportOptions`**
 
 In `src/modori/ui/contracts.py`, add:
 
@@ -484,11 +499,11 @@ In `src/modori/ui/contracts.py`, add:
     import_selection: dict[str, Any] | None = None
 ```
 
-- [ ] **Step 4: Store selection in `UiImportFlow`**
+- [x] **Step 4: Store selection in `UiImportFlow`**
 
 Add `self.import_selection: dict[str, object] | None = None`. In `preview()`, accept `included_columns: list[str] | None = None`, build an `ImportSelection` from the current schema, and pass it to preview service. Store serialized selection only on successful preview.
 
-- [ ] **Step 5: Expose column rows and extend controller slots**
+- [x] **Step 5: Expose column rows and extend controller slots**
 
 Add `UiController.importColumnRows` as a `QVariantList` property. Each entry must have:
 
@@ -503,7 +518,7 @@ When `UiImportFlow.table_preview` is present, rows come from the current preview
 
 In `ImportLayoutControllerMixin.previewPendingImportLayout`, add an overload with trailing `"QVariantList"` and parameter `included_columns: list | None = None`. In `UiController.confirmPendingImport`, add a trailing `"QVariantList"` overload and pass `import_selection`.
 
-- [ ] **Step 6: Persist selection in data session**
+- [x] **Step 6: Persist selection in data session**
 
 In `ImportSessionPipelineFactory.__call__`, if `options.import_selection` is present, set:
 
@@ -511,7 +526,7 @@ In `ImportSessionPipelineFactory.__call__`, if `options.import_selection` is pre
 params["import_selection"] = dict(options.import_selection)
 ```
 
-- [ ] **Step 7: Run UI flow tests**
+- [x] **Step 7: Run UI flow tests**
 
 Run:
 
@@ -521,7 +536,7 @@ Run:
 
 Expected: all pass.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 Run:
 
@@ -545,7 +560,7 @@ git commit -m "feat: persist import column selection from preview"
 - Consumes: controller slots from Task 3.
 - Produces: QML selection list passed as included canonical column names.
 
-- [ ] **Step 1: Add failing QML contract test**
+- [x] **Step 1: Add failing QML contract test**
 
 Add to `tests/ui/test_human_operated_qml_flow.py`:
 
@@ -562,7 +577,7 @@ def test_import_dialog_exposes_column_curation_controls() -> None:
     assert "confirmPendingImport(dropAggregateRows, dropDuplicateRows, includedColumns)" in main
 ```
 
-- [ ] **Step 2: Run failing QML contract test**
+- [x] **Step 2: Run failing QML contract test**
 
 Run:
 
@@ -572,7 +587,7 @@ Run:
 
 Expected: fail because the dialog has no column curation controls.
 
-- [ ] **Step 3: Add strings**
+- [x] **Step 3: Add strings**
 
 Add to `src/modori/ui/strings.py`:
 
@@ -584,7 +599,7 @@ Add to `src/modori/ui/strings.py`:
     "dialog.import.columns_empty": "가져올 열을 하나 이상 선택해 주세요.",
 ```
 
-- [ ] **Step 4: Add bounded column UI**
+- [x] **Step 4: Add bounded column UI**
 
 In `ImportDialog.qml`, add a property list `includedColumnNames` and a function:
 
@@ -596,7 +611,7 @@ function includedColumns() {
 
 Use the exact `uiController.importColumnRows` property from Task 3. Do not introduce a second property name.
 
-- [ ] **Step 5: Wire `Main.qml`**
+- [x] **Step 5: Wire `Main.qml`**
 
 Change preview and confirm calls:
 
@@ -608,7 +623,7 @@ uiController.previewPendingImportLayout(headerRow, headerRowCount, dataStartRow,
 uiController.confirmPendingImport(dropAggregateRows, dropDuplicateRows, includedColumns)
 ```
 
-- [ ] **Step 6: Run QML tests**
+- [x] **Step 6: Run QML tests**
 
 Run:
 
@@ -618,7 +633,7 @@ Run:
 
 Expected: all pass; runtime warnings must not include QML ReferenceError or TypeError.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 Run:
 
@@ -642,7 +657,7 @@ git commit -m "feat: add import column curation controls"
 - Consumes: `ImportSelection` and selected `read_preview`/`read_full`.
 - Produces: smoke JSON with selected-column evidence and VM evidence bundles.
 
-- [ ] **Step 1: Add selected-column public smoke case**
+- [x] **Step 1: Add selected-column public smoke case**
 
 In `src/modori/public_data_smoke.py`, extend `PublicDataSmokeCase`:
 
@@ -655,7 +670,7 @@ It must include only `("자치구", "인구")`, excluding `연도`, and must sti
 the `CSV 인코딩: cp949` warning. The case must assert
 `preview.columns == included_columns` and `full.columns == included_columns`.
 
-- [ ] **Step 2: Add smoke test assertion**
+- [x] **Step 2: Add smoke test assertion**
 
 Add to `tests/test_public_data_smoke.py`:
 
@@ -672,7 +687,7 @@ def test_public_data_smoke_includes_selected_column_contract() -> None:
     assert selected["selection"]["included_columns"] == selected["columns"]
 ```
 
-- [ ] **Step 3: Update VM batch evidence**
+- [x] **Step 3: Update VM batch evidence**
 
 In `scripts/attach_modori_payload_disk.ps1`, change `$publicDataSmoke` so it creates:
 
@@ -683,7 +698,7 @@ set EVIDENCE=%USERPROFILE%\Desktop\Modori-QA-Evidence\public-data-smoke-%DATE%-%
 Sanitize the timestamp for Windows path characters, write `result.json`,
 `exit-code.txt`, and `README-next-step.txt`, then print the evidence directory path.
 
-- [ ] **Step 4: Add payload script tests**
+- [x] **Step 4: Add payload script tests**
 
 In `tests/test_clean_vm_payload_script.py`, assert the batch contains:
 
@@ -694,7 +709,7 @@ assert "README-next-step.txt" in smoke_block
 assert "modori-public-data-smoke.json" not in smoke_block or "result.json" in smoke_block
 ```
 
-- [ ] **Step 5: Run smoke/payload tests**
+- [x] **Step 5: Run smoke/payload tests**
 
 Run:
 
@@ -704,7 +719,7 @@ Run:
 
 Expected: all pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 Run:
 
@@ -721,7 +736,7 @@ git commit -m "test: add import curation smoke evidence"
 - Verify only. If a failure appears, stop, diagnose the owning task, and patch the
   smallest responsible file set before rerunning the failed command.
 
-- [ ] **Step 1: Run focused import/UI tests**
+- [x] **Step 1: Run focused import/UI tests**
 
 Run:
 
@@ -731,7 +746,7 @@ Run:
 
 Expected: all pass.
 
-- [ ] **Step 2: Run public-data/package smoke tests**
+- [x] **Step 2: Run public-data/package smoke tests**
 
 Run:
 
@@ -741,7 +756,7 @@ Run:
 
 Expected: all pass.
 
-- [ ] **Step 3: Run static gates**
+- [x] **Step 3: Run static gates**
 
 Run:
 
@@ -752,7 +767,7 @@ Run:
 
 Expected: both commands exit 0.
 
-- [ ] **Step 4: Run full quality gate**
+- [x] **Step 4: Run full quality gate**
 
 Run:
 
@@ -762,7 +777,7 @@ Run:
 
 Expected: exit 0, including package launch, engine smoke, and public-data smoke.
 
-- [ ] **Step 5: Rebuild package if package smoke used stale dist**
+- [x] **Step 5: Rebuild package if package smoke used stale dist**
 
 If package smoke fails because `dist\Modori` lacks changed files, run:
 
@@ -783,7 +798,7 @@ net session
 
 Expected when not elevated: `System error 5 has occurred. Access is denied.` Record clean-VM payload rebuild as pending admin action. If elevated and VM is Off, run the payload script and then VM smoke.
 
-- [ ] **Step 7: Commit verification docs if changed**
+- [x] **Step 7: Commit verification docs if changed**
 
 Run:
 

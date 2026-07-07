@@ -28,8 +28,9 @@ design because it changes import semantics.
 - P3 read-only detached data sheet is implemented in `Main.qml` using the same
   `DataGridView` and the active `uiController.dataModel`. It has no independent
   data state and no editing surface.
-- P2 import column inclusion/exclusion, renaming, and type review remains a
-  separate design and implementation slice.
+- P2 column inclusion/exclusion is implemented through the import curation
+  slice (`09c682f`, `287cd37`, `73b0bc5`). Column renaming and type review
+  remain separate follow-up work.
 
 ## Current Facts
 
@@ -371,19 +372,25 @@ string keys:
 - Data and variable tables must remain dense and operational, not styled as
   marketing cards.
 
-## P2 Follow-Up Direction: Import Column Review
+## P2 Status: Import Column Review
 
-Column review must be a separate design because it changes import semantics.
+Column inclusion/exclusion is implemented by the import curation contract,
+using selected `included_columns` rather than an exclude-only list. This
+section now tracks the remaining column-review work that was deliberately not
+part of that V1 slice.
 
-The follow-up P2 design must evaluate:
+Implemented in the import curation slice:
 
 - Show detected columns in the import dialog.
 - Allow include/exclude before import.
+- Persist decisions in the import step parameters so the import remains
+  replayable.
+
+Remaining follow-up:
+
 - Allow column-name edits before import.
 - Warn on blank, duplicate, or generated column names.
 - Show inferred type and measurement level.
-- Persist decisions in the import step parameters so the import remains
-  replayable.
 
 This work must define how column options interact with full import, preview,
 public-data fixtures, and saved projects.
@@ -478,7 +485,8 @@ The P0/P1 slice is complete when:
 - Variable table row selection still works after the component extraction.
 - Existing import, transform, result, and metadata UI tests remain green.
 - Existing automated quality gates remain green.
-- P2 remains a documented follow-up rather than implied completed work.
+- P2 remains a documented follow-up for column renaming and type review rather
+  than implied completed work.
 - P3 is complete only for a read-only detached view that reuses the active
   data model; spreadsheet editing/filtering is not included.
 
@@ -497,7 +505,7 @@ overflow fixture payload, and updated visible QA evidence all pass.
 Claims that are still forbidden after P1:
 
 - "Spreadsheet parity"
-- "Column import review is solved"
+- "Column renaming/type review is solved"
 - "Detached editable spreadsheet is solved"
 - "Cell editing is solved"
 - "All data inspection UX is complete"

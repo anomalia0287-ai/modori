@@ -9,14 +9,44 @@ operation. The user must be able to decide both row and column inclusion before
 analysis starts, and the same decision must be applied by preview, full import,
 pipeline replay, package smoke, and clean-VM evidence.
 
+## Implementation Status — 2026-07-07
+
+Status: V1 implemented for row policy plus import-time column inclusion and
+exclusion. The user-facing UI presents a column list in the import dialog; the
+stored replay contract is an `import_selection.included_columns` list with a
+schema fingerprint.
+
+Implementation commits:
+
+- `09c682f` — `ImportSelection`/`TableSchema` schema contract.
+- `287cd37` — preview confirmation persists selected columns.
+- `73b0bc5` — import dialog column curation controls.
+- `7c6ce5c` — public-data smoke selected-column evidence.
+- `8476d49` — durable public smoke console evidence via `stdout.txt`.
+
+Verified on 2026-07-07 by
+`scripts/quality_gate.py --with-package-check --with-packaged-launch`:
+`673 passed, 2 skipped`, `package-launch-smoke-ok`,
+`package-engine-smoke-ok`, and `package-public-data-smoke-ok`.
+
+Remaining non-V1 work:
+
+- Column renaming before import.
+- User-facing inferred type and measurement-level review before import.
+- Clean Windows VM rerun after administrator payload regeneration.
+
 The immediate defect is not only that "exclude columns" is missing. The deeper
 defect is that Modori currently treats row cleanup as replayable import policy
 while treating columns as an implicit side effect of the reader. That asymmetry
 lets non-analysis columns enter the dataset silently.
 
-## Current Verified State
+## Original Verified State Before Implementation
 
-- `src/modori/ui/contracts.py` defines `ImportOptions` with `table_layout`,
+The following bullets are the verified baseline that justified this design.
+They are intentionally retained as historical context, not as the current
+product state.
+
+- Historical baseline: `src/modori/ui/contracts.py` defined `ImportOptions` with `table_layout`,
   `drop_aggregate_rows`, and `drop_duplicate_rows`, but no column selection.
 - `src/modori/ui/qml/dialogs/ImportDialog.qml` sends only layout and row policy
   state through `importAccepted` and `layoutPreviewRequested`.
