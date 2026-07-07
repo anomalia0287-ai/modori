@@ -25,6 +25,7 @@ class ImportLayoutControllerMixin:
     @Slot(int, int, int, str, result=bool)
     @Slot(int, int, int, str, bool, result=bool)
     @Slot(int, int, int, str, bool, bool, result=bool)
+    @Slot(int, int, int, str, bool, bool, "QVariantList", result=bool)
     def previewPendingImportLayout(
         self,
         header_row: int,
@@ -33,6 +34,7 @@ class ImportLayoutControllerMixin:
         sheet_name: str,
         drop_aggregate_rows: bool = False,
         drop_duplicate_rows: bool = False,
+        included_columns: list | None = None,
     ) -> bool:
         pending_path = self._services.import_flow.require_pending_file_path()
         if pending_path is None:
@@ -51,6 +53,7 @@ class ImportLayoutControllerMixin:
             layout=layout,
             drop_aggregate_rows=drop_aggregate_rows,
             drop_duplicate_rows=drop_duplicate_rows,
+            included_columns=included_columns,
         )
         self._last_error = "" if ok else self._services.import_flow.preview_text
         if not ok:
@@ -66,12 +69,15 @@ class ImportLayoutControllerMixin:
             or import_flow.table_layout != _table_layout_params(options.table_layout)
             or import_flow.drop_aggregate_rows != options.drop_aggregate_rows
             or import_flow.drop_duplicate_rows != options.drop_duplicate_rows
+            or not _import_selection_matches_options(import_flow, options)
+            or not _preview_columns_match_options(import_flow, options)
         ):
             if not import_flow.preview(
                 path,
                 layout=_table_layout_override(options.table_layout),
                 drop_aggregate_rows=options.drop_aggregate_rows,
                 drop_duplicate_rows=options.drop_duplicate_rows,
+                included_columns=_included_columns_from_options(options),
             ):
                 return False
         preview = import_flow.table_preview
@@ -112,3 +118,33 @@ def _optional_int(value: object) -> int | None:
     if value is None:
         return None
     return int(value)
+
+
+def _included_columns_from_options(options: ImportOptions) -> list[str] | None:
+    if not options.import_selection:
+        return None
+    included = options.import_selection.get("included_columns")
+    if included is None:
+        return None
+    return [str(column) for column in included]
+
+
+def _import_selection_matches_options(import_flow: object, options: ImportOptions) -> bool:
+    current = getattr(import_flow, "import_selection", None)
+    if options.import_selection is not None:
+        return current == dict(options.import_selection)
+    if current is None:
+        return True
+    source_columns = tuple(str(column) for column in getattr(import_flow, "source_columns", ()))
+    included = current.get("included_columns") if isinstance(current, dict) else None
+    return bool(source_columns) and tuple(str(column) for column in included or ()) == source_columns
+
+
+def _preview_columns_match_options(import_flow: object, options: ImportOptions) -> bool:
+    expected = _included_columns_from_options(options)
+    if expected is None:
+        return True
+    preview = getattr(import_flow, "table_preview", None)
+    if preview is None:
+        return False
+    return tuple(str(column) for column in preview.columns) == tuple(expected)

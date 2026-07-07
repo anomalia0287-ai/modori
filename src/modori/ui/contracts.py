@@ -50,6 +50,7 @@ class ImportOptions:
     table_layout: dict[str, Any] | None = None
     drop_aggregate_rows: bool = False
     drop_duplicate_rows: bool = False
+    import_selection: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True)

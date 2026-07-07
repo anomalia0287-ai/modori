@@ -297,3 +297,54 @@ def test_import_flow_supports_duplicate_row_exclusion(tmp_path) -> None:
     import_step = controller.pipeline.steps[0]
     assert import_step.params["drop_duplicate_rows"] is True
     assert len(controller.pipeline.current_dataset.df) == 2
+
+
+def test_confirm_import_persists_selected_columns_from_preview(tmp_path) -> None:
+    from modori.ui.controller import UiController
+
+    data_path = tmp_path / "curated.csv"
+    data_path.write_text("지역,인구,비고\n종로구,100,메모\n", encoding="utf-8")
+    controller = UiController()
+
+    assert controller.previewDataFilePath(str(data_path)) is True
+    assert controller.importColumnRows == [
+        {"name": "지역", "included": True},
+        {"name": "인구", "included": True},
+        {"name": "비고", "included": True},
+    ]
+    assert controller.previewPendingImportLayout(
+        1,
+        1,
+        2,
+        "",
+        False,
+        False,
+        ["지역", "인구"],
+    ) is True
+    assert controller.confirmPendingImport(False, False, ["지역", "인구"]) is True
+
+    import_step = controller.pipeline.steps[0]
+    assert import_step.params["import_selection"]["included_columns"] == ["지역", "인구"]
+    assert controller.dataModel is not None
+    assert controller.dataModel.columnCount() == 2
+    assert "2열" in controller.dataViewNotice
+
+
+def test_confirm_import_rebinds_wide_preview_to_full_selected_columns(tmp_path) -> None:
+    from modori.ui.controller import UiController
+
+    columns = [f"v{index}" for index in range(55)]
+    data_path = tmp_path / "wide.csv"
+    data_path.write_text(
+        ",".join(columns) + "\n" + ",".join(str(index) for index in range(55)) + "\n",
+        encoding="utf-8",
+    )
+    controller = UiController()
+
+    assert controller.previewDataFilePath(str(data_path)) is True
+    assert len(controller.importColumnRows) == 55
+    assert controller.confirmPendingImport() is True
+
+    assert controller.pipeline.current_dataset.df.shape[1] == 55
+    assert controller.dataModel is not None
+    assert controller.dataModel.columnCount() == 55

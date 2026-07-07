@@ -5,7 +5,13 @@ from pathlib import Path
 from typing import Any
 
 from modori.steps.data_prep import metadata_variables
-from modori.table_io import TableLayoutOverride, TablePreviewResult, TableReadError, read_preview
+from modori.table_io import (
+    ImportSelection,
+    TableLayoutOverride,
+    TablePreviewResult,
+    TableReadError,
+    read_preview,
+)
 
 
 @dataclass(frozen=True)
@@ -59,6 +65,7 @@ class ImportPreviewService:
         path: Path,
         *,
         layout: TableLayoutOverride | None = None,
+        selection: ImportSelection | None = None,
         drop_aggregate_rows: bool = False,
         drop_duplicate_rows: bool = False,
     ) -> ImportPreview:
@@ -70,6 +77,7 @@ class ImportPreviewService:
                 path,
                 file_type,
                 layout=layout,
+                selection=selection,
                 drop_aggregate_rows=drop_aggregate_rows,
                 drop_duplicate_rows=drop_duplicate_rows,
             )

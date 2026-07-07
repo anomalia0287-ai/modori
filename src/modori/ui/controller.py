@@ -9,7 +9,7 @@ from modori.knowledge import Library
 from modori.ui.contracts import CommandResult, ExplainResult, ImportOptions, ReportExportOptions
 from modori.ui.controller_services import UiControllerServices
 from modori.ui.data_transform_controller import DataTransformControllerMixin
-from modori.ui.import_layout_controller import ImportLayoutControllerMixin
+from modori.ui.import_layout_controller import ImportLayoutControllerMixin, _table_layout_override
 from modori.ui.importing import review_rows
 from modori.value_clustering import unification_suggestions
 from modori.ui.patches import PatchValidationError, parse_step_patch
@@ -150,6 +150,10 @@ class UiController(
     @Property("QVariantList", notify=stateChanged)
     def importReviewRows(self) -> list:
         return review_rows(self._services.import_flow.table_preview)
+
+    @Property("QVariantList", notify=stateChanged)
+    def importColumnRows(self) -> list:
+        return self._services.import_flow.column_rows()
 
     @Property("QVariantList", notify=stateChanged)
     def valueUnificationSuggestions(self) -> list:
@@ -301,11 +305,34 @@ class UiController(
     @Slot(result=bool)
     @Slot(bool, result=bool)
     @Slot(bool, bool, result=bool)
+    @Slot(bool, bool, "QVariantList", result=bool)
     def confirmPendingImport(
         self,
         drop_aggregate_rows: bool = False,
         drop_duplicate_rows: bool = False,
+        included_columns: list | None = None,
     ) -> bool:
+        if included_columns is not None:
+            pending_file_path = self._services.import_flow.require_pending_file_path()
+            if pending_file_path is None:
+                self._clear_recommendations()
+                self._last_error = self._services.import_flow.preview_text
+                self._last_message = ""
+                self.stateChanged.emit()
+                return False
+            ok = self._services.import_flow.preview(
+                pending_file_path,
+                layout=_table_layout_override(self._services.import_flow.table_layout),
+                drop_aggregate_rows=bool(drop_aggregate_rows),
+                drop_duplicate_rows=bool(drop_duplicate_rows),
+                included_columns=included_columns,
+            )
+            if not ok:
+                self._clear_recommendations()
+                self._last_error = self._services.import_flow.preview_text
+                self._last_message = ""
+                self.stateChanged.emit()
+                return False
         pending_path = self._services.import_flow.require_pending_path()
         if pending_path is None:
             self._clear_recommendations()
@@ -320,6 +347,7 @@ class UiController(
                 table_layout=self._services.import_flow.table_layout,
                 drop_aggregate_rows=bool(drop_aggregate_rows),
                 drop_duplicate_rows=bool(drop_duplicate_rows),
+                import_selection=self._services.import_flow.import_selection,
             ),
         )
         return result.ok

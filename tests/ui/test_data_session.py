@@ -136,3 +136,34 @@ def test_import_session_pipeline_factory_persists_duplicate_row_option(tmp_path)
     import_step = pipeline.steps[0]
     assert import_step.params["drop_duplicate_rows"] is True
     assert pipeline.current_dataset.df.to_dict(orient="records") == [{"지역": "종로구", "인구": 100}]
+
+
+def test_import_session_pipeline_factory_persists_import_selection(tmp_path) -> None:
+    from modori.table_io import ImportSelection, read_schema
+
+    data_path = tmp_path / "curated.csv"
+    data_path.write_text("지역,인구,비고\n종로구,100,메모\n", encoding="utf-8")
+    schema = read_schema(data_path, "csv")
+    selection = ImportSelection(
+        source_columns=schema.columns,
+        included_columns=("지역", "인구"),
+        schema_fingerprint=schema.fingerprint,
+    )
+
+    pipeline = ImportSessionPipelineFactory()(
+        data_path,
+        ImportOptions(
+            confirm_new_session=True,
+            import_selection={
+                "schema_version": selection.schema_version,
+                "source_columns": list(selection.source_columns),
+                "included_columns": list(selection.included_columns),
+                "schema_fingerprint": selection.schema_fingerprint,
+                "created_from": selection.created_from,
+            },
+        ),
+    )
+
+    import_step = pipeline.steps[0]
+    assert import_step.params["import_selection"]["included_columns"] == ["지역", "인구"]
+    assert pipeline.current_dataset.df.columns.tolist() == ["지역", "인구"]
