@@ -93,8 +93,8 @@ def test_import_dialog_exposes_manual_layout_preview_controls() -> None:
     main = qml_text("Main.qml")
     dialog = qml_text("dialogs/ImportDialog.qml")
 
-    assert "signal layoutPreviewRequested(int headerRow, int headerRowCount, int dataStartRow, string sheetName, bool dropAggregateRows, bool dropDuplicateRows)" in dialog
-    assert "signal importAccepted(bool dropAggregateRows, bool dropDuplicateRows)" in dialog
+    assert "signal layoutPreviewRequested(int headerRow, int headerRowCount, int dataStartRow, string sheetName, bool dropAggregateRows, bool dropDuplicateRows, var includedColumns)" in dialog
+    assert "signal importAccepted(bool dropAggregateRows, bool dropDuplicateRows, var includedColumns)" in dialog
     assert "dialog.import.sheet_name" in dialog
     assert "dialog.import.header_row" in dialog
     assert "dialog.import.header_rows" in dialog
@@ -102,7 +102,25 @@ def test_import_dialog_exposes_manual_layout_preview_controls() -> None:
     assert "dialog.import.drop_aggregate_rows" in dialog
     assert "dialog.import.refresh_preview" in dialog
     assert "uiController.previewPendingImportLayout" in main
-    assert "uiController.confirmPendingImport(dropAggregateRows, dropDuplicateRows)" in main
+    assert (
+        "uiController.confirmPendingImport(dropAggregateRows, dropDuplicateRows, includedColumns)"
+        in main
+    )
+
+
+def test_import_dialog_exposes_column_curation_controls() -> None:
+    dialog = qml_text("dialogs/ImportDialog.qml")
+    main = qml_text("Main.qml")
+
+    assert "dialog.import.columns_title" in dialog
+    assert "includedColumns()" in dialog
+    assert "columnSearch" in dialog
+    assert "dialog.import.columns_reset" in dialog
+    assert "includedColumns" in main
+    assert (
+        "confirmPendingImport(dropAggregateRows, dropDuplicateRows, includedColumns)"
+        in main
+    )
 
 
 def test_data_table_surfaces_imported_dataset_notice() -> None:
