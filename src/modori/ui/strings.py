@@ -144,6 +144,7 @@ UI_STRINGS_KO = {
     "work.analysis_run": "분석 실행",
     "work.data": "데이터",
     "work.data_menu": "데이터 메뉴",
+    "work.data_sheet_window": "데이터 창",
     "work.data_view": "데이터 보기",
     "work.explain_mode": "설명 모드",
     "work.guided": "안내",

@@ -71,6 +71,8 @@ QtObject {
 
     readonly property int windowDefaultWidth: 1180
     readonly property int windowDefaultHeight: 760
+    readonly property int detachedSheetWidth: 980
+    readonly property int detachedSheetHeight: 640
     readonly property int headerHeight: 56
     readonly property int pipelineHeight: 116
     readonly property int resultsPanelPreferredWidth: 360

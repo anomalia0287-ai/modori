@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Dialogs
 import QtQuick.Layouts
+import "components"
 import "dialogs"
 import "screens"
 import "theme"
@@ -62,6 +63,40 @@ ApplicationWindow {
         visible: root.currentScreen === "work"
         onOpenDataRequested: dataFileDialog.open()
         onReportRequested: reportExportDialog.open()
+        onDataSheetRequested: dataSheetWindow.show()
+    }
+
+    Window {
+        id: dataSheetWindow
+        title: appBootstrap.text("work.data_sheet_window")
+        width: theme.detachedSheetWidth
+        height: theme.detachedSheetHeight
+        visible: false
+
+        ColumnLayout {
+            anchors.fill: parent
+            spacing: theme.spaceNone
+
+            Label {
+                text: appBootstrap.text("transform.source_protected")
+                color: theme.textSecondary
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+                Layout.leftMargin: theme.spaceMd
+                Layout.rightMargin: theme.spaceMd
+                Layout.topMargin: theme.spaceSm
+                Layout.bottomMargin: theme.spaceXs
+            }
+
+            DataGridView {
+                model: uiController.dataModel
+                cellWidth: theme.tableCellWidth
+                cellHeight: theme.tableCellHeight
+                emptyText: appBootstrap.text("data.grid_empty")
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+            }
+        }
     }
 
     ImportDialog {

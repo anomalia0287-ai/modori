@@ -9,6 +9,7 @@ Item {
     property bool reduceEffects: false
     signal openDataRequested()
     signal reportRequested()
+    signal dataSheetRequested()
 
     Theme {
         id: theme
@@ -45,6 +46,13 @@ Item {
                     text: appBootstrap.text("work.data")
                     Accessible.name: appBootstrap.text("work.data_menu")
                     onClicked: root.openDataRequested()
+                }
+
+                Button {
+                    text: appBootstrap.text("work.data_sheet_window")
+                    Accessible.name: appBootstrap.text("work.data_sheet_window")
+                    enabled: uiController.status !== "empty" && uiController.status !== "running"
+                    onClicked: root.dataSheetRequested()
                 }
 
                 Button {

@@ -136,10 +136,23 @@ def test_work_header_actions_are_connected_to_real_user_flows() -> None:
 
     assert "signal openDataRequested()" in work
     assert "signal reportRequested()" in work
+    assert "signal dataSheetRequested()" in work
     assert "onOpenDataRequested: dataFileDialog.open()" in main
     assert "onReportRequested: reportExportDialog.open()" in main
+    assert "onDataSheetRequested: dataSheetWindow.show()" in main
     assert "onClicked: root.openDataRequested()" in work
     assert "onClicked: root.reportRequested()" in work
+    assert "onClicked: root.dataSheetRequested()" in work
+
+
+def test_detached_data_sheet_window_reuses_data_grid_without_independent_state() -> None:
+    main = qml_text("Main.qml")
+
+    assert "Window {" in main
+    assert "id: dataSheetWindow" in main
+    assert "DataGridView" in main
+    assert "model: uiController.dataModel" in main
+    assert "work.data_sheet_window" in main
 
 
 def test_standard_pipeline_rail_reaches_every_supported_v1_analysis() -> None:
