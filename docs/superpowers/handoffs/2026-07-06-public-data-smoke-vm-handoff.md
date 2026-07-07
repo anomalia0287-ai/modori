@@ -483,3 +483,29 @@ import-contract scope for the audited engine.
 The owner reported "툴의 작동 자체는 정상적임" (tool operation itself normal);
 record the exact engine-smoke JSON and visible QA outcomes when those runs are
 captured.
+
+## 2026-07-07 In-VM Engine Smoke Evidence — PASSED
+
+Owner-executed `Run-Engine-Smoke-XLSX.bat` inside the clean VM:
+
+```text
+Exit code: 0
+{
+  "data_columns": 9,
+  "data_rows": 20,
+  "last_error": "",
+  "ok": true,
+  "opened": true,
+  "rerun": true,
+  "result_summary_present": true,
+  "status": "ready",
+  "waited": true
+}
+```
+
+This satisfies the exact success state defined in the 2026-07-03 handoff
+(exit 0, `"ok": true`, `"status": "ready"`). Combined with the 2026-07-07
+public-data smoke pass above, the scripted clean-VM evidence set is complete.
+Remaining: itemized visible UI import QA from `Samples\` (owner reports the
+tool operates normally; the per-item checklist confirmation is still to be
+recorded).
