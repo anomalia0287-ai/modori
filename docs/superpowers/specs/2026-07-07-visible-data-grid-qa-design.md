@@ -70,6 +70,33 @@ The product must keep the current reproducibility stance: data viewing and
 navigation do not mutate data. Any future data correction or column import
 decision must become an explicit import option or pipeline step.
 
+## Whole-System Compatibility Requirements
+
+P1 is not allowed to be a local table facelift. It must preserve the surrounding
+product contracts that already exist in `docs/specs/04-ui-shell.md`,
+`docs/specs/release-qa-runbook.md`, the controller tests, and the clean-VM
+payload scripts.
+
+Compatibility matrix:
+
+| Area | Existing contract | P1 requirement |
+|---|---|---|
+| Work screen layout | `WorkScreen.qml` uses a central tab area inside a horizontal `SplitView`, with guide rail and results panel beside it and pipeline rail below it. | `DataGridView` must be bounded inside the existing tab content and must not overlap the guide rail, results panel, header, or pipeline rail at default and reduced window sizes. |
+| Data import flow | `FileDialog` opens preview, `ImportDialog` confirms, `confirmPendingImport()` binds `dataModel` and `variableModel`. | No new parser, no direct QML file reading, no change to `previewDataFilePath()` or `confirmPendingImport()` semantics. |
+| Preview/import distinction | Preview models and imported models both flow through `preview_models.py`. | `DataGridView` must work for both preview-bound models and post-import models. |
+| Data model performance | The UI shell requires virtualized `TableView` backed by `QAbstractTableModel`; no full matrix materialization. | No `Repeater` over all rows or columns; no conversion of pandas frames into nested QML arrays. Keep `DataTableModel` lazy. |
+| Variable metadata editing | `VariableTable.qml` row selection feeds measure, label, and missing-code edits. | Cell extraction must preserve `variableKey` and `measureValue`; existing metadata edit tests must still pass. |
+| Transform/source policy | Data view displays the source-protection notice. | The notice remains visible above the grid; grid interaction stays read-only. |
+| Results and guide panels | Results panel and guide rail have their own scroll containers and state. | Data grid scrollbars must not hijack or hide neighboring panel scroll behavior. |
+| Keyboard/accessibility | UI shell requires keyboard navigation for table movement and selectable/copyable display cells. | P1 must define focus, arrow movement, Home/End/PageUp/PageDown, and copy behavior for the grid. |
+| String catalog | Static QML user-facing strings come from `UI_STRINGS_KO`. | All new visible grid copy uses catalog keys; QML string catalog tests must stay green. |
+| Theme tokens | Non-theme QML must not introduce raw visual metric literals. | Header, row-label, status, and cell dimensions come from `Theme.qml`. |
+| Package payload | Clean-VM manual QA samples are copied by `attach_modori_payload_disk.ps1`. | `visible-grid-overflow.csv` must be generated or checked in and included in payload validation before P1 can be called complete. |
+| Release claims | Visible manual QA is separate from engine smoke and public-data smoke. | Scroll/extent evidence cannot be inferred from engine smoke; it must be observed in the visible VM flow. |
+
+If any row in this matrix cannot be satisfied during implementation, the P1
+slice stops and the design is revised before continuing.
+
 ## Design Decision
 
 Use a shared read-only grid component for the data table and variable table.
@@ -171,6 +198,10 @@ The shared grid component must provide:
   grid.
 - Read-only behavior. The existing edit-policy message remains correct:
   source data is not directly modified.
+- Keyboard navigation for visible cells: arrow keys, Home, End, PageUp, and
+  PageDown.
+- Copy of the focused cell's display text to the clipboard. Multi-cell copy is
+  not part of P1.
 
 The status line must be understandable even when the data has only a few rows
 or columns:
@@ -213,6 +244,8 @@ viewport and current scroll position.
   - `cellHeight`
   - `selectedKey`
   - `emptyText`
+- Maintains a focused cell as `currentRow` and `currentColumn`. These are view
+  state only and do not mutate the dataset.
 - Exposes signal:
   - `cellActivated(int row, int column, string variableKey, string measureValue)`
 - The cell delegate emits `cellActivated(row, column, model.variableKey || "",
@@ -220,6 +253,15 @@ viewport and current scroll position.
   variable-table consumers use it for selection.
 - The cell delegate shows full cell text in a tooltip on hover for non-empty
   values.
+- Key handling:
+  - Arrow keys move `currentRow`/`currentColumn` by one loaded logical cell and
+    position the table at that cell.
+  - `Home` moves to column 0 on the current row.
+  - `End` moves to the last column on the current row.
+  - `PageUp` and `PageDown` move by approximately one viewport of rows, clamped
+    to `[0, rows - 1]`.
+  - `Ctrl+C` copies the focused cell's display text through Qt's clipboard.
+  - Keyboard movement must update the viewport position text.
 
 Viewport position formula:
 
@@ -355,6 +397,8 @@ Static and unit-level tests must cover the first slice:
 - `DataGridView.qml` uses `columnWidthProvider` and `rowHeightProvider` with
   fixed theme-provided dimensions.
 - `DataGridView.qml` exposes and emits `cellActivated`.
+- `DataGridView.qml` defines current-cell state, key handling for arrows,
+  Home/End/PageUp/PageDown, and `Ctrl+C`.
 - `DataTable.qml` delegates table rendering to `DataGridView`.
 - `VariableTable.qml` delegates table rendering to `DataGridView`.
 - `VariableTable.qml` wires `onCellActivated` to `selectVariable`.
@@ -367,6 +411,9 @@ Static and unit-level tests must cover the first slice:
   visible QA fixture and documents that it is not engine-smoke evidence.
 - Visible import QA documentation includes scroll, final-row, final-column, and
   position-indicator checks.
+- Existing tests that assert data/variable model binding, metadata editing,
+  visual contract, QML string catalog, import preview/recent-file behavior, and
+  human-operated QML flow remain in the P1 verification set.
 
 Manual QA must use the P0 evidence format in this document.
 
@@ -383,6 +430,7 @@ the VM app size used for the run.
 - No change to statistical computation.
 - No change to public-data smoke contracts.
 - No new dependency.
+- No multi-cell range selection or spreadsheet-style edit mode.
 
 ## Acceptance Criteria
 
@@ -391,13 +439,35 @@ The P0/P1 slice is complete when:
 - A shared grid component is used by both data and variable views.
 - Data and variable views expose horizontal and vertical navigation affordances.
 - The user can see row/column orientation and current viewport position.
+- Keyboard movement and single-cell copy work without changing data.
 - Long cells are inspectable without corrupting layout.
 - Visible import QA instructions require scroll and extent checks.
 - A deterministic overflow fixture exists in the clean-VM payload and is used
   for scroll evidence.
 - Variable table row selection still works after the component extraction.
+- Existing import, transform, result, and metadata UI tests remain green.
 - Existing automated quality gates remain green.
 - P2 and P3 remain documented follow-ups rather than implied completed work.
+
+## Claim Discipline
+
+P1 is not complete when code merely compiles or the app merely launches. The
+only acceptable completion claim is:
+
+```text
+Data grid P1 is complete for the scoped contract: shared grid, visible
+scrollbars, headers, row labels, viewport position, keyboard navigation,
+single-cell copy, variable selection preservation, overflow fixture payload,
+and updated visible QA evidence all pass.
+```
+
+Claims that are still forbidden after P1:
+
+- "Spreadsheet parity"
+- "Column import review is solved"
+- "Detached data sheet is solved"
+- "Cell editing is solved"
+- "All data inspection UX is complete"
 
 ## Sources Checked
 
