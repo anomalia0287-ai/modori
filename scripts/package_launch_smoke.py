@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import subprocess
 import sys
@@ -31,23 +32,33 @@ def run_launch_smoke(
         print(f"Packaged executable does not exist: {exe_path}", file=sys.stderr)
         return 2
 
-    process = subprocess.Popen(
-        [str(exe_path)],
+    smoke_dir = Path(".tmp") / "packaged-launch-smoke"
+    output_path = smoke_dir / "result.json"
+    smoke_dir.mkdir(parents=True, exist_ok=True)
+    completed = subprocess.run(
+        [str(exe_path), "--launch-smoke", output_path.resolve()],
+        check=False,
         cwd=str(Path(working_directory).resolve()),
         env=package_launch_environment(),
+        timeout=timeout_seconds,
     )
-    try:
-        exit_code = process.wait(timeout=timeout_seconds)
-    except subprocess.TimeoutExpired:
-        process.kill()
-        print("package-launch-smoke-ok")
-        return 0
+    if completed.returncode != 0:
+        print(
+            f"Packaged launch smoke exited with code: {completed.returncode}",
+            file=sys.stderr,
+        )
+        return completed.returncode
 
-    print(
-        f"Packaged executable exited before launch smoke timeout: {exit_code}",
-        file=sys.stderr,
-    )
-    return 1
+    try:
+        payload = json.loads(output_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        print(f"Packaged launch smoke did not write valid JSON: {exc}", file=sys.stderr)
+        return 1
+    if payload.get("ok") is not True or int(payload.get("root_objects", 0)) < 1:
+        print(json.dumps(payload, ensure_ascii=False, sort_keys=True), file=sys.stderr)
+        return 1
+    print("package-launch-smoke-ok")
+    return 0
 
 
 def main(argv: Sequence[str] | None = None) -> int:
