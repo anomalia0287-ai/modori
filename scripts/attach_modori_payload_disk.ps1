@@ -104,6 +104,11 @@ function Assert-PayloadDriveContents {
     if ($publicDataSmokeBatch -notmatch "Samples\\public_data_formats") {
         throw "Public data smoke batch does not reference public_data_formats fixtures"
     }
+    foreach ($smokeBatch in @($engineSmokeBatch, $publicDataSmokeBatch)) {
+        if ($smokeBatch -notmatch "chcp 65001") {
+            throw "Smoke batch does not switch the console to UTF-8 before printing JSON"
+        }
+    }
 }
 
 function Assert-ExistingPayloadVhd {
@@ -353,6 +358,7 @@ start "" "%~dp0Modori\Modori.exe"
 
 $engineSmoke = @"
 @echo off
+chcp 65001 >nul
 set ROOT=%~dp0
 start /wait "" "%ROOT%Modori\Modori.exe" --engine-smoke "%ROOT%Samples\engine-smoke-reference.xlsx" "%USERPROFILE%\Desktop\modori-engine-smoke.json"
 set RESULT=%ERRORLEVEL%
@@ -366,6 +372,7 @@ exit /b %RESULT%
 
 $publicDataSmoke = @"
 @echo off
+chcp 65001 >nul
 set ROOT=%~dp0
 start /wait "" "%ROOT%Modori\Modori.exe" --public-data-smoke "%ROOT%Samples\public_data_formats" "%USERPROFILE%\Desktop\modori-public-data-smoke.json"
 set RESULT=%ERRORLEVEL%

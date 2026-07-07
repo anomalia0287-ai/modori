@@ -417,3 +417,69 @@ C:\Users\V\Desktop\TongTong\.venv\Scripts\python.exe scripts\quality_gate.py --w
 - Do not delete or stage `prototypes/` unless explicitly requested.
 - Do not use the old novice worktree path; current release work is in
   `C:\Users\V\Desktop\TongTong`.
+
+## 2026-07-07 In-VM Public Data Smoke Evidence — PASSED
+
+The clean-VM public-data smoke gate defined by this handoff has now been
+executed by the owner inside the clean Windows VM:
+
+- `Run-Public-Data-Smoke.bat` exit code: `0`.
+- Output JSON: `C:\Users\modoriqa\Desktop\modori-public-data-smoke.json`.
+- Top-level result: `"ok": true`, `"case_count": 9`, every case
+  `"failures": []`.
+- Fixture path inside the VM: `D:\Samples\public_data_formats` (payload
+  drive), confirming the smoke ran against the payload fixtures, not host
+  files.
+- Cases covered: KOSIS two-row header (warn + drop), MOLIT 15-row preamble,
+  weather text-XLS fallback, CP949 CSV decode, merged 3-row XLSX header,
+  aggregate-row warn + drop, notice-only XLSX expected reject. Preview and
+  full-import contracts both passed per case.
+
+### Observed Anomaly: Mojibake In The Console Output — Not A Product Defect
+
+The owner observed broken Korean text (e.g. `?됱젙援ъ뿭蹂?1)`) when the batch
+printed the JSON to the console. Classification:
+
+- The JSON file is written as UTF-8 (`ensure_ascii=False`). The batch printed
+  it with `type` in a cmd console using codepage 949. UTF-8 Korean rendered
+  under CP949 produces exactly the observed pattern.
+- The smoke's contract validation happens in-process against expected Korean
+  strings before the JSON is written. All cases reported `"failures": []`, so
+  the engine-side strings were correct; only the console rendering was wrong.
+- Opening the JSON file in a UTF-8 editor shows correct Korean.
+
+Fix applied for future payload rebuilds: `scripts/attach_modori_payload_disk.ps1`
+now writes `chcp 65001 >nul` into both `Run-Engine-Smoke-XLSX.bat` and
+`Run-Public-Data-Smoke.bat`, and payload validation rejects smoke batches
+without the UTF-8 console switch. Static guard:
+`tests/test_clean_vm_payload_script.py::test_smoke_batches_switch_console_to_utf8_before_printing_json`.
+Today's evidence remains valid; the fix is cosmetic and takes effect at the
+next payload rebuild.
+
+### Payload/Build Version Note
+
+The packaged root build was rebuilt after this payload was created. Latest
+host packaging gate (2026-07-07): default gate `625 passed, 2 skipped` plus
+`package-tool-ok`, `package-launch-smoke-ok`, `package-engine-smoke-ok`,
+`package-public-data-smoke-ok`. Latest `dist\Modori\Modori.exe` SHA256:
+
+```text
+E85D867137CB03B72686EE23FD80577F0CE730D0BD9CE9EAB754BE451E94D86B
+```
+
+This newer build additionally contains the import inference review view,
+duplicate-row import suggestion, and category value unification. If VM-visible
+QA of those features is wanted, rebuild Payload V2 from the root workspace and
+rerun the in-VM checks; the public-data smoke evidence above already covers the
+import-contract scope for the audited engine.
+
+### Remaining VM Evidence (per the 2026-07-03 handoff success state)
+
+- `Run-Engine-Smoke-XLSX.bat` inside the VM: exit `0` with `"ok": true` and
+  `"status": "ready"`.
+- `Run-Modori.bat` opens the UI inside the VM.
+- Visible import QA from the payload `Samples\` files.
+
+The owner reported "툴의 작동 자체는 정상적임" (tool operation itself normal);
+record the exact engine-smoke JSON and visible QA outcomes when those runs are
+captured.

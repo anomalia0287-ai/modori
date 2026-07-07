@@ -131,3 +131,10 @@ def test_attach_script_rejects_stale_existing_payload_when_not_rebuilding() -> N
     assert "Get-NewestSourceWriteTimeUtc" in text
     assert "Existing payload VHDX is older than the packaged app" in text
     assert "rerun this script with -RebuildPayload" in text
+
+
+def test_smoke_batches_switch_console_to_utf8_before_printing_json() -> None:
+    script = _payload_script_text()
+
+    assert script.count("chcp 65001 >nul") >= 2
+    assert 'if ($smokeBatch -notmatch "chcp 65001")' in script
