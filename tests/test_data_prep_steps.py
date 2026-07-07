@@ -189,6 +189,41 @@ def test_import_step_drops_aggregate_rows_when_requested(tmp_path) -> None:
     ]
 
 
+def test_import_step_persists_selected_columns_in_compute_and_writes(tmp_path) -> None:
+    from modori.table_io import ImportSelection, read_schema
+
+    path = tmp_path / "curated.csv"
+    path.write_text("지역,인구,비고\n종로구,100,메모\n", encoding="utf-8")
+    schema = read_schema(path, "csv")
+    selection = ImportSelection(
+        source_columns=schema.columns,
+        included_columns=("지역", "인구"),
+        schema_fingerprint=schema.fingerprint,
+    )
+    step = ImportStep(
+        id="import",
+        title="Import CSV",
+        params={
+            "path": str(path),
+            "file_type": "csv",
+            "import_selection": {
+                "schema_version": selection.schema_version,
+                "source_columns": list(selection.source_columns),
+                "included_columns": list(selection.included_columns),
+                "schema_fingerprint": selection.schema_fingerprint,
+                "created_from": selection.created_from,
+            },
+        },
+    )
+    pipeline = Pipeline(Dataset.empty())
+    pipeline.add(step)
+
+    pipeline.recompute(dirty_from=None)
+
+    assert pipeline.current_dataset.df.columns.tolist() == ["지역", "인구"]
+    assert step.writes() == {"지역", "인구"}
+
+
 def test_pipeline_rejects_duplicate_dynamic_import_writes_at_recompute(
     tmp_path,
 ) -> None:

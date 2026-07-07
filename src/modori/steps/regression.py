@@ -15,6 +15,7 @@ from statsmodels.stats.stattools import durbin_watson
 
 from modori.core import Dataset, Measure, PipelineContext, Step, StepResult, Variable
 from modori.results import ChartSpec, CoefficientRow, RegressionResult
+from modori.steps.data_prep import import_read_params_from_step_params
 from modori.table_io import TableLayoutOverride, read_full, read_header
 
 
@@ -103,16 +104,15 @@ class RegressionCsvImportStep(Step):
     safe_for_untrusted_project_json = False
 
     def compute(self, ctx: PipelineContext) -> StepResult:
-        path = Path(self.params["path"])
-        file_type = _file_type_from_params(path, self.params)
-        layout = _layout_override_from_params(self.params)
-        drop_aggregate_rows = bool(self.params.get("drop_aggregate_rows", False))
+        read_params = import_read_params_from_step_params(self.params)
         scale_columns = {str(column) for column in self.params.get("scale_columns", [])}
         table = read_full(
-            path,
-            file_type,
-            layout=layout,
-            drop_aggregate_rows=drop_aggregate_rows,
+            read_params.path,
+            read_params.file_type,
+            layout=read_params.layout,
+            selection=read_params.selection,
+            drop_aggregate_rows=read_params.drop_aggregate_rows,
+            drop_duplicate_rows=read_params.drop_duplicate_rows,
         )
         frame = table.frame
         frame = frame.rename(columns={column: str(column) for column in frame.columns})
@@ -146,10 +146,15 @@ class RegressionCsvImportStep(Step):
         return set()
 
     def writes(self) -> set[str]:
-        path = Path(self.params["path"])
-        file_type = _file_type_from_params(path, self.params)
-        layout = _layout_override_from_params(self.params)
-        return set(read_header(path, file_type, layout=layout))
+        read_params = import_read_params_from_step_params(self.params)
+        return set(
+            read_header(
+                read_params.path,
+                read_params.file_type,
+                layout=read_params.layout,
+                selection=read_params.selection,
+            )
+        )
 
 
 @dataclass

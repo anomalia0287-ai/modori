@@ -8,7 +8,13 @@ from typing import Any
 import pandas as pd
 
 from modori.core import Measure, PipelineContext, Step, StepResult, Variable
-from modori.table_io import TableLayoutOverride, read_full, read_header
+from modori.table_io import (
+    ImportSelection,
+    TableLayoutOverride,
+    import_selection_from_params,
+    read_full,
+    read_header,
+)
 
 
 def _dtype_name(series: pd.Series) -> str:
@@ -35,6 +41,7 @@ def read_table(
     file_type: str,
     *,
     layout: TableLayoutOverride | None = None,
+    selection: ImportSelection | None = None,
     drop_aggregate_rows: bool = False,
     drop_duplicate_rows: bool = False,
 ) -> tuple[pd.DataFrame, Any | None]:
@@ -42,6 +49,7 @@ def read_table(
         path,
         file_type,
         layout=layout,
+        selection=selection,
         drop_aggregate_rows=drop_aggregate_rows,
         drop_duplicate_rows=drop_duplicate_rows,
     )
@@ -52,8 +60,9 @@ def read_columns(
     file_type: str,
     *,
     layout: TableLayoutOverride | None = None,
+    selection: ImportSelection | None = None,
 ) -> list[str]:
-    return read_header(path, file_type, layout=layout)
+    return read_header(path, file_type, layout=layout, selection=selection)
 
 
 def _file_type_from_params(path: Path, params: dict[str, Any]) -> str:
@@ -90,6 +99,28 @@ def _optional_int(value: object) -> int | None:
     if value is None:
         return None
     return int(value)
+
+
+@dataclass(frozen=True)
+class ImportReadParams:
+    path: Path
+    file_type: str
+    layout: TableLayoutOverride | None
+    selection: ImportSelection | None
+    drop_aggregate_rows: bool
+    drop_duplicate_rows: bool
+
+
+def import_read_params_from_step_params(params: dict[str, Any]) -> ImportReadParams:
+    path = Path(params["path"])
+    return ImportReadParams(
+        path=path,
+        file_type=_file_type_from_params(path, params),
+        layout=_layout_override_from_params(params),
+        selection=import_selection_from_params(params.get("import_selection")),
+        drop_aggregate_rows=bool(params.get("drop_aggregate_rows", False)),
+        drop_duplicate_rows=bool(params.get("drop_duplicate_rows", False)),
+    )
 
 
 def metadata_variables(
@@ -145,19 +176,21 @@ class ImportStep(Step):
     safe_for_untrusted_project_json = False
 
     def compute(self, ctx: PipelineContext) -> StepResult:
-        path = Path(self.params["path"])
-        file_type = _file_type_from_params(path, self.params)
-        layout = _layout_override_from_params(self.params)
-        drop_aggregate_rows = bool(self.params.get("drop_aggregate_rows", False))
-        drop_duplicate_rows = bool(self.params.get("drop_duplicate_rows", False))
+        read_params = import_read_params_from_step_params(self.params)
         read_kwargs: dict[str, Any] = {}
-        if layout is not None:
-            read_kwargs["layout"] = layout
-        if drop_aggregate_rows:
+        if read_params.layout is not None:
+            read_kwargs["layout"] = read_params.layout
+        if read_params.selection is not None:
+            read_kwargs["selection"] = read_params.selection
+        if read_params.drop_aggregate_rows:
             read_kwargs["drop_aggregate_rows"] = True
-        if drop_duplicate_rows:
+        if read_params.drop_duplicate_rows:
             read_kwargs["drop_duplicate_rows"] = True
-        table = read_table(path, file_type, **read_kwargs)
+        table = read_table(
+            read_params.path,
+            read_params.file_type,
+            **read_kwargs,
+        )
         frame, metadata = table
         frame = frame.rename(columns={column: str(column) for column in frame.columns})
         variables = metadata_variables(
@@ -182,14 +215,13 @@ class ImportStep(Step):
         return set()
 
     def writes(self) -> set[str]:
-        path = Path(self.params["path"])
-        file_type = _file_type_from_params(path, self.params)
-        layout = _layout_override_from_params(self.params)
-        columns = (
-            read_columns(path, file_type, layout=layout)
-            if layout is not None
-            else read_columns(path, file_type)
-        )
+        read_params = import_read_params_from_step_params(self.params)
+        read_kwargs: dict[str, Any] = {}
+        if read_params.layout is not None:
+            read_kwargs["layout"] = read_params.layout
+        if read_params.selection is not None:
+            read_kwargs["selection"] = read_params.selection
+        columns = read_columns(read_params.path, read_params.file_type, **read_kwargs)
         return set(columns)
 
     def provenance(self) -> str:

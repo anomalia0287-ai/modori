@@ -116,6 +116,47 @@ def test_regression_import_step_drops_aggregate_rows_when_requested(tmp_path) ->
     ]
 
 
+def test_regression_import_step_honors_duplicate_and_column_selection(tmp_path) -> None:
+    from modori.table_io import ImportSelection, read_schema
+
+    path = tmp_path / "regression.csv"
+    path.write_text("y,x,note\n1,2,a\n1,2,b\n3,4,c\n", encoding="utf-8")
+    schema = read_schema(path, "csv")
+    selection = ImportSelection(
+        source_columns=schema.columns,
+        included_columns=("y", "x"),
+        schema_fingerprint=schema.fingerprint,
+    )
+    pipeline = Pipeline(Dataset.empty())
+    pipeline.add(
+        RegressionCsvImportStep(
+            id="import-data",
+            title="Import regression data",
+            params={
+                "path": str(path),
+                "file_type": "csv",
+                "scale_columns": ["y", "x"],
+                "drop_duplicate_rows": True,
+                "import_selection": {
+                    "schema_version": 1,
+                    "source_columns": list(selection.source_columns),
+                    "included_columns": list(selection.included_columns),
+                    "schema_fingerprint": selection.schema_fingerprint,
+                    "created_from": "preview",
+                },
+            },
+        )
+    )
+
+    pipeline.recompute(dirty_from=None)
+
+    assert pipeline.current_dataset.df.to_dict(orient="records") == [
+        {"y": 1, "x": 2},
+        {"y": 3, "x": 4},
+    ]
+    assert "note" not in pipeline.current_dataset.df.columns
+
+
 def numpy_ols_reference(frame: pd.DataFrame, dv: str, predictors: list[str]) -> dict[str, np.ndarray | float]:
     y = frame[dv].to_numpy(dtype=float)
     x = np.column_stack([np.ones(len(frame)), frame[predictors].to_numpy(dtype=float)])
