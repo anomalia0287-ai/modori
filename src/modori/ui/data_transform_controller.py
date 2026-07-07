@@ -195,8 +195,9 @@ def _parse_mapping_text(mapping_text: str) -> dict[str, str]:
 
 def _parse_missing_text(missing_text: str) -> list[str]:
     values: list[str] = []
-    for chunk in missing_text.replace("\n", ",").split(","):
-        value = chunk.strip()
-        if value:
-            values.append(value)
+    for line in missing_text.splitlines():
+        for chunk in line.split(","):
+            value = chunk.strip()
+            if value:
+                values.append(value)
     return values

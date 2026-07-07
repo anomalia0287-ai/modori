@@ -40,6 +40,10 @@ Item {
         return rows[recodeColumn.currentIndex]
     }
 
+    function valueCountText(entry) {
+        return entry.value + " (" + entry.count + ")"
+    }
+
     ScrollView {
         id: transformScroll
         anchors.fill: parent
@@ -152,7 +156,7 @@ Item {
                                 : []
 
                             delegate: Label {
-                                text: modelData.value + " (" + modelData.count + ")"
+                                text: root.valueCountText(modelData)
                                 color: theme.textMuted
                                 elide: Text.ElideRight
                                 Layout.fillWidth: true
@@ -203,7 +207,7 @@ Item {
 
                     TextField {
                         id: recodeSuffix
-                        text: "_수정"
+                        text: appBootstrap.text("transform.map_suffix_default")
                         Accessible.name: appBootstrap.text("transform.map_suffix")
                         Layout.fillWidth: true
                         selectByMouse: true

@@ -108,6 +108,7 @@ UI_STRINGS_KO = {
     "transform.map_rules": "수정 규칙",
     "transform.map_rules_placeholder": "예: 남 자=남자",
     "transform.map_suffix": "새 변수 접미사",
+    "transform.map_suffix_default": "_수정",
     "transform.map_title": "값 수정",
     "transform.map_values": "현재 값",
     "transform.method_mean": "평균",
