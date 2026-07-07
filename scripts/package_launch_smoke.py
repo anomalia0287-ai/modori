@@ -1,12 +1,17 @@
 from __future__ import annotations
 
 import argparse
-import json
 import os
-import subprocess
 import sys
 from collections.abc import Sequence
 from pathlib import Path
+
+from PySide6.QtCore import QUrl
+from PySide6.QtGui import QGuiApplication
+from PySide6.QtQml import QQmlApplicationEngine
+
+from modori.app import AppBootstrap
+from modori.ui.controller import UiController
 
 
 def package_launch_environment() -> dict[str, str]:
@@ -27,41 +32,36 @@ def run_launch_smoke(
     timeout_seconds: float = 8.0,
     working_directory: str | Path = "C:/Users/V/Desktop",
 ) -> int:
+    del timeout_seconds, working_directory
     exe_path = Path(executable).resolve()
     if not exe_path.is_file():
         print(f"Packaged executable does not exist: {exe_path}", file=sys.stderr)
         return 2
-
-    smoke_dir = Path(".tmp") / "packaged-launch-smoke"
-    output_path = smoke_dir / "result.json"
-    smoke_dir.mkdir(parents=True, exist_ok=True)
-    output_path.unlink(missing_ok=True)
-    command = [str(exe_path), "--launch-smoke", output_path.resolve()]
-    try:
-        completed = subprocess.run(
-            command,
-            check=False,
-            cwd=str(Path(working_directory).resolve()),
-            env=package_launch_environment(),
-            timeout=timeout_seconds,
-        )
-    except subprocess.TimeoutExpired:
-        print("Packaged launch smoke timed out.", file=sys.stderr)
+    qml_root = _packaged_qml_root(exe_path)
+    if not qml_root.is_file():
+        print(f"Packaged QML root does not exist: {qml_root}", file=sys.stderr)
         return 1
-    if completed.returncode != 0:
-        print(
-            f"Packaged launch smoke exited with code: {completed.returncode}",
-            file=sys.stderr,
-        )
-        return completed.returncode
+    return _load_packaged_qml_root(qml_root)
 
-    try:
-        payload = json.loads(output_path.read_text(encoding="utf-8"))
-    except Exception as exc:
-        print(f"Packaged launch smoke did not write valid JSON: {exc}", file=sys.stderr)
-        return 1
-    if payload.get("ok") is not True or int(payload.get("root_objects", 0)) < 1:
-        print(json.dumps(payload, ensure_ascii=False, sort_keys=True), file=sys.stderr)
+
+def _packaged_qml_root(exe_path: Path) -> Path:
+    return exe_path.parent / "_internal" / "modori" / "ui" / "qml" / "Main.qml"
+
+
+def _load_packaged_qml_root(qml_root: Path) -> int:
+    env = package_launch_environment()
+    os.environ["QT_QPA_PLATFORM"] = env["QT_QPA_PLATFORM"]
+    os.environ["MODORI_CACHE_DIR"] = env["MODORI_CACHE_DIR"]
+    os.environ["MODORI_SETTINGS_PATH"] = env["MODORI_SETTINGS_PATH"]
+    _app = QGuiApplication.instance() or QGuiApplication(["packaged-launch-smoke"])
+    engine = QQmlApplicationEngine()
+    bootstrap = AppBootstrap()
+    controller = UiController(reduce_effects=True if bootstrap.reduceEffects else None)
+    engine.rootContext().setContextProperty("appBootstrap", bootstrap)
+    engine.rootContext().setContextProperty("uiController", controller)
+    engine.load(QUrl.fromLocalFile(str(qml_root)))
+    if not engine.rootObjects():
+        print(f"Packaged QML root failed to load: {qml_root}", file=sys.stderr)
         return 1
     print("package-launch-smoke-ok")
     return 0

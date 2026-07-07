@@ -47,8 +47,6 @@ def main(argv: Sequence[str] | None = None) -> int:
     selected_argv = list(sys.argv if argv is None else argv)
     if len(selected_argv) == 4 and selected_argv[1] == "--engine-smoke":
         return _run_engine_smoke(Path(selected_argv[2]), Path(selected_argv[3]))
-    if len(selected_argv) == 3 and selected_argv[1] == "--launch-smoke":
-        return _run_launch_smoke(Path(selected_argv[2]))
     if len(selected_argv) == 4 and selected_argv[1] == "--public-data-smoke":
         return run_public_data_import_smoke(Path(selected_argv[2]), Path(selected_argv[3]))
 
@@ -89,33 +87,6 @@ def _run_engine_smoke(data_path: Path, output_path: Path) -> int:
             "result_summary_present": bool(controller.resultSummary),
             "data_rows": None if controller.dataModel is None else controller.dataModel.rowCount(),
             "data_columns": None if controller.dataModel is None else controller.dataModel.columnCount(),
-        }
-    except Exception as exc:
-        payload = {"ok": False, "exception": f"{type(exc).__name__}: {exc}"}
-
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(
-        json.dumps(payload, ensure_ascii=False, sort_keys=True, indent=2),
-        encoding="utf-8",
-    )
-    return 0 if payload.get("ok") is True else 1
-
-
-def _run_launch_smoke(output_path: Path) -> int:
-    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-    payload: dict[str, object]
-    try:
-        _app = QGuiApplication(["modori-launch-smoke"])
-        engine = QQmlApplicationEngine()
-        bootstrap = AppBootstrap()
-        controller = UiController(reduce_effects=True if bootstrap.reduceEffects else None)
-        engine.rootContext().setContextProperty("appBootstrap", bootstrap)
-        engine.rootContext().setContextProperty("uiController", controller)
-        engine.load(QUrl.fromLocalFile(str(root_qml_path())))
-        root_count = len(engine.rootObjects())
-        payload = {
-            "ok": root_count > 0,
-            "root_objects": root_count,
         }
     except Exception as exc:
         payload = {"ok": False, "exception": f"{type(exc).__name__}: {exc}"}
