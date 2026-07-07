@@ -6,7 +6,7 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-from PySide6.QtCore import Property, QObject, QTimer, QUrl, Signal, Slot
+from PySide6.QtCore import Property, QObject, QUrl, Signal, Slot
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine
 
@@ -105,7 +105,7 @@ def _run_launch_smoke(output_path: Path) -> int:
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
     payload: dict[str, object]
     try:
-        app = QGuiApplication(["modori-launch-smoke"])
+        _app = QGuiApplication(["modori-launch-smoke"])
         engine = QQmlApplicationEngine()
         bootstrap = AppBootstrap()
         controller = UiController(reduce_effects=True if bootstrap.reduceEffects else None)
@@ -113,9 +113,6 @@ def _run_launch_smoke(output_path: Path) -> int:
         engine.rootContext().setContextProperty("uiController", controller)
         engine.load(QUrl.fromLocalFile(str(root_qml_path())))
         root_count = len(engine.rootObjects())
-        if root_count:
-            QTimer.singleShot(0, app.quit)
-            app.exec()
         payload = {
             "ok": root_count > 0,
             "root_objects": root_count,

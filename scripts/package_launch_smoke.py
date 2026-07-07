@@ -35,13 +35,19 @@ def run_launch_smoke(
     smoke_dir = Path(".tmp") / "packaged-launch-smoke"
     output_path = smoke_dir / "result.json"
     smoke_dir.mkdir(parents=True, exist_ok=True)
-    completed = subprocess.run(
-        [str(exe_path), "--launch-smoke", output_path.resolve()],
-        check=False,
-        cwd=str(Path(working_directory).resolve()),
-        env=package_launch_environment(),
-        timeout=timeout_seconds,
-    )
+    output_path.unlink(missing_ok=True)
+    command = [str(exe_path), "--launch-smoke", output_path.resolve()]
+    try:
+        completed = subprocess.run(
+            command,
+            check=False,
+            cwd=str(Path(working_directory).resolve()),
+            env=package_launch_environment(),
+            timeout=timeout_seconds,
+        )
+    except subprocess.TimeoutExpired:
+        print("Packaged launch smoke timed out.", file=sys.stderr)
+        return 1
     if completed.returncode != 0:
         print(
             f"Packaged launch smoke exited with code: {completed.returncode}",

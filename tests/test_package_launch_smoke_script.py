@@ -59,3 +59,18 @@ def test_package_launch_smoke_fails_when_packaged_launch_smoke_fails(
     result = package_launch_smoke.run_launch_smoke(exe, timeout_seconds=0.01)
 
     assert result == 1
+
+
+def test_package_launch_smoke_fails_cleanly_on_timeout(monkeypatch, tmp_path) -> None:
+    exe = tmp_path / "Modori.exe"
+    exe.write_text("", encoding="utf-8")
+
+    def fake_run(command, *, check, timeout, cwd, env):
+        del check, cwd, env
+        raise subprocess.TimeoutExpired(command, timeout)
+
+    monkeypatch.setattr(package_launch_smoke.subprocess, "run", fake_run)
+
+    result = package_launch_smoke.run_launch_smoke(exe, timeout_seconds=0.01)
+
+    assert result == 1
