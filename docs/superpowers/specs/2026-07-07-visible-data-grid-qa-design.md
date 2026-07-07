@@ -200,6 +200,9 @@ The shared grid component must provide:
   source data is not directly modified.
 - Keyboard navigation for visible cells: arrow keys, Home, End, PageUp, and
   PageDown.
+- The current keyboard cell must have a visible state. Updating internal
+  `currentRow`/`currentColumn` values without a visible cue is not acceptable
+  QA evidence.
 - Copy of the focused cell's display text to the clipboard. Multi-cell copy is
   not part of P1.
 
@@ -246,6 +249,8 @@ viewport and current scroll position.
   - `emptyText`
 - Maintains a focused cell as `currentRow` and `currentColumn`. These are view
   state only and do not mutate the dataset.
+- Renders that focused cell with a visible theme-backed state, so keyboard
+  movement can be inspected in the app rather than inferred from logs.
 - Exposes signal:
   - `cellActivated(int row, int column, string variableKey, string measureValue)`
 - The cell delegate emits `cellActivated(row, column, model.variableKey || "",
@@ -273,7 +278,7 @@ function oneBased(value) {
 function positionText() {
     return appBootstrap.text("data.grid_rows") + " " +
         oneBased(body.topRow) + "-" + oneBased(body.bottomRow) + " / " + body.rows +
-        " · " +
+        appBootstrap.text("data.grid_extent_separator") +
         appBootstrap.text("data.grid_columns") + " " +
         oneBased(body.leftColumn) + "-" + oneBased(body.rightColumn) + " / " + body.columns
 }
@@ -338,6 +343,7 @@ string keys:
 
 - `data.grid_rows`: `행`
 - `data.grid_columns`: `열`
+- `data.grid_extent_separator`: ` · `
 - `data.grid_empty`: `표시할 데이터가 없습니다.`
 
 ## Accessibility And Visual Rules
@@ -347,6 +353,8 @@ string keys:
 - The position indicator must use catalog strings, not raw QML text.
 - Long cell text must not overlap adjacent cells.
 - Tooltips must show the full cell value for non-empty cells.
+- Keyboard focus must be visible on the current cell; a hidden focus state
+  cannot satisfy visible QA.
 - The grid must work in reduced-effects mode without animation dependence.
 - Data and variable tables must remain dense and operational, not styled as
   marketing cards.
@@ -399,10 +407,14 @@ Static and unit-level tests must cover the first slice:
 - `DataGridView.qml` exposes and emits `cellActivated`.
 - `DataGridView.qml` defines current-cell state, key handling for arrows,
   Home/End/PageUp/PageDown, and `Ctrl+C`.
+- `DataGridView.qml` renders a visible current-cell state so keyboard movement
+  is inspectable.
 - `DataTable.qml` delegates table rendering to `DataGridView`.
 - `VariableTable.qml` delegates table rendering to `DataGridView`.
 - `VariableTable.qml` wires `onCellActivated` to `selectVariable`.
 - Existing QML string catalog tests include the new visible strings.
+- QML runtime tests load `DataGridView.qml` and the integrated main shell with
+  `QT_QPA_PLATFORM=offscreen`.
 - `DataTableModel` and `VariableTableModel` continue to return horizontal and
   vertical headers.
 - `VariableTableModel` continues to expose `variableKey` and `measureValue`
@@ -439,7 +451,8 @@ The P0/P1 slice is complete when:
 - A shared grid component is used by both data and variable views.
 - Data and variable views expose horizontal and vertical navigation affordances.
 - The user can see row/column orientation and current viewport position.
-- Keyboard movement and single-cell copy work without changing data.
+- Keyboard movement is visibly inspectable, and single-cell copy works without
+  changing data.
 - Long cells are inspectable without corrupting layout.
 - Visible import QA instructions require scroll and extent checks.
 - A deterministic overflow fixture exists in the clean-VM payload and is used
@@ -457,8 +470,8 @@ only acceptable completion claim is:
 ```text
 Data grid P1 is complete for the scoped contract: shared grid, visible
 scrollbars, headers, row labels, viewport position, keyboard navigation,
-single-cell copy, variable selection preservation, overflow fixture payload,
-and updated visible QA evidence all pass.
+visible current-cell focus, single-cell copy, variable selection preservation,
+overflow fixture payload, and updated visible QA evidence all pass.
 ```
 
 Claims that are still forbidden after P1:

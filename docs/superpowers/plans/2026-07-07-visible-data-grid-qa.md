@@ -36,7 +36,9 @@
 - Create: `tests/ui/test_app_bootstrap.py`
   - Verify the copy slot is present and returns false safely without a clipboard.
 - Modify: `src/modori/ui/strings.py`
-  - Add `data.grid_rows`, `data.grid_columns`, `data.grid_empty`.
+  - Add `data.grid_rows`, `data.grid_columns`, `data.grid_extent_separator`,
+    and `data.grid_empty` in the same task that first uses them from QML, so
+    `test_qml_string_catalog_is_complete_and_used` stays green at every commit.
 - Modify: `src/modori/ui/qml/theme/Theme.qml`
   - Add `gridHeaderHeight`, `gridRowLabelWidth`, `gridStatusHeight`.
 - Create: `src/modori/ui/qml/components/DataGridView.qml`
@@ -47,8 +49,14 @@
   - Use `DataGridView` while preserving metadata-edit row selection.
 - Create: `tests/ui/test_data_grid_qml.py`
   - Static QML contract tests for headers, scrollbars, viewport state, keyboard, copy, and integration.
+- Create: `tests/ui/test_qml_runtime_load.py`
+  - Offscreen QML runtime smoke for `DataGridView.qml` and the integrated main
+    shell; this catches syntax/API errors that static grep cannot catch.
 - Modify: `tests/ui/test_human_operated_qml_flow.py`
   - Update binding assertions to accept `DataGridView` delegation.
+- Modify: `tests/ui/test_variable_metadata_editing.py`
+  - Update the variable-row selection assertion from direct delegate click
+    wiring to the `DataGridView.onCellActivated` contract.
 - Modify: `tests/ui/test_qml_visual_contract.py`
   - Add `components/DataGridView.qml` to themed visual surfaces and token expectations.
 - Modify: `docs/specs/release-qa-runbook.md`
@@ -74,6 +82,11 @@
 Add to `tests/test_clean_vm_payload_script.py`:
 
 ```python
+def _batch_block(script_text: str, variable_name: str) -> str:
+    marker = f"${variable_name} = @\""
+    return script_text.split(marker, maxsplit=1)[1].split('"@', maxsplit=1)[0]
+
+
 def test_payload_includes_visible_grid_overflow_fixture_for_manual_qa() -> None:
     text = _payload_script_text()
 
@@ -83,7 +96,7 @@ def test_payload_includes_visible_grid_overflow_fixture_for_manual_qa() -> None:
 
 def test_visible_grid_overflow_fixture_is_not_used_for_engine_smoke() -> None:
     text = _payload_script_text()
-    engine_block = _batch_block(text, "Run-Engine-Smoke-XLSX.bat")
+    engine_block = _batch_block(text, "engineSmoke")
 
     assert "engine-smoke-reference.xlsx" in engine_block
     assert "visible-grid-overflow.csv" not in engine_block
@@ -111,7 +124,7 @@ $rows += ($columns -join ",")
 for ($row = 1; $row -le 120; $row++) {
     $rows += ((1..40 | ForEach-Object { "r${row}c$_" }) -join ",")
 }
-Set-Content -LiteralPath $path -Value $rows -Encoding UTF8
+Set-Content -LiteralPath $path -Value $rows -Encoding ASCII
 ```
 
 Verify:
@@ -169,10 +182,9 @@ git commit -m "test: add visible grid overflow payload fixture"
 
 ---
 
-### Task 2: Theme, Strings, And Clipboard Boundary
+### Task 2: Theme And Clipboard Boundary
 
 **Files:**
-- Modify: `src/modori/ui/strings.py`
 - Modify: `src/modori/ui/qml/theme/Theme.qml`
 - Modify: `src/modori/app.py`
 - Create: `tests/ui/test_app_bootstrap.py`
@@ -180,7 +192,7 @@ git commit -m "test: add visible grid overflow payload fixture"
 
 **Interfaces:**
 - Consumes: `appBootstrap.text(key)` and theme token conventions.
-- Produces: catalog keys, visual tokens, and `appBootstrap.copyText(text)`.
+- Produces: visual tokens and `appBootstrap.copyText(text)`.
 
 - [ ] **Step 1: Write failing tests**
 
@@ -188,13 +200,6 @@ Create `tests/ui/test_app_bootstrap.py`:
 
 ```python
 from modori.app import AppBootstrap
-from modori.ui.strings import UI_STRINGS_KO
-
-
-def test_grid_strings_are_catalogued() -> None:
-    assert UI_STRINGS_KO["data.grid_rows"] == "행"
-    assert UI_STRINGS_KO["data.grid_columns"] == "열"
-    assert UI_STRINGS_KO["data.grid_empty"] == "표시할 데이터가 없습니다."
 
 
 def test_app_bootstrap_exposes_copy_text_slot() -> None:
@@ -220,21 +225,9 @@ Run:
 .\.venv\Scripts\python.exe -m pytest tests/ui/test_app_bootstrap.py tests/ui/test_qml_visual_contract.py::test_theme_exposes_layout_and_typography_tokens -q
 ```
 
-Expected: fails for missing strings/tokens/slot.
+Expected: fails for missing tokens/slot.
 
-- [ ] **Step 3: Add string keys**
-
-In `src/modori/ui/strings.py`, add:
-
-```python
-"data.grid_columns": "열",
-"data.grid_empty": "표시할 데이터가 없습니다.",
-"data.grid_rows": "행",
-```
-
-Keep key order readable near existing `data.*` strings.
-
-- [ ] **Step 4: Add theme tokens**
+- [ ] **Step 3: Add theme tokens**
 
 In `src/modori/ui/qml/theme/Theme.qml`, add:
 
@@ -246,7 +239,7 @@ readonly property int gridStatusHeight: 28
 
 Place them near existing table size tokens.
 
-- [ ] **Step 5: Add clipboard slot**
+- [ ] **Step 4: Add clipboard slot**
 
 In `src/modori/app.py`, inside `AppBootstrap`:
 
@@ -262,7 +255,7 @@ def copyText(self, text: str) -> bool:
     return True
 ```
 
-- [ ] **Step 6: Run tests**
+- [ ] **Step 5: Run tests**
 
 Run:
 
@@ -272,11 +265,11 @@ Run:
 
 Expected: pass.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 6: Commit**
 
 ```powershell
-git add src\modori\app.py src\modori\ui\strings.py src\modori\ui\qml\theme\Theme.qml tests\ui\test_app_bootstrap.py tests\ui\test_qml_visual_contract.py
-git commit -m "feat: add grid strings theme tokens and clipboard slot"
+git add src\modori\app.py src\modori\ui\qml\theme\Theme.qml tests\ui\test_app_bootstrap.py tests\ui\test_qml_visual_contract.py
+git commit -m "feat: add grid theme tokens and clipboard slot"
 ```
 
 ---
@@ -284,8 +277,10 @@ git commit -m "feat: add grid strings theme tokens and clipboard slot"
 ### Task 3: Shared DataGridView QML Contract
 
 **Files:**
+- Modify: `src/modori/ui/strings.py`
 - Create: `src/modori/ui/qml/components/DataGridView.qml`
 - Create: `tests/ui/test_data_grid_qml.py`
+- Create: `tests/ui/test_qml_runtime_load.py`
 
 **Interfaces:**
 - Consumes: `QAbstractTableModel` with `display`, optional `variableKey`, optional `measureValue`.
@@ -297,6 +292,8 @@ Create `tests/ui/test_data_grid_qml.py`:
 
 ```python
 from pathlib import Path
+
+from modori.ui.strings import UI_STRINGS_KO
 
 
 QML_ROOT = Path("src/modori/ui/qml")
@@ -328,6 +325,14 @@ def test_data_grid_exposes_scrollbars_and_viewport_position() -> None:
         assert token in qml
     assert 'appBootstrap.text("data.grid_rows")' in qml
     assert 'appBootstrap.text("data.grid_columns")' in qml
+    assert 'appBootstrap.text("data.grid_extent_separator")' in qml
+
+
+def test_data_grid_strings_are_catalogued() -> None:
+    assert UI_STRINGS_KO["data.grid_rows"] == "행"
+    assert UI_STRINGS_KO["data.grid_columns"] == "열"
+    assert UI_STRINGS_KO["data.grid_extent_separator"] == " · "
+    assert UI_STRINGS_KO["data.grid_empty"] == "표시할 데이터가 없습니다."
 
 
 def test_data_grid_has_fixed_dimensions_and_read_only_keyboard_contract() -> None:
@@ -341,6 +346,15 @@ def test_data_grid_has_fixed_dimensions_and_read_only_keyboard_contract() -> Non
     assert "appBootstrap.copyText" in qml
 
 
+def test_data_grid_has_visible_current_cell_state() -> None:
+    qml = qml_text("components/DataGridView.qml")
+
+    assert "property bool isCurrentCell" in qml
+    assert "root.currentRow === row" in qml
+    assert "root.currentColumn === column" in qml
+    assert "theme.actionTeal" in qml
+
+
 def test_data_grid_emits_cell_activated_with_variable_roles() -> None:
     qml = qml_text("components/DataGridView.qml")
 
@@ -349,17 +363,76 @@ def test_data_grid_emits_cell_activated_with_variable_roles() -> None:
     assert "model.measureValue" in qml
 ```
 
+Create `tests/ui/test_qml_runtime_load.py`:
+
+```python
+from __future__ import annotations
+
+import os
+from pathlib import Path
+
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+
+from PySide6.QtCore import QUrl
+from PySide6.QtGui import QGuiApplication
+from PySide6.QtQml import QQmlComponent, QQmlEngine
+
+from modori.app import AppBootstrap
+
+
+QML_ROOT = Path("src/modori/ui/qml")
+
+
+def _app() -> QGuiApplication:
+    return QGuiApplication.instance() or QGuiApplication([])
+
+
+def _component_errors(component: QQmlComponent) -> str:
+    return "\n".join(error.toString() for error in component.errors())
+
+
+def test_data_grid_view_qml_loads_without_runtime_errors() -> None:
+    _app()
+    engine = QQmlEngine()
+    engine.rootContext().setContextProperty("appBootstrap", AppBootstrap())
+    component = QQmlComponent(
+        engine,
+        QUrl.fromLocalFile(str((QML_ROOT / "components/DataGridView.qml").resolve())),
+    )
+
+    assert component.status() == QQmlComponent.Status.Ready, _component_errors(component)
+
+    obj = component.create()
+    assert obj is not None, _component_errors(component)
+    obj.deleteLater()
+```
+
 - [ ] **Step 2: Run tests and verify failure**
 
 Run:
 
 ```powershell
-.\.venv\Scripts\python.exe -m pytest tests/ui/test_data_grid_qml.py -q
+.\.venv\Scripts\python.exe -m pytest tests/ui/test_data_grid_qml.py tests/ui/test_qml_runtime_load.py::test_data_grid_view_qml_loads_without_runtime_errors tests/ui/test_qml_string_catalog.py -q
 ```
 
-Expected: fails because `DataGridView.qml` does not exist.
+Expected: fails because `DataGridView.qml` and the new catalog keys do not exist.
 
-- [ ] **Step 3: Create `DataGridView.qml`**
+- [ ] **Step 3: Add string keys**
+
+In `src/modori/ui/strings.py`, add:
+
+```python
+"data.grid_columns": "열",
+"data.grid_empty": "표시할 데이터가 없습니다.",
+"data.grid_extent_separator": " · ",
+"data.grid_rows": "행",
+```
+
+Keep key order readable near existing `data.*` strings. Add these strings in
+this task only because `DataGridView.qml` also starts using them in this same
+commit; do not commit unused string-catalog keys.
+
+- [ ] **Step 4: Create `DataGridView.qml`**
 
 Create `src/modori/ui/qml/components/DataGridView.qml` with this structure:
 
@@ -404,7 +477,7 @@ Item {
         }
         return appBootstrap.text("data.grid_rows") + " " +
             oneBased(body.topRow) + "-" + oneBased(body.bottomRow) + " / " + body.rows +
-            " · " +
+            appBootstrap.text("data.grid_extent_separator") +
             appBootstrap.text("data.grid_columns") + " " +
             oneBased(body.leftColumn) + "-" + oneBased(body.rightColumn) + " / " + body.columns
     }
@@ -504,13 +577,16 @@ Item {
                     property string variableKey: model.variableKey ?? ""
                     property string measureValue: model.measureValue ?? ""
                     property string cellText: model.display ?? ""
+                    property bool isCurrentCell: root.currentRow === row && root.currentColumn === column
 
                     implicitWidth: root.cellWidth
                     implicitHeight: root.cellHeight
-                    color: root.selectedKey.length > 0 && root.selectedKey === variableKey
+                    color: isCurrentCell
                         ? theme.selectionSurface
-                        : theme.paperSurface
-                    border.color: theme.lineGrid
+                        : (root.selectedKey.length > 0 && root.selectedKey === variableKey
+                            ? theme.selectionSurface
+                            : theme.paperSurface)
+                    border.color: isCurrentCell ? theme.actionTeal : theme.lineGrid
 
                     MouseArea {
                         anchors.fill: parent
@@ -548,20 +624,20 @@ Item {
 }
 ```
 
-- [ ] **Step 4: Run DataGrid tests**
+- [ ] **Step 5: Run DataGrid tests**
 
 Run:
 
 ```powershell
-.\.venv\Scripts\python.exe -m pytest tests/ui/test_data_grid_qml.py -q
+.\.venv\Scripts\python.exe -m pytest tests/ui/test_data_grid_qml.py tests/ui/test_qml_runtime_load.py::test_data_grid_view_qml_loads_without_runtime_errors tests/ui/test_qml_string_catalog.py -q
 ```
 
 Expected: pass.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```powershell
-git add src\modori\ui\qml\components\DataGridView.qml tests\ui\test_data_grid_qml.py
+git add src\modori\ui\strings.py src\modori\ui\qml\components\DataGridView.qml tests\ui\test_data_grid_qml.py tests\ui\test_qml_runtime_load.py
 git commit -m "feat: add shared read-only data grid"
 ```
 
@@ -573,7 +649,9 @@ git commit -m "feat: add shared read-only data grid"
 - Modify: `src/modori/ui/qml/components/DataTable.qml`
 - Modify: `src/modori/ui/qml/components/VariableTable.qml`
 - Modify: `tests/ui/test_human_operated_qml_flow.py`
+- Modify: `tests/ui/test_variable_metadata_editing.py`
 - Modify: `tests/ui/test_data_grid_qml.py`
+- Modify: `tests/ui/test_qml_runtime_load.py`
 
 **Interfaces:**
 - Consumes: `DataGridView.qml`.
@@ -603,6 +681,60 @@ def test_variable_table_delegates_to_data_grid_and_preserves_selection() -> None
     assert "root.selectVariable(variableKey, measureValue)" in qml
 ```
 
+Update `tests/ui/test_variable_metadata_editing.py::test_variable_table_selects_row_as_measure_edit_target` so it asserts the new delegated selection path:
+
+```python
+def test_variable_table_selects_row_as_measure_edit_target() -> None:
+    qml = Path("src/modori/ui/qml/components/VariableTable.qml").read_text(encoding="utf-8")
+
+    assert "property string selectedVariableKey" in qml
+    assert "function selectVariable(variableKey, measureValue)" in qml
+    assert "DataGridView" in qml
+    assert "selectedKey: root.selectedVariableKey" in qml
+    assert "onCellActivated" in qml
+    assert "root.selectVariable(variableKey, measureValue)" in qml
+    assert "readOnly: true" in qml
+    assert "uiController.changeVariableMeasure(root.selectedVariableKey" in qml
+```
+
+Replace the import block in `tests/ui/test_qml_runtime_load.py` with:
+
+```python
+from __future__ import annotations
+
+import os
+from pathlib import Path
+
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+
+from PySide6.QtCore import QUrl
+from PySide6.QtGui import QGuiApplication
+from PySide6.QtQml import QQmlApplicationEngine, QQmlComponent, QQmlEngine
+
+from modori.app import AppBootstrap
+from modori.ui.controller import UiController
+from modori.ui.resources import root_qml_path
+```
+
+Then append:
+
+```python
+
+
+def test_main_qml_loads_work_screen_with_shared_grid() -> None:
+    app = _app()
+    engine = QQmlApplicationEngine()
+    engine.rootContext().setContextProperty("appBootstrap", AppBootstrap())
+    engine.rootContext().setContextProperty("uiController", UiController(reduce_effects=True))
+    engine.load(QUrl.fromLocalFile(str(root_qml_path())))
+
+    assert len(engine.rootObjects()) == 1
+    root = engine.rootObjects()[0]
+    root.setProperty("currentScreen", "work")
+    app.processEvents()
+    root.deleteLater()
+```
+
 Keep `tests/ui/test_human_operated_qml_flow.py` assertions requiring:
 
 ```python
@@ -615,10 +747,12 @@ assert "model: uiController.variableModel" in qml_text("components/VariableTable
 Run:
 
 ```powershell
-.\.venv\Scripts\python.exe -m pytest tests/ui/test_data_grid_qml.py tests/ui/test_human_operated_qml_flow.py::test_work_qml_wires_rerun_results_explain_and_report -q
+.\.venv\Scripts\python.exe -m pytest tests/ui/test_data_grid_qml.py tests/ui/test_human_operated_qml_flow.py::test_work_qml_wires_rerun_results_explain_and_report tests/ui/test_qml_runtime_load.py::test_main_qml_loads_work_screen_with_shared_grid -q
 ```
 
-Expected: new integration tests fail until tables use `DataGridView`.
+Expected: new integration tests fail until tables use `DataGridView`; the
+runtime main-shell test also fails if the integration introduces QML load
+errors.
 
 - [ ] **Step 3: Replace data table body**
 
@@ -664,7 +798,7 @@ DataGridView {
 Run:
 
 ```powershell
-.\.venv\Scripts\python.exe -m pytest tests/ui/test_data_grid_qml.py tests/ui/test_human_operated_qml_flow.py tests/ui/test_variable_metadata_editing.py tests/ui/test_data_transform_qml.py -q
+.\.venv\Scripts\python.exe -m pytest tests/ui/test_data_grid_qml.py tests/ui/test_human_operated_qml_flow.py tests/ui/test_variable_metadata_editing.py tests/ui/test_data_transform_qml.py tests/ui/test_qml_runtime_load.py -q
 ```
 
 Expected: pass.
@@ -672,7 +806,7 @@ Expected: pass.
 - [ ] **Step 6: Commit**
 
 ```powershell
-git add src\modori\ui\qml\components\DataTable.qml src\modori\ui\qml\components\VariableTable.qml tests\ui\test_data_grid_qml.py tests\ui\test_human_operated_qml_flow.py
+git add src\modori\ui\qml\components\DataTable.qml src\modori\ui\qml\components\VariableTable.qml tests\ui\test_data_grid_qml.py tests\ui\test_human_operated_qml_flow.py tests\ui\test_variable_metadata_editing.py tests\ui\test_qml_runtime_load.py
 git commit -m "feat: use shared grid in data and variable views"
 ```
 
@@ -682,7 +816,6 @@ git commit -m "feat: use shared grid in data and variable views"
 
 **Files:**
 - Modify: `tests/ui/test_qml_visual_contract.py`
-- Modify: `tests/ui/test_qml_string_catalog.py` only if catalog completeness needs no change beyond existing behavior.
 - Modify: `docs/specs/release-qa-runbook.md`
 - Modify: `docs/superpowers/handoffs/2026-07-06-public-data-smoke-vm-handoff.md`
 
@@ -715,7 +848,7 @@ In `docs/specs/release-qa-runbook.md`, add:
 In the Clean Windows VM release evidence block, add:
 
 ```text
-Visible grid overflow QA reaches final row and final column and position text updates.
+Visible grid overflow QA reaches final row and final column, position text updates, and the current-cell focus cue is visible.
 ```
 
 - [ ] **Step 3: Update handoff**
@@ -728,8 +861,8 @@ In `docs/superpowers/handoffs/2026-07-06-public-data-smoke-vm-handoff.md`, add a
 The visible grid P1 slice adds `Samples\visible-grid-overflow.csv` to Payload
 V2. After implementation, rebuild the payload and record visible QA evidence
 for scrollbars, final row/column reach, viewport position updates, keyboard
-movement, and single-cell copy. This evidence is separate from engine smoke and
-public-data smoke.
+movement with a visible current-cell focus cue, and single-cell copy. This
+evidence is separate from engine smoke and public-data smoke.
 ```
 
 - [ ] **Step 4: Run documentation/static UI tests**
@@ -765,7 +898,7 @@ git commit -m "docs: add visible grid manual qa gate"
 Run:
 
 ```powershell
-.\.venv\Scripts\python.exe -m pytest tests/ui/test_data_grid_qml.py tests/ui/test_app_bootstrap.py tests/ui/test_human_operated_qml_flow.py tests/ui/test_variable_metadata_editing.py tests/ui/test_data_transform_qml.py tests/ui/test_qml_visual_contract.py tests/ui/test_qml_string_catalog.py tests/test_clean_vm_payload_script.py -q
+.\.venv\Scripts\python.exe -m pytest tests/ui/test_data_grid_qml.py tests/ui/test_qml_runtime_load.py tests/ui/test_app_bootstrap.py tests/ui/test_human_operated_qml_flow.py tests/ui/test_variable_metadata_editing.py tests/ui/test_data_transform_qml.py tests/ui/test_qml_visual_contract.py tests/ui/test_qml_string_catalog.py tests/ui/test_models.py tests/test_clean_vm_payload_script.py -q
 ```
 
 Expected: pass.
@@ -835,6 +968,7 @@ Fixture: Samples\visible-grid-overflow.csv
 - Position indicator updated after vertical scroll: PASS
 - Column headers visible after scroll: PASS
 - Row labels visible after scroll: PASS
+- Current-cell focus cue visible: PASS
 - Arrow keys move focused cell: PASS
 - Home/End/PageUp/PageDown move focus: PASS
 - Ctrl+C copies focused cell text: PASS
@@ -848,8 +982,8 @@ Only after Steps 1-5 pass, the allowed claim is:
 ```text
 Data grid P1 is complete for the scoped contract: shared grid, visible
 scrollbars, headers, row labels, viewport position, keyboard navigation,
-single-cell copy, variable selection preservation, overflow fixture payload,
-and updated visible QA evidence all pass.
+visible current-cell focus, single-cell copy, variable selection preservation,
+overflow fixture payload, and updated visible QA evidence all pass.
 ```
 
 Forbidden claims remain:
@@ -879,11 +1013,19 @@ git commit -m "docs: record visible grid p1 qa evidence"
   - Shared grid: Tasks 3-4.
   - Headers and row labels: Task 3.
   - Scrollbars and viewport position: Task 3.
-  - Keyboard navigation and single-cell copy: Tasks 2-3.
+  - Keyboard navigation, visible current-cell focus, and single-cell copy:
+    Tasks 2-3 and VM QA in Task 6.
   - Variable selection preservation: Task 4.
   - Overflow fixture and payload: Task 1.
   - Visible QA gate: Tasks 5-6.
   - No public-data/engine smoke claim mixing: Tasks 1, 5, 6.
-- Placeholder scan: no TODO/TBD/unspecified implementation steps are allowed.
+- Atomic test discipline: no task may commit unused string-catalog keys; string
+  keys and first QML usage ship together in Task 3.
+- Runtime discipline: QML static grep is not enough; `test_qml_runtime_load.py`
+  must pass after the shared component and after integration.
+- Compatibility discipline: `tests/ui/test_variable_metadata_editing.py` must be
+  updated to assert the delegated `onCellActivated` path, not the removed local
+  delegate `onClicked` path.
+- Red-flag scan: no task-marker or vague implementation steps are allowed.
 - Type consistency: `cellActivated(int row, int column, string variableKey, string measureValue)` is the only cross-component signal; `copyText(str) -> bool` is the only clipboard bridge.
 - Risk discipline: if Qt HeaderView does not expose `headerData()` correctly, stop and revise the design instead of inventing a fallback during implementation.
