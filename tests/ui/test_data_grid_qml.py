@@ -123,6 +123,20 @@ def test_data_grid_exposes_scrollbars_and_viewport_position() -> None:
     assert 'appBootstrap.text("data.grid_extent_separator")' in qml
 
 
+def test_data_grid_headers_have_distinct_visual_treatment() -> None:
+    qml = qml_text("components/DataGridView.qml")
+    theme = qml_text("theme/Theme.qml")
+
+    assert "gridColumnHeaderSurface" in theme
+    assert "gridRowHeaderSurface" in theme
+    assert "gridHeaderText" in theme
+    assert "HorizontalHeaderView" in qml
+    assert "VerticalHeaderView" in qml
+    assert "theme.gridColumnHeaderSurface" in qml
+    assert "theme.gridRowHeaderSurface" in qml
+    assert "theme.gridHeaderText" in qml
+
+
 def test_data_grid_strings_are_catalogued() -> None:
     assert UI_STRINGS_KO["data.grid_rows"] == "행"
     assert UI_STRINGS_KO["data.grid_columns"] == "열"

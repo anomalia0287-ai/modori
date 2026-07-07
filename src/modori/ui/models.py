@@ -39,7 +39,7 @@ class DataTableModel(QAbstractTableModel):
             return None
         if orientation == Qt.Orientation.Horizontal:
             return self._provider.column_header(section)
-        return self._provider.row_id(section)
+        return str(section + 1)
 
 
 @dataclass(frozen=True)

@@ -7,6 +7,7 @@ class CountingProvider:
 
     def __init__(self) -> None:
         self.cell_requests: list[tuple[int, int]] = []
+        self.row_id_requests: list[int] = []
 
     def cell(self, row_index: int, column_index: int) -> str:
         self.cell_requests.append((row_index, column_index))
@@ -16,6 +17,7 @@ class CountingProvider:
         return f"v{column_index}"
 
     def row_id(self, row_index: int) -> str:
+        self.row_id_requests.append(row_index)
         return f"row-{row_index}"
 
     def variable_key(self, column_index: int) -> str:
@@ -36,13 +38,15 @@ def test_data_table_model_is_lazy() -> None:
     assert provider.cell_requests == [(123, 45)]
 
 
-def test_data_table_model_headers_use_provider() -> None:
+def test_data_table_model_headers_use_human_row_numbers_without_exposing_internal_ids() -> None:
     from modori.ui.models import DataTableModel
 
-    model = DataTableModel(CountingProvider())
+    provider = CountingProvider()
+    model = DataTableModel(provider)
 
     assert model.headerData(2, Qt.Orientation.Horizontal, Qt.ItemDataRole.DisplayRole) == "v2"
-    assert model.headerData(3, Qt.Orientation.Vertical, Qt.ItemDataRole.DisplayRole) == "row-3"
+    assert model.headerData(3, Qt.Orientation.Vertical, Qt.ItemDataRole.DisplayRole) == "4"
+    assert provider.row_id_requests == []
 
 
 def test_variable_table_model_exposes_metadata_rows() -> None:

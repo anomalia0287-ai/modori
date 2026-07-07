@@ -80,6 +80,23 @@ Item {
                 syncView: body
                 Layout.fillWidth: true
                 Layout.preferredHeight: theme.gridHeaderHeight
+
+                delegate: Rectangle {
+                    implicitWidth: root.cellWidth
+                    implicitHeight: theme.gridHeaderHeight
+                    color: theme.gridColumnHeaderSurface
+                    border.color: theme.lineStrong
+
+                    Text {
+                        anchors.centerIn: parent
+                        width: parent.width - theme.spaceSm
+                        text: String(model.display ?? "")
+                        color: theme.gridHeaderText
+                        font.pixelSize: theme.fontCaption
+                        elide: Text.ElideRight
+                        horizontalAlignment: Text.AlignHCenter
+                    }
+                }
             }
 
             VerticalHeaderView {
@@ -87,6 +104,23 @@ Item {
                 syncView: body
                 Layout.preferredWidth: theme.gridRowLabelWidth
                 Layout.fillHeight: true
+
+                delegate: Rectangle {
+                    implicitWidth: theme.gridRowLabelWidth
+                    implicitHeight: root.cellHeight
+                    color: theme.gridRowHeaderSurface
+                    border.color: theme.lineStrong
+
+                    Text {
+                        anchors.centerIn: parent
+                        width: parent.width - theme.spaceSm
+                        text: String(model.display ?? "")
+                        color: theme.gridHeaderText
+                        font.pixelSize: theme.fontCaption
+                        elide: Text.ElideRight
+                        horizontalAlignment: Text.AlignHCenter
+                    }
+                }
             }
 
             TableView {
