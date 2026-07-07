@@ -1,13 +1,101 @@
+import os
 from pathlib import Path
 
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+
+from PySide6.QtCore import QAbstractTableModel, QByteArray, QModelIndex, QPoint, QPointF, Qt, QUrl
+from PySide6.QtGui import QGuiApplication
+from PySide6.QtQuick import QQuickItem, QQuickView
+from PySide6.QtTest import QSignalSpy, QTest
+
+from modori.app import AppBootstrap
 from modori.ui.strings import UI_STRINGS_KO
 
 
 QML_ROOT = Path("src/modori/ui/qml")
 
 
+class _GridFixtureModel(QAbstractTableModel):
+    VARIABLE_KEY_ROLE = int(Qt.ItemDataRole.UserRole) + 1
+    MEASURE_VALUE_ROLE = int(Qt.ItemDataRole.UserRole) + 2
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._rows = (
+            ("alpha", "scale", ("r0c0", "r0c1")),
+            ("beta", "ordinal", ("r1c0", "r1c1")),
+        )
+
+    def rowCount(self, parent: QModelIndex = QModelIndex()) -> int:
+        if parent.isValid():
+            return 0
+        return len(self._rows)
+
+    def columnCount(self, parent: QModelIndex = QModelIndex()) -> int:
+        if parent.isValid():
+            return 0
+        return len(self._rows[0][2])
+
+    def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole) -> str | None:
+        if not index.isValid():
+            return None
+        variable_key, measure_value, cells = self._rows[index.row()]
+        if role == Qt.ItemDataRole.DisplayRole:
+            return cells[index.column()]
+        if role == self.VARIABLE_KEY_ROLE:
+            return variable_key
+        if role == self.MEASURE_VALUE_ROLE:
+            return measure_value
+        return None
+
+    def roleNames(self) -> dict[int, QByteArray]:
+        roles = super().roleNames()
+        roles[self.VARIABLE_KEY_ROLE] = QByteArray(b"variableKey")
+        roles[self.MEASURE_VALUE_ROLE] = QByteArray(b"measureValue")
+        return roles
+
+    def headerData(
+        self,
+        section: int,
+        orientation: Qt.Orientation,
+        role: int = Qt.ItemDataRole.DisplayRole,
+    ) -> str | None:
+        if role != Qt.ItemDataRole.DisplayRole:
+            return None
+        if orientation == Qt.Orientation.Horizontal:
+            return f"col-{section}"
+        return str(section + 1)
+
+
 def qml_text(relative: str) -> str:
     return QML_ROOT.joinpath(relative).read_text(encoding="utf-8")
+
+
+def _app() -> QGuiApplication:
+    return QGuiApplication.instance() or QGuiApplication([])
+
+
+def _grid_body(root: object) -> QQuickItem:
+    return next(
+        child
+        for child in root.findChildren(QQuickItem)
+        if child.metaObject().className() == "QQuickTableView"
+    )
+
+
+def _grid_delegate(body: QQuickItem, row: int, column: int, columns: int) -> QQuickItem:
+    content_item = next(
+        child for child in body.childItems() if child.metaObject().className() == "QQuickItem"
+    )
+    delegates = sorted(
+        (
+            child
+            for child in content_item.childItems()
+            if child.metaObject().className().startswith("QQuickRectangle")
+        ),
+        key=lambda child: (child.y(), child.x()),
+    )
+    return delegates[(row * columns) + column]
 
 
 def test_data_grid_uses_virtualized_table_with_synchronized_headers() -> None:
@@ -76,6 +164,59 @@ def test_data_grid_emits_cell_activated_with_variable_roles() -> None:
     assert "signal cellActivated(int row, int column, string variableKey, string measureValue)" in qml
     assert "model.variableKey" in qml
     assert "model.measureValue" in qml
+
+
+def test_data_grid_runtime_click_navigation_and_copy_use_real_qml_objects() -> None:
+    app = _app()
+    app.clipboard().clear()
+    model = _GridFixtureModel()
+    view = QQuickView()
+    bootstrap = AppBootstrap()
+    view.rootContext().setContextProperty("appBootstrap", bootstrap)
+    view.setResizeMode(QQuickView.SizeRootObjectToView)
+    view.setGeometry(0, 0, 480, 240)
+    view.setSource(QUrl.fromLocalFile(str((QML_ROOT / "components/DataGridView.qml").resolve())))
+    root = view.rootObject()
+
+    assert root is not None
+
+    root.setProperty("model", model)
+    view.show()
+    QTest.qWait(200)
+    app.processEvents()
+
+    body = _grid_body(root)
+    clicked_cell = _grid_delegate(body, row=1, column=0, columns=model.columnCount())
+    click_point = clicked_cell.mapToScene(QPointF(clicked_cell.width() / 2, clicked_cell.height() / 2))
+    activated = QSignalSpy(root.cellActivated)
+
+    QTest.mouseClick(
+        view,
+        Qt.LeftButton,
+        Qt.NoModifier,
+        QPoint(round(click_point.x()), round(click_point.y())),
+    )
+    app.processEvents()
+
+    assert root.property("currentRow") == 1
+    assert root.property("currentColumn") == 0
+    assert activated.count() == 1
+    assert list(activated.at(0)) == [1, 0, "beta", "ordinal"]
+
+    QTest.keyClick(view, Qt.Key_Right)
+    app.processEvents()
+
+    assert root.property("currentRow") == 1
+    assert root.property("currentColumn") == 1
+
+    QTest.keyClick(view, Qt.Key_C, Qt.ControlModifier)
+    app.processEvents()
+
+    assert app.clipboard().text() == "r1c1"
+
+    view.close()
+    view.deleteLater()
+    app.processEvents()
 
 
 def test_data_table_delegates_to_data_grid_without_losing_notice() -> None:

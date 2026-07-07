@@ -31,12 +31,29 @@ def _significant_warnings(messages: list[str]) -> list[str]:
     allowed_substrings = (
         "Cannot find font directory",
         "QFontDatabase",
+        "OpenThemeData() failed for theme",
+        "The current style does not support customization of this control",
+        "This plugin does not support propagateSizeHints()",
     )
     return [
         message
         for message in messages
-        if ("ReferenceError" in message or "TypeError" in message)
-        and not any(token in message for token in allowed_substrings)
+        if not any(token in message for token in allowed_substrings)
+    ]
+
+
+def test_significant_warnings_fail_on_generic_qml_runtime_problems() -> None:
+    messages = [
+        "qrc:/Main.qml:12:9: Binding loop detected for property \"width\"",
+        "qrc:/Main.qml:20:3: ReferenceError: missingThing is not defined",
+        "QFontDatabase: Cannot find font directory C:/Windows/Fonts",
+        "The current style does not support customization of this control",
+        "This plugin does not support propagateSizeHints()",
+    ]
+
+    assert _significant_warnings(messages) == [
+        'qrc:/Main.qml:12:9: Binding loop detected for property "width"',
+        "qrc:/Main.qml:20:3: ReferenceError: missingThing is not defined",
     ]
 
 

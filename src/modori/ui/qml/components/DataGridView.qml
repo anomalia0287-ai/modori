@@ -46,9 +46,16 @@ Item {
     }
 
     function copyCurrentCell() {
-        var item = body.itemAtCell(Qt.point(currentColumn, currentRow))
-        if (item && item.cellText !== undefined) {
-            appBootstrap.copyText(item.cellText)
+        if (!root.model || currentRow < 0 || currentColumn < 0) {
+            return
+        }
+        var modelIndex = root.model.index(currentRow, currentColumn)
+        if (!modelIndex) {
+            return
+        }
+        var cellText = root.model.data(modelIndex, Qt.DisplayRole)
+        if (cellText !== undefined && cellText !== null) {
+            appBootstrap.copyText(String(cellText))
         }
     }
 
