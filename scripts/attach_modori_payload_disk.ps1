@@ -71,6 +71,7 @@ function Assert-PayloadDriveContents {
         (Join-Path $DriveRoot "Samples\visible-import-reference.csv"),
         (Join-Path $DriveRoot "Samples\visible-import-reference.xlsx"),
         (Join-Path $DriveRoot "Samples\visible-import-reference.sav"),
+        (Join-Path $DriveRoot "Samples\visible-grid-overflow.csv"),
         (Join-Path $DriveRoot "Samples\public_data_formats\kosis-two-row.csv"),
         (Join-Path $DriveRoot "Samples\public_data_formats\cp949-public.csv"),
         (Join-Path $DriveRoot "Samples\public_data_formats\molit-deep-preamble.csv"),
@@ -211,7 +212,8 @@ $samples = @(
     (Join-Path $fixturesRoot "engine-smoke-reference.xlsx"),
     (Join-Path $fixturesRoot "visible-import-reference.csv"),
     (Join-Path $fixturesRoot "visible-import-reference.xlsx"),
-    (Join-Path $fixturesRoot "visible-import-reference.sav")
+    (Join-Path $fixturesRoot "visible-import-reference.sav"),
+    (Join-Path $fixturesRoot "visible-grid-overflow.csv")
 )
 
 Write-Section "Preflight"
@@ -311,6 +313,7 @@ Expected sample files:
 - Samples\visible-import-reference.csv
 - Samples\visible-import-reference.xlsx
 - Samples\visible-import-reference.sav
+- Samples\visible-grid-overflow.csv
 - Samples\public_data_formats\kosis-two-row.csv
 - Samples\public_data_formats\cp949-public.csv
 - Samples\public_data_formats\molit-deep-preamble.csv
@@ -331,6 +334,7 @@ Import visibility samples:
 - Samples\visible-import-reference.csv
 - Samples\visible-import-reference.xlsx
 - Samples\visible-import-reference.sav
+- Samples\visible-grid-overflow.csv
 
 Public data import contract samples:
 - Samples\public_data_formats\kosis-two-row.csv

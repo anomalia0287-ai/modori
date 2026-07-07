@@ -12,6 +12,11 @@ def _payload_script_text() -> str:
     return PAYLOAD_SCRIPT.read_text(encoding="utf-8")
 
 
+def _batch_block(script_text: str, variable_name: str) -> str:
+    marker = f"${variable_name} = @\""
+    return script_text.split(marker, maxsplit=1)[1].split('"@', maxsplit=1)[0]
+
+
 def test_payload_script_writes_a_human_readable_contract_file() -> None:
     text = _payload_script_text()
 
@@ -26,7 +31,7 @@ def test_payload_script_writes_a_human_readable_contract_file() -> None:
 
 def test_engine_smoke_batch_uses_engine_reference_not_import_reference() -> None:
     text = _payload_script_text()
-    engine_block = text.split('$engineSmoke = @"', maxsplit=1)[1].split('"@', maxsplit=1)[0]
+    engine_block = _batch_block(text, "engineSmoke")
 
     assert "start /wait" in engine_block
     assert "--engine-smoke" in engine_block
@@ -138,3 +143,18 @@ def test_smoke_batches_switch_console_to_utf8_before_printing_json() -> None:
 
     assert script.count("chcp 65001 >nul") >= 2
     assert 'if ($smokeBatch -notmatch "chcp 65001")' in script
+
+
+def test_payload_includes_visible_grid_overflow_fixture_for_manual_qa() -> None:
+    text = _payload_script_text()
+
+    assert "visible-grid-overflow.csv" in text
+    assert "Samples\\visible-grid-overflow.csv" in text
+
+
+def test_visible_grid_overflow_fixture_is_not_used_for_engine_smoke() -> None:
+    text = _payload_script_text()
+    engine_block = _batch_block(text, "engineSmoke")
+
+    assert "engine-smoke-reference.xlsx" in engine_block
+    assert "visible-grid-overflow.csv" not in engine_block
