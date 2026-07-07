@@ -51,7 +51,9 @@ def test_public_data_smoke_batch_uses_public_data_fixtures_and_writes_json() -> 
     assert "Modori-QA-Evidence" in smoke_block
     assert "result.json" in smoke_block
     assert "exit-code.txt" in smoke_block
+    assert "stdout.txt" in smoke_block
     assert "README-next-step.txt" in smoke_block
+    assert 'type "%EVIDENCE%\\stdout.txt"' in smoke_block
     assert "modori-public-data-smoke.json" not in smoke_block
     assert "exit /b %RESULT%" in smoke_block
 

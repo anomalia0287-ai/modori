@@ -386,6 +386,7 @@ set STAMP=%STAMP:.=-%
 set STAMP=%STAMP: =0%
 set EVIDENCE=%USERPROFILE%\Desktop\Modori-QA-Evidence\public-data-smoke-%STAMP%
 mkdir "%EVIDENCE%"
+set STDOUT=%EVIDENCE%\stdout.txt
 start /wait "" "%ROOT%Modori\Modori.exe" --public-data-smoke "%ROOT%Samples\public_data_formats" "%EVIDENCE%\result.json"
 set RESULT=%ERRORLEVEL%
 echo %RESULT%>"%EVIDENCE%\exit-code.txt"
@@ -393,10 +394,14 @@ echo Public data smoke evidence.>"%EVIDENCE%\README-next-step.txt"
 echo Keep this directory with release evidence.>>"%EVIDENCE%\README-next-step.txt"
 echo Result JSON: %EVIDENCE%\result.json>>"%EVIDENCE%\README-next-step.txt"
 echo Exit code file: %EVIDENCE%\exit-code.txt>>"%EVIDENCE%\README-next-step.txt"
+echo Console summary: %EVIDENCE%\stdout.txt>>"%EVIDENCE%\README-next-step.txt"
+(
 echo Exit code: %RESULT%
 echo Evidence: %EVIDENCE%
 echo Output: %EVIDENCE%\result.json
 if exist "%EVIDENCE%\result.json" type "%EVIDENCE%\result.json"
+)>"%STDOUT%"
+type "%EVIDENCE%\stdout.txt"
 pause
 exit /b %RESULT%
 "@
