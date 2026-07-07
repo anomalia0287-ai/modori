@@ -23,6 +23,7 @@ def test_non_theme_qml_does_not_define_literal_colors() -> None:
 def test_visual_qml_surfaces_use_theme_object() -> None:
     themed_files = {
         "Main.qml",
+        "components/DataGridView.qml",
         "components/DataTable.qml",
         "components/ExplainPopover.qml",
         "components/GuideRail.qml",

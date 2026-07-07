@@ -22,6 +22,14 @@ Current package SHA256:
 
 `EB9A59A29BD5760F0C5C64303867B459BDF0B7B355524E8DFCD9570E4E8FEA05`
 
+## Visible Grid P1 Follow-Up
+
+The visible grid P1 slice adds `Samples\visible-grid-overflow.csv` to Payload
+V2. After implementation, rebuild the payload and record visible QA evidence
+for scrollbars, final row/column reach, viewport position updates, keyboard
+movement with a visible current-cell focus cue, and single-cell copy. This
+evidence is separate from engine smoke and public-data smoke.
+
 Recovery note: this package was rebuilt from the hardened public-data smoke
 working tree after the Fable 5 review response. Host package evidence exists;
 clean-VM evidence still does not exist until Payload V2 is regenerated and the

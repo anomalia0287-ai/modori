@@ -51,6 +51,7 @@ Minimum current fixture roles:
 | `visible-import-reference.csv` | Visible import/manual QA | Engine-smoke correctness |
 | `visible-import-reference.xlsx` | Visible import/manual QA | Engine-smoke correctness unless explicitly regenerated for that contract |
 | `visible-import-reference.sav` | Visible import/manual QA | Engine-smoke correctness |
+| `visible-grid-overflow.csv` | Visible grid scroll/extent manual QA | Engine-smoke correctness |
 
 If one file is used for more than one role, the runbook requires a written
 reason and a test that enforces both roles. Otherwise the file must be split.
@@ -107,6 +108,7 @@ Engine-smoke batch returns Exit code: 0 inside the VM.
 The printed JSON contains "ok": true and "status": "ready".
 The UI launches inside the VM from the intended payload.
 Visible import QA uses only fixtures assigned to visible import QA.
+Visible grid overflow QA reaches final row and final column, position text updates, and the current-cell focus cue is visible.
 ```
 
 ## Failure Classification
