@@ -1,6 +1,6 @@
 # Public Data Format Coverage
 
-Last updated: 2026-07-06
+Last updated: 2026-07-07
 
 ## Scope
 
@@ -98,6 +98,10 @@ Current loader result after the hardening pass:
   it asserts preview inference, full-import row counts, column names, sample
   cell values, warnings, aggregate-row drop behavior, and expected notice-only
   rejection on both preview and full import paths.
+- Latest host/package gate evidence on 2026-07-07:
+  `scripts/quality_gate.py --with-package-check --with-packaged-launch`
+  reported `673 passed, 2 skipped`, `package-launch-smoke-ok`,
+  `package-engine-smoke-ok`, and `package-public-data-smoke-ok`.
 - Rows whose first non-empty cell is a strong aggregate label such as `합 계`,
   `합계`, `총계`, `총합계`, `합계액`, or `소계` are detected conservatively.
   Numbered/dash-prefixed subtotal rows such as `1 / 소계` and KOSIS nationwide

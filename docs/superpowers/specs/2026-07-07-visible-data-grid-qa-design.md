@@ -15,9 +15,21 @@ order:
 3. P2: design import-time column inclusion, exclusion, naming, and type review.
 4. P3: design a separate read-only data sheet window.
 
-The immediate implementation scope is P0 + P1. P2 and P3 remain explicit
-follow-up designs, but this document keeps their direction visible so P0/P1
-does not block or contradict them.
+The original implementation scope was P0 + P1. P3 was later pulled forward as
+a narrow read-only detached data sheet after the shared grid component was in
+place (`ce9dce9`). P2 import column review remains an explicit follow-up
+design because it changes import semantics.
+
+## Implementation Status — 2026-07-07
+
+- P0/P1 shared visible grid work is implemented: `DataGridView.qml`, explicit
+  scroll bars, synchronized headers, row labels, viewport position text,
+  keyboard movement, single-cell copy, and overflow fixture payload checks.
+- P3 read-only detached data sheet is implemented in `Main.qml` using the same
+  `DataGridView` and the active `uiController.dataModel`. It has no independent
+  data state and no editing surface.
+- P2 import column inclusion/exclusion, renaming, and type review remains a
+  separate design and implementation slice.
 
 ## Current Facts
 
@@ -376,12 +388,12 @@ The follow-up P2 design must evaluate:
 This work must define how column options interact with full import, preview,
 public-data fixtures, and saved projects.
 
-## P3 Follow-Up Direction: Detached Data Sheet
+## P3 Implemented: Detached Data Sheet
 
-A separate data sheet window must be a later design because it introduces
-window lifecycle and state synchronization questions.
+A separate read-only data sheet window now exists because the shared grid
+surface made the lifecycle and state contract small enough to implement safely.
 
-The follow-up P3 design must evaluate:
+Implemented contract:
 
 - Read-only detached data view.
 - Same `DataGridView` component reused.
@@ -389,7 +401,13 @@ The follow-up P3 design must evaluate:
 - Clear connection to the active imported dataset.
 - Closing the window does not affect the pipeline.
 
-P3 comes after P1 so the detached window reuses a proven grid surface.
+Current test evidence:
+
+- `tests/ui/test_human_operated_qml_flow.py` checks that `WorkScreen.qml`
+  requests the data sheet window and that `Main.qml` hosts a detached window
+  using `DataGridView`.
+- `tests/ui/test_qml_runtime_load.py` loads the integrated main shell with
+  `QT_QPA_PLATFORM=offscreen`.
 
 ## Tests
 
@@ -438,7 +456,7 @@ the VM app size used for the run.
 - No cell editing.
 - No import-time column selection or renaming.
 - No filter, sort, search, or formula bar.
-- No separate data sheet window.
+- No editable, filterable, or independently stateful data sheet window.
 - No change to statistical computation.
 - No change to public-data smoke contracts.
 - No new dependency.
@@ -460,7 +478,9 @@ The P0/P1 slice is complete when:
 - Variable table row selection still works after the component extraction.
 - Existing import, transform, result, and metadata UI tests remain green.
 - Existing automated quality gates remain green.
-- P2 and P3 remain documented follow-ups rather than implied completed work.
+- P2 remains a documented follow-up rather than implied completed work.
+- P3 is complete only for a read-only detached view that reuses the active
+  data model; spreadsheet editing/filtering is not included.
 
 ## Claim Discipline
 
@@ -478,7 +498,7 @@ Claims that are still forbidden after P1:
 
 - "Spreadsheet parity"
 - "Column import review is solved"
-- "Detached data sheet is solved"
+- "Detached editable spreadsheet is solved"
 - "Cell editing is solved"
 - "All data inspection UX is complete"
 

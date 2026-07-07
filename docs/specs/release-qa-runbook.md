@@ -109,7 +109,7 @@ The printed JSON contains "ok": true and "status": "ready".
 Public-data smoke batch returns Exit code: 0 inside the VM.
 Public-data smoke evidence is saved under
 %USERPROFILE%\Desktop\Modori-QA-Evidence\public-data-smoke-* with result.json,
-exit-code.txt, and README-next-step.txt.
+exit-code.txt, stdout.txt, and README-next-step.txt.
 The public-data smoke result contains "ok": true and a selected-columns case
 whose full_import columns match the selected import columns.
 The UI launches inside the VM from the intended payload.

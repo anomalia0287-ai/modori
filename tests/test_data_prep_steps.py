@@ -583,6 +583,39 @@ def test_map_values_step_rejects_numeric_columns() -> None:
         step.compute_context_free(categorical_dataset())
 
 
+def test_map_values_step_rejects_labelled_or_declared_missing_columns() -> None:
+    step = MapValuesStep(
+        id="transform:map:지역",
+        title="Map values",
+        params={"column": "지역", "mapping": {"a": "A"}, "suffix": "_수정"},
+    )
+    labelled = categorical_dataset()
+    labelled.variables["지역"] = Variable(
+        "지역",
+        "Region",
+        Measure.NOMINAL,
+        {1.0: "A"},
+        [],
+        "string",
+        "import",
+    )
+    declared_missing = categorical_dataset()
+    declared_missing.variables["지역"] = Variable(
+        "지역",
+        "Region",
+        Measure.NOMINAL,
+        {},
+        [99.0],
+        "string",
+        "import",
+    )
+
+    with pytest.raises(ValueError, match="값 라벨이 있는 변수"):
+        step.compute_context_free(labelled)
+    with pytest.raises(ValueError, match="결측 코드가 있는 변수"):
+        step.compute_context_free(declared_missing)
+
+
 def test_map_values_step_rejects_empty_target_and_overlap_with_missing() -> None:
     step = MapValuesStep(
         id="transform:map:지역",

@@ -1,4 +1,4 @@
-# Categorical Value Recode Dialog — Design & Implementation Plan
+# Categorical Value Recode — Design & Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 >
@@ -31,6 +31,35 @@ the gate at compute time.
 - `data.variable_metadata_patch` (shipped): the existing mechanism for
   declaring numeric missing codes and value labels. This plan does not touch
   it and must not duplicate it.
+
+## Implementation Status — 2026-07-07
+
+Status: implemented for V1 as a transform-panel value editor, not as a
+separate modal dialog. The user path still satisfies the approved product
+contract: the user edits a value inventory table, and Modori records the
+change as a replayable `recode.map_values` step that writes a new column.
+
+Implementation commits:
+
+- `e93357f` — engine/editor/controller foundation for replayable categorical
+  value mapping.
+- `353b5b1` — row-based value editor with per-value "새 값" fields and
+  "결측" toggles.
+- `ff22d02` — existing-step prefill, per-row preview, edit summary, and
+  transform insertion order after existing recode steps.
+
+Key implementation notes:
+
+- The UI lives in `TransformPanel.qml` under "값 수정" to keep categorical
+  editing beside reverse coding and scale-score transforms.
+- Existing `recode.map_values` params prefill the value table when the same
+  column is reopened.
+- Rows left untouched produce no mapping entry; free-form rules and row edits
+  are merged into one validation path.
+- `PipelineOperations` now treats `recode.unify_values` and
+  `recode.map_values` as data-prep insertion anchors, so later transforms do
+  not jump ahead of existing recodes.
+- A separate modal dialog remains an optional UI refactor, not a V1 blocker.
 
 ---
 
@@ -110,49 +139,67 @@ Params:
 
 ## UI Flow
 
-1. Entry point: "값 수정" action next to eligible variables (variable
-   table / transform panel).
-2. Dialog: value inventory table from the engine (thin shell: plain dicts) —
-   each row = current value, count, editable "새 값" field, "결측으로"
-   toggle. Sorted by count desc. Rows the user leaves untouched produce no
-   mapping entry.
-3. Live preview line per edited row (counts are already known) + total
-   summary before apply.
-4. Apply → editor validates against the gate and step semantics → step
-   inserted → pipeline reruns → rail shows "값 수정: 지역 (2건 규칙)".
+1. Entry point: the transform panel's "값 수정" group lists eligible and
+   ineligible variables visibly.
+2. Value inventory table: each row = current value, count, editable "새 값"
+   field, and "결측" toggle. Sorted by count desc. Rows the user leaves
+   untouched produce no mapping entry.
+3. Existing-step prefill: if `transform:map:{column}` already exists, the
+   editor reopens with its mapping, missing choices, and suffix filled in from
+   the step params.
+4. Live preview: edited rows show the affected count and target; the editor
+   shows a compact total summary before apply.
+5. Apply → editor validates against the gate and step semantics → step
+   inserted or replaced → pipeline reruns → rail shows the replayable
+   `recode.map_values` transform.
 
 ## Tests Per Trap (fail-first, one per decision-table row)
 
-- [ ] SAV-imported numeric column with declared missing codes and value
-      labels → dialog payload marks it ineligible with the label reason;
-      `MapValuesStep.compute` on it raises.
-- [ ] Numeric (int/float) column → ineligible with the numeric reason; no
-      coercion path reachable.
-- [ ] `to_missing` produces real NaN; note counts; downstream descriptives
-      treat it as missing.
-- [ ] Simultaneous one-pass semantics pinned (`a→b, b→c`).
-- [ ] Merge-into-existing-category allowed and counted.
-- [ ] Empty-string target rejected; untouched rows produce no rule.
-- [ ] Output metadata: measure copied, empty labels/missing, `(recoded)`
-      label suffix, dtype preserved.
-- [ ] Replay determinism: same params + same source → identical output.
-- [ ] Unique-writes conflict on `{column}_수정` surfaced as the standard
-      output-name-conflict error.
+- [x] SAV-style metadata traps represented at the dataset gate: labelled and
+      declared-missing columns are visibly ineligible, and
+      `MapValuesStep.compute` raises on both
+      (`tests/test_value_inventory.py`,
+      `tests/test_data_prep_steps.py::test_map_values_step_rejects_labelled_or_declared_missing_columns`).
+- [x] Numeric (int/float) column → ineligible with the numeric reason; no
+      coercion path reachable
+      (`tests/test_value_inventory.py`,
+      `tests/test_data_prep_steps.py::test_map_values_step_rejects_numeric_columns`).
+- [x] `to_missing` produces real NaN; note counts are pinned
+      (`tests/test_data_prep_steps.py::test_map_values_step_applies_one_pass_mapping_and_missing`).
+- [x] Simultaneous one-pass semantics pinned (`a→b, b→c`)
+      (`tests/test_data_prep_steps.py::test_map_values_step_applies_one_pass_mapping_and_missing`).
+- [x] Merge-into-existing-category allowed and counted
+      (`tests/test_data_prep_steps.py::test_map_values_step_applies_one_pass_mapping_and_missing`).
+- [x] Empty-string target rejected; untouched rows produce no rule
+      (`tests/test_data_prep_steps.py::test_map_values_step_rejects_empty_target_and_overlap_with_missing`,
+      `tests/ui/test_data_transform_controller.py::test_controller_applies_value_recode_rows_from_value_table`).
+- [x] Output metadata: measure copied, empty labels/missing, `(recoded)`
+      label suffix, dtype preserved
+      (`tests/test_data_prep_steps.py::test_map_values_step_applies_one_pass_mapping_and_missing`).
+- [x] Replay/edit path: existing params prefill the value table, and later
+      transforms insert after existing recode steps
+      (`tests/test_value_inventory.py::test_value_recode_inventory_prefills_existing_map_values_step`,
+      `tests/ui/test_pipeline_ops.py::test_pipeline_operations_inserts_transform_after_existing_recode_steps`).
+- [x] Unique-writes conflict on `{column}_수정` surfaced as the standard
+      output-name-conflict error
+      (`tests/ui/test_data_transform_editor.py::test_map_values_transform_rejects_output_collision`).
 
 ## Implementation Tasks
 
-- [ ] Task 1 — Engine: value inventory + eligibility payload
+- [x] Task 1 — Engine: value inventory + eligibility payload
       (`modori/value_clustering.py` sibling or new `modori/value_inventory.py`),
       returning eligible/ineligible columns with reasons and per-value counts.
-- [ ] Task 2 — Step: `MapValuesStep` in `src/modori/steps/data_prep.py` with
+- [x] Task 2 — Step: `MapValuesStep` in `src/modori/steps/data_prep.py` with
       compute-time gate, registered type, notes discipline.
-- [ ] Task 3 — Editor + controller: `DataTransformEditor.map_values` with the
+- [x] Task 3 — Editor + controller: `DataTransformEditor.map_values` with the
       validation rules above; controller property for the inventory payload +
       apply slot; facade budget respected.
-- [ ] Task 4 — QML dialog + strings; string catalog / visual contract /
-      dialog-flow guards green.
-- [ ] Task 5 — Full default gate; update
-      `docs/qa/public-data-format-coverage.md` follow-ups.
+- [x] Task 4 — QML value editor + strings; string catalog / visual contract /
+      transform-flow guards green.
+- [x] Task 5 — Full package gate passed after the final prefill/preview pass:
+      `scripts/quality_gate.py --with-package-check --with-packaged-launch`
+      reported `673 passed, 2 skipped`, `package-launch-smoke-ok`,
+      `package-engine-smoke-ok`, and `package-public-data-smoke-ok`.
 
 ## Explicit Non-Goals (V1)
 
