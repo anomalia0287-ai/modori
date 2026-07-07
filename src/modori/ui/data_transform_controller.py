@@ -153,6 +153,55 @@ class DataTransformControllerMixin:
             }
         ).ok
 
+    @Slot(str, "QVariantList", str, result=bool)
+    def mapValuesFromRows(
+        self,
+        column: str,
+        rows: list,
+        suffix: str,
+    ) -> bool:
+        mapping, to_missing = _parse_recode_rows(rows)
+        return self.applyMapValuesTransform(
+            {
+                "column": column,
+                "mapping": mapping,
+                "to_missing": to_missing,
+                "suffix": suffix or "_수정",
+            }
+        ).ok
+
+    @Slot(str, "QVariantList", str, str, str, result=bool)
+    def mapValuesFromRowsAndText(
+        self,
+        column: str,
+        rows: list,
+        mapping_text: str,
+        missing_text: str,
+        suffix: str,
+    ) -> bool:
+        try:
+            mapping = _parse_mapping_text(mapping_text)
+            row_mapping, row_missing = _parse_recode_rows(rows)
+            _merge_mapping(mapping, row_mapping)
+        except ValueError:
+            self._command_error(
+                "값 수정 규칙은 기존값=새값 형식이어야 합니다.",
+                "invalid_transform",
+            )
+            return False
+        to_missing = _parse_missing_text(missing_text)
+        for value in row_missing:
+            if value not in to_missing:
+                to_missing.append(value)
+        return self.applyMapValuesTransform(
+            {
+                "column": column,
+                "mapping": mapping,
+                "to_missing": to_missing,
+                "suffix": suffix or "_수정",
+            }
+        ).ok
+
     def _apply_transform_result(self, result: CommandResult) -> CommandResult:
         if not result.ok:
             self._last_error = result.message_ko
@@ -191,6 +240,31 @@ def _parse_mapping_text(mapping_text: str) -> dict[str, str]:
             raise ValueError("mapping")
         mapping[old_value] = new_value
     return mapping
+
+
+def _parse_recode_rows(rows: list) -> tuple[dict[str, str], list[str]]:
+    mapping: dict[str, str] = {}
+    to_missing: list[str] = []
+    for row in rows:
+        if not isinstance(row, Mapping):
+            continue
+        value = str(row.get("value", "")).strip()
+        new_value = str(row.get("new_value", "")).strip()
+        if not value:
+            continue
+        if bool(row.get("to_missing", False)):
+            if value not in to_missing:
+                to_missing.append(value)
+        elif new_value:
+            _merge_mapping(mapping, {value: new_value})
+    return mapping, to_missing
+
+
+def _merge_mapping(base: dict[str, str], incoming: Mapping[str, str]) -> None:
+    for key, value in incoming.items():
+        if key in base and base[key] != value:
+            raise ValueError("mapping")
+        base[key] = value
 
 
 def _parse_missing_text(missing_text: str) -> list[str]:

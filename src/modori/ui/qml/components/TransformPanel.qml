@@ -44,6 +44,21 @@ Item {
         return entry.value + " (" + entry.count + ")"
     }
 
+    function recodeRowsPayload() {
+        var rows = []
+        for (var index = 0; index < recodeValueRepeater.count; index += 1) {
+            var item = recodeValueRepeater.itemAt(index)
+            if (item && (root.hasText(item.newValue) || item.toMissing)) {
+                rows.push({
+                    "value": item.sourceValue,
+                    "new_value": item.newValue,
+                    "to_missing": item.toMissing
+                })
+            }
+        }
+        return rows
+    }
+
     ScrollView {
         id: transformScroll
         anchors.fill: parent
@@ -151,15 +166,41 @@ Item {
                         spacing: theme.spaceXs
 
                         Repeater {
+                            id: recodeValueRepeater
                             model: root.selectedRecodeEntry() && root.selectedRecodeEntry().values
                                 ? root.selectedRecodeEntry().values.slice(0, 8)
                                 : []
 
-                            delegate: Label {
-                                text: root.valueCountText(modelData)
-                                color: theme.textMuted
-                                elide: Text.ElideRight
+                            delegate: RowLayout {
+                                required property var modelData
+                                property string sourceValue: String(modelData.value)
+                                property string newValue: recodeNewValue.text
+                                property bool toMissing: recodeToMissing.checked
+
                                 Layout.fillWidth: true
+                                spacing: theme.spaceSm
+
+                                Label {
+                                    text: root.valueCountText(modelData)
+                                    color: theme.textMuted
+                                    elide: Text.ElideRight
+                                    Layout.fillWidth: true
+                                }
+
+                                TextField {
+                                    id: recodeNewValue
+                                    placeholderText: appBootstrap.text("transform.map_new_value")
+                                    Accessible.name: appBootstrap.text("transform.map_new_value")
+                                    enabled: !recodeToMissing.checked
+                                    Layout.preferredWidth: theme.fieldWidthSmall
+                                    selectByMouse: true
+                                }
+
+                                CheckBox {
+                                    id: recodeToMissing
+                                    text: appBootstrap.text("transform.map_to_missing")
+                                    Accessible.name: appBootstrap.text("transform.map_to_missing")
+                                }
                             }
                         }
 
@@ -221,9 +262,12 @@ Item {
                         enabled: root.canEditTransform
                             && root.selectedRecodeEntry()
                             && root.selectedRecodeEntry().eligible
-                            && (root.hasText(recodeRules.text) || root.hasText(recodeMissing.text))
-                        onClicked: uiController.mapValuesFromText(
+                            && (root.hasText(recodeRules.text)
+                                || root.hasText(recodeMissing.text)
+                                || root.recodeRowsPayload().length > 0)
+                        onClicked: uiController.mapValuesFromRowsAndText(
                             root.selectedRecodeEntry().column,
+                            root.recodeRowsPayload(),
                             recodeRules.text,
                             recodeMissing.text,
                             recodeSuffix.text

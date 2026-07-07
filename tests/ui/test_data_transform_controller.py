@@ -152,3 +152,73 @@ def test_controller_rejects_malformed_value_recode_text(tmp_path) -> None:
 
     assert controller.mapValuesFromText("지역", "서울 특별시", "", "_수정") is False
     assert controller.lastError == "값 수정 규칙은 기존값=새값 형식이어야 합니다."
+
+
+def test_controller_applies_value_recode_rows_from_value_table(tmp_path) -> None:
+    from modori.ui.controller import UiController
+
+    data_path = tmp_path / "regions.csv"
+    data_path.write_text(
+        "지역\n서울특별시\n서울 특별시\n부산광역시\n",
+        encoding="utf-8",
+    )
+    controller = UiController()
+    assert controller.openDataFilePath(str(data_path)) is True
+
+    assert controller.mapValuesFromRows(
+        "지역",
+        [
+            {"value": "서울 특별시", "new_value": "서울특별시", "to_missing": False},
+            {"value": "부산광역시", "new_value": "", "to_missing": True},
+        ],
+        "_수정",
+    ) is True
+
+    values = controller.pipeline.current_dataset.df["지역_수정"].tolist()
+    assert values[:2] == ["서울특별시", "서울특별시"]
+    assert pd.isna(values[2])
+
+
+def test_controller_merges_value_recode_rows_and_freeform_missing(tmp_path) -> None:
+    from modori.ui.controller import UiController
+
+    data_path = tmp_path / "regions.csv"
+    data_path.write_text(
+        "지역\n서울특별시\n서울 특별시\n부산광역시\n기타\n",
+        encoding="utf-8",
+    )
+    controller = UiController()
+    assert controller.openDataFilePath(str(data_path)) is True
+
+    assert controller.mapValuesFromRowsAndText(
+        "지역",
+        [{"value": "서울 특별시", "new_value": "서울특별시", "to_missing": False}],
+        "기타=기타지역",
+        "부산광역시",
+        "_수정",
+    ) is True
+
+    values = controller.pipeline.current_dataset.df["지역_수정"].tolist()
+    assert values[:2] == ["서울특별시", "서울특별시"]
+    assert pd.isna(values[2])
+    assert values[3] == "기타지역"
+
+
+def test_controller_rejects_conflicting_value_recode_rows_and_text(tmp_path) -> None:
+    from modori.ui.controller import UiController
+
+    data_path = tmp_path / "regions.csv"
+    data_path.write_text("지역\n서울특별시\n서울 특별시\n", encoding="utf-8")
+    controller = UiController()
+    assert controller.openDataFilePath(str(data_path)) is True
+
+    assert controller.mapValuesFromRowsAndText(
+        "지역",
+        [{"value": "서울 특별시", "new_value": "서울특별시", "to_missing": False}],
+        "서울 특별시=서울시",
+        "",
+        "_수정",
+    ) is False
+
+    assert controller.lastError == "값 수정 규칙은 기존값=새값 형식이어야 합니다."
+    assert "지역_수정" not in controller.pipeline.current_dataset.df.columns
