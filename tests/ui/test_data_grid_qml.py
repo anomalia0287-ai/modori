@@ -76,3 +76,23 @@ def test_data_grid_emits_cell_activated_with_variable_roles() -> None:
     assert "signal cellActivated(int row, int column, string variableKey, string measureValue)" in qml
     assert "model.variableKey" in qml
     assert "model.measureValue" in qml
+
+
+def test_data_table_delegates_to_data_grid_without_losing_notice() -> None:
+    qml = qml_text("components/DataTable.qml")
+
+    assert "DataGridView" in qml
+    assert "model: uiController.dataModel" in qml
+    assert "ToolTip.text: root.editPolicyText" in qml
+    assert "uiController.dataViewNotice" in qml
+    assert "transform.source_protected" in qml
+
+
+def test_variable_table_delegates_to_data_grid_and_preserves_selection() -> None:
+    qml = qml_text("components/VariableTable.qml")
+
+    assert "DataGridView" in qml
+    assert "model: uiController.variableModel" in qml
+    assert "selectedKey: root.selectedVariableKey" in qml
+    assert "onCellActivated" in qml
+    assert "root.selectVariable(variableKey, measureValue)" in qml

@@ -91,33 +91,17 @@ Item {
             }
         }
 
-        TableView {
-            id: table
+        DataGridView {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            clip: true
-            reuseItems: true
             model: uiController.variableModel
-
-            delegate: Rectangle {
-                property string variableKey: model.variableKey ?? ""
-                property string measureValue: model.measureValue ?? ""
-
-                implicitWidth: theme.variableCellWidth
-                implicitHeight: theme.variableCellHeight
-                color: root.selectedVariableKey === variableKey ? theme.selectionSurface : theme.paperSurface
-                border.color: theme.lineGrid
-
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: root.selectVariable(variableKey, measureValue)
-                }
-
-                Text {
-                    anchors.centerIn: parent
-                    text: model.display ?? ""
-                    color: theme.textTable
-                    elide: Text.ElideRight
+            cellWidth: theme.variableCellWidth
+            cellHeight: theme.variableCellHeight
+            selectedKey: root.selectedVariableKey
+            emptyText: appBootstrap.text("data.grid_empty")
+            onCellActivated: function(row, column, variableKey, measureValue) {
+                if (variableKey.length > 0) {
+                    root.selectVariable(variableKey, measureValue)
                 }
             }
         }

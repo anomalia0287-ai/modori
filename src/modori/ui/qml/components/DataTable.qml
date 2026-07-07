@@ -38,27 +38,14 @@ Item {
             Layout.bottomMargin: theme.spaceSm
         }
 
-        TableView {
-            clip: true
-            reuseItems: true
+        DataGridView {
             model: uiController.dataModel
+            cellWidth: theme.tableCellWidth
+            cellHeight: theme.tableCellHeight
+            emptyText: appBootstrap.text("data.grid_empty")
             ToolTip.text: root.editPolicyText
             Layout.fillWidth: true
             Layout.fillHeight: true
-
-            delegate: Rectangle {
-                implicitWidth: theme.tableCellWidth
-                implicitHeight: theme.tableCellHeight
-                color: theme.paperSurface
-                border.color: theme.lineGrid
-
-                Text {
-                    anchors.centerIn: parent
-                    text: model.display ?? ""
-                    color: theme.textTable
-                    elide: Text.ElideRight
-                }
-            }
         }
     }
 }

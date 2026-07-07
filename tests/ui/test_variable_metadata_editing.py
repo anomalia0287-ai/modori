@@ -274,8 +274,9 @@ def test_variable_table_selects_row_as_measure_edit_target() -> None:
 
     assert "property string selectedVariableKey" in qml
     assert "function selectVariable(variableKey, measureValue)" in qml
-    assert "model.variableKey" in qml
-    assert "model.measureValue" in qml
-    assert "onClicked: root.selectVariable(variableKey, measureValue)" in qml
+    assert "DataGridView" in qml
+    assert "selectedKey: root.selectedVariableKey" in qml
+    assert "onCellActivated" in qml
+    assert "root.selectVariable(variableKey, measureValue)" in qml
     assert "readOnly: true" in qml
     assert "uiController.changeVariableMeasure(root.selectedVariableKey" in qml
