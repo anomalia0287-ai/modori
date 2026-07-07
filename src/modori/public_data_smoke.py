@@ -7,7 +7,7 @@ from typing import Any
 
 import pandas as pd
 
-from modori.table_io import TableReadError, read_full, read_preview
+from modori.table_io import ImportSelection, TableReadError, read_full, read_preview, read_schema
 
 
 @dataclass(frozen=True)
@@ -23,6 +23,7 @@ class PublicDataSmokeCase:
     confidence: str | None = None
     full_row_count: int | None = None
     required_warnings: tuple[str, ...] = ()
+    included_columns: tuple[str, ...] = ()
     drop_aggregate_rows: bool = False
     expected_error: str | None = None
 
@@ -136,6 +137,23 @@ PUBLIC_DATA_SMOKE_CASES: tuple[PublicDataSmokeCase, ...] = (
         required_warnings=("CSV 인코딩: cp949",),
     ),
     PublicDataSmokeCase(
+        name="cp949-public-selected-columns",
+        file_name="cp949-public.csv",
+        file_type="csv",
+        columns=("자치구", "인구"),
+        sample_rows=(
+            {"자치구": "종로구", "인구": 140000},
+            {"자치구": "중구", "인구": 120000},
+        ),
+        header_row_index=0,
+        header_row_count=1,
+        data_start_row_index=1,
+        confidence="high",
+        full_row_count=2,
+        required_warnings=("CSV 인코딩: cp949",),
+        included_columns=("자치구", "인구"),
+    ),
+    PublicDataSmokeCase(
         name="merged-public-header-xlsx",
         file_name="merged-public-header.xlsx",
         file_type="xlsx",
@@ -231,9 +249,11 @@ def _run_case(fixture_dir: Path, case: PublicDataSmokeCase) -> dict[str, Any]:
     if case.expected_error is not None:
         return _run_expected_reject_case(path, case)
     try:
+        selection = _selection_for_case(path, case)
         preview = read_preview(
             path,
             case.file_type,
+            selection=selection,
             drop_aggregate_rows=case.drop_aggregate_rows,
         )
     except TableReadError as exc:
@@ -259,6 +279,7 @@ def _run_case(fixture_dir: Path, case: PublicDataSmokeCase) -> dict[str, Any]:
         full = read_full(
             path,
             case.file_type,
+            selection=selection,
             drop_aggregate_rows=case.drop_aggregate_rows,
         )
         full_import = {
@@ -289,6 +310,7 @@ def _run_case(fixture_dir: Path, case: PublicDataSmokeCase) -> dict[str, Any]:
             "confidence": report.confidence,
         },
         "full_import": full_import,
+        "selection": _selection_payload(selection),
         "failures": failures,
     }
 
@@ -375,6 +397,30 @@ def _full_import_contract_failures(full: Any, case: PublicDataSmokeCase) -> list
         if warning not in full.warnings:
             failures.append(f"full missing warning: {warning}")
     return failures
+
+
+def _selection_for_case(path: Path, case: PublicDataSmokeCase) -> ImportSelection | None:
+    if not case.included_columns:
+        return None
+    schema = read_schema(path, case.file_type)
+    return ImportSelection(
+        source_columns=schema.columns,
+        included_columns=case.included_columns,
+        schema_fingerprint=schema.fingerprint,
+        created_from="public_data_smoke",
+    )
+
+
+def _selection_payload(selection: ImportSelection | None) -> dict[str, Any] | None:
+    if selection is None:
+        return None
+    return {
+        "schema_version": selection.schema_version,
+        "source_columns": list(selection.source_columns),
+        "included_columns": list(selection.included_columns),
+        "schema_fingerprint": selection.schema_fingerprint,
+        "created_from": selection.created_from,
+    }
 
 
 def _sample_rows(frame: Any, limit: int) -> list[dict[str, Any]]:

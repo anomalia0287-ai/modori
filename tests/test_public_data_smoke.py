@@ -83,6 +83,23 @@ def test_public_data_import_smoke_success_cases_include_full_import_contracts() 
         assert case["full_import"]["sample_rows"][: len(case["sample_rows"])] == case["sample_rows"]
 
 
+def test_public_data_smoke_includes_selected_column_contract() -> None:
+    from modori.public_data_smoke import public_data_import_smoke_payload
+
+    payload = public_data_import_smoke_payload(FIXTURE_DIR)
+    selected = next(
+        case for case in payload["cases"] if case["name"].endswith("selected-columns")
+    )
+
+    assert selected["ok"] is True
+    assert selected["status"] == "preview_and_full_import_ok"
+    assert selected["columns"] == ["자치구", "인구"]
+    assert selected["columns"] == selected["full_import"]["columns"]
+    assert selected["selection"]["included_columns"] == selected["columns"]
+    assert "연도" not in selected["columns"]
+    assert "CSV 인코딩: cp949" in selected["warnings"]
+
+
 def test_app_public_data_smoke_writes_success_payload(tmp_path) -> None:
     from modori.app import main
     from modori.public_data_smoke import PUBLIC_DATA_SMOKE_CASES

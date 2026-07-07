@@ -376,13 +376,27 @@ exit /b %RESULT%
 
 $publicDataSmoke = @"
 @echo off
+setlocal
 chcp 65001 >nul
 set ROOT=%~dp0
-start /wait "" "%ROOT%Modori\Modori.exe" --public-data-smoke "%ROOT%Samples\public_data_formats" "%USERPROFILE%\Desktop\modori-public-data-smoke.json"
+set STAMP=%DATE%-%TIME%
+set STAMP=%STAMP:/=-%
+set STAMP=%STAMP::=-%
+set STAMP=%STAMP:.=-%
+set STAMP=%STAMP: =0%
+set EVIDENCE=%USERPROFILE%\Desktop\Modori-QA-Evidence\public-data-smoke-%STAMP%
+mkdir "%EVIDENCE%"
+start /wait "" "%ROOT%Modori\Modori.exe" --public-data-smoke "%ROOT%Samples\public_data_formats" "%EVIDENCE%\result.json"
 set RESULT=%ERRORLEVEL%
+echo %RESULT%>"%EVIDENCE%\exit-code.txt"
+echo Public data smoke evidence.>"%EVIDENCE%\README-next-step.txt"
+echo Keep this directory with release evidence.>>"%EVIDENCE%\README-next-step.txt"
+echo Result JSON: %EVIDENCE%\result.json>>"%EVIDENCE%\README-next-step.txt"
+echo Exit code file: %EVIDENCE%\exit-code.txt>>"%EVIDENCE%\README-next-step.txt"
 echo Exit code: %RESULT%
-echo Output: %USERPROFILE%\Desktop\modori-public-data-smoke.json
-if exist "%USERPROFILE%\Desktop\modori-public-data-smoke.json" type "%USERPROFILE%\Desktop\modori-public-data-smoke.json"
+echo Evidence: %EVIDENCE%
+echo Output: %EVIDENCE%\result.json
+if exist "%EVIDENCE%\result.json" type "%EVIDENCE%\result.json"
 pause
 exit /b %RESULT%
 "@

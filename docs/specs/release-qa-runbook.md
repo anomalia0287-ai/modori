@@ -106,6 +106,12 @@ The intended VM is used.
 The intended payload label is visible inside the VM.
 Engine-smoke batch returns Exit code: 0 inside the VM.
 The printed JSON contains "ok": true and "status": "ready".
+Public-data smoke batch returns Exit code: 0 inside the VM.
+Public-data smoke evidence is saved under
+%USERPROFILE%\Desktop\Modori-QA-Evidence\public-data-smoke-* with result.json,
+exit-code.txt, and README-next-step.txt.
+The public-data smoke result contains "ok": true and a selected-columns case
+whose full_import columns match the selected import columns.
 The UI launches inside the VM from the intended payload.
 Visible import QA uses only fixtures assigned to visible import QA.
 Visible grid overflow QA reaches final row and final column, position text updates, and the current-cell focus cue is visible.
