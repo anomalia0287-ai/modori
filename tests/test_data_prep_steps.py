@@ -3,7 +3,7 @@ import pyreadstat
 import pytest
 
 from modori.core import Dataset, Measure, Pipeline, Variable
-from modori.steps import ComposeScaleStep, ImportStep, RecodeReverseStep
+from modori.steps import ComposeScaleStep, ImportStep, MapValuesStep, RecodeReverseStep
 
 
 def scale_variable(
@@ -518,6 +518,85 @@ def test_reverse_recode_rejects_duplicate_columns() -> None:
 
     with pytest.raises(ValueError, match="RecodeReverseStep columns must be unique"):
         step.compute_context_free(likert_dataset())
+
+
+def categorical_dataset() -> Dataset:
+    return Dataset(
+        df=pd.DataFrame(
+            {
+                "지역": ["a", "b", "a", "무응답", "c"],
+                "점수": [1, 2, 3, 4, 5],
+            }
+        ),
+        variables={
+            "지역": Variable(
+                "지역",
+                "Region",
+                Measure.NOMINAL,
+                {},
+                [],
+                "string",
+                "import",
+            ),
+            "점수": scale_variable("점수"),
+        },
+    )
+
+
+def test_map_values_step_applies_one_pass_mapping_and_missing() -> None:
+    step = MapValuesStep(
+        id="transform:map:지역",
+        title="Map values",
+        params={
+            "column": "지역",
+            "mapping": {"a": "b", "b": "c"},
+            "to_missing": ["무응답"],
+            "suffix": "_수정",
+        },
+    )
+
+    result = step.compute_context_free(categorical_dataset())
+
+    values = result.new_columns["지역_수정"].tolist()
+    assert values[:3] == ["b", "c", "b"]
+    assert pd.isna(values[3])
+    assert values[4] == "c"
+    assert result.new_variables["지역_수정"].label == "Region (recoded)"
+    assert result.new_variables["지역_수정"].measure is Measure.NOMINAL
+    assert result.new_variables["지역_수정"].value_labels == {}
+    assert result.new_variables["지역_수정"].missing_values == []
+    assert result.notes == ["Recoded 3 values in 지역 (2 rules); 1 value set to missing."]
+
+
+def test_map_values_step_rejects_numeric_columns() -> None:
+    step = MapValuesStep(
+        id="transform:map:점수",
+        title="Map values",
+        params={
+            "column": "점수",
+            "mapping": {"1": "one"},
+            "suffix": "_수정",
+        },
+    )
+
+    with pytest.raises(ValueError, match="숫자 변수는 아직 값 수정을 지원하지 않습니다"):
+        step.compute_context_free(categorical_dataset())
+
+
+def test_map_values_step_rejects_empty_target_and_overlap_with_missing() -> None:
+    step = MapValuesStep(
+        id="transform:map:지역",
+        title="Map values",
+        params={
+            "column": "지역",
+            "mapping": {"a": ""},
+            "to_missing": ["a"],
+            "suffix": "_수정",
+        },
+    )
+
+    with pytest.raises(ValueError, match="값 수정 설정을 확인해 주세요"):
+        step.compute_context_free(categorical_dataset())
 
 
 def test_compose_scale_survey_policy_uses_available_items_at_minimum_valid_ratio() -> None:

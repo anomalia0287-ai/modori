@@ -32,6 +32,14 @@ Item {
         return "survey"
     }
 
+    function selectedRecodeEntry() {
+        var rows = uiController.valueRecodeInventory
+        if (!rows || recodeColumn.currentIndex < 0 || recodeColumn.currentIndex >= rows.length) {
+            return null
+        }
+        return rows[recodeColumn.currentIndex]
+    }
+
     ScrollView {
         id: transformScroll
         anchors.fill: parent
@@ -92,6 +100,130 @@ Item {
                                 onClicked: uiController.applyValueUnification(modelData.column)
                             }
                         }
+                    }
+                }
+            }
+
+            GroupBox {
+                title: appBootstrap.text("transform.map_title")
+                Layout.fillWidth: true
+                Layout.leftMargin: theme.spaceMd
+                Layout.rightMargin: theme.spaceMd
+                visible: uiController.valueRecodeInventory.length > 0
+
+                GridLayout {
+                    columns: 2
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    rowSpacing: theme.spaceGridRow
+                    columnSpacing: theme.spaceGridColumn
+
+                    Label {
+                        text: appBootstrap.text("transform.map_column")
+                        color: theme.textControl
+                    }
+
+                    ComboBox {
+                        id: recodeColumn
+                        model: uiController.valueRecodeInventory
+                        textRole: "column"
+                        Accessible.name: appBootstrap.text("transform.map_column")
+                        Layout.fillWidth: true
+
+                        delegate: ItemDelegate {
+                            width: recodeColumn.width
+                            text: modelData.eligible ? modelData.column : modelData.column + " - " + modelData.reason
+                            enabled: modelData.eligible
+                        }
+                    }
+
+                    Label {
+                        text: appBootstrap.text("transform.map_values")
+                        color: theme.textControl
+                    }
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: theme.spaceXs
+
+                        Repeater {
+                            model: root.selectedRecodeEntry() && root.selectedRecodeEntry().values
+                                ? root.selectedRecodeEntry().values.slice(0, 8)
+                                : []
+
+                            delegate: Label {
+                                text: modelData.value + " (" + modelData.count + ")"
+                                color: theme.textMuted
+                                elide: Text.ElideRight
+                                Layout.fillWidth: true
+                            }
+                        }
+
+                        Label {
+                            visible: root.selectedRecodeEntry() && !root.selectedRecodeEntry().eligible
+                            text: root.selectedRecodeEntry() ? root.selectedRecodeEntry().reason : ""
+                            color: theme.warning
+                            wrapMode: Text.WordWrap
+                            Layout.fillWidth: true
+                        }
+                    }
+
+                    Label {
+                        text: appBootstrap.text("transform.map_rules")
+                        color: theme.textControl
+                    }
+
+                    TextArea {
+                        id: recodeRules
+                        placeholderText: appBootstrap.text("transform.map_rules_placeholder")
+                        Accessible.name: appBootstrap.text("transform.map_rules")
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: theme.fieldWidthTiny
+                        selectByMouse: true
+                        wrapMode: TextEdit.NoWrap
+                    }
+
+                    Label {
+                        text: appBootstrap.text("transform.map_missing")
+                        color: theme.textControl
+                    }
+
+                    TextField {
+                        id: recodeMissing
+                        placeholderText: appBootstrap.text("transform.map_missing_placeholder")
+                        Accessible.name: appBootstrap.text("transform.map_missing")
+                        Layout.fillWidth: true
+                        selectByMouse: true
+                    }
+
+                    Label {
+                        text: appBootstrap.text("transform.map_suffix")
+                        color: theme.textControl
+                    }
+
+                    TextField {
+                        id: recodeSuffix
+                        text: "_수정"
+                        Accessible.name: appBootstrap.text("transform.map_suffix")
+                        Layout.fillWidth: true
+                        selectByMouse: true
+                    }
+
+                    Item {}
+
+                    Button {
+                        text: appBootstrap.text("transform.map_apply")
+                        Accessible.name: appBootstrap.text("transform.map_apply")
+                        enabled: root.canEditTransform
+                            && root.selectedRecodeEntry()
+                            && root.selectedRecodeEntry().eligible
+                            && (root.hasText(recodeRules.text) || root.hasText(recodeMissing.text))
+                        onClicked: uiController.mapValuesFromText(
+                            root.selectedRecodeEntry().column,
+                            recodeRules.text,
+                            recodeMissing.text,
+                            recodeSuffix.text
+                        )
                     }
                 }
             }

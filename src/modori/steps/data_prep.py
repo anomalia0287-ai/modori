@@ -15,6 +15,7 @@ from modori.table_io import (
     read_full,
     read_header,
 )
+from modori.value_inventory import value_recode_ineligibility_reason
 
 
 def _dtype_name(series: pd.Series) -> str:
@@ -479,8 +480,89 @@ class UnifyValuesStep(Step):
         return str(self.params.get("suffix", "_정리"))
 
 
+@dataclass
+class MapValuesStep(Step):
+    step_type = "recode.map_values"
+
+    def compute(self, ctx: PipelineContext) -> StepResult:
+        column = str(self.params.get("column", "")).strip()
+        suffix = str(self.params.get("suffix", "_수정")).strip()
+        raw_mapping = self.params.get("mapping", {})
+        raw_to_missing = self.params.get("to_missing", [])
+        if (
+            not column
+            or not suffix
+            or not isinstance(raw_mapping, Mapping)
+            or not isinstance(raw_to_missing, list)
+        ):
+            raise ValueError("값 수정 설정을 확인해 주세요.")
+
+        mapping = {str(key): str(value) for key, value in raw_mapping.items()}
+        to_missing = {str(value) for value in raw_to_missing}
+        if not mapping and not to_missing:
+            raise ValueError("값 수정 설정을 확인해 주세요.")
+        if any(not key.strip() or not value.strip() for key, value in mapping.items()):
+            raise ValueError("값 수정 설정을 확인해 주세요.")
+        if any(not value.strip() for value in to_missing):
+            raise ValueError("값 수정 설정을 확인해 주세요.")
+        if set(mapping).intersection(to_missing):
+            raise ValueError("값 수정 설정을 확인해 주세요.")
+
+        reason = value_recode_ineligibility_reason(ctx.dataset, column)
+        if reason is not None:
+            raise ValueError(reason)
+
+        output = f"{column}{suffix}"
+        source = ctx.dataset.df[column]
+
+        def recode(value: object) -> object:
+            if pd.isna(value):
+                return value
+            text = str(value)
+            if text in to_missing:
+                return pd.NA
+            return mapping.get(text, value)
+
+        recoded = source.map(recode)
+        replaced_count = int(source.map(lambda value: str(value) in mapping if pd.notna(value) else False).sum())
+        missing_count = int(source.map(lambda value: str(value) in to_missing if pd.notna(value) else False).sum())
+        source_variable = ctx.dataset.variables[column]
+        new_variables = {
+            output: Variable(
+                name=output,
+                label=f"{source_variable.label or column} (recoded)",
+                measure=source_variable.measure,
+                value_labels={},
+                missing_values=[],
+                dtype=_dtype_name(recoded),
+                origin_step_id=self.id,
+            )
+        }
+        return StepResult(
+            new_columns={output: recoded},
+            new_variables=new_variables,
+            notes=[
+                f"Recoded {replaced_count} values in {column} "
+                f"({len(mapping)} rules); {missing_count} value set to missing."
+            ],
+        )
+
+    def reads(self) -> set[str]:
+        return {str(self.params["column"])}
+
+    def writes(self) -> set[str]:
+        return {f"{self.params['column']}{self._suffix()}"}
+
+    def provenance(self) -> str:
+        return f"mapped {len(self.params.get('mapping', {}))} values in {self.params['column']}"
+
+    def _suffix(self) -> str:
+        return str(self.params.get("suffix", "_수정"))
+
+
 Step.register_type(ImportStep.step_type, ImportStep)
 Step.register_type(UnifyValuesStep.step_type, UnifyValuesStep)
+Step.register_type(MapValuesStep.step_type, MapValuesStep)
 Step.register_type(RecodeReverseStep.step_type, RecodeReverseStep)
 Step.register_type(VariableMetadataPatchStep.step_type, VariableMetadataPatchStep)
 Step.register_type(ComposeScaleStep.step_type, ComposeScaleStep)

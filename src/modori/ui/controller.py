@@ -12,6 +12,7 @@ from modori.ui.data_transform_controller import DataTransformControllerMixin
 from modori.ui.import_layout_controller import ImportLayoutControllerMixin
 from modori.ui.importing import review_rows
 from modori.value_clustering import unification_suggestions
+from modori.value_inventory import value_recode_inventory
 from modori.ui.patches import PatchValidationError, parse_step_patch
 from modori.ui.paths import local_path_from_qml
 from modori.ui.pipeline_ops import PipelineOperations
@@ -158,6 +159,10 @@ class UiController(
     @Property("QVariantList", notify=stateChanged)
     def valueUnificationSuggestions(self) -> list:
         return unification_suggestions(self._services.pipeline_ops.current_dataset())
+
+    @Property("QVariantList", notify=stateChanged)
+    def valueRecodeInventory(self) -> list:
+        return value_recode_inventory(self._services.pipeline_ops.current_dataset())
 
     @Property(str, notify=stateChanged)
     def stepChainText(self) -> str:

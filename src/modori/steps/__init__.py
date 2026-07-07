@@ -3,6 +3,7 @@
 from modori.steps.data_prep import (
     ComposeScaleStep,
     ImportStep,
+    MapValuesStep,
     RecodeReverseStep,
     UnifyValuesStep,
     VariableMetadataPatchStep,
@@ -19,6 +20,7 @@ __all__ = [
     "CompareGroupsStep",
     "ComposeScaleStep",
     "ImportStep",
+    "MapValuesStep",
     "MultipleRegressionStep",
     "PairedComparisonStep",
     "RecodeReverseStep",

@@ -110,3 +110,45 @@ def test_apply_value_unification_without_suggestion_sets_error() -> None:
 
     assert controller.applyValueUnification("지역") is False
     assert controller.lastError != ""
+
+
+def test_controller_exposes_value_recode_inventory_and_applies_text_rules(tmp_path) -> None:
+    from modori.ui.controller import UiController
+
+    data_path = tmp_path / "regions.csv"
+    data_path.write_text(
+        "지역,인구\n서울특별시,100\n서울 특별시,200\n부산광역시,300\n",
+        encoding="utf-8",
+    )
+    controller = UiController()
+    assert controller.openDataFilePath(str(data_path)) is True
+
+    inventory = {entry["column"]: entry for entry in controller.valueRecodeInventory}
+    assert inventory["지역"]["eligible"] is True
+    assert inventory["지역"]["values"][0] == {"value": "서울특별시", "count": 1}
+    assert inventory["인구"]["eligible"] is False
+
+    assert controller.mapValuesFromText(
+        "지역",
+        "서울 특별시=서울특별시",
+        "부산광역시",
+        "_수정",
+    ) is True
+
+    frame = controller.pipeline.current_dataset.df
+    values = frame["지역_수정"].tolist()
+    assert values[:2] == ["서울특별시", "서울특별시"]
+    assert pd.isna(values[2])
+    assert controller.stale is True
+
+
+def test_controller_rejects_malformed_value_recode_text(tmp_path) -> None:
+    from modori.ui.controller import UiController
+
+    data_path = tmp_path / "regions.csv"
+    data_path.write_text("지역\n서울특별시\n서울 특별시\n", encoding="utf-8")
+    controller = UiController()
+    assert controller.openDataFilePath(str(data_path)) is True
+
+    assert controller.mapValuesFromText("지역", "서울 특별시", "", "_수정") is False
+    assert controller.lastError == "값 수정 규칙은 기존값=새값 형식이어야 합니다."

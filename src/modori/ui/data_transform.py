@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-from modori.steps import ComposeScaleStep, RecodeReverseStep, UnifyValuesStep
+from modori.steps import ComposeScaleStep, MapValuesStep, RecodeReverseStep, UnifyValuesStep
 from modori.ui.contracts import CommandResult
 from modori.ui.service_contracts import DataTransformPipelineOps
 
@@ -202,6 +202,86 @@ class DataTransformEditor:
             params={
                 "column": column,
                 "mapping": mapping,
+                "suffix": suffix,
+            },
+        )
+        return self._insert_or_edit(step, pipeline_version)
+
+    def map_values(
+        self,
+        payload: Mapping[str, Any],
+        *,
+        pipeline_version: int,
+    ) -> CommandResult:
+        if not self._pipeline_ops.has_pipeline():
+            return self._error("변환할 데이터가 없습니다.", "no_pipeline", pipeline_version)
+
+        try:
+            column = str(payload["column"]).strip()
+            raw_mapping = payload.get("mapping", {})
+            raw_to_missing = payload.get("to_missing", [])
+            suffix = str(payload.get("suffix", "_수정"))
+        except (KeyError, TypeError):
+            return self._error(
+                "값 수정 설정을 확인해 주세요.",
+                "invalid_transform",
+                pipeline_version,
+            )
+
+        if (
+            not column
+            or not isinstance(raw_mapping, Mapping)
+            or not isinstance(raw_to_missing, list)
+        ):
+            return self._error(
+                "값 수정 설정을 확인해 주세요.",
+                "invalid_transform",
+                pipeline_version,
+            )
+        mapping = {str(key): str(value) for key, value in raw_mapping.items()}
+        to_missing = [str(value) for value in raw_to_missing]
+        if not mapping and not to_missing:
+            return self._error(
+                "값 수정 설정을 확인해 주세요.",
+                "invalid_transform",
+                pipeline_version,
+            )
+        if any(not key.strip() or not value.strip() for key, value in mapping.items()):
+            return self._error(
+                "값 수정 설정을 확인해 주세요.",
+                "invalid_transform",
+                pipeline_version,
+            )
+        if any(not value.strip() for value in to_missing) or set(mapping).intersection(to_missing):
+            return self._error(
+                "값 수정 설정을 확인해 주세요.",
+                "invalid_transform",
+                pipeline_version,
+            )
+
+        if not self._pipeline_ops.has_variable(column):
+            return self._error(
+                "알 수 없는 변수입니다: " + column,
+                "unknown_variable",
+                pipeline_version,
+            )
+
+        step_id = f"transform:map:{column}"
+        output = f"{column}{suffix}"
+        if self._pipeline_ops.any_output_exists([output], exclude_step_id=step_id):
+            return self._error(
+                "새 변수명이 기존 변수와 충돌합니다.",
+                "output_name_conflict",
+                pipeline_version,
+            )
+
+        step = MapValuesStep(
+            id=step_id,
+            title="Map categorical values",
+            params={
+                "column": column,
+                "mapping": mapping,
+                "to_missing": to_missing,
                 "suffix": suffix,
             },
         )

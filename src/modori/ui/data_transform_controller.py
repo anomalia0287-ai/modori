@@ -55,6 +55,13 @@ class DataTransformControllerMixin:
         )
         return self._apply_transform_result(result)
 
+    def applyMapValuesTransform(self, payload: Mapping[str, Any]) -> CommandResult:
+        result = self._services.data_transform_editor.map_values(
+            payload,
+            pipeline_version=self._pipeline_state.pipeline_version,
+        )
+        return self._apply_transform_result(result)
+
     @Slot(str, str, float, float, result=bool)
     def reverseCodeFromText(
         self,
@@ -121,6 +128,31 @@ class DataTransformControllerMixin:
         )
         return self._apply_transform_result(result).ok
 
+    @Slot(str, str, str, str, result=bool)
+    def mapValuesFromText(
+        self,
+        column: str,
+        mapping_text: str,
+        missing_text: str,
+        suffix: str,
+    ) -> bool:
+        try:
+            mapping = _parse_mapping_text(mapping_text)
+        except ValueError:
+            self._command_error(
+                "값 수정 규칙은 기존값=새값 형식이어야 합니다.",
+                "invalid_transform",
+            )
+            return False
+        return self.applyMapValuesTransform(
+            {
+                "column": column,
+                "mapping": mapping,
+                "to_missing": _parse_missing_text(missing_text),
+                "suffix": suffix or "_수정",
+            }
+        ).ok
+
     def _apply_transform_result(self, result: CommandResult) -> CommandResult:
         if not result.ok:
             self._last_error = result.message_ko
@@ -144,3 +176,27 @@ class DataTransformControllerMixin:
             pipeline_version=self._pipeline_state.pipeline_version,
             changed_step_ids=result.changed_step_ids,
         )
+
+
+def _parse_mapping_text(mapping_text: str) -> dict[str, str]:
+    mapping: dict[str, str] = {}
+    for raw_line in mapping_text.splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        if "=" not in line:
+            raise ValueError("mapping")
+        old_value, new_value = (part.strip() for part in line.split("=", maxsplit=1))
+        if not old_value or not new_value:
+            raise ValueError("mapping")
+        mapping[old_value] = new_value
+    return mapping
+
+
+def _parse_missing_text(missing_text: str) -> list[str]:
+    values: list[str] = []
+    for chunk in missing_text.replace("\n", ",").split(","):
+        value = chunk.strip()
+        if value:
+            values.append(value)
+    return values

@@ -192,3 +192,49 @@ def test_unify_values_rejects_empty_mapping(tmp_path: Path) -> None:
 
     assert result.ok is False
     assert result.error_code == "invalid_transform"
+
+
+def test_map_values_transform_inserts_replayable_step(tmp_path: Path) -> None:
+    pipeline = _pipeline_with_region_variants(tmp_path)
+    editor = DataTransformEditor(PipelineOperations(pipeline))
+
+    result = editor.map_values(
+        {
+            "column": "지역",
+            "mapping": {"서울 특별시": "서울특별시"},
+            "to_missing": ["부산광역시"],
+            "suffix": "_수정",
+        },
+        pipeline_version=5,
+    )
+
+    assert result.ok is True
+    assert result.changed_step_ids == ["transform:map:지역"]
+    assert pipeline.steps[-1].step_type == "recode.map_values"
+    assert pipeline.steps[-1].params == {
+        "column": "지역",
+        "mapping": {"서울 특별시": "서울특별시"},
+        "to_missing": ["부산광역시"],
+        "suffix": "_수정",
+    }
+    values = pipeline.current_dataset.df["지역_수정"].tolist()
+    assert values[:2] == ["서울특별시", "서울특별시"]
+    assert pd.isna(values[2])
+
+
+def test_map_values_transform_rejects_output_collision(tmp_path: Path) -> None:
+    pipeline = _pipeline_with_region_variants(tmp_path)
+    editor = DataTransformEditor(PipelineOperations(pipeline))
+    first = editor.map_values(
+        {"column": "지역", "mapping": {"서울 특별시": "서울특별시"}},
+        pipeline_version=1,
+    )
+    assert first.ok is True
+
+    result = editor.map_values(
+        {"column": "지역", "mapping": {"서울 특별시": "서울특별시"}, "suffix": ""},
+        pipeline_version=2,
+    )
+
+    assert result.ok is False
+    assert result.error_code == "output_name_conflict"

@@ -17,6 +17,10 @@ def test_transform_panel_calls_controller_transform_methods() -> None:
 
     assert "transform.reverse_title" in transform_panel
     assert "transform.scale_title" in transform_panel
+    assert "transform.map_title" in transform_panel
+    assert "uiController.valueRecodeInventory" in transform_panel
+    assert "uiController.mapValuesFromText" in transform_panel
+    assert "transform.map_rules_placeholder" in transform_panel
     assert "uiController.reverseCodeFromText" in transform_panel
     assert "uiController.scaleScoreFromText" in transform_panel
     assert "transform.source_protected" in transform_panel
