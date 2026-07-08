@@ -49,6 +49,8 @@ def test_statistics_literature_map_records_certified_and_product_specific_risks(
         "Longley",
         "Filip",
         "Wampler",
+        "Wampler5",
+        "fail-closed",
         "ties",
         "Wilcoxon",
         "Mann-Whitney",

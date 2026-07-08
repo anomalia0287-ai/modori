@@ -354,7 +354,7 @@ class MultipleRegressionStep(Step):
         y_arr = y.to_numpy(dtype=float)
         if np.linalg.matrix_rank(x_arr) < x_arr.shape[1]:
             raise ValueError(
-                "Regression predictors are perfectly collinear: "
+                "Regression predictors are rank deficient or perfectly collinear: "
                 f"{', '.join(term_names)}"
             )
         condition_number = require_well_conditioned_ols_design(

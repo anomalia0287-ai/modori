@@ -1,0 +1,58 @@
+{
+  "dataset": "Filip",
+  "source": "NIST/ITL Statistical Reference Datasets",
+  "dataset_url": "https://www.itl.nist.gov/div898/strd/lls/data/Filip.shtml",
+  "ascii_url": "https://www.itl.nist.gov/div898/strd/lls/data/LINKS/DATA/Filip.dat",
+  "certified_values_url": "https://www.itl.nist.gov/div898/strd/lls/data/LINKS/v-Filip.shtml",
+  "coefficient_names": [
+    "(Intercept)",
+    "x1",
+    "x2",
+    "x3",
+    "x4",
+    "x5",
+    "x6",
+    "x7",
+    "x8",
+    "x9",
+    "x10"
+  ],
+  "coefficient_estimates": [
+    -1467.48961422980,
+    -2772.17959193342,
+    -2316.37108160893,
+    -1127.97394098372,
+    -354.478233703349,
+    -75.1242017393757,
+    -10.8753180355343,
+    -1.06221498588947,
+    -0.0670191154593408,
+    -0.00246781078275479,
+    -0.0000402962525080404
+  ],
+  "standard_errors": [
+    298.084530995537,
+    559.779865474950,
+    466.477572127796,
+    227.204274477751,
+    71.6478660875927,
+    15.2897178747400,
+    2.23691159816033,
+    0.221624321934227,
+    0.0142363763154724,
+    0.000535617408889821,
+    0.00000896632837373868
+  ],
+  "residual_standard_deviation": 0.00334801051324544,
+  "r_squared": 0.996727416185620,
+  "anova": {
+    "regression_df": 10,
+    "residual_df": 71,
+    "regression_sum_squares": 0.242391619837339,
+    "residual_sum_squares": 0.000795851382172941,
+    "regression_mean_square": 0.0242391619837339,
+    "residual_mean_square": 0.0000112091743968020,
+    "f_statistic": 2162.43954511489
+  },
+  "modori_policy": "fail_closed_rank_or_conditioning"
+}

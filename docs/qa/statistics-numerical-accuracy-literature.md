@@ -56,8 +56,10 @@ points, ordered by product risk rather than textbook neatness:
    Mann-Whitney exact-vs-asymptotic and Wilcoxon zero/tie policy are covered.
    Kruskal-Wallis, Friedman, Spearman, and R/SPSS/JASP anchors remain.
 3. Partially done: import NIST StRD certified fixtures before hand-rolled substitutes.
-   `Longley` is now a checked-in regression fixture. `NumAcc`,
-   `Filip`/`Wampler`, and StRD ANOVA data remain.
+   `Longley` and `Wampler5` are product-path regression parity fixtures.
+   `Wampler1` and `Filip` are checked-in fail-closed fixtures for perfect-fit
+   and numerically unsafe polynomial regression. `NumAcc` and StRD ANOVA data
+   remain.
 4. Done for code policy: set bootstrap policy in code and tests: default 5000 user-facing resamples,
    reject or warn below 1000, deterministic reproduction tests for plumbing,
    and independent adequacy checks for interval behavior. Adequacy checks remain.

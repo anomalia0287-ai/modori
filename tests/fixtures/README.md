@@ -17,19 +17,27 @@ Use in Modori:
 - Reverse-code range: 1 to 6.
 - Group variable: `gender`.
 
-## `nist/longley.csv`
+## `nist/*.csv`
 
-Source: NIST/ITL Statistical Reference Datasets, Longley linear least-squares
-regression dataset.
+Source: NIST/ITL Statistical Reference Datasets, linear least-squares
+regression datasets.
 
-Dataset URL:
+Dataset URLs:
 `https://www.itl.nist.gov/div898/strd/lls/data/Longley.shtml`
+`https://www.itl.nist.gov/div898/strd/lls/data/Wampler5.shtml`
+`https://www.itl.nist.gov/div898/strd/lls/data/Wampler1.shtml`
+`https://www.itl.nist.gov/div898/strd/lls/data/Filip.shtml`
 
-Certified values URL:
+Certified values URLs:
 `https://www.itl.nist.gov/div898/strd/lls/data/LINKS/v-Longley.shtml`
+`https://www.itl.nist.gov/div898/strd/lls/data/LINKS/v-Wampler5.shtml`
+`https://www.itl.nist.gov/div898/strd/lls/data/LINKS/v-Wampler1.shtml`
+`https://www.itl.nist.gov/div898/strd/lls/data/LINKS/v-Filip.shtml`
 
 Use in Modori:
 
-- Regression numerical-accuracy fixture for high-condition-number OLS.
+- Regression numerical-accuracy fixtures for high-condition-number OLS,
+  polynomial regression, perfect-fit rejection, and numerically unsafe design
+  rejection.
 - Certified coefficient, standard-error, R-squared, and F-statistic values are
-  stored in `nist/longley-certified.json`.
+  stored beside each CSV in `nist/*-certified.json`.
