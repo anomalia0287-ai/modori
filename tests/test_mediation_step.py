@@ -168,6 +168,15 @@ def test_current_schema_rejects_missing_unknown_and_newer_params() -> None:
         _step_cls().migrate_params({"schema_version": 999, "x": "x", "mediator": "m", "y": "y"})
 
 
+def test_mediation_bootstrap_defaults_to_user_facing_5000_iterations() -> None:
+    params = _params()
+    params.pop("bootstrap")
+
+    validated = _step_cls().validate_params(params)
+
+    assert validated["bootstrap"]["iterations"] == 5000
+
+
 def test_simple_mediation_matches_independent_ols_and_deterministic_bootstrap() -> None:
     frame = mediation_frame()
     dataset = dataset_factory(frame)
@@ -199,6 +208,7 @@ def test_simple_mediation_matches_independent_ols_and_deterministic_bootstrap() 
     assert result.indirect_ci == pytest.approx((ci_low, ci_high), abs=1e-10)
     assert result.bootstrap_iterations == 300
     assert result.bootstrap_seed == 20260708
+    assert any("1000회 미만" in warning for warning in result.warnings_ko)
     assert result.chart_spec is None
     assert result.no_canonical_chart_reason_ko
 
@@ -222,4 +232,15 @@ def test_validation_rejects_duplicate_roles_non_scale_and_singular_models() -> N
         run_step(
             dataset_factory(singular),
             {**_params(), "covariates": ["c1", "c2"]},
+        )
+
+
+def test_mediation_rejects_ill_conditioned_ols_design() -> None:
+    frame = mediation_frame()
+    frame["near_x"] = frame["x"] + (1e-12 * np.sin(np.arange(len(frame)) * 1.7))
+
+    with pytest.raises(ValueError, match="ill-conditioned"):
+        run_step(
+            dataset_factory(frame),
+            {**_params(), "covariates": ["c1", "near_x"]},
         )

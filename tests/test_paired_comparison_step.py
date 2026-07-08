@@ -1,6 +1,7 @@
 import pandas as pd
 import pingouin as pg
 import pytest
+from scipy import stats
 
 from modori.core import Dataset, Measure, Pipeline, Variable
 from modori.results import ComparisonResult
@@ -119,7 +120,13 @@ def test_paired_comparison_routes_to_wilcoxon_for_small_nonnormal_differences() 
     dataset = paired_dataset(before, after)
 
     result = paired_step().compute_context_free(dataset).analysis
-    reference = pg.wilcoxon(after, before).iloc[0]
+    reference = pg.wilcoxon(
+        after,
+        before,
+        correction=True,
+        method="asymptotic",
+        zero_method="wilcox",
+    ).iloc[0]
 
     assert result.test_name == "wilcoxon"
     assert result.route_reason == "non-normal paired differences + small sample"
@@ -131,6 +138,14 @@ def test_paired_comparison_routes_to_wilcoxon_for_small_nonnormal_differences() 
     assert result.mean_diff_ci is None
     assert result.assumptions["shapiro_diff_p"] < 0.05
     assert result.apa_template_id == "wilcoxon.v1"
+    assert result.method_details == {
+        "method": "asymptotic",
+        "zero_method": "wilcox",
+        "zeros_present": False,
+        "ties_present": True,
+        "correction": True,
+        "alternative": "two-sided",
+    }
     assert result.chart_spec.type == "paired_line"
     assert result.paired is True
     assert result.dv == "post"
@@ -139,6 +154,29 @@ def test_paired_comparison_routes_to_wilcoxon_for_small_nonnormal_differences() 
     assert result.group_label == "Pre score"
     assert result.before_label == "Pre score"
     assert result.after_label == "Post score"
+
+
+def test_wilcoxon_records_zero_difference_policy() -> None:
+    before = [10, 11, 12, 13, 14, 15, 16]
+    after = [10, 12, 13, 15, 14, 19, 21]
+    result = paired_step({"preset": "always_wilcoxon"}).compute_context_free(
+        paired_dataset(before, after)
+    ).analysis
+    reference = stats.wilcoxon(
+        after,
+        before,
+        zero_method="wilcox",
+        correction=True,
+        method="asymptotic",
+    )
+
+    assert result.test_name == "wilcoxon"
+    assert result.method_details["zero_method"] == "wilcox"
+    assert result.method_details["zeros_present"] is True
+    assert result.method_details["ties_present"] is True
+    assert result.method_details["method"] == "asymptotic"
+    assert result.statistic == pytest.approx(reference.statistic, abs=1e-12)
+    assert result.p_value == pytest.approx(reference.pvalue, abs=1e-12)
 
 
 def test_paired_comparison_reports_excluded_pairs() -> None:

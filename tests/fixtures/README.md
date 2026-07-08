@@ -16,3 +16,20 @@ Use in Modori:
 - Agreeableness key used by the test: `-A1, A2, A3, A4, A5`.
 - Reverse-code range: 1 to 6.
 - Group variable: `gender`.
+
+## `nist/longley.csv`
+
+Source: NIST/ITL Statistical Reference Datasets, Longley linear least-squares
+regression dataset.
+
+Dataset URL:
+`https://www.itl.nist.gov/div898/strd/lls/data/Longley.shtml`
+
+Certified values URL:
+`https://www.itl.nist.gov/div898/strd/lls/data/LINKS/v-Longley.shtml`
+
+Use in Modori:
+
+- Regression numerical-accuracy fixture for high-condition-number OLS.
+- Certified coefficient, standard-error, R-squared, and F-statistic values are
+  stored in `nist/longley-certified.json`.

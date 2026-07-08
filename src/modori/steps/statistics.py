@@ -574,7 +574,14 @@ class CompareGroupsStep(Step):
         n_total: int,
         n_dropped: int,
     ) -> ComparisonResult:
-        test = pg.mwu(first, second).iloc[0]
+        method_details = self._mann_whitney_method_details(first, second)
+        test = pg.mwu(
+            first,
+            second,
+            alternative="two-sided",
+            method=str(method_details["method"]),
+            use_continuity=bool(method_details["use_continuity"]),
+        ).iloc[0]
         return ComparisonResult(
             dv=dv,
             group_var=group_var,
@@ -601,7 +608,26 @@ class CompareGroupsStep(Step):
             n_dropped=n_dropped,
             dv_label=dv_label,
             group_label=group_label,
+            method_details=method_details,
         )
+
+    @staticmethod
+    def _mann_whitney_method_details(first: pd.Series, second: pd.Series) -> dict[str, object]:
+        first_values = first.to_numpy(dtype=float)
+        second_values = second.to_numpy(dtype=float)
+        combined = np.concatenate([first_values, second_values])
+        ties_present = len(np.unique(combined)) < len(combined)
+        method = (
+            "asymptotic"
+            if ties_present or min(len(first_values), len(second_values)) > 8
+            else "exact"
+        )
+        return {
+            "method": method,
+            "ties_present": bool(ties_present),
+            "use_continuity": True,
+            "alternative": "two-sided",
+        }
 
     @staticmethod
     def _group_descriptions(
@@ -960,7 +986,15 @@ class PairedComparisonStep(Step):
         n_total: int,
         n_dropped: int,
     ) -> ComparisonResult:
-        test = pg.wilcoxon(after_scores, before_scores).iloc[0]
+        method_details = self._wilcoxon_method_details(before_scores, after_scores)
+        test = pg.wilcoxon(
+            after_scores,
+            before_scores,
+            alternative="two-sided",
+            correction=bool(method_details["correction"]),
+            method=str(method_details["method"]),
+            zero_method=str(method_details["zero_method"]),
+        ).iloc[0]
         return ComparisonResult(
             dv=after,
             group_var=before,
@@ -995,7 +1029,31 @@ class PairedComparisonStep(Step):
             paired=True,
             before_label=before_label,
             after_label=after_label,
+            method_details=method_details,
         )
+
+    @staticmethod
+    def _wilcoxon_method_details(
+        before_scores: pd.Series,
+        after_scores: pd.Series,
+    ) -> dict[str, object]:
+        differences = after_scores.to_numpy(dtype=float) - before_scores.to_numpy(dtype=float)
+        zeros_present = bool(np.any(differences == 0.0))
+        nonzero_abs = np.abs(differences[differences != 0.0])
+        ties_present = len(np.unique(nonzero_abs)) < len(nonzero_abs)
+        method = (
+            "asymptotic"
+            if zeros_present or ties_present or len(nonzero_abs) > 50
+            else "exact"
+        )
+        return {
+            "method": method,
+            "zero_method": "wilcox",
+            "zeros_present": zeros_present,
+            "ties_present": bool(ties_present),
+            "correction": True,
+            "alternative": "two-sided",
+        }
 
     @staticmethod
     def _paired_descriptions(

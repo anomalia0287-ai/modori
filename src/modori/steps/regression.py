@@ -15,6 +15,7 @@ from statsmodels.stats.stattools import durbin_watson
 
 from modori.core import Dataset, Measure, PipelineContext, Step, StepResult, Variable
 from modori.results import ChartSpec, CoefficientRow, RegressionResult, SimpleSlopeRow
+from modori.statistics_numerics import require_well_conditioned_ols_design
 from modori.steps.data_prep import import_read_params_from_step_params
 from modori.table_io import TableLayoutOverride, read_full, read_header
 
@@ -356,6 +357,10 @@ class MultipleRegressionStep(Step):
                 "Regression predictors are perfectly collinear: "
                 f"{', '.join(term_names)}"
             )
+        condition_number = require_well_conditioned_ols_design(
+            x_arr,
+            label="Regression OLS",
+        )
 
         model = sm.OLS(y_arr, x_arr).fit()
         if model.df_resid <= 0:
@@ -442,6 +447,7 @@ class MultipleRegressionStep(Step):
             "interactions": [list(interaction.terms) for interaction in interactions],
             "transformed_terms": design.transformed_terms,
             "centers": design.centers,
+            "condition_number": condition_number,
         }
         warnings = self._warnings(
             policy=policy,

@@ -1,6 +1,7 @@
 import pandas as pd
 import pingouin as pg
 import pytest
+from scipy import stats
 
 from modori.core import Dataset, Measure, Pipeline, Variable
 from modori.results import ComparisonResult
@@ -408,6 +409,56 @@ def test_compare_groups_routes_to_mann_whitney_for_small_nonnormal_groups() -> N
     assert chart_groups[0]["values"] == [1, 1, 1, 1, 10, 10]
     assert chart_groups[1]["values"] == [5, 6, 7, 8, 9, 10]
     assert result.apa_template_id == "mwu.v1"
+
+
+def test_mann_whitney_records_tie_policy_and_uses_asymptotic_method() -> None:
+    dataset = comparison_dataset(
+        [1, 1, 1, 1, 10, 10],
+        [5, 6, 7, 8, 9, 10],
+    )
+    result = compare_step().compute_context_free(dataset).analysis
+    reference = stats.mannwhitneyu(
+        [1, 1, 1, 1, 10, 10],
+        [5, 6, 7, 8, 9, 10],
+        alternative="two-sided",
+        method="asymptotic",
+        use_continuity=True,
+    )
+
+    assert result.test_name == "mann_whitney"
+    assert result.method_details == {
+        "method": "asymptotic",
+        "ties_present": True,
+        "use_continuity": True,
+        "alternative": "two-sided",
+    }
+    assert result.statistic == pytest.approx(reference.statistic, abs=1e-12)
+    assert result.p_value == pytest.approx(reference.pvalue, abs=1e-12)
+
+
+def test_mann_whitney_records_exact_method_when_small_samples_have_no_ties() -> None:
+    step = compare_step_with_policy(
+        {
+            "preset": "custom",
+            "normality_p": 0.99,
+            "nonparametric_n_cutoff": 30,
+        }
+    )
+    first = [1, 2, 3, 20, 30]
+    second = [4, 5, 6, 7, 8]
+    result = step.compute_context_free(comparison_dataset(first, second)).analysis
+    reference = stats.mannwhitneyu(
+        first,
+        second,
+        alternative="two-sided",
+        method="exact",
+        use_continuity=True,
+    )
+
+    assert result.test_name == "mann_whitney"
+    assert result.method_details["method"] == "exact"
+    assert result.method_details["ties_present"] is False
+    assert result.p_value == pytest.approx(reference.pvalue, abs=1e-12)
 
 
 def test_mann_whitney_effect_is_stable_when_rows_are_shuffled() -> None:

@@ -164,6 +164,15 @@ def test_current_schema_rejects_missing_unknown_and_newer_params() -> None:
         _step_cls().migrate_params({"schema_version": 999, "model": 7, "x": "x"})
 
 
+def test_moderated_mediation_bootstrap_defaults_to_user_facing_5000_iterations() -> None:
+    params = _params()
+    params.pop("bootstrap")
+
+    validated = _step_cls().validate_params(params)
+
+    assert validated["bootstrap"]["iterations"] == 5000
+
+
 def test_model_7_reports_conditional_indirect_effects_and_index() -> None:
     frame = moderated_frame()
     ref = centered_reference_frame(frame)
@@ -217,6 +226,7 @@ def test_model_7_bootstrap_cis_match_independent_percentile_reference() -> None:
     )
 
     assert result.index_ci == pytest.approx(index_ci, abs=1e-10)
+    assert any("1000회 미만" in warning for warning in result.warnings_ko)
     actual_effect_cis = {
         effect.moderator_label: effect.ci for effect in result.conditional_effects
     }
@@ -269,3 +279,17 @@ def test_validation_rejects_unsupported_model_duplicate_roles_and_non_scale() ->
 
     with pytest.raises(ValueError, match="center"):
         run_step(dataset, {**_params(), "center": "none"})
+
+
+def test_moderated_mediation_rejects_ill_conditioned_interaction_design() -> None:
+    frame = moderated_frame()
+    ref = centered_reference_frame(frame)
+    frame["near_interaction"] = ref["x_centered:w_centered"] + (
+        1e-12 * np.sin(np.arange(len(frame)) * 1.3)
+    )
+
+    with pytest.raises(ValueError, match="ill-conditioned"):
+        run_step(
+            dataset_factory(frame),
+            {**_params(model=7), "covariates": ["c1", "near_interaction"]},
+        )

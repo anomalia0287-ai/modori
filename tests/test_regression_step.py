@@ -346,6 +346,20 @@ def test_vif_warnings_have_moderate_and_severe_tiers() -> None:
     assert any("severe" in warning.lower() and "VIF" in warning for warning in severe.warnings)
 
 
+def test_regression_rejects_ill_conditioned_design_matrix() -> None:
+    x1 = np.linspace(-3.0, 3.0, 40)
+    x2 = x1 + (1e-12 * np.sin(np.arange(len(x1)) * 1.7))
+    y = 2.0 + (0.4 * x1) + (0.1 * np.cos(np.arange(len(x1))))
+    step = MultipleRegressionStep(
+        id="reg-conditioned",
+        title="Ill-conditioned regression",
+        params={"dv": "y", "predictors": ["x1", "x2"], "regression_policy": {"preset": "classic"}},
+    )
+
+    with pytest.raises(ValueError, match="ill-conditioned"):
+        step.compute_context_free(regression_dataset(pd.DataFrame({"y": y, "x1": x1, "x2": x2})))
+
+
 def test_small_sample_non_normal_residuals_emit_diagnostic_warning() -> None:
     x = np.arange(1, 13, dtype=float)
     residual_shock = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8.0], dtype=float)

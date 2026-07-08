@@ -59,6 +59,7 @@ class ComparisonResult:
     paired: bool = False
     before_label: str | None = None
     after_label: str | None = None
+    method_details: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)

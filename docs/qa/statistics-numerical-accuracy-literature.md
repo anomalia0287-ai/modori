@@ -49,26 +49,26 @@ points, ordered by product risk rather than textbook neatness:
 
 ## Immediate Work Queue
 
-1. Add OLS conditioning policy and fixtures for regression, mediation, and
+1. Done for the first release-hardening pass: add OLS conditioning policy and fixtures for regression, mediation, and
    moderated mediation: near-collinear predictors, interaction terms, covariance
    estimates, condition-number thresholds, and clear rejection text.
-2. Add tie/discreteness/exact-policy fixtures for Likert-shaped rank methods:
-   Mann-Whitney, Wilcoxon zero differences, Kruskal-Wallis, Friedman, and
-   Spearman. Anchor at least the highest-risk cases against R/SPSS/JASP where
-   feasible.
-3. Import NIST StRD certified fixtures before hand-rolled substitutes:
-   `NumAcc` for summary statistics, `Longley`/`Filip`/`Wampler` for regression,
-   and StRD ANOVA data for one-way ANOVA.
-4. Set bootstrap policy in code and tests: default 5000 user-facing resamples,
+2. Partially done: add tie/discreteness/exact-policy fixtures for Likert-shaped rank methods.
+   Mann-Whitney exact-vs-asymptotic and Wilcoxon zero/tie policy are covered.
+   Kruskal-Wallis, Friedman, Spearman, and R/SPSS/JASP anchors remain.
+3. Partially done: import NIST StRD certified fixtures before hand-rolled substitutes.
+   `Longley` is now a checked-in regression fixture. `NumAcc`,
+   `Filip`/`Wampler`, and StRD ANOVA data remain.
+4. Done for code policy: set bootstrap policy in code and tests: default 5000 user-facing resamples,
    reject or warn below 1000, deterministic reproduction tests for plumbing,
-   and independent adequacy checks for interval behavior.
-5. Extend `docs/qa/statistics-accuracy-ledger.md` with `factor_pca`,
+   and independent adequacy checks for interval behavior. Adequacy checks remain.
+5. Done: extend `docs/qa/statistics-accuracy-ledger.md` with `factor_pca`,
    `reliability_omega`, `anova_oneway`, rank-based nonparametric policy, mixed
    absolute/relative tolerance, and bootstrap terminology that distinguishes
    deterministic reproduction from adequacy.
-6. Audit and lock tail p-value paths for t, F, chi-square, studentized-range,
-   beta, and gamma routes. This is a regression lock for paths already using
-   `sf`, not a claim that they are currently wrong.
+6. Partially done: audit and lock tail p-value paths for owned t/F routes.
+   The current lock rejects subtractive `1 - cdf` forms in mediation,
+   regression simple slopes, ANCOVA, and repeated-measures ANOVA. Chi-square,
+   studentized-range, beta, and gamma routes remain.
 
 ## Implementation Rules
 

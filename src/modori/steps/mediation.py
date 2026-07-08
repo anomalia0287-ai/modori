@@ -14,6 +14,12 @@ from modori.mediation_results import (
     MediationModelFit,
     MediationResult,
 )
+from modori.statistics_numerics import (
+    DEFAULT_BOOTSTRAP_ITERATIONS,
+    MIN_BOOTSTRAP_ITERATIONS,
+    bootstrap_iteration_warning_ko,
+    require_well_conditioned_ols_design,
+)
 
 
 @dataclass(frozen=True)
@@ -36,7 +42,11 @@ class MediationStep(Step):
             "mediator": "m",
             "y": "y",
             "covariates": [],
-            "bootstrap": {"iterations": 300, "seed": 20260708, "ci": 0.95},
+            "bootstrap": {
+                "iterations": DEFAULT_BOOTSTRAP_ITERATIONS,
+                "seed": 20260708,
+                "ci": 0.95,
+            },
             "standardize": False,
             "language": "ko",
         },
@@ -120,11 +130,17 @@ class MediationStep(Step):
     @staticmethod
     def _bootstrap_params(value: object) -> dict[str, object]:
         raw = value if isinstance(value, Mapping) else {}
-        iterations = raw.get("iterations", 1000)
+        iterations = raw.get("iterations", DEFAULT_BOOTSTRAP_ITERATIONS)
         seed = raw.get("seed", 20260708)
         ci = raw.get("ci", 0.95)
-        if not isinstance(iterations, int) or isinstance(iterations, bool) or iterations < 50:
-            raise ValueError("mediation bootstrap iterations must be an integer >= 50")
+        if (
+            not isinstance(iterations, int)
+            or isinstance(iterations, bool)
+            or iterations < MIN_BOOTSTRAP_ITERATIONS
+        ):
+            raise ValueError(
+                f"mediation bootstrap iterations must be an integer >= {MIN_BOOTSTRAP_ITERATIONS}"
+            )
         if not isinstance(seed, int) or isinstance(seed, bool):
             raise ValueError("mediation bootstrap seed must be an integer")
         ci_float = float(ci)
@@ -199,6 +215,11 @@ class MediationStep(Step):
             seed=int(bootstrap["seed"]),
             ci=float(bootstrap["ci"]),
         )
+        warnings_ko = ["횡단면 자료에서는 인과 매개로 단정하지 않는다."]
+        iteration_warning = bootstrap_iteration_warning_ko(int(bootstrap["iterations"]))
+        if iteration_warning:
+            warnings_ko.append(iteration_warning)
+
         return MediationResult(
             analysis_key="mediation",
             title_ko="매개분석",
@@ -233,7 +254,7 @@ class MediationStep(Step):
                 predictors=tuple([x, *covariates]),
                 r_squared=total_fit.r_squared,
             ),
-            warnings_ko=("횡단면 자료에서는 인과 매개로 단정하지 않는다.",),
+            warnings_ko=tuple(warnings_ko),
             notes_ko=("부트스트랩 CI는 percentile 방법을 사용했다.",),
             apa_template_id=None,
             chart_spec=None,
@@ -274,6 +295,7 @@ def _fit_ols(frame: pd.DataFrame, *, outcome: str, predictors: list[str]) -> _Ol
         raise ValueError("mediation requires more complete rows than model parameters")
     if np.linalg.matrix_rank(x_matrix) < x_matrix.shape[1]:
         raise ValueError("mediation design matrix must be full rank")
+    require_well_conditioned_ols_design(x_matrix, label="mediation OLS")
     coefficients, *_ = np.linalg.lstsq(x_matrix, y_vector, rcond=None)
     fitted = x_matrix @ coefficients
     residuals = y_vector - fitted

@@ -16,6 +16,11 @@ Accuracy hardening commit: `84d2228 test: strengthen statistics accuracy evidenc
 
 Numerical literature map commit: `8dc5822 docs: map numerical accuracy literature`
 
+Review-correction hardening after that map adds OLS condition-number rejection,
+rank tie/exact method disclosure, NIST StRD Longley parity, bootstrap iteration
+policy, and tail-p-value regression locks. The PR page remains the source of
+truth for the exact current head.
+
 ## What Changed
 
 This release lane integrates the Survey Pipeline V1 statistics bundle and the follow-up recommendation bridge:
@@ -54,7 +59,7 @@ This release lane integrates the Survey Pipeline V1 statistics bundle and the fo
    `repeated_measures_anova`, `friedman`, `mediation`,
    `moderated_mediation`, `factor_pca`, `reliability_omega`,
    `anova_oneway`, and rank-based nonparametric tests.
-3. Review validation behavior for invalid roles, missing variables, unsupported shapes, and singular models.
+3. Review validation behavior for invalid roles, missing variables, unsupported shapes, singular models, and ill-conditioned OLS designs.
 4. Treat Microsoft Word export as not manually verified in the clean VM because Word is not installed there.
 
 ## Operational Publication Status

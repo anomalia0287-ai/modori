@@ -5,6 +5,7 @@ from dataclasses import dataclass
 import re
 from typing import Any, Protocol
 
+from modori.statistics_numerics import DEFAULT_BOOTSTRAP_ITERATIONS
 from modori.ui.patches import PatchValidationError
 
 
@@ -462,7 +463,11 @@ class AnalysisSelectionCommandBuilder:
                 "mediator": mediator_key,
                 "y": y_key,
                 "covariates": covariates,
-                "bootstrap": {"iterations": 1000, "seed": 20260708, "ci": 0.95},
+                "bootstrap": {
+                    "iterations": DEFAULT_BOOTSTRAP_ITERATIONS,
+                    "seed": 20260708,
+                    "ci": 0.95,
+                },
                 "standardize": False,
                 "language": "ko",
             }
@@ -524,7 +529,11 @@ class AnalysisSelectionCommandBuilder:
                 "moderator": moderator_key,
                 "y": y_key,
                 "covariates": covariates,
-                "bootstrap": {"iterations": 1000, "seed": 20260708, "ci": 0.95},
+                "bootstrap": {
+                    "iterations": DEFAULT_BOOTSTRAP_ITERATIONS,
+                    "seed": 20260708,
+                    "ci": 0.95,
+                },
                 "moderator_values": "mean_sd",
                 "center": "mean",
                 "language": "ko",

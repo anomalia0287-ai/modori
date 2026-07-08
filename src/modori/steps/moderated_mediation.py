@@ -12,6 +12,11 @@ from modori.moderated_mediation_results import (
     ModeratedMediationModelFit,
     ModeratedMediationResult,
 )
+from modori.statistics_numerics import (
+    DEFAULT_BOOTSTRAP_ITERATIONS,
+    MIN_BOOTSTRAP_ITERATIONS,
+    bootstrap_iteration_warning_ko,
+)
 from modori.steps.mediation import _as_finite_float, _fit_ols, _ols_coefficients
 
 
@@ -29,7 +34,11 @@ class ModeratedMediationStep(Step):
             "moderator": "w",
             "y": "y",
             "covariates": [],
-            "bootstrap": {"iterations": 250, "seed": 20260708, "ci": 0.95},
+            "bootstrap": {
+                "iterations": DEFAULT_BOOTSTRAP_ITERATIONS,
+                "seed": 20260708,
+                "ci": 0.95,
+            },
             "moderator_values": "mean_sd",
             "center": "mean",
             "language": "ko",
@@ -133,12 +142,17 @@ class ModeratedMediationStep(Step):
     @staticmethod
     def _bootstrap_params(value: object) -> dict[str, object]:
         raw = value if isinstance(value, Mapping) else {}
-        iterations = raw.get("iterations", 1000)
+        iterations = raw.get("iterations", DEFAULT_BOOTSTRAP_ITERATIONS)
         seed = raw.get("seed", 20260708)
         ci = raw.get("ci", 0.95)
-        if not isinstance(iterations, int) or isinstance(iterations, bool) or iterations < 50:
+        if (
+            not isinstance(iterations, int)
+            or isinstance(iterations, bool)
+            or iterations < MIN_BOOTSTRAP_ITERATIONS
+        ):
             raise ValueError(
-                "moderated_mediation bootstrap iterations must be an integer >= 50"
+                "moderated_mediation bootstrap iterations must be an integer "
+                f">= {MIN_BOOTSTRAP_ITERATIONS}"
             )
         if not isinstance(seed, int) or isinstance(seed, bool):
             raise ValueError("moderated_mediation bootstrap seed must be an integer")
@@ -265,6 +279,11 @@ class ModeratedMediationStep(Step):
             )
             for label, centered_value in self._moderator_points(moderator_sd)
         )
+        warnings_ko = ["횡단면 자료에서는 인과적 조건부 간접효과로 단정하지 않는다."]
+        iteration_warning = bootstrap_iteration_warning_ko(int(bootstrap["iterations"]))
+        if iteration_warning:
+            warnings_ko.append(iteration_warning)
+
         return ModeratedMediationResult(
             analysis_key="moderated_mediation",
             title_ko="조절된 매개분석",
@@ -298,7 +317,7 @@ class ModeratedMediationStep(Step):
                 predictors=tuple(outcome_predictors),
                 r_squared=outcome_fit.r_squared,
             ),
-            warnings_ko=("횡단면 자료에서는 인과적 조건부 간접효과로 단정하지 않는다.",),
+            warnings_ko=tuple(warnings_ko),
             notes_ko=("부트스트랩 CI는 percentile 방법을 사용했다.",),
             apa_template_id=None,
             chart_spec=None,
