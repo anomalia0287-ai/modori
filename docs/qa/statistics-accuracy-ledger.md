@@ -10,6 +10,9 @@ This ledger separates three claims:
 - Calculation accuracy: whether a selected analysis computes the expected statistic, effect size, confidence interval, and validation behavior.
 - Presentation accuracy: whether tables, Korean/English prose, and UI surfaces report the calculated result without changing meaning.
 
+Numerical-analysis literature and implementation obligations are mapped in
+`docs/qa/statistics-numerical-accuracy-literature.md`.
+
 ## Tolerance Policy
 
 Default numeric tolerance for deterministic statistics is `abs <= 1e-10` unless a test documents a tighter or looser reason. Sphericity, p-values, sums of squares, coefficients, and effect sizes prefer `abs <= 1e-12` when the reference path is deterministic and library-compatible. Bootstrap percentile CI checks use fixed seeds and compare to independent resampling references with `abs <= 1e-10` where the test owns the resampling algorithm. Rendered text and rounded table values are verified separately from raw result-object values.
