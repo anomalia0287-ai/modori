@@ -216,9 +216,9 @@ A4FE941EF6170E735B107D75244A4A2562722E881F293224B576A517E0796888
 | --- | --- | --- |
 | merge commit host gate | Pass | Commit `c1ae5f3 merge: integrate statistics module bundle` in `C:\Users\V\Desktop\TongTong\.worktrees\statistics-release-integration`; baseline full pytest before merge reported `674 passed, 2 skipped`; post-merge full pytest reported `946 passed, 3 skipped`. |
 | advanced recommendation bridge | Pass | Commit `7b20521 fix: run advanced statistics recommendations` connects repeated-measures ANOVA, Friedman, mediation, and moderated mediation candidates to the existing analysis editor/controller command path. Focused regression coverage reported `7 passed`; full pytest reported `947 passed, 3 skipped`. |
-| packaged statistics bundle gate | Pass | After `7b20521`, `scripts\quality_gate.py --with-package-check --with-package-build --with-packaged-launch` reported `947 passed, 3 skipped`, `package-tool-ok`, `package-launch-smoke-ok`, `package-engine-smoke-ok`, and `package-public-data-smoke-ok`. |
-| rebuilt integration package | Pass | Packaged executable: `C:\Users\V\Desktop\TongTong\.worktrees\statistics-release-integration\dist\Modori\Modori.exe`; build time `2026-07-08 11:17:20 +09:00`; SHA256 `79AB8207D8FC997F06872E0C9FCEDF677D22CF5173FAF6E42CE16941BAC16E2A`. |
-| clean VM evidence for current integration HEAD | Pending | Commit `7b20521` has not yet been run inside `Modori-CleanWin-QA-Direct` / `MODORIQA2`. Before release, regenerate or verify Payload V2 from this package and record the exact smoke command, exit code, log path, payload label, and payload freshness evidence. |
+| packaged statistics bundle gate | Pass | After release-lane fast-forward to `7ff7ee8`, `scripts\quality_gate.py --with-package-check --with-package-build --with-packaged-launch` reported `947 passed, 3 skipped`, `package-tool-ok`, `package-launch-smoke-ok`, `package-engine-smoke-ok`, and `package-public-data-smoke-ok`. |
+| rebuilt release-lane package | Pass | Packaged executable: `C:\Users\V\Desktop\TongTong\dist\Modori\Modori.exe`; build time `2026-07-08 11:23:37 +09:00`; SHA256 `4BF611DE876C497BD9BC4AD0CACCB081BDF66A89658A5E6D423D2864F994CB3C`. |
+| clean VM evidence for current release-lane package | Pending | The `7ff7ee8` package has not yet been run inside `Modori-CleanWin-QA-Direct` / `MODORIQA2`. Before release, regenerate or verify Payload V2 from this package and record the exact smoke command, exit code, log path, payload label, and payload freshness evidence. |
 
 ## Release Interpretation
 

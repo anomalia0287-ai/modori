@@ -12,12 +12,13 @@ Current statistics-bundle merge evidence from 2026-07-08:
 
 - Commit: `c1ae5f3 merge: integrate statistics module bundle`
 - Follow-up fix: `7b20521 fix: run advanced statistics recommendations`
-- Worktree: `C:\Users\V\Desktop\TongTong\.worktrees\statistics-release-integration`
+- Release-lane evidence commit: `7ff7ee8 docs: update statistics integration evidence`
+- Worktree: `C:\Users\V\Desktop\TongTong`
 - Package:
-  `C:\Users\V\Desktop\TongTong\.worktrees\statistics-release-integration\dist\Modori\Modori.exe`
-- Package build time: `2026-07-08 11:17:20 +09:00`
+  `C:\Users\V\Desktop\TongTong\dist\Modori\Modori.exe`
+- Package build time: `2026-07-08 11:23:37 +09:00`
 - SHA256:
-  `79AB8207D8FC997F06872E0C9FCEDF677D22CF5173FAF6E42CE16941BAC16E2A`
+  `4BF611DE876C497BD9BC4AD0CACCB081BDF66A89658A5E6D423D2864F994CB3C`
 - Baseline full pytest before merge: `674 passed, 2 skipped`
 - Post-merge full pytest: `946 passed, 3 skipped`
 - Post-recommendation-fix full pytest: `947 passed, 3 skipped`
@@ -26,7 +27,7 @@ Current statistics-bundle merge evidence from 2026-07-08:
   passed after the follow-up fix with `947 passed, 3 skipped`, `package-tool-ok`,
   `package-launch-smoke-ok`, `package-engine-smoke-ok`, and
   `package-public-data-smoke-ok`.
-- Clean VM: not yet executed for commit `7b20521`. Release evidence remains
+- Clean VM: not yet executed for the `7ff7ee8` release-lane package. Release evidence remains
   open until the administrator-regenerated payload is run inside
   `Modori-CleanWin-QA-Direct` / `MODORIQA2` and the command, exit code, log
   path, and payload evidence are recorded.
