@@ -3,6 +3,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import pingouin as pg
 import pytest
@@ -32,6 +33,24 @@ def reliability_dataset() -> Dataset:
             "q2": [1, 2, 3, 4, 4, 5, 4, 3],
             "q3": [2, 2, 3, 3, 5, 5, 4, 4],
             "q4": [1, 3, 3, 4, 5, 4, 4, 3],
+        }
+    )
+    return Dataset(
+        df=frame,
+        variables={column: variable(column) for column in frame.columns},
+    )
+
+
+def near_singular_reliability_dataset() -> Dataset:
+    rng = np.random.default_rng(20260708)
+    base = rng.normal(size=100)
+    frame = pd.DataFrame(
+        {
+            "q1": base,
+            "q2": base + rng.normal(scale=1e-3, size=len(base)),
+            "q3": (0.7 * base) + rng.normal(scale=0.3, size=len(base)),
+            "q4": rng.normal(size=len(base)),
+            "q5": rng.normal(size=len(base)),
         }
     )
     return Dataset(
@@ -240,6 +259,21 @@ def test_reliability_step_reports_singular_omega_matrix_clearly() -> None:
     )
 
     with pytest.raises(ValueError, match="omega could not be estimated"):
+        step.compute_context_free(dataset)
+
+
+def test_reliability_step_rejects_ill_conditioned_omega_matrix() -> None:
+    dataset = near_singular_reliability_dataset()
+    step = ReliabilityStep(
+        id="reliability",
+        title="Reliability",
+        params={
+            "items": ["q1", "q2", "q3", "q4", "q5"],
+            "scale_name": "near_duplicate",
+        },
+    )
+
+    with pytest.raises(ValueError, match="ill-conditioned"):
         step.compute_context_free(dataset)
 
 

@@ -22,6 +22,7 @@ from modori.factor_pca_results import (
     KmoResult,
     ParallelAnalysisResult,
 )
+from modori.statistics_numerics import require_well_conditioned_correlation_matrix
 
 
 _SUPPORTED_MEASURES = {Measure.SCALE, Measure.ORDINAL}
@@ -348,6 +349,7 @@ class FactorPcaStep(Step):
             raise ValueError("요인/PCA 상관행렬을 유한한 정방행렬로 만들 수 없습니다.")
         if np.linalg.matrix_rank(corr) < corr.shape[0]:
             raise ValueError("요인/PCA 상관행렬이 특이행렬이라 분석을 중단합니다.")
+        require_well_conditioned_correlation_matrix(corr, label="Factor/PCA")
         return corr
 
     @staticmethod

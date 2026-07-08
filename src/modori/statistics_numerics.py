@@ -6,6 +6,7 @@ import numpy as np
 
 
 DEFAULT_OLS_MAX_CONDITION_NUMBER = 1e12
+DEFAULT_CORRELATION_MAX_CONDITION_NUMBER = 1e6
 DEFAULT_BOOTSTRAP_ITERATIONS = 5000
 MIN_BOOTSTRAP_ITERATIONS = 50
 MIN_RECOMMENDED_BOOTSTRAP_ITERATIONS = 1000
@@ -33,6 +34,34 @@ def require_well_conditioned_ols_design(
     ):
         raise ValueError(
             f"{label} design matrix is ill-conditioned "
+            f"(condition number {condition_number:.3g} exceeds "
+            f"{max_condition_number:.3g}); inference is undefined."
+        )
+    return condition_number
+
+
+def correlation_condition_number(correlation_matrix: Any) -> float:
+    matrix = np.asarray(correlation_matrix, dtype=float)
+    if matrix.ndim != 2 or matrix.shape[0] == 0 or matrix.shape[0] != matrix.shape[1]:
+        raise ValueError("Correlation matrix must be a non-empty square array.")
+    if not np.all(np.isfinite(matrix)):
+        raise ValueError("Correlation matrix must contain finite numeric values.")
+    return float(np.linalg.cond(matrix))
+
+
+def require_well_conditioned_correlation_matrix(
+    correlation_matrix: Any,
+    *,
+    label: str,
+    max_condition_number: float = DEFAULT_CORRELATION_MAX_CONDITION_NUMBER,
+) -> float:
+    condition_number = correlation_condition_number(correlation_matrix)
+    if (
+        not np.isfinite(condition_number)
+        or condition_number > max_condition_number
+    ):
+        raise ValueError(
+            f"{label} correlation matrix is ill-conditioned "
             f"(condition number {condition_number:.3g} exceeds "
             f"{max_condition_number:.3g}); inference is undefined."
         )

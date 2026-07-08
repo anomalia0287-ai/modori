@@ -11,6 +11,7 @@ import pandas as pd
 from scipy import stats
 
 from modori.cache import matplotlib_cache_dir
+from modori.statistics_numerics import require_well_conditioned_correlation_matrix
 
 _matplotlib_cache = matplotlib_cache_dir()
 os.environ["MPLCONFIGDIR"] = str(_matplotlib_cache)
@@ -246,6 +247,18 @@ class ReliabilityStep(Step):
         and applies omega-total as (sum(lambda))^2 /
         ((sum(lambda))^2 + sum(uniqueness)).
         """
+        corr = frame.corr().to_numpy(dtype=float)
+        if corr.shape[0] != corr.shape[1] or not np.all(np.isfinite(corr)):
+            raise ValueError(
+                "McDonald's omega could not be estimated because the item "
+                "correlation matrix is not finite."
+            )
+        if np.linalg.matrix_rank(corr) < corr.shape[0]:
+            raise ValueError(
+                "McDonald's omega could not be estimated because the item "
+                "correlation matrix is singular."
+            )
+        require_well_conditioned_correlation_matrix(corr, label="McDonald's omega")
         analyzer = FactorAnalyzer(n_factors=1, rotation=None, method="ml")
         with warnings.catch_warnings():
             warnings.filterwarnings(
@@ -253,15 +266,22 @@ class ReliabilityStep(Step):
                 message="'force_all_finite' was renamed to 'ensure_all_finite'",
                 category=FutureWarning,
             )
+            warnings.simplefilter("error", RuntimeWarning)
+            warnings.simplefilter("error", UserWarning)
             try:
                 analyzer.fit(frame)
-            except np.linalg.LinAlgError as exc:
+            except (np.linalg.LinAlgError, RuntimeWarning, UserWarning) as exc:
                 raise ValueError(
                     "McDonald's omega could not be estimated because the item "
-                    "correlation matrix is singular."
+                    "factor model is numerically unstable."
                 ) from exc
         loadings = analyzer.loadings_.ravel()
         uniquenesses = analyzer.get_uniquenesses()
+        if not np.all(np.isfinite(loadings)) or not np.all(np.isfinite(uniquenesses)):
+            raise ValueError(
+                "McDonald's omega produced non-finite factor estimates; "
+                "inference is undefined."
+            )
         common_variance = float(loadings.sum() ** 2)
         error_variance = float(uniquenesses.sum())
         return common_variance / (common_variance + error_variance)

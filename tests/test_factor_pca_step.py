@@ -93,6 +93,20 @@ def factor_frame(n: int = 80) -> pd.DataFrame:
     )
 
 
+def near_singular_factor_frame(n: int = 100) -> pd.DataFrame:
+    rng = np.random.default_rng(20260708)
+    base = rng.normal(size=n)
+    return pd.DataFrame(
+        {
+            "q1": base,
+            "q2": base + rng.normal(scale=1e-3, size=n),
+            "q3": (0.7 * base) + rng.normal(scale=0.3, size=n),
+            "q4": rng.normal(size=n),
+            "q5": rng.normal(size=n),
+        }
+    )
+
+
 def run_step(dataset: Dataset, params: dict[str, object]):
     step = _step_cls()(
         id="factor-pca-main",
@@ -280,6 +294,13 @@ def test_required_diagnostics_fail_closed(
 
     with pytest.raises(ValueError, match=message):
         run_step(dataset, params)
+
+
+def test_factor_pca_rejects_ill_conditioned_correlation_matrix() -> None:
+    dataset = dataset_factory(frame=near_singular_factor_frame())
+
+    with pytest.raises(ValueError, match="ill-conditioned"):
+        run_step(dataset, _params(method="pca"))
 
 
 def test_validation_rejects_duplicate_variables_bad_parallel_analysis_and_efa_options() -> None:
