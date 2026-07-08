@@ -41,3 +41,18 @@ Use in Modori:
   rejection.
 - Certified coefficient, standard-error, R-squared, and F-statistic values are
   stored beside each CSV in `nist/*-certified.json`.
+
+NIST StRD univariate summary-statistics source:
+`https://www.itl.nist.gov/div898/strd/univ/numacc4.html`
+
+Certified values and construction rule:
+`https://www.itl.nist.gov/div898/strd/univ/certvalues/numacc4.html`
+`https://www.itl.nist.gov/div898/strd/univ/addinfo/numacc4.html`
+
+Use in Modori:
+
+- `NumAcc4` is generated inside `tests/test_nist_strd_fixtures.py` from the
+  official construction rule: one `10000000.2`, followed by 500 pairings of
+  `10000000.1` and `10000000.3`.
+- This locks large-offset mean and sample standard-deviation accuracy for
+  `descriptives_table1` without checking in a repetitive 1001-line data file.

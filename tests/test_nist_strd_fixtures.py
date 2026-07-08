@@ -10,7 +10,7 @@ from modori.statistics_numerics import (
     DEFAULT_OLS_MAX_CONDITION_NUMBER,
     ols_condition_number,
 )
-from modori.steps import MultipleRegressionStep
+from modori.steps import DescriptivesTableStep, MultipleRegressionStep
 
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures" / "nist"
@@ -53,6 +53,36 @@ def _run_regression(frame: pd.DataFrame, *, predictors: list[str]):
             "regression_policy": {"preset": "classic"},
         },
     ).compute_context_free(_dataset_for(frame)).analysis
+
+
+def _run_descriptives(frame: pd.DataFrame, *, variables: list[str]):
+    return DescriptivesTableStep(
+        id="nist-descriptives",
+        title="NIST descriptives",
+        params={
+            "schema_version": 1,
+            "variables": variables,
+            "group": None,
+            "include_missing_counts": True,
+            "language": "ko",
+        },
+    ).compute_context_free(_dataset_for(frame)).analysis
+
+
+def test_numacc4_descriptives_match_nist_strd_certified_values() -> None:
+    values = ["10000000.2"]
+    for _ in range(500):
+        values.extend(("10000000.1", "10000000.3"))
+    frame = pd.DataFrame({"y": values})
+
+    result = _run_descriptives(frame, variables=["y"])
+    summary = result.summaries[0]
+
+    assert summary.n_obs == 1001
+    assert summary.mean == pytest.approx(10000000.2, rel=1e-15, abs=1e-12)
+    assert summary.sd == pytest.approx(0.1, rel=1e-12, abs=1e-12)
+    assert summary.minimum == pytest.approx(10000000.1)
+    assert summary.maximum == pytest.approx(10000000.3)
 
 
 def test_longley_regression_matches_nist_strd_certified_values() -> None:

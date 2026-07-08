@@ -17,6 +17,7 @@ def test_statistics_accuracy_ledger_records_high_risk_module_coverage() -> None:
         "moderated_mediation",
         "ancova",
         "regression_ols",
+        "descriptives_table1",
         "factor_pca",
         "reliability_omega",
         "anova_oneway",
@@ -46,6 +47,7 @@ def test_statistics_literature_map_records_certified_and_product_specific_risks(
     required_terms = [
         "NIST Statistical Reference Datasets",
         "NumAcc",
+        "NumAcc4",
         "Longley",
         "Filip",
         "Wampler",

@@ -3,6 +3,7 @@ from __future__ import annotations
 import unicodedata
 from collections.abc import Mapping
 from dataclasses import dataclass
+from decimal import Decimal, InvalidOperation, localcontext
 
 import numpy as np
 import pandas as pd
@@ -247,11 +248,11 @@ class DescriptivesTableStep(Step):
         if n_obs == 0:
             mean = median = minimum = maximum = None
         else:
-            mean = float(values.mean())
+            mean = _decimal_mean(series.dropna(), key)
             median = float(values.median())
             minimum = float(values.min())
             maximum = float(values.max())
-        sd = None if n_obs < 2 else float(values.std(ddof=1))
+        sd = None if n_obs < 2 else _decimal_sample_sd(series.dropna(), key)
         return DescriptiveVariableSummary(
             key=key,
             label=label,
@@ -354,6 +355,33 @@ class DescriptivesTableStep(Step):
     @staticmethod
     def _normalized(value: object) -> str:
         return unicodedata.normalize("NFKC", str(value)).casefold()
+
+
+def _decimal_values(values: pd.Series, key: str) -> list[Decimal]:
+    decimals: list[Decimal] = []
+    for value in values:
+        try:
+            decimals.append(Decimal(str(value).strip()))
+        except InvalidOperation as exc:
+            raise ValueError(f"척도형 변수는 숫자여야 합니다: {key}") from exc
+    return decimals
+
+
+def _decimal_mean(values: pd.Series, key: str) -> float:
+    decimals = _decimal_values(values, key)
+    with localcontext() as context:
+        context.prec = 50
+        return float(sum(decimals) / Decimal(len(decimals)))
+
+
+def _decimal_sample_sd(values: pd.Series, key: str) -> float:
+    decimals = _decimal_values(values, key)
+    with localcontext() as context:
+        context.prec = 50
+        mean = sum(decimals) / Decimal(len(decimals))
+        sum_squares = sum((value - mean) ** 2 for value in decimals)
+        variance = sum_squares / Decimal(len(decimals) - 1)
+        return float(variance.sqrt())
 
 
 Step.register_type(DescriptivesTableStep.step_type, DescriptivesTableStep)
