@@ -27,10 +27,15 @@ Current statistics-bundle merge evidence from 2026-07-08:
   passed after the follow-up fix with `947 passed, 3 skipped`, `package-tool-ok`,
   `package-launch-smoke-ok`, `package-engine-smoke-ok`, and
   `package-public-data-smoke-ok`.
-- Clean VM: not yet executed for the `7ff7ee8` release-lane package. Release evidence remains
-  open until the administrator-regenerated payload is run inside
-  `Modori-CleanWin-QA-Direct` / `MODORIQA2` and the command, exit code, log
-  path, and payload evidence are recorded.
+- Clean VM: owner-operated functional check is a partial pass for the `7ff7ee8`
+  release-lane package. The owner reported normal operation inside
+  `Modori-CleanWin-QA-Direct` / `MODORIQA2` and shut the VM down with `끄기`;
+  a VM resource-shortage warning appeared during execution. Release evidence
+  remains open until exact `Run-Public-Data-Smoke.bat` /
+  `Run-Engine-Smoke-XLSX.bat` exit codes, JSON snippets, log/evidence paths,
+  payload freshness evidence, and recurrence/non-recurrence of the resource
+  warning are recorded. Statistical result-value correctness is covered by the
+  automated reference tests and package smoke, not by manual visual inspection.
 
 Current feature-build evidence from 2026-07-07:
 
