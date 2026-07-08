@@ -8,6 +8,27 @@ Latest release-lane evidence handoff:
 docs\superpowers\handoffs\2026-07-05-release-lane-chart-vm-handoff.md
 ```
 
+Current statistics-bundle merge evidence from 2026-07-08:
+
+- Commit: `c1ae5f3 merge: integrate statistics module bundle`
+- Worktree: `C:\Users\V\Desktop\TongTong\.worktrees\statistics-release-integration`
+- Package:
+  `C:\Users\V\Desktop\TongTong\.worktrees\statistics-release-integration\dist\Modori\Modori.exe`
+- Package build time: `2026-07-08 11:06:48 +09:00`
+- SHA256:
+  `3F0284E30C0A514320CE2D4C1A4A163BAD2BA37CC1A53B4F474841D0723DDC99`
+- Baseline full pytest before merge: `674 passed, 2 skipped`
+- Post-merge full pytest: `946 passed, 3 skipped`
+- Packaged gate:
+  `scripts\quality_gate.py --with-package-check --with-package-build --with-packaged-launch`
+  passed with `946 passed, 3 skipped`, `package-tool-ok`,
+  `package-launch-smoke-ok`, `package-engine-smoke-ok`, and
+  `package-public-data-smoke-ok`.
+- Clean VM: not yet executed for commit `c1ae5f3`. Release evidence remains
+  open until the administrator-regenerated payload is run inside
+  `Modori-CleanWin-QA-Direct` / `MODORIQA2` and the command, exit code, log
+  path, and payload evidence are recorded.
+
 Current feature-build evidence from 2026-07-07:
 
 - Commit: `6603bab docs: record import curation readiness status`

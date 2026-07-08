@@ -210,6 +210,15 @@ A4FE941EF6170E735B107D75244A4A2562722E881F293224B576A517E0796888
 | rebuilt host package | Pass | Packaged executable: `C:\Users\V\Desktop\TongTong\dist\Modori\Modori.exe`; SHA256 `894D040B19943079879610627DBDE16C3A8DB5C3EE6298501D2F956E7644C6E3`. |
 | clean VM preparation for this feature set | Ready for owner-operated VM execution | Payload V2 was rebuilt from the latest host package while `Modori-CleanWin-QA-Direct` was `Off`. `C:\VM\ModoriPayload\attach-payload-v2.log` records `Payload rebuild requested`, `Validate new payload contents`, `Attach payload disk to VM`, and `Done`, ending at `2026-07-08 05:47:48` local time. Current file evidence shows `C:\VM\ModoriPayload\ModoriPayloadV2.vhdx` was last written at `2026-07-08 05:52:08`, after the `2026-07-08 01:49:09` host package build. The prior payload was backed up to `C:\VM\ModoriPayload\ModoriPayloadV2.before-rebuild-20260708-054731.vhdx`. |
 
+## 2026-07-08 Statistics Bundle Merge Host Package QA
+
+| Item | Status | Evidence |
+| --- | --- | --- |
+| merge commit host gate | Pass | Commit `c1ae5f3 merge: integrate statistics module bundle` in `C:\Users\V\Desktop\TongTong\.worktrees\statistics-release-integration`; baseline full pytest before merge reported `674 passed, 2 skipped`; post-merge full pytest reported `946 passed, 3 skipped`. |
+| packaged statistics bundle gate | Pass | `scripts\quality_gate.py --with-package-check --with-package-build --with-packaged-launch` reported `946 passed, 3 skipped`, `package-tool-ok`, `package-launch-smoke-ok`, `package-engine-smoke-ok`, and `package-public-data-smoke-ok`. |
+| rebuilt integration package | Pass | Packaged executable: `C:\Users\V\Desktop\TongTong\.worktrees\statistics-release-integration\dist\Modori\Modori.exe`; build time `2026-07-08 11:06:48 +09:00`; SHA256 `3F0284E30C0A514320CE2D4C1A4A163BAD2BA37CC1A53B4F474841D0723DDC99`. |
+| clean VM evidence for merge commit | Pending | Commit `c1ae5f3` has not yet been run inside `Modori-CleanWin-QA-Direct` / `MODORIQA2`. Before release, regenerate or verify Payload V2 from this package and record the exact smoke command, exit code, log path, payload label, and payload freshness evidence. |
+
 ## Release Interpretation
 
 This document records an accepted target-machine visible walkthrough for the
