@@ -10,7 +10,7 @@ from modori.statistics_numerics import (
     DEFAULT_OLS_MAX_CONDITION_NUMBER,
     ols_condition_number,
 )
-from modori.steps import DescriptivesTableStep, MultipleRegressionStep
+from modori.steps import DescriptivesTableStep, MultipleRegressionStep, OneWayAnovaStep
 
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures" / "nist"
@@ -32,6 +32,24 @@ def _dataset_for(frame: pd.DataFrame) -> Dataset:
     return Dataset(
         df=frame,
         variables={column: _scale_variable(column) for column in frame.columns},
+    )
+
+
+def _dataset_for_anova(frame: pd.DataFrame) -> Dataset:
+    return Dataset(
+        df=frame,
+        variables={
+            "treatment": Variable(
+                name="treatment",
+                label="treatment",
+                measure=Measure.NOMINAL,
+                value_labels={},
+                missing_values=[],
+                dtype="int",
+                origin_step_id=None,
+            ),
+            "y": _scale_variable("y"),
+        },
     )
 
 
@@ -69,6 +87,34 @@ def _run_descriptives(frame: pd.DataFrame, *, variables: list[str]):
     ).compute_context_free(_dataset_for(frame)).analysis
 
 
+def _run_anova(frame: pd.DataFrame):
+    return OneWayAnovaStep(
+        id="nist-anova",
+        title="NIST one-way ANOVA",
+        params={
+            "schema_version": 1,
+            "dv": "y",
+            "group": "treatment",
+            "posthoc": "none",
+        },
+    ).compute_context_free(_dataset_for_anova(frame)).analysis
+
+
+def _smls01_frame() -> pd.DataFrame:
+    def beta(index: int) -> float:
+        if index == 1:
+            return 0.2
+        return 0.1 if index % 2 == 0 else 0.3
+
+    return pd.DataFrame(
+        [
+            {"treatment": treatment, "y": 1.0 + beta(treatment) + beta(replicate)}
+            for treatment in range(1, 10)
+            for replicate in range(1, 22)
+        ]
+    )
+
+
 def test_numacc4_descriptives_match_nist_strd_certified_values() -> None:
     values = ["10000000.2"]
     for _ in range(500):
@@ -83,6 +129,18 @@ def test_numacc4_descriptives_match_nist_strd_certified_values() -> None:
     assert summary.sd == pytest.approx(0.1, rel=1e-12, abs=1e-12)
     assert summary.minimum == pytest.approx(10000000.1)
     assert summary.maximum == pytest.approx(10000000.3)
+
+
+def test_smls01_one_way_anova_matches_nist_strd_certified_values() -> None:
+    result = _run_anova(_smls01_frame())
+
+    assert result.df_between == 8
+    assert result.df_within == 180
+    assert result.f_statistic == pytest.approx(21.0, abs=1e-12)
+    assert result.eta_squared == pytest.approx(0.482758620689655, abs=5e-15)
+    assert result.assumptions.group_count == 9
+    assert result.assumptions.min_group_n == 21
+    assert result.assumptions.max_group_n == 21
 
 
 def test_longley_regression_matches_nist_strd_certified_values() -> None:

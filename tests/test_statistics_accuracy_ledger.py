@@ -48,6 +48,7 @@ def test_statistics_literature_map_records_certified_and_product_specific_risks(
         "NIST Statistical Reference Datasets",
         "NumAcc",
         "NumAcc4",
+        "SmLs01",
         "Longley",
         "Filip",
         "Wampler",

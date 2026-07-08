@@ -56,3 +56,17 @@ Use in Modori:
   `10000000.1` and `10000000.3`.
 - This locks large-offset mean and sample standard-deviation accuracy for
   `descriptives_table1` without checking in a repetitive 1001-line data file.
+
+NIST StRD one-way ANOVA source:
+`https://www.itl.nist.gov/div898/strd/anova/SmLs01.html`
+
+Certified values and construction rule:
+`https://www.itl.nist.gov/div898/strd/anova/SmLs01_cv.html`
+`https://www.itl.nist.gov/div898/strd/anova/SmLs01_info.html`
+
+Use in Modori:
+
+- `SmLs01` is generated inside `tests/test_nist_strd_fixtures.py` from the
+  official construction rule for one-way balanced ANOVA.
+- This locks certified df, F statistic, and R-squared parity for
+  `anova_oneway` without checking in a repetitive generated data file.
