@@ -68,10 +68,13 @@ points, ordered by product risk rather than textbook neatness:
    `reliability_omega`, `anova_oneway`, rank-based nonparametric policy, mixed
    absolute/relative tolerance, and bootstrap terminology that distinguishes
    deterministic reproduction from adequacy.
-6. Partially done: audit and lock tail p-value paths for owned t/F routes.
+6. Partially done: audit and lock tail p-value paths for owned t/F routes
+   and ANOVA posthoc source disclosure.
    The current lock rejects subtractive `1 - cdf` forms in mediation,
-   regression simple slopes, ANCOVA, and repeated-measures ANOVA. Chi-square,
-   studentized-range, beta, and gamma routes remain.
+   regression simple slopes, ANCOVA, one-way ANOVA, and repeated-measures
+   ANOVA. Tukey/Games-Howell results now disclose their studentized-range
+   survival-function source. Chi-square, beta, gamma, and independent
+   studentized-range edge fixtures remain.
 
 ## Implementation Rules
 

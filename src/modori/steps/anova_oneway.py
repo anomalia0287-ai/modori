@@ -316,6 +316,7 @@ class OneWayAnovaStep(Step):
                 method="tukey_hsd",
                 status="unavailable",
                 reason_ko=f"Tukey HSD 산출에 실패해 사후비교를 제공하지 않는다: {exc}",
+                method_details=_tukey_method_details(),
             )
         comparisons = []
         pairs = list(_pairwise_values(result.groupsunique))
@@ -339,6 +340,7 @@ class OneWayAnovaStep(Step):
             status="computed",
             reason_ko="Levene 검정에서 등분산 가정을 기각하지 않아 Tukey HSD를 산출했다.",
             comparisons=tuple(comparisons),
+            method_details=_tukey_method_details(),
         )
 
     def _games_howell(
@@ -355,6 +357,7 @@ class OneWayAnovaStep(Step):
                 method="games_howell",
                 status="unavailable",
                 reason_ko=f"Games-Howell 의존성을 사용할 수 없어 사후비교를 제공하지 않는다: {exc}",
+                method_details=_games_howell_method_details(),
             )
         try:
             result = pg.pairwise_gameshowell(data=frame, dv=dv, between=group)
@@ -363,6 +366,7 @@ class OneWayAnovaStep(Step):
                 method="games_howell",
                 status="unavailable",
                 reason_ko=f"Games-Howell 산출에 실패해 사후비교를 제공하지 않는다: {exc}",
+                method_details=_games_howell_method_details(),
             )
         comparisons = []
         for _, row in result.iterrows():
@@ -386,6 +390,7 @@ class OneWayAnovaStep(Step):
             status="computed",
             reason_ko="Levene 검정에서 등분산 가정을 기각해 Games-Howell을 산출했다.",
             comparisons=tuple(comparisons),
+            method_details=_games_howell_method_details(),
         )
 
     @staticmethod
@@ -488,6 +493,26 @@ def _pairwise_values(values: np.ndarray) -> tuple[tuple[object, object], ...]:
         for right in values[left_index + 1 :]:
             pairs.append((left, right))
     return tuple(pairs)
+
+
+def _tukey_method_details() -> dict[str, object]:
+    return {
+        "alpha": 0.05,
+        "df_method": "pooled_residual",
+        "equal_variance_assumed": True,
+        "p_value_source": "statsmodels.stats.multicomp.pairwise_tukeyhsd",
+        "tail_function": "scipy.stats.studentized_range.sf",
+    }
+
+
+def _games_howell_method_details() -> dict[str, object]:
+    return {
+        "alpha": 0.05,
+        "df_method": "welch_satterthwaite",
+        "equal_variance_assumed": False,
+        "p_value_source": "pingouin.pairwise_gameshowell",
+        "tail_function": "scipy.stats.studentized_range.sf",
+    }
 
 
 def _import_pingouin() -> Any:

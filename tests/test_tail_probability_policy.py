@@ -7,6 +7,7 @@ PRODUCTION_TAIL_MODULES = (
     Path("src/modori/steps/mediation.py"),
     Path("src/modori/steps/regression.py"),
     Path("src/modori/steps/ancova.py"),
+    Path("src/modori/steps/anova_oneway.py"),
     Path("src/modori/steps/repeated_measures_anova.py"),
 )
 

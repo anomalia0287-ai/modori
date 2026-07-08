@@ -199,6 +199,13 @@ def test_tukey_posthoc_matches_statsmodels_for_equal_variance_case() -> None:
     )
     assert result.posthoc.method == "tukey_hsd"
     assert result.posthoc.status == "computed"
+    assert result.posthoc.method_details == {
+        "alpha": 0.05,
+        "df_method": "pooled_residual",
+        "equal_variance_assumed": True,
+        "p_value_source": "statsmodels.stats.multicomp.pairwise_tukeyhsd",
+        "tail_function": "scipy.stats.studentized_range.sf",
+    }
     assert result.posthoc.comparisons
     assert [comparison.p_value for comparison in result.posthoc.comparisons] == pytest.approx(
         reference.pvalues,
@@ -236,6 +243,13 @@ def test_games_howell_posthoc_matches_pingouin_when_levene_rejects() -> None:
     assert result.assumptions.levene_p_value < 0.05
     assert result.posthoc.method == "games_howell"
     assert result.posthoc.status == "computed"
+    assert result.posthoc.method_details == {
+        "alpha": 0.05,
+        "df_method": "welch_satterthwaite",
+        "equal_variance_assumed": False,
+        "p_value_source": "pingouin.pairwise_gameshowell",
+        "tail_function": "scipy.stats.studentized_range.sf",
+    }
     assert [
         (comparison.group1_value, comparison.group2_value)
         for comparison in result.posthoc.comparisons
