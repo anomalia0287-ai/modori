@@ -17,9 +17,12 @@ coverage expansion.
 Facts verified by read-only audit of the repository and by running the bundle
 test suite from a scratch snapshot (the repository itself was not modified):
 
-- `release/readiness-1-9` (head `b0f117b`) exposes 2 executable analyses
-  (`independent_groups`, `paired_two_time`). Its recent work is import
-  curation, the visible data grid, and categorical recode.
+- `release/readiness-1-9` runtime baseline `b0f117b` exposes 2 executable
+  analyses (`independent_groups`, `paired_two_time`). The design document was
+  later committed at `0aaa96f`; neither commit includes the statistics bundle.
+  Recent release-lane work is import curation, the visible data grid,
+  categorical recode, release evidence, VM payload hardening, and prototype
+  documentation.
 - `codex/statistics-bundle-checkpoint` (`46b2729`, one squashed commit off
   `6603bab`; 174 files, +22,062/-210) implements Analysis Module Contract v1
   end to end with 15 executable module specs: `reliability`,
@@ -29,8 +32,12 @@ test suite from a scratch snapshot (the repository itself was not modified):
   `friedman`, `mediation`, `moderated_mediation`.
 - Test evidence from the snapshot run: engine suite 611 passed / 3 skipped,
   UI suite 334 passed, zero failures.
-- `git merge-tree` reports zero conflicts against `release/readiness-1-9`;
-  the release commits after the merge base are docs/scripts only.
+- `git merge-tree --write-tree release/readiness-1-9
+  codex/statistics-bundle-checkpoint` returned merge tree
+  `810acbc65906365ab863debd9500462e5bee8618` with no conflict output. The
+  release commits after merge base `6603bab` are release evidence,
+  `.gitignore`, VM/payload scripts and tests, and the protected prototype
+  asset; they do not overlap the statistics runtime files.
 - `codex/analysis-module-contract-base`, `codex/descriptives-table1-worker`,
   `codex/descriptives-recommendation-worker`, and
   `codex/descriptives-table1-contract-ready` are content-subsumed by the
@@ -68,6 +75,12 @@ Run three workstreams in order. Each has its own acceptance gate. Later
 workstreams must not start their implementation sessions before the earlier
 gate is met, except WS3 design specs, which may be authored at any time.
 
+Implementation coordination may use separate Codex sessions/threads instead of
+subagents. Each session must receive a narrow written brief, operate on a
+defined branch or worktree, and return commit/test evidence for review in the
+owner session before integration. Do not use subagent-driven implementation for
+this plan unless explicitly requested.
+
 ## WS1: Integration Of The Statistics Bundle
 
 Decision: merge `codex/statistics-bundle-checkpoint` into the release lane as
@@ -85,10 +98,17 @@ integration rule was not followed:
    `ui/controller.py`, `GuideRail.qml`, `PipelineRail.qml`, `ui/strings.py`.
 4. Packaged-runtime evidence: the PyInstaller build must bundle
    `statsmodels`, `pingouin`, and `factor_analyzer`; re-run the clean-VM
-   engine smoke (`v1_statistics_smoke.py` ships in the bundle for this).
+   engine smoke (`v1_statistics_smoke.py` ships in the bundle for this). Record
+   the packaged executable path, SHA256, package build time, clean-VM name,
+   payload label, exact smoke command, exit code, and log path in release
+   readiness. If clean-VM evidence fails, stop WS1 and fix forward on the
+   release lane before starting WS2.
 
-Post-merge cleanup: delete the four subsumed codex branches after verifying
-content inclusion.
+Post-merge cleanup: delete only local subsumed branches after verifying content
+inclusion with a per-branch `git diff --quiet` file-level audit against
+`codex/statistics-bundle-checkpoint`. Record the branch names and final SHAs
+before deletion. Remote branch deletion is a separate owner decision and is not
+part of WS1.
 
 Process rule, from the loss of the original contract spec draft: design and
 spec documents must be committed in the same session that writes them.
@@ -115,7 +135,9 @@ Rules:
   source script stays `needs_review` and cannot be counted as external
   verification.
 - Claim gate: a module may not be cited in any public SPSS-comparison claim
-  until it has at least one pinned external anchor case.
+  until it has at least one pinned external anchor case. A bundle-level
+  "SPSS-or-better for covered scope" claim is blocked until every module named
+  in that claim has qualifying anchors.
 
 Priority order:
 
@@ -167,8 +189,12 @@ engine outranks all WS3 feature work.
 
 - WS1: bundle merged; quality gate and full test suite green on the release
   lane; packaged clean-VM smoke evidence recorded; subsumed branches deleted.
-- WS2: anchor tier added to the verification contract; `mediation` and
-  `repeated_measures_anova` each hold at least one pinned external anchor;
-  the claim gate is documented in release readiness.
+- WS2-A: anchor tier added to the verification contract; `mediation` and
+  `repeated_measures_anova` each hold at least one pinned external anchor; the
+  module-level claim gate is documented in release readiness. This permits
+  claims only for modules with qualifying anchors.
+- WS2-B: every module included in any bundle-level SPSS-comparison claim holds
+  at least one qualifying anchor. Until WS2-B is complete, public language must
+  be module-scoped rather than bundle-scoped.
 - WS3: each listed module or amendment has an accepted design spec before its
   implementation session begins.
