@@ -180,6 +180,33 @@ def test_greenhouse_geisser_policy_reports_corrected_degrees_of_freedom_and_p_va
     )
 
 
+def test_listwise_missing_subjects_match_complete_case_manual_reference() -> None:
+    frame = pd.DataFrame(
+        {
+            "pre": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+            "mid": [2.0, 2.5, None, 5.0, 6.5, 7.2],
+            "post": [3.0, 4.1, 5.0, None, 7.0, 7.5],
+        }
+    )
+    dataset = dataset_factory(frame)
+    complete = frame.loc[:, ["pre", "mid", "post"]].dropna(axis=0, how="any")
+    manual = _manual_rm_anova(complete)
+
+    result = run_step(dataset, _params(correction="none"))
+
+    assert result.n_total == 6
+    assert result.n_used == 4
+    assert result.n_excluded == 2
+    assert result.ss_effect == pytest.approx(manual["ss_effect"], abs=1e-12)
+    assert result.ss_error == pytest.approx(manual["ss_error"], abs=1e-12)
+    assert result.f_statistic == pytest.approx(manual["f_value"], abs=1e-12)
+    assert result.p_value == pytest.approx(manual["p_value"], abs=1e-12)
+    assert result.partial_eta_squared == pytest.approx(
+        manual["partial_eta_squared"],
+        abs=1e-12,
+    )
+
+
 def test_validation_rejects_unsupported_shapes_and_bad_inputs() -> None:
     dataset = _wide_dataset()
 

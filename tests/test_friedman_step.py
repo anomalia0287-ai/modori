@@ -116,6 +116,33 @@ def test_friedman_matches_scipy_and_pingouin_reference_with_kendalls_w() -> None
     assert result.no_canonical_chart_reason_ko
 
 
+def test_listwise_missing_subjects_match_complete_case_scipy_reference() -> None:
+    frame = pd.DataFrame(
+        {
+            "pre": [1, 2, 2, 3, 4, 5],
+            "mid": [2, 3, None, 4, 5, 6],
+            "post": [3, 4, 4, None, 6, 7],
+        }
+    )
+    dataset = dataset_factory(frame)
+    complete = frame.loc[:, ["pre", "mid", "post"]].dropna(axis=0, how="any")
+    scipy_reference = stats.friedmanchisquare(
+        complete["pre"],
+        complete["mid"],
+        complete["post"],
+    )
+    expected_w = float(scipy_reference.statistic) / (4 * (3 - 1))
+
+    result = run_step(dataset, _params())
+
+    assert result.n_total == 6
+    assert result.n_used == 4
+    assert result.n_excluded == 2
+    assert result.statistic == pytest.approx(scipy_reference.statistic, abs=1e-12)
+    assert result.p_value == pytest.approx(scipy_reference.pvalue, abs=1e-12)
+    assert result.kendalls_w == pytest.approx(expected_w, abs=1e-12)
+
+
 def test_validation_rejects_unsupported_posthoc_shapes_and_bad_inputs() -> None:
     dataset = _wide_dataset()
 
