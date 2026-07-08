@@ -247,6 +247,42 @@ def test_regression_results_are_stable_when_rows_are_shuffled() -> None:
     assert reordered.r_squared == pytest.approx(result.r_squared, abs=1e-12)
 
 
+def test_regression_inference_is_invariant_to_large_outcome_offset() -> None:
+    frame = mtcars_frame()
+    offset_frame = frame.copy()
+    offset_frame["mpg"] = offset_frame["mpg"] + 1e12
+
+    base = regression_step().compute_context_free(regression_dataset(frame)).analysis
+    offset = regression_step().compute_context_free(regression_dataset(offset_frame)).analysis
+
+    assert offset.r_squared == pytest.approx(base.r_squared, rel=1e-6, abs=1e-6)
+    assert offset.adj_r_squared == pytest.approx(
+        base.adj_r_squared,
+        rel=1e-6,
+        abs=1e-6,
+    )
+    assert offset.f_statistic == pytest.approx(base.f_statistic, rel=1e-5, abs=1e-5)
+    assert offset.f_p_value == pytest.approx(base.f_p_value, rel=1e-5, abs=1e-12)
+    assert offset.coefficients[0].b == pytest.approx(
+        base.coefficients[0].b + 1e12,
+        rel=1e-12,
+        abs=1e-6,
+    )
+    for offset_row, base_row in zip(
+        offset.coefficients[1:],
+        base.coefficients[1:],
+        strict=True,
+    ):
+        assert offset_row.b == pytest.approx(base_row.b, rel=5e-5, abs=1e-5)
+        assert offset_row.se == pytest.approx(base_row.se, rel=5e-5, abs=1e-5)
+        assert offset_row.t == pytest.approx(base_row.t, rel=5e-5, abs=1e-5)
+        assert offset_row.p_value == pytest.approx(
+            base_row.p_value,
+            rel=1e-4,
+            abs=1e-12,
+        )
+
+
 def test_regression_reports_missing_data_counts_and_warning() -> None:
     frame = mtcars_frame()
     frame.loc[:4, "hp"] = np.nan

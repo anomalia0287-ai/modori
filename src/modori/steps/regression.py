@@ -362,10 +362,19 @@ class MultipleRegressionStep(Step):
             label="Regression OLS",
         )
 
-        model = sm.OLS(y_arr, x_arr).fit()
+        y_offset = float(y_arr.mean())
+        model = sm.OLS(y_arr - y_offset, x_arr).fit()
         if model.df_resid <= 0:
             raise ValueError("Regression residual degrees of freedom must be positive.")
-        if not np.isfinite(model.ssr) or np.isclose(float(model.ssr), 0.0, atol=1e-12):
+        centered_total_ss = float((y_arr - y_offset) @ (y_arr - y_offset))
+        residual_variance_floor = max(
+            1e-12,
+            np.finfo(float).eps * max(centered_total_ss, 1.0),
+        )
+        if (
+            not np.isfinite(model.ssr)
+            or float(model.ssr) <= residual_variance_floor
+        ):
             raise ValueError(
                 "Regression model has zero residual variance; inferential statistics are undefined."
             )
@@ -395,6 +404,20 @@ class MultipleRegressionStep(Step):
         t_values = np.asarray(selected.tvalues, dtype=float)
         p_values = np.asarray(selected.pvalues, dtype=float)
         ci = np.asarray(selected.conf_int(alpha=0.05), dtype=float)
+        params_for_output = params.copy()
+        t_values_for_output = t_values.copy()
+        p_values_for_output = p_values.copy()
+        ci_for_output = ci.copy()
+        params_for_output[0] += y_offset
+        ci_for_output[0, :] += y_offset
+        t_values_for_output[0] = params_for_output[0] / ses[0]
+        if getattr(selected, "use_t", True):
+            p_values_for_output[0] = 2 * stats.t.sf(
+                abs(t_values_for_output[0]),
+                float(model.df_resid),
+            )
+        else:
+            p_values_for_output[0] = 2 * stats.norm.sf(abs(t_values_for_output[0]))
         _require_finite("coefficients", params)
         _require_finite("standard errors", ses)
         _require_finite("t values", t_values)
@@ -405,11 +428,11 @@ class MultipleRegressionStep(Step):
         vif_by_predictor = self._vifs(x_arr, term_names)
         coefficients = self._coefficient_rows(
             names=["(Intercept)", *term_names],
-            params=params,
+            params=params_for_output,
             ses=ses,
-            t_values=t_values,
-            p_values=p_values,
-            ci=ci,
+            t_values=t_values_for_output,
+            p_values=p_values_for_output,
+            ci=ci_for_output,
             y=y,
             x_pred=x_pred,
             vif_by_predictor=vif_by_predictor,
@@ -471,7 +494,7 @@ class MultipleRegressionStep(Step):
         )
         diagnostic_chart_specs = self._diagnostic_chart_specs(
             residuals=np.asarray(model.resid, dtype=float),
-            fitted=np.asarray(model.fittedvalues, dtype=float),
+            fitted=np.asarray(model.fittedvalues, dtype=float) + y_offset,
             cooks=cooks,
             bp_p=bp_p,
             shapiro_p=shapiro_p,
