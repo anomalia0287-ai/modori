@@ -11,9 +11,9 @@
 ## Implementation Status — 2026-07-07
 
 Status: V1 implemented for import-time column inclusion/exclusion and durable
-public-smoke evidence. The unchecked work that remains is not V1 import
-selection; it is clean Windows VM rerun after administrator payload
-regeneration, plus separate future design for column renaming and type review.
+public-smoke evidence. The clean Windows VM rerun after administrator payload
+regeneration has since been satisfied by owner-operated VM evidence. Remaining
+work is separate future design for column renaming and type review.
 
 Implementation commits: `09c682f`, `287cd37`, `73b0bc5`, `7c6ce5c`,
 `8476d49`.
@@ -22,6 +22,13 @@ Latest host/package evidence:
 `scripts/quality_gate.py --with-package-check --with-packaged-launch`
 reported `673 passed, 2 skipped`, `package-launch-smoke-ok`,
 `package-engine-smoke-ok`, and `package-public-data-smoke-ok`.
+
+Clean-VM evidence update:
+on 2026-07-07 the owner confirmed Payload V2 administrator regeneration and
+VM execution inside `Modori-CleanWin-QA-Direct` / `MODORIQA2` for the build
+containing categorical recoding, visible grid work, and import column
+selection. Result: exit code 0. This closes the clean-VM evidence item for this
+feature build.
 
 ## Global Constraints
 
@@ -788,7 +795,7 @@ If package smoke fails because `dist\Modori` lacks changed files, run:
 
 Expected: rebuilt package includes changed QML/Python files and quality gate exits 0.
 
-- [ ] **Step 6: Record clean-VM gate status**
+- [x] **Step 6: Record clean-VM gate status**
 
 Run:
 
@@ -796,7 +803,9 @@ Run:
 net session
 ```
 
-Expected when not elevated: `System error 5 has occurred. Access is denied.` Record clean-VM payload rebuild as pending admin action. If elevated and VM is Off, run the payload script and then VM smoke.
+Expected when not elevated: `System error 5 has occurred. Access is denied.`
+This is no longer pending for the 2026-07-07 feature build: the owner confirmed
+administrator Payload V2 regeneration and clean-VM execution with exit code 0.
 
 - [x] **Step 7: Commit verification docs if changed**
 

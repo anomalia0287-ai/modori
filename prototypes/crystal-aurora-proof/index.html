@@ -1,0 +1,904 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Aurora Glass Sample</title>
+  <style>
+    :root {
+      --ink: #24272a;
+      --ink-2: #50555c;
+      --muted: #7b8088;
+      --line: rgba(255,255,255,.68);
+      --line-2: rgba(48,52,66,.10);
+      --glass: rgba(255,255,255,.36);
+      --glass-strong: rgba(255,255,255,.52);
+      --glass-soft: rgba(255,255,255,.24);
+      --accent: #8f9da3;
+      --accent-2: #6f7d84;
+      --rose: rgba(255,243,246,.42);
+      --cream: rgba(255,252,238,.42);
+      --blue: rgba(233,241,252,.48);
+      --ice: rgba(238,247,247,.44);
+      --pearl: rgba(249,250,248,.54);
+      --shadow: 0 18px 54px rgba(58, 62, 72, .10);
+      --radius: 4px;
+      --neutral-glass:
+        linear-gradient(126deg, rgba(255,255,255,.62), rgba(255,255,255,.28) 42%, rgba(255,255,255,.50) 82%),
+        linear-gradient(148deg, rgba(255,255,255,.42), rgba(248,250,250,.28));
+      --pane-aurora:
+        linear-gradient(126deg, rgba(255,255,255,.58), rgba(255,255,255,.22) 34%, rgba(255,255,255,.48) 76%),
+        radial-gradient(circle at 12% 14%, rgba(255,241,245,.50), transparent 36%),
+        radial-gradient(circle at 86% 10%, rgba(228,239,255,.48), transparent 34%),
+        radial-gradient(circle at 78% 88%, rgba(255,250,224,.38), transparent 42%),
+        radial-gradient(circle at 28% 92%, rgba(234,248,247,.42), transparent 36%),
+        linear-gradient(148deg, rgba(255,255,255,.34), rgba(248,250,250,.22));
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI Variable", "Segoe UI", "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background: linear-gradient(140deg, #f4f5f1, #f7f1f4 46%, #f3f7f4);
+      background-size: 100% 100%;
+      background-repeat: no-repeat;
+      overflow: hidden;
+      font-size: 11px;
+      font-weight: 400;
+      line-height: 1.36;
+      letter-spacing: 0;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: geometricPrecision;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background:
+        linear-gradient(100deg, rgba(255,255,255,.26), rgba(255,255,255,.05) 36%, rgba(255,255,255,.25) 74%, rgba(255,255,255,.10));
+      mix-blend-mode: screen;
+      opacity: .45;
+    }
+
+    @keyframes aurora {
+      0% { background-position: 0% 42%, center; filter: saturate(1.02); }
+      50% { background-position: 70% 58%, center; filter: saturate(1.12); }
+      100% { background-position: 100% 38%, center; filter: saturate(1.04); }
+    }
+
+    @keyframes sheen {
+      from { opacity: .52; transform: translateX(-1.8%); }
+      to { opacity: .78; transform: translateX(1.8%); }
+    }
+
+    .viewport {
+      width: min(1180px, calc(100vw - 24px));
+      height: min(740px, calc(100vh - 24px));
+      margin: calc((100vh - min(740px, calc(100vh - 24px))) / 2) auto;
+      position: relative;
+      border: 1px solid rgba(255,255,255,.74);
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,.86);
+      background:
+        linear-gradient(120deg, var(--rose), var(--cream) 34%, var(--blue) 68%, var(--ice)),
+        linear-gradient(35deg, rgba(255,255,255,.62), rgba(255,255,255,.18));
+      background-size: 180% 180%, 100% 100%;
+      animation: aurora 18s ease-in-out infinite alternate;
+      backdrop-filter: blur(18px) saturate(1.18);
+    }
+
+    .chrome {
+      height: 32px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 14px;
+      font-size: 10px;
+      color: var(--muted);
+      background: rgba(255,255,255,.42);
+      border-bottom: 1px solid rgba(255,255,255,.55);
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: rgba(48,52,66,.18);
+    }
+
+    .modebar {
+      position: absolute;
+      top: 42px;
+      left: 14px;
+      right: 14px;
+      height: 42px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 12px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: var(--pane-aurora);
+      background-size: 150% 150%;
+      animation: paneShift 20s ease-in-out infinite alternate;
+      backdrop-filter: blur(24px) saturate(1.38);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.82), 0 10px 28px rgba(58,62,72,.08);
+    }
+
+    .workspace-title {
+      font-weight: 560;
+      font-size: 11.5px;
+      color: var(--ink);
+      width: 168px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .nav {
+      display: flex;
+      gap: 4px;
+      padding: 4px;
+      border: 1px solid rgba(255,255,255,.7);
+      background: rgba(255,255,255,.32);
+      border-radius: 999px;
+    }
+
+    .nav button,
+    .ghost,
+    .primary {
+      border: 1px solid transparent;
+      font: inherit;
+      font-weight: 520;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .nav button {
+      min-width: 68px;
+      height: 24px;
+      padding: 0 12px;
+      font-size: 11px;
+      color: var(--muted);
+      background: transparent;
+      border-radius: 999px;
+    }
+
+    .nav button.active {
+      color: #4f5e62;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.82), rgba(255,255,255,.54)),
+        linear-gradient(90deg, rgba(255,247,240,.20), rgba(235,246,248,.22));
+      border-color: rgba(255,255,255,.84);
+      box-shadow:
+        0 1px 2px rgba(48,52,66,.06),
+        inset 0 1px 0 rgba(255,255,255,.88),
+        inset 0 -1px 0 rgba(112,126,132,.08);
+    }
+
+    .toolbar-spacer { flex: 1; }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      height: 24px;
+      padding: 0 10px;
+      border-radius: 5px;
+      background: rgba(255,255,255,.42);
+      border: 1px solid rgba(255,255,255,.66);
+      font-size: 10.5px;
+      color: var(--ink-2);
+    }
+
+    .toggle {
+      width: 26px;
+      height: 15px;
+      border-radius: 999px;
+      background: rgba(143,157,163,.56);
+      position: relative;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.48);
+    }
+
+    .toggle::after {
+      content: "";
+      width: 11px;
+      height: 11px;
+      border-radius: 999px;
+      background: white;
+      position: absolute;
+      right: 2px;
+      top: 2px;
+    }
+
+    .screen {
+      display: none;
+      position: absolute;
+      left: 14px;
+      right: 14px;
+      top: 94px;
+      bottom: 14px;
+    }
+
+    .screen.active { display: block; }
+
+    .work-grid {
+      height: 100%;
+      position: relative;
+      display: grid;
+      grid-template-columns: 244px minmax(0, 1fr) 318px;
+      grid-template-rows: minmax(0, 1fr) 58px;
+      gap: 8px;
+    }
+
+    .work-grid::after {
+      content: "Modori";
+      position: absolute;
+      right: 18px;
+      bottom: 10px;
+      z-index: 4;
+      color: rgba(36,39,42,.22);
+      font-size: 10px;
+      font-weight: 560;
+      letter-spacing: .08em;
+      pointer-events: none;
+      text-shadow: 0 1px 0 rgba(255,255,255,.52);
+    }
+
+    .panel {
+      position: relative;
+      border: 1px solid var(--line);
+      background: var(--neutral-glass);
+      background-size: 150% 150%;
+      backdrop-filter: blur(30px) saturate(1.34);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.82), 0 10px 28px rgba(58,62,72,.08);
+      border-radius: var(--radius);
+      overflow: hidden;
+      animation: paneShift 20s ease-in-out infinite alternate;
+    }
+
+    .panel::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      background:
+        linear-gradient(112deg, rgba(255,255,255,.54), transparent 24%, rgba(224,233,255,.22) 49%, transparent 72%, rgba(255,236,247,.30)),
+        radial-gradient(circle at 12% 18%, rgba(255,242,222,.28), transparent 30%),
+        radial-gradient(circle at 88% 78%, rgba(234,244,244,.28), transparent 28%);
+      opacity: .10;
+    }
+
+    .guide,
+    .report,
+    .pipeline {
+      background: var(--pane-aurora);
+      background-size: 150% 150%;
+    }
+
+    .main::before {
+      display: none;
+    }
+
+    .panel > * {
+      position: relative;
+      z-index: 1;
+    }
+
+    @keyframes paneShift {
+      from { background-position: 0% 50%; }
+      to { background-position: 100% 45%; }
+    }
+
+    .guide {
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .eyebrow {
+      font-size: 9.5px;
+      color: var(--muted);
+      font-weight: 620;
+      letter-spacing: .08em;
+    }
+
+    .card {
+      background: var(--pane-aurora);
+      background-size: 160% 160%;
+      border: 1px solid rgba(255,255,255,.68);
+      border-radius: 5px;
+      padding: 10px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.75);
+    }
+
+    .h {
+      margin: 0 0 7px;
+      font-size: 11.5px;
+      font-weight: 620;
+      color: var(--ink);
+    }
+
+    .p {
+      margin: 0;
+      color: var(--ink-2);
+      font-size: 10.5px;
+      line-height: 1.42;
+    }
+
+    .primary {
+      height: 30px;
+      border-radius: 5px;
+      color: #3f4d52;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.68), rgba(245,249,249,.48)),
+        linear-gradient(90deg, rgba(255,247,240,.18), rgba(235,246,248,.20));
+      box-shadow:
+        0 1px 2px rgba(48,52,66,.08),
+        inset 0 1px 0 rgba(255,255,255,.82),
+        inset 0 -1px 0 rgba(112,126,132,.10);
+      border-color: rgba(255,255,255,.72);
+    }
+
+    .ghost {
+      height: 29px;
+      border-radius: 5px;
+      background: rgba(255,255,255,.38);
+      border-color: rgba(255,255,255,.70);
+      color: var(--ink-2);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.72);
+    }
+
+    .main {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .tabs {
+      height: 36px;
+      display: flex;
+      border-bottom: 1px solid rgba(48,52,66,.10);
+      background: rgba(255,255,255,.12);
+    }
+
+    .tab {
+      min-width: 118px;
+      padding: 9px 14px 8px;
+      color: var(--muted);
+      font-size: 10.8px;
+      font-weight: 520;
+      border-right: 1px solid rgba(48,52,66,.07);
+    }
+
+    .tab.active {
+      color: #4f5e62;
+      border-bottom: 2px solid rgba(145,160,166,.34);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.36), rgba(255,255,255,.10)),
+        linear-gradient(90deg, rgba(255,247,240,.14), rgba(235,246,248,.16));
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.58),
+        inset 0 -1px 0 rgba(112,126,132,.08);
+    }
+
+    .table-wrap {
+      flex: 1;
+      min-height: 0;
+      padding: 10px 12px 10px;
+      overflow: auto;
+      overscroll-behavior: contain;
+      scrollbar-gutter: stable both-edges;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(112,126,132,.34) rgba(255,255,255,.24);
+    }
+
+    .table-wrap::-webkit-scrollbar {
+      height: 9px;
+      width: 9px;
+    }
+
+    .table-wrap::-webkit-scrollbar-track {
+      background: rgba(255,255,255,.24);
+      border-radius: 999px;
+    }
+
+    .table-wrap::-webkit-scrollbar-thumb {
+      background: rgba(112,126,132,.34);
+      border: 2px solid rgba(255,255,255,.38);
+      border-radius: 999px;
+    }
+
+    .notice {
+      margin-bottom: 10px;
+      color: var(--ink-2);
+      font-size: 10.4px;
+      line-height: 1.35;
+    }
+
+    table {
+      width: 100%;
+      min-width: 980px;
+      table-layout: fixed;
+      border-collapse: collapse;
+      background: rgba(255,255,255,.34);
+      font-size: 10.3px;
+      color: var(--ink);
+    }
+
+    th, td {
+      height: 25px;
+      border: 1px solid rgba(48,52,66,.08);
+      text-align: center;
+      min-width: 76px;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: rgba(255,255,255,.46);
+      color: var(--muted);
+      font-size: 9.5px;
+      font-weight: 560;
+    }
+
+    .report {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .report-head {
+      height: 36px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 12px;
+      border-bottom: 1px solid rgba(48,52,66,.10);
+      background: rgba(255,255,255,.14);
+    }
+
+    .report-head .h {
+      margin: 0;
+      font-size: 12px;
+      flex: 1;
+    }
+
+    .mini {
+      font-size: 10px;
+      color: #5f6d73;
+      background: rgba(255,255,255,.36);
+      border: 1px solid rgba(255,255,255,.7);
+      border-radius: 4px;
+      padding: 4px 7px;
+      font-weight: 560;
+    }
+
+    .report-body {
+      padding: 10px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .paper {
+      background: var(--pane-aurora);
+      background-size: 160% 160%;
+      border: 1px solid rgba(255,255,255,.76);
+      border-radius: 5px;
+      padding: 12px;
+      min-height: 220px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.80);
+    }
+
+    .bars {
+      display: grid;
+      gap: 7px;
+      margin-top: 12px;
+    }
+
+    .bar {
+      height: 8px;
+      background: rgba(48,52,66,.055);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .bar span {
+      display: block;
+      height: 100%;
+      background: linear-gradient(90deg, rgba(143,157,163,.48), rgba(111,125,132,.62));
+    }
+
+    .pipeline {
+      grid-column: 1 / 4;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 12px;
+    }
+
+    .steps {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .step {
+      height: 26px;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      border-radius: 999px;
+      padding: 0 12px;
+      background: rgba(255,255,255,.34);
+      border: 1px solid rgba(255,255,255,.64);
+      font-size: 10.4px;
+      color: var(--ink-2);
+      white-space: nowrap;
+    }
+
+    .step.done {
+      color: #5f6d73;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.62), rgba(255,255,255,.28)),
+        linear-gradient(90deg, rgba(255,247,240,.12), rgba(235,246,248,.14));
+      border-color: rgba(255,255,255,.68);
+      box-shadow:
+        0 1px 2px rgba(48,52,66,.05),
+        inset 0 1px 0 rgba(255,255,255,.68);
+    }
+
+    .connector {
+      width: 30px;
+      height: 1px;
+      background: rgba(48,52,66,.16);
+    }
+
+    .modal-screen {
+      height: 100%;
+      display: grid;
+      place-items: center;
+    }
+
+    .entry-card,
+    .import-card,
+    .transform-card {
+      border: 1px solid var(--line);
+      background: var(--pane-aurora);
+      background-size: 150% 150%;
+      backdrop-filter: blur(28px) saturate(1.35);
+      box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,.86);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .entry-card {
+      width: 780px;
+      min-height: 430px;
+      display: grid;
+      grid-template-columns: 310px 1fr;
+    }
+
+    .entry-side {
+      padding: 30px 28px;
+      background: var(--pane-aurora);
+      border-right: 1px solid rgba(255,255,255,.58);
+    }
+
+    .entry-logo {
+      margin: 12px 0 7px;
+      font-size: 28px;
+      font-weight: 620;
+      line-height: 1.05;
+      color: var(--ink);
+      letter-spacing: 0;
+      text-shadow: 0 1px 0 rgba(255,255,255,.62);
+    }
+
+    .entry-subtitle {
+      margin: 0 0 12px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--ink-2);
+    }
+
+    .entry-main {
+      padding: 30px 30px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .import-card {
+      width: 720px;
+      padding: 20px 22px;
+    }
+
+    .preview-table {
+      margin-top: 14px;
+      border: 1px solid rgba(48,52,66,.10);
+      background: var(--pane-aurora);
+      background-size: 160% 160%;
+      border-radius: 5px;
+      overflow: hidden;
+    }
+
+    .preview-row {
+      display: grid;
+      grid-template-columns: 110px 1fr 110px 110px;
+      min-height: 34px;
+      border-top: 1px solid rgba(48,52,66,.08);
+      font-size: 10.5px;
+      align-items: center;
+    }
+
+    .preview-row:first-child {
+      border-top: 0;
+      background: rgba(255,255,255,.28);
+      color: var(--muted);
+      font-weight: 560;
+    }
+
+    .preview-row span {
+      padding: 0 12px;
+    }
+
+    .transform-card {
+      width: 820px;
+      padding: 20px;
+    }
+
+    .form-grid {
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .form-line {
+      display: grid;
+      grid-template-columns: 1.1fr .7fr .7fr .8fr auto;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .input {
+      height: 29px;
+      border: 1px solid rgba(48,52,66,.12);
+      background: rgba(255,255,255,.38);
+      border-radius: 5px;
+      padding: 0 10px;
+      color: var(--muted);
+      font-size: 10.5px;
+      display: flex;
+      align-items: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="viewport">
+    <div class="chrome">
+      <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+      <span style="margin-left:8px;">Aurora Glass Sample</span>
+    </div>
+
+    <div class="modebar">
+      <div class="workspace-title">survey.csv</div>
+      <div class="nav" aria-label="screen switcher">
+        <button data-screen="entry">진입</button>
+        <button data-screen="import">가져오기</button>
+        <button class="active" data-screen="work">작업</button>
+        <button data-screen="transform">변환</button>
+      </div>
+      <div class="toolbar-spacer"></div>
+      <span class="pill"><span class="toggle" style="margin-right:7px;"></span>설명 모드</span>
+      <span class="pill">2026-07-06 survey.csv</span>
+      <button class="ghost" style="height:30px;padding:0 12px;">전체 다시 실행</button>
+    </div>
+
+    <section class="screen" data-panel="entry">
+      <div class="modal-screen">
+        <div class="entry-card">
+          <div class="entry-side">
+            <div class="eyebrow">CRYSTAL AURORA</div>
+            <h1 class="entry-logo">Modori</h1>
+            <p class="entry-subtitle">설문 데이터 작업</p>
+            <p class="p">설문 데이터를 열고 분석 추천, 표, 그래프, Word 보고서까지 한 화면에서 점검합니다.</p>
+          </div>
+          <div class="entry-main">
+            <div class="card">
+              <h2 class="h">추천 흐름</h2>
+              <p class="p">초보 사용자는 안내 모드로 분석을 시작하고, 숙련자는 표준 모드에서 직접 변수를 지정합니다.</p>
+            </div>
+            <div class="card">
+              <h2 class="h">로컬 우선</h2>
+              <p class="p">파일과 결과물은 로컬 경로에서 처리됩니다.</p>
+            </div>
+            <button class="primary">데이터 파일 열기</button>
+            <button class="ghost">표준 모드로 시작</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="screen" data-panel="import">
+      <div class="modal-screen">
+        <div class="import-card">
+          <div class="eyebrow">IMPORT PREVIEW</div>
+          <h2 class="h" style="font-size:13px;margin-top:8px;">데이터 구조 확인</h2>
+          <p class="p">텍스트를 새 의미로 파싱하지 않고, 가져오기 전 구조만 명확하게 보여주는 상태입니다.</p>
+          <div class="preview-table">
+            <div class="preview-row"><span>변수</span><span>레이블</span><span>측정</span><span>상태</span></div>
+            <div class="preview-row"><span>q1</span><span>서비스 이해도</span><span>scale</span><span>사용</span></div>
+            <div class="preview-row"><span>q2</span><span>응답 만족도</span><span>scale</span><span>사용</span></div>
+            <div class="preview-row"><span>group</span><span>집단</span><span>nominal</span><span>사용</span></div>
+          </div>
+          <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;">
+            <button class="ghost" style="padding:0 18px;">취소</button>
+            <button class="primary" style="padding:0 20px;">가져오기</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="screen active" data-panel="work">
+      <div class="work-grid">
+        <aside class="panel guide">
+          <div class="eyebrow">안내</div>
+          <div class="card">
+            <h2 class="h">기본 추천</h2>
+            <p class="p">신뢰도 분석 · q1-q8</p>
+            <p class="p" style="margin-top:6px;color:var(--muted);">수준: 강한 추천</p>
+          </div>
+          <button class="primary">추천대로 분석하기</button>
+          <button class="ghost">다른 추천 보기</button>
+          <button class="ghost">직접 고르기</button>
+          <div class="card" style="margin-top:auto;">
+            <h2 class="h">선택 이유</h2>
+            <p class="p">같은 척도 문항으로 보이는 8개 설문 문항이 감지되었습니다.</p>
+          </div>
+        </aside>
+
+        <main class="panel main">
+          <div class="tabs">
+            <div class="tab active">데이터</div>
+            <div class="tab">변수</div>
+            <div class="tab">변환</div>
+          </div>
+          <div class="table-wrap">
+            <div class="notice">원본 데이터는 직접 수정하지 않습니다. 변환은 새 단계와 새 변수로 기록됩니다.</div>
+            <table>
+              <thead><tr><th>id</th><th>q1</th><th>q2</th><th>q3</th><th>q4</th><th>q5</th><th>group</th></tr></thead>
+              <tbody>
+                <tr><td>001</td><td>4</td><td>5</td><td>4</td><td>3</td><td>5</td><td>A</td></tr>
+                <tr><td>002</td><td>3</td><td>4</td><td>4</td><td>4</td><td>5</td><td>B</td></tr>
+                <tr><td>003</td><td>5</td><td>5</td><td>4</td><td>5</td><td>4</td><td>A</td></tr>
+                <tr><td>004</td><td>2</td><td>3</td><td>3</td><td>4</td><td>3</td><td>B</td></tr>
+                <tr><td>005</td><td>4</td><td>4</td><td>5</td><td>4</td><td>5</td><td>A</td></tr>
+                <tr><td>006</td><td>3</td><td>4</td><td>3</td><td>3</td><td>4</td><td>B</td></tr>
+                <tr><td>007</td><td>5</td><td>4</td><td>5</td><td>5</td><td>5</td><td>A</td></tr>
+                <tr><td>008</td><td>4</td><td>3</td><td>4</td><td>3</td><td>4</td><td>B</td></tr>
+                <tr><td>009</td><td>5</td><td>5</td><td>5</td><td>4</td><td>5</td><td>A</td></tr>
+                <tr><td>010</td><td>3</td><td>4</td><td>4</td><td>3</td><td>4</td><td>B</td></tr>
+                <tr><td>011</td><td>4</td><td>4</td><td>3</td><td>4</td><td>4</td><td>A</td></tr>
+                <tr><td>012</td><td>2</td><td>3</td><td>2</td><td>3</td><td>3</td><td>B</td></tr>
+                <tr><td>013</td><td>4</td><td>5</td><td>4</td><td>4</td><td>5</td><td>A</td></tr>
+                <tr><td>014</td><td>3</td><td>3</td><td>4</td><td>3</td><td>4</td><td>B</td></tr>
+                <tr><td>015</td><td>5</td><td>4</td><td>5</td><td>4</td><td>5</td><td>A</td></tr>
+                <tr><td>016</td><td>2</td><td>4</td><td>3</td><td>3</td><td>3</td><td>B</td></tr>
+                <tr><td>017</td><td>4</td><td>5</td><td>5</td><td>4</td><td>4</td><td>A</td></tr>
+                <tr><td>018</td><td>3</td><td>4</td><td>3</td><td>4</td><td>3</td><td>B</td></tr>
+                <tr><td>019</td><td>5</td><td>5</td><td>4</td><td>5</td><td>5</td><td>A</td></tr>
+                <tr><td>020</td><td>4</td><td>3</td><td>4</td><td>4</td><td>4</td><td>B</td></tr>
+                <tr><td>021</td><td>3</td><td>4</td><td>5</td><td>3</td><td>4</td><td>A</td></tr>
+                <tr><td>022</td><td>2</td><td>3</td><td>3</td><td>2</td><td>3</td><td>B</td></tr>
+                <tr><td>023</td><td>4</td><td>4</td><td>5</td><td>5</td><td>4</td><td>A</td></tr>
+                <tr><td>024</td><td>3</td><td>5</td><td>4</td><td>3</td><td>5</td><td>B</td></tr>
+                <tr><td>025</td><td>5</td><td>4</td><td>4</td><td>5</td><td>4</td><td>A</td></tr>
+                <tr><td>026</td><td>4</td><td>3</td><td>3</td><td>4</td><td>3</td><td>B</td></tr>
+                <tr><td>027</td><td>5</td><td>5</td><td>5</td><td>4</td><td>5</td><td>A</td></tr>
+                <tr><td>028</td><td>3</td><td>4</td><td>3</td><td>3</td><td>4</td><td>B</td></tr>
+                <tr><td>029</td><td>4</td><td>5</td><td>4</td><td>5</td><td>5</td><td>A</td></tr>
+                <tr><td>030</td><td>2</td><td>3</td><td>2</td><td>4</td><td>3</td><td>B</td></tr>
+                <tr><td>031</td><td>4</td><td>4</td><td>5</td><td>4</td><td>5</td><td>A</td></tr>
+                <tr><td>032</td><td>3</td><td>3</td><td>4</td><td>3</td><td>4</td><td>B</td></tr>
+                <tr><td>033</td><td>5</td><td>4</td><td>5</td><td>5</td><td>4</td><td>A</td></tr>
+                <tr><td>034</td><td>4</td><td>3</td><td>4</td><td>4</td><td>3</td><td>B</td></tr>
+                <tr><td>035</td><td>5</td><td>5</td><td>4</td><td>5</td><td>5</td><td>A</td></tr>
+                <tr><td>036</td><td>3</td><td>4</td><td>3</td><td>4</td><td>4</td><td>B</td></tr>
+                <tr><td>037</td><td>4</td><td>5</td><td>5</td><td>4</td><td>4</td><td>A</td></tr>
+                <tr><td>038</td><td>2</td><td>3</td><td>4</td><td>3</td><td>3</td><td>B</td></tr>
+                <tr><td>039</td><td>5</td><td>4</td><td>5</td><td>4</td><td>5</td><td>A</td></tr>
+                <tr><td>040</td><td>4</td><td>3</td><td>3</td><td>4</td><td>4</td><td>B</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </main>
+
+        <aside class="panel report">
+          <div class="report-head">
+            <h2 class="h">보고서 미리보기</h2>
+            <span class="mini">최신</span>
+            <span class="mini">Word 저장</span>
+          </div>
+          <div class="report-body">
+            <div class="paper">
+              <h3 class="h">신뢰도</h3>
+              <p class="p">selected_scale 척도는 높은 내적 일관성을 보였습니다. Cronbach's α = .86, McDonald's ω = .88.</p>
+              <div class="bars">
+                <div class="bar"><span style="width:72%"></span></div>
+                <div class="bar"><span style="width:64%"></span></div>
+                <div class="bar"><span style="width:82%"></span></div>
+                <div class="bar"><span style="width:58%"></span></div>
+                <div class="bar"><span style="width:76%"></span></div>
+              </div>
+            </div>
+            <button class="ghost">이 분석을 쓴 이유</button>
+          </div>
+        </aside>
+
+        <footer class="panel pipeline">
+          <div class="eyebrow">분석 단계</div>
+          <div class="steps">
+            <span class="step done">가져오기</span>
+            <span class="connector"></span>
+            <span class="step done">신뢰도 분석</span>
+            <span class="connector"></span>
+            <span class="step">APA 보고서</span>
+          </div>
+          <button class="ghost" style="padding:0 14px;">다시 실행</button>
+        </footer>
+      </div>
+    </section>
+
+    <section class="screen" data-panel="transform">
+      <div class="modal-screen">
+        <div class="transform-card">
+          <div class="eyebrow">TRANSFORM</div>
+          <h2 class="h" style="font-size:13px;margin-top:8px;">변환 단계 구성</h2>
+          <p class="p">작업 화면에서는 효율성을 위해 반경을 줄이고, 입력 행을 밀도 있게 배치합니다.</p>
+          <div class="form-grid">
+            <div class="form-line">
+              <div class="input">예: A1, A3</div>
+              <div class="input">최소 1</div>
+              <div class="input">최대 5</div>
+              <div class="input">접미사 _R</div>
+              <button class="primary" style="padding:0 16px;">역코딩 추가</button>
+            </div>
+            <div class="form-line">
+              <div class="input">예: A1, A2, A3</div>
+              <div class="input">평균</div>
+              <div class="input">80%</div>
+              <div class="input">친화성_평균</div>
+              <button class="primary" style="padding:0 16px;">척도 점수 추가</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const buttons = [...document.querySelectorAll("[data-screen]")];
+    const panels = [...document.querySelectorAll("[data-panel]")];
+    buttons.forEach((button) => {
+      button.addEventListener("click", () => {
+        const target = button.dataset.screen;
+        buttons.forEach((item) => item.classList.toggle("active", item === button));
+        panels.forEach((panel) => panel.classList.toggle("active", panel.dataset.panel === target));
+      });
+    });
+  </script>
+</body>
+</html>

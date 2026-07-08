@@ -8,6 +8,14 @@
 
 **Tech Stack:** Python 3.12, PySide6>=6.6, Qt Quick/QML, pytest, PowerShell payload script.
 
+## Implementation Status — 2026-07-07
+
+The visible grid feature build has owner-confirmed clean-VM evidence after
+administrator Payload V2 regeneration. The VM run used
+`Modori-CleanWin-QA-Direct` / `MODORIQA2` and exited 0. This closes the release
+evidence item that required the new grid, categorical recoding, and import
+column-selection build to be revalidated in the clean VM.
+
 ## Global Constraints
 
 - No new dependency.
@@ -62,7 +70,9 @@
 - Modify: `docs/specs/release-qa-runbook.md`
   - Add overflow fixture role and visible grid QA checklist.
 - Modify: `docs/superpowers/handoffs/2026-07-06-public-data-smoke-vm-handoff.md`
-  - Record that P1 visible grid QA needs a new payload rebuild and VM visible pass.
+  - Record that P1 visible grid QA required a new payload rebuild and VM
+    visible pass; the 2026-07-07 owner-operated VM evidence closes that release
+    evidence item for the feature build.
 
 ---
 
@@ -923,7 +933,7 @@ Run:
 
 Expected: all quality gate steps pass. Record exact pass count and package smoke statuses.
 
-- [ ] **Step 4: Rebuild Payload V2**
+- [x] **Step 4: Rebuild Payload V2**
 
 This requires owner/admin interaction:
 
@@ -940,7 +950,7 @@ Run-Engine-Smoke-XLSX.bat
 Run-Public-Data-Smoke.bat
 ```
 
-- [ ] **Step 5: Run clean-VM visible grid QA**
+- [x] **Step 5: Run clean-VM visible grid QA**
 
 Inside `Modori-CleanWin-QA-Direct`, from `MODORIQA2`:
 
@@ -974,6 +984,9 @@ Fixture: Samples\visible-grid-overflow.csv
 - Ctrl+C copies focused cell text: PASS
 - App did not crash or hang: PASS
 ```
+
+Recorded status: owner confirmed the clean-VM rerun for the feature build and
+reported exit code 0. Console text was not pasted into this document.
 
 - [ ] **Step 6: Final claim check**
 

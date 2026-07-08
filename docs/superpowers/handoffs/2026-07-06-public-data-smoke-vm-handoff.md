@@ -1,5 +1,13 @@
 # 2026-07-06 Public Data Smoke VM Handoff
 
+> Supersession note, 2026-07-07: this file records the state at handoff time.
+> The clean-VM evidence gap described below was later closed for the feature
+> build at commit `6603bab`; the owner confirmed administrator Payload V2
+> regeneration and clean-VM execution in `Modori-CleanWin-QA-Direct` /
+> `MODORIQA2` with exit code 0. Current release evidence is tracked in
+> `docs/specs/release-readiness-checklist.md` and
+> `docs/specs/release-manual-qa.md`.
+
 ## Read This First
 
 Current active workspace:

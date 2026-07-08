@@ -8,7 +8,25 @@ Latest release-lane evidence handoff:
 docs\superpowers\handoffs\2026-07-05-release-lane-chart-vm-handoff.md
 ```
 
-Current verified anchor from 2026-07-05:
+Current feature-build evidence from 2026-07-07:
+
+- Commit: `6603bab docs: record import curation readiness status`
+- Package: `C:\Users\V\Desktop\TongTong\dist\Modori\Modori.exe`
+- SHA256:
+  `8D04E358637BF69F86B1657B47D1F1EC2E841B2F51F108BC70418C98397DEF57`
+- Packaged gate: `673 passed, 2 skipped`, `package-launch-smoke-ok`,
+  `package-engine-smoke-ok`, `package-public-data-smoke-ok`
+- Clean VM: the owner confirmed the administrator-regenerated Payload V2 was
+  run inside `Modori-CleanWin-QA-Direct` / `MODORIQA2` for the build containing
+  categorical recoding, visible data grid work, and import column selection;
+  the VM run exited 0. This closes the remaining clean-VM release evidence item
+  for that feature build.
+- Known remaining product slices after this evidence item: numeric recoding /
+  value-label remapping, and column renaming / type review. These are separate
+  design and implementation items, not clean-VM evidence blockers for the
+  current feature build.
+
+Previous verified anchor from 2026-07-05:
 
 - Commit: `53f8335 fix: show automatic analysis charts`
 - Package: `C:\Users\V\Desktop\TongTong\dist\Modori\Modori.exe`

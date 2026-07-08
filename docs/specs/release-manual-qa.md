@@ -4,7 +4,8 @@ Status: release QA evidence for the `release/readiness-1-9` lane.
 
 Date: 2026-06-29.
 
-Latest supplemental evidence: 2026-07-05, recorded in
+Latest supplemental evidence: 2026-07-07, recorded below. Earlier 2026-07-05
+evidence is recorded in
 `docs\superpowers\handoffs\2026-07-05-release-lane-chart-vm-handoff.md`.
 
 Environment:
@@ -192,6 +193,14 @@ Current package SHA256:
 ```text
 A4FE941EF6170E735B107D75244A4A2562722E881F293224B576A517E0796888
 ```
+
+## 2026-07-07 Feature-Build Clean VM QA
+
+| Item | Status | Evidence |
+| --- | --- | --- |
+| package gate for feature build | Pass | Commit `6603bab` package hash `8D04E358637BF69F86B1657B47D1F1EC2E841B2F51F108BC70418C98397DEF57`; `scripts/quality_gate.py --with-package-check --with-packaged-launch` reported `673 passed, 2 skipped`, `package-launch-smoke-ok`, `package-engine-smoke-ok`, and `package-public-data-smoke-ok`. |
+| clean VM payload regeneration and rerun | Pass for owner-operated VM evidence | The owner confirmed the Payload V2 administrator regeneration and clean-VM rerun were completed for the build containing categorical recoding, visible grid work, and import column selection. VM: `Modori-CleanWin-QA-Direct`; payload label: `MODORIQA2`; result: exit code 0. |
+| release evidence blocker from prior runbook | Closed for this feature build | The remaining clean-VM evidence item is no longer pending for the 2026-07-07 feature build. Console text was not pasted here; the recorded basis is owner-operated VM confirmation plus the host/package gate above. |
 
 ## Release Interpretation
 

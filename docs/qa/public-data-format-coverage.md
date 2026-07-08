@@ -113,10 +113,16 @@ Current loader result after the hardening pass:
   instruction instead of silently treating the first preamble row as a high
   confidence header.
 
+## Clean VM Evidence Update
+
+- The previous Payload V2 regeneration and clean-VM rerun item is closed for the
+  2026-07-07 feature build. The owner confirmed administrator payload
+  regeneration and VM execution inside `Modori-CleanWin-QA-Direct` /
+  `MODORIQA2`, with exit code 0, after the build that includes categorical
+  recoding, visible grid work, and import column selection.
+
 ## Still Needed
 
-- Regenerate Payload V2 as administrator and rerun `Run-Public-Data-Smoke.bat`
-  inside the clean Windows VM. Host/package tests are not VM evidence.
 - Improve the manual import-adjustment UI with stronger affordances for
   low-confidence imports: suggested defaults from the inference report and
   validation feedback. Row-role review shipped 2026-07-06: the import dialog

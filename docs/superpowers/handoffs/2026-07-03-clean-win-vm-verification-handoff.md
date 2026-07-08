@@ -1,5 +1,13 @@
 # Clean Windows VM Verification Handoff - 2026-07-03
 
+> Supersession note, 2026-07-07: this file is a historical incident handoff.
+> The clean-VM blocker it records was later closed for the feature build at
+> commit `6603bab`; the owner confirmed administrator Payload V2 regeneration
+> and clean-VM execution in `Modori-CleanWin-QA-Direct` / `MODORIQA2` with exit
+> code 0. Current release evidence is tracked in
+> `docs/specs/release-readiness-checklist.md` and
+> `docs/specs/release-manual-qa.md`.
+
 > Context risk is high. Treat this file as the current handoff record for the
 > clean Windows VM verification recovery. Do not rely on chat memory when this
 > file and live command output disagree.
