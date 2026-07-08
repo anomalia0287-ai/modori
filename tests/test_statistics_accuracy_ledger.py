@@ -4,6 +4,7 @@ from pathlib import Path
 
 
 LEDGER = Path("docs/qa/statistics-accuracy-ledger.md")
+LITERATURE_MAP = Path("docs/qa/statistics-numerical-accuracy-literature.md")
 
 
 def test_statistics_accuracy_ledger_records_high_risk_module_coverage() -> None:
@@ -16,6 +17,10 @@ def test_statistics_accuracy_ledger_records_high_risk_module_coverage() -> None:
         "moderated_mediation",
         "ancova",
         "regression_ols",
+        "factor_pca",
+        "reliability_omega",
+        "anova_oneway",
+        "rank_based_nonparametric_tests",
     ]
     for module in required_modules:
         assert f"`{module}`" in text
@@ -23,6 +28,9 @@ def test_statistics_accuracy_ledger_records_high_risk_module_coverage() -> None:
     required_evidence = [
         "Reference Basis",
         "Tolerance Policy",
+        "mixed tolerance",
+        "relative tolerance",
+        "deterministic bootstrap reproduction",
         "Edge Coverage",
         "Known Limits",
         "Next Accuracy Work",
@@ -30,3 +38,27 @@ def test_statistics_accuracy_ledger_records_high_risk_module_coverage() -> None:
     ]
     for evidence in required_evidence:
         assert evidence in text
+
+
+def test_statistics_literature_map_records_certified_and_product_specific_risks() -> None:
+    text = LITERATURE_MAP.read_text(encoding="utf-8")
+
+    required_terms = [
+        "NIST Statistical Reference Datasets",
+        "NumAcc",
+        "Longley",
+        "Filip",
+        "Wampler",
+        "ties",
+        "Wilcoxon",
+        "Mann-Whitney",
+        "exact-vs-asymptotic",
+        "condition-number",
+        "default 5000",
+        "below 1000",
+        "studentized-range",
+        "MacKinnon",
+        "Hayes",
+    ]
+    for term in required_terms:
+        assert term in text

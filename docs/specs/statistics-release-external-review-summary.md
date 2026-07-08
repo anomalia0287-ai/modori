@@ -4,7 +4,17 @@ Date: 2026-07-08 KST
 
 Branch: `release/readiness-1-9`
 
-Current local HEAD at evidence closure: `096d693 docs: close clean VM smoke evidence`
+Draft PR: `https://github.com/anomalia0287-ai/modori/pull/1`
+
+The PR page is the source of truth for the current head commit. The commits
+below are evidence anchors, not a complete list of every follow-up document
+correction.
+
+Evidence closure commit: `096d693 docs: close clean VM smoke evidence`
+
+Accuracy hardening commit: `84d2228 test: strengthen statistics accuracy evidence`
+
+Numerical literature map commit: `8dc5822 docs: map numerical accuracy literature`
 
 ## What Changed
 
@@ -18,6 +28,7 @@ This release lane integrates the Survey Pipeline V1 statistics bundle and the fo
 ## Validation Evidence
 
 - Full host pytest inside package gate: `947 passed, 3 skipped`.
+- Full host pytest after accuracy hardening: `951 passed, 3 skipped`.
 - Package gate:
   `scripts\quality_gate.py --with-package-check --with-package-build --with-packaged-launch`
   completed with `package-tool-ok`, `package-launch-smoke-ok`,
@@ -40,11 +51,15 @@ This release lane integrates the Survey Pipeline V1 statistics bundle and the fo
 
 1. Confirm that recommendation candidates are not overstated as research-design decisions.
 2. Review high-risk statistical modules for reference parity coverage:
-   `repeated_measures_anova`, `friedman`, `mediation`, `moderated_mediation`.
+   `repeated_measures_anova`, `friedman`, `mediation`,
+   `moderated_mediation`, `factor_pca`, `reliability_omega`,
+   `anova_oneway`, and rank-based nonparametric tests.
 3. Review validation behavior for invalid roles, missing variables, unsupported shapes, and singular models.
 4. Treat Microsoft Word export as not manually verified in the clean VM because Word is not installed there.
 
-## Open Operational Blocker
+## Operational Publication Status
 
-Push and PR creation are currently blocked locally because the repository has no configured `origin` remote and `gh auth status` reports an invalid token for the active GitHub account. The local release branch is otherwise clean.
-
+The release branch is published to GitHub and draft PR #1 is open for external
+review. There is no current GitHub publication blocker. The open limitations are
+calculation-accuracy hardening, Word-installed report-export verification, and
+external statistical review.
