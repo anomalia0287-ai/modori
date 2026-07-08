@@ -275,6 +275,18 @@ def test_ancova_effects_are_invariant_to_large_outcome_offset() -> None:
         rel=1e-10,
         abs=1e-12,
     )
+    for offset_group, base_group in zip(
+        offset_result.groups,
+        base_result.groups,
+        strict=True,
+    ):
+        assert offset_group.adjusted_mean is not None
+        assert base_group.adjusted_mean is not None
+        assert offset_group.adjusted_mean == pytest.approx(
+            base_group.adjusted_mean + 1e6,
+            rel=1e-12,
+            abs=1e-8,
+        )
     for offset_effect, base_effect in zip(
         offset_result.covariate_effects,
         base_result.covariate_effects,

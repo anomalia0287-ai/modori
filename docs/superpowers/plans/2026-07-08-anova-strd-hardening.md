@@ -74,7 +74,8 @@ Run the same test and expect PASS.
 
 - [ ] **Step 1: Extend fixture helpers**
 
-Add `_smls_frame(offset: float)` and `_atmwtag_frame()` helpers. `_smls_frame(1.0)` replaces `_smls01_frame()` behavior.
+Add `_smls_frame(offset: float)`. `_smls_frame(1.0)` replaces
+`_smls01_frame()` behavior.
 
 - [ ] **Step 2: Write StRD tests**
 
@@ -147,14 +148,16 @@ Expected: PASS. If either fails, apply the same centered-SS principle only to th
 
 **Interfaces:**
 - Consumes: current ledger claim vocabulary
-- Produces: documented SmLs04/SmLs07/AtmWtAg coverage and RM/ANCOVA offset audit status
+- Produces: documented SmLs04/SmLs07 coverage, AtmWtAg deferral rationale,
+  and RM/ANCOVA offset audit status
 
 - [ ] **Step 1: Update docs**
 
 Record:
 - SmLs04: StRD anchored parity at average difficulty.
 - SmLs07: achieved-precision disclosure, not 15-digit anchored parity.
-- AtmWtAg: observed-data StRD fixture plus pooled `t**2 == F` coherence.
+- AtmWtAg: deferred because it would require a two-treatment one-way ANOVA
+  product-policy decision.
 - RM-ANOVA/ANCOVA: offset audit status.
 
 - [ ] **Step 2: Verify focus and full gates**
