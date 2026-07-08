@@ -1,0 +1,20 @@
+slug: bootstrap-ci
+kind: statistic
+title_ko: "부트스트랩 신뢰구간"
+title_en: "Bootstrap confidence interval"
+summary_ko: "자료를 재표본추출해 추정량의 불확실성을 요약하는 신뢰구간입니다."
+summary_en: "A confidence interval estimated by resampling the data."
+interpretation_ko: "구간이 0을 포함하지 않으면 해당 추정량이 0과 구분될 가능성이 높다는 근거로 해석합니다. 구간 폭은 추정의 불확실성을 함께 보여 줍니다."
+interpretation_en: "If the interval excludes 0, it is evidence that the estimate is distinguishable from 0. The interval width also shows estimation uncertainty."
+when_to_use_ko: "간접효과처럼 정규근사가 불안정한 추정량의 불확실성을 보고할 때 사용합니다."
+when_to_use_en: "Use it for uncertainty in estimates such as indirect effects where normal approximations can be unstable."
+how_to_report_ko: "반복 수, seed, 신뢰수준, 하한과 상한을 명시합니다."
+how_to_report_en: "Report iterations, seed, confidence level, lower bound, and upper bound."
+pitfalls_ko: "재현성을 위해 seed와 반복 수가 고정되어야 합니다."
+pitfalls_en: "Fix the seed and iteration count for reproducibility."
+assumptions: []
+alternatives: []
+related:
+  - indirect-effect
+references: []
+verification_status: needs_review

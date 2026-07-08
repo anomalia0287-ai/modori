@@ -18,6 +18,21 @@ class AnalysisSelectionEditor:
             pipeline_version=pipeline_version,
         )
 
+    def descriptives(
+        self,
+        variable_keys_text: str,
+        *,
+        group_key: str = "",
+        pipeline_version: int,
+    ) -> CommandResult:
+        return self._apply(
+            lambda builder: builder.descriptives(
+                variable_keys_text,
+                group_key=group_key,
+            ),
+            pipeline_version=pipeline_version,
+        )
+
     def comparison(
         self,
         outcome_key: str,
@@ -39,6 +54,80 @@ class AnalysisSelectionEditor:
     ) -> CommandResult:
         return self._apply(
             lambda builder: builder.regression(outcome_key, predictor_keys_text),
+            pipeline_version=pipeline_version,
+        )
+
+    def frequency_crosstab(
+        self,
+        variable_keys_text: str,
+        *,
+        pipeline_version: int,
+    ) -> CommandResult:
+        return self._apply(
+            lambda builder: builder.frequency_crosstab(variable_keys_text),
+            pipeline_version=pipeline_version,
+        )
+
+    def correlation(
+        self,
+        variable_keys_text: str,
+        *,
+        pipeline_version: int,
+    ) -> CommandResult:
+        return self._apply(
+            lambda builder: builder.correlation(variable_keys_text),
+            pipeline_version=pipeline_version,
+        )
+
+    def anova_oneway(
+        self,
+        outcome_key: str,
+        group_key: str,
+        *,
+        pipeline_version: int,
+    ) -> CommandResult:
+        return self._apply(
+            lambda builder: builder.anova_oneway(outcome_key, group_key),
+            pipeline_version=pipeline_version,
+        )
+
+    def kruskal_wallis(
+        self,
+        dependent_key: str,
+        group_key: str,
+        *,
+        pipeline_version: int,
+    ) -> CommandResult:
+        return self._apply(
+            lambda builder: builder.kruskal_wallis(dependent_key, group_key),
+            pipeline_version=pipeline_version,
+        )
+
+    def ancova(
+        self,
+        outcome_key: str,
+        group_key: str,
+        covariate_keys_text: str,
+        *,
+        pipeline_version: int,
+    ) -> CommandResult:
+        return self._apply(
+            lambda builder: builder.ancova(
+                outcome_key,
+                group_key,
+                covariate_keys_text,
+            ),
+            pipeline_version=pipeline_version,
+        )
+
+    def factor_pca(
+        self,
+        variable_keys_text: str,
+        *,
+        pipeline_version: int,
+    ) -> CommandResult:
+        return self._apply(
+            lambda builder: builder.factor_pca(variable_keys_text),
             pipeline_version=pipeline_version,
         )
 

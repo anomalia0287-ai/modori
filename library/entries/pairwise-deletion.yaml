@@ -1,0 +1,24 @@
+slug: pairwise-deletion
+kind: concept
+title_ko: "쌍별 결측 제외"
+title_en: "Pairwise deletion"
+summary_ko: "각 변수쌍을 계산할 때 그 쌍에 필요한 값이 모두 있는 행만 사용하는 결측 처리 방식입니다."
+summary_en: "A missing-data handling approach that uses all rows with complete data for each specific variable pair."
+interpretation_ko: "변수쌍마다 사용된 N이 달라질 수 있습니다. 상관행렬에서 N과 제외 수를 함께 확인해야 합니다."
+interpretation_en: "The N can differ by variable pair. In a correlation matrix, inspect the N and excluded cases for each pair."
+when_to_use_ko: null
+when_to_use_en: null
+how_to_report_ko: "각 변수쌍의 N과 결측 제외 수를 함께 보고합니다."
+how_to_report_en: "Report N and excluded missing cases for each pair."
+pitfalls_ko: "쌍마다 표본이 달라져 행렬 전체 해석이나 후속 모델링에서 불일치가 생길 수 있습니다."
+pitfalls_en: "Different pairs can use different samples, which may complicate matrix interpretation or downstream modeling."
+assumptions: []
+alternatives:
+  - listwise-deletion
+related:
+  - correlation-analysis
+references:
+  - citation: "Enders, C. K. (2022). Applied Missing Data Analysis (2nd ed.). Guilford Press."
+    locator: null
+    verified: true
+verification_status: needs_review

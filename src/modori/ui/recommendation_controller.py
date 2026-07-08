@@ -54,6 +54,13 @@ class RecommendationControllerMixin:
         return ", ".join(candidate.item_keys)
 
     @Property(str, notify=recommendationStateChanged)
+    def preparedDescriptiveVariables(self) -> str:
+        candidate = self._recommendation_state.selected_candidate
+        if candidate is None or candidate.kind != "descriptives":
+            return ""
+        return ", ".join(candidate.variable_keys)
+
+    @Property(str, notify=recommendationStateChanged)
     def preparedOutcomeKey(self) -> str:
         candidate = self._recommendation_state.selected_candidate
         return "" if candidate is None else candidate.outcome_key
@@ -106,6 +113,11 @@ class RecommendationControllerMixin:
         candidate: RecommendationCandidate | None = self._recommendation_state.selected_candidate
         if candidate is None:
             return self._command_error("실행할 추천 분석이 없습니다.", "no_recommendation")
+        if candidate.kind == "descriptives":
+            return self.configureDescriptivesSelection(
+                ", ".join(candidate.variable_keys),
+                group_key=candidate.group_key,
+            )
         if candidate.kind == "reliability":
             return self.configureReliabilitySelection(", ".join(candidate.item_keys))
         if candidate.kind == "comparison":
@@ -115,6 +127,30 @@ class RecommendationControllerMixin:
                 candidate.outcome_key,
                 ", ".join(candidate.predictor_keys),
             )
+        if candidate.kind == "frequency_crosstab":
+            return self.configureFrequencyCrosstabSelection(
+                ", ".join(candidate.variable_keys)
+            )
+        if candidate.kind == "correlation":
+            return self.configureCorrelationSelection(", ".join(candidate.variable_keys))
+        if candidate.kind == "anova_oneway":
+            return self.configureAnovaOneWaySelection(
+                candidate.outcome_key,
+                candidate.group_key,
+            )
+        if candidate.kind == "kruskal_wallis":
+            return self.configureKruskalWallisSelection(
+                candidate.outcome_key,
+                candidate.group_key,
+            )
+        if candidate.kind == "ancova":
+            return self.configureAncovaSelection(
+                candidate.outcome_key,
+                candidate.group_key,
+                ", ".join(candidate.predictor_keys),
+            )
+        if candidate.kind == "factor_pca":
+            return self.configureFactorPcaSelection(", ".join(candidate.variable_keys))
         return self._command_error("지원하지 않는 추천 분석입니다.", "invalid_recommendation")
 
     @Slot(result=bool)

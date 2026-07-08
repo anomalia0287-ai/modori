@@ -1,0 +1,24 @@
+slug: factor-loading
+kind: statistic
+title_ko: "요인 적재량"
+title_en: "Factor loading"
+summary_ko: "문항 또는 변수가 성분·요인과 얼마나 강하게 관련되는지 나타내는 값입니다."
+summary_en: "A value indicating how strongly an item or variable relates to a component or factor."
+interpretation_ko: "절댓값이 클수록 변수와 해당 차원의 관련성이 크며, 부호는 차원 점수의 방향에 따라 해석합니다."
+interpretation_en: "Larger absolute values indicate stronger association between the variable and the dimension; the sign is interpreted relative to the dimension-score direction."
+when_to_use_ko: "요인 또는 성분의 문항 구성을 해석할 때 사용합니다."
+when_to_use_en: "Use it when interpreting which items define a factor or component."
+how_to_report_ko: "변수, 차원 이름, 적재량을 표로 보고합니다."
+how_to_report_en: "Report variable, dimension, and loading in a table."
+pitfalls_ko: "적재량 기준만으로 문항의 이론적 의미를 확정하지 않습니다."
+pitfalls_en: "A loading threshold alone does not settle the theoretical meaning of an item."
+assumptions: []
+alternatives: []
+related:
+  - communality
+  - uniqueness
+references:
+  - citation: "Tabachnick, B. G., & Fidell, L. S. (2019). Using Multivariate Statistics (7th ed.). Pearson."
+    locator: null
+    verified: true
+verification_status: needs_review

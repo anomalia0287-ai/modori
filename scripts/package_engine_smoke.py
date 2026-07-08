@@ -77,7 +77,12 @@ def run_engine_smoke(
         return completed.returncode
 
     payload = json.loads(output_path.read_text(encoding="utf-8"))
-    if payload.get("ok") is not True:
+    v1_statistics_smoke = payload.get("v1_statistics_smoke")
+    if (
+        payload.get("ok") is not True
+        or not isinstance(v1_statistics_smoke, dict)
+        or v1_statistics_smoke.get("ok") is not True
+    ):
         print(json.dumps(payload, ensure_ascii=False, sort_keys=True), file=sys.stderr)
         return 1
     print("package-engine-smoke-ok")

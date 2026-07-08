@@ -1,0 +1,23 @@
+slug: cramers-v
+kind: effect_size
+title_ko: "Cramer's V"
+title_en: "Cramer's V"
+summary_ko: "교차표에서 두 범주형 변수의 관련성 크기를 0 이상 1 이하 범위로 나타내는 효과크기입니다."
+summary_en: "An effect size for the strength of association between two categorical variables in a crosstab, ranging from 0 to 1."
+interpretation_ko: "0에 가까울수록 관련성이 약하고, 1에 가까울수록 강합니다. 연구 분야와 표 크기에 맞춰 해석해야 합니다."
+interpretation_en: "Values near 0 indicate weak association; values near 1 indicate stronger association. Interpret in context and with table size."
+when_to_use_ko: null
+when_to_use_en: null
+how_to_report_ko: "카이제곱 검정 결과와 함께 V 값을 소수 셋째 자리 정도로 보고합니다."
+how_to_report_en: "Report V, usually to three decimals, alongside the chi-square test."
+pitfalls_ko: "Cramer's V는 관련성의 크기이지 방향이나 인과를 뜻하지 않습니다."
+pitfalls_en: "Cramer's V is association strength, not direction or causality."
+assumptions: []
+alternatives: []
+related:
+  - chi-square-test
+references:
+  - citation: "Cramér, H. (1946). Mathematical Methods of Statistics. Princeton University Press."
+    locator: null
+    verified: true
+verification_status: needs_review

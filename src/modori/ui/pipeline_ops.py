@@ -8,7 +8,23 @@ from typing import Any
 from modori.ui.chart_assets import ChartAssetRenderer
 from modori.ui.contracts import DisplayNote, DisplayResult, ReportExportOptions
 from modori.ui.results import display_result_from_engine_result
-from modori.steps import CompareGroupsStep, MultipleRegressionStep, ReliabilityStep, ReportStep
+from modori.steps import (
+    AncovaStep,
+    CompareGroupsStep,
+    CorrelationStep,
+    DescriptivesTableStep,
+    FactorPcaStep,
+    FrequencyCrosstabStep,
+    KruskalWallisStep,
+    FriedmanStep,
+    RepeatedMeasuresAnovaStep,
+    MediationStep,
+    ModeratedMediationStep,
+    MultipleRegressionStep,
+    OneWayAnovaStep,
+    ReliabilityStep,
+    ReportStep,
+)
 
 
 class PipelineOperations:
@@ -243,12 +259,36 @@ class PipelineOperations:
 
     @staticmethod
     def _kind_for_result(result_id: str) -> str | None:
+        if result_id == "descriptives_table1" or result_id.startswith(
+            "descriptives_table1:"
+        ):
+            return "descriptives"
         if result_id.startswith("reliability:"):
             return "reliability"
         if result_id.startswith("comparison:"):
             return "comparison"
         if result_id.startswith("regression"):
             return "regression"
+        if result_id.startswith("frequency_crosstab"):
+            return "frequency_crosstab"
+        if result_id.startswith("correlation"):
+            return "correlation"
+        if result_id.startswith("anova_oneway"):
+            return "anova_oneway"
+        if result_id.startswith("kruskal_wallis"):
+            return "kruskal_wallis"
+        if result_id.startswith("ancova"):
+            return "ancova"
+        if result_id.startswith("factor_pca"):
+            return "factor_pca"
+        if result_id.startswith("repeated_measures_anova"):
+            return "repeated_measures_anova"
+        if result_id.startswith("friedman"):
+            return "friedman"
+        if result_id.startswith("mediation"):
+            return "mediation"
+        if result_id.startswith("moderated_mediation"):
+            return "moderated_mediation"
         return None
 
     @staticmethod
@@ -256,9 +296,20 @@ class PipelineOperations:
         return {
             "data.recode_reverse",
             "data.compose_scale",
+            "stats.descriptives_table1",
             "stats.reliability",
             "stats.compare_groups",
             "stats.regression_ols",
+            "stats.frequency_crosstab",
+            "stats.correlation",
+            "stats.anova_oneway",
+            "stats.kruskal_wallis",
+            "stats.ancova",
+            "stats.factor_pca",
+            "stats.repeated_measures_anova",
+            "stats.friedman",
+            "stats.mediation",
+            "stats.moderated_mediation",
             "report.apa",
         }
 
@@ -354,6 +405,12 @@ class PipelineOperations:
 
     @staticmethod
     def _analysis_step(step_id: str, step_type: str, params: dict[str, Any]) -> object:
+        if step_type == "stats.descriptives_table1":
+            return DescriptivesTableStep(
+                id=step_id,
+                title="Descriptives Table 1",
+                params=dict(params),
+            )
         if step_type == "stats.reliability":
             return ReliabilityStep(id=step_id, title="Reliability", params=dict(params))
         if step_type == "stats.compare_groups":
@@ -362,6 +419,46 @@ class PipelineOperations:
             return MultipleRegressionStep(
                 id=step_id,
                 title="Multiple linear regression",
+                params=dict(params),
+            )
+        if step_type == "stats.frequency_crosstab":
+            return FrequencyCrosstabStep(
+                id=step_id,
+                title="Frequency and crosstab",
+                params=dict(params),
+            )
+        if step_type == "stats.correlation":
+            return CorrelationStep(id=step_id, title="Correlation", params=dict(params))
+        if step_type == "stats.anova_oneway":
+            return OneWayAnovaStep(
+                id=step_id,
+                title="One-way ANOVA",
+                params=dict(params),
+            )
+        if step_type == "stats.kruskal_wallis":
+            return KruskalWallisStep(
+                id=step_id,
+                title="Kruskal-Wallis test",
+                params=dict(params),
+            )
+        if step_type == "stats.ancova":
+            return AncovaStep(id=step_id, title="ANCOVA", params=dict(params))
+        if step_type == "stats.factor_pca":
+            return FactorPcaStep(id=step_id, title="Factor/PCA", params=dict(params))
+        if step_type == "stats.repeated_measures_anova":
+            return RepeatedMeasuresAnovaStep(
+                id=step_id,
+                title="Repeated-measures ANOVA",
+                params=dict(params),
+            )
+        if step_type == "stats.friedman":
+            return FriedmanStep(id=step_id, title="Friedman test", params=dict(params))
+        if step_type == "stats.mediation":
+            return MediationStep(id=step_id, title="Mediation", params=dict(params))
+        if step_type == "stats.moderated_mediation":
+            return ModeratedMediationStep(
+                id=step_id,
+                title="Moderated mediation",
                 params=dict(params),
             )
         raise RuntimeError(f"Unsupported analysis step type: {step_type}")
@@ -381,11 +478,26 @@ class PipelineOperations:
 
     def _analysis_result_key(self, analysis_step: object, params: dict[str, Any]) -> str:
         step_type = self._step_type(analysis_step)
+        if step_type == "stats.descriptives_table1":
+            return self._step_id(analysis_step)
         if step_type == "stats.reliability":
             return f"reliability:{params.get('scale_name', 'scale')}"
         if step_type == "stats.compare_groups":
             return f"comparison:{params['dv']}:{params['group']}"
         if step_type == "stats.regression_ols":
+            return self._step_id(analysis_step)
+        if step_type in {
+            "stats.frequency_crosstab",
+            "stats.correlation",
+            "stats.anova_oneway",
+            "stats.kruskal_wallis",
+            "stats.ancova",
+            "stats.factor_pca",
+            "stats.repeated_measures_anova",
+            "stats.friedman",
+            "stats.mediation",
+            "stats.moderated_mediation",
+        }:
             return self._step_id(analysis_step)
         raise RuntimeError(f"Unsupported analysis step type: {step_type}")
 
@@ -471,11 +583,29 @@ class PipelineOperations:
 
     @staticmethod
     def _include_key_enabled(key: str, options: ReportExportOptions) -> bool:
+        if key == "descriptives_table1" or key.startswith("descriptives_table1:"):
+            return bool(options.include_descriptives)
         if key.startswith("reliability:"):
             return bool(options.include_reliability)
         if key.startswith("comparison:"):
             return bool(options.include_comparison)
-        if key.startswith("regression"):
+        if key.startswith("frequency_crosstab") or key.startswith("correlation"):
+            return bool(options.include_association)
+        if (
+            key.startswith("anova_oneway")
+            or key.startswith("kruskal_wallis")
+            or key.startswith("ancova")
+            or key.startswith("repeated_measures_anova")
+            or key.startswith("friedman")
+        ):
+            return bool(options.include_group_models)
+        if key.startswith("factor_pca"):
+            return bool(options.include_dimension_reduction)
+        if (
+            key.startswith("regression")
+            or key.startswith("mediation")
+            or key.startswith("moderated_mediation")
+        ):
             return bool(options.include_regression)
         return True
 

@@ -19,3 +19,10 @@ def test_app_engine_smoke_writes_success_payload(tmp_path) -> None:
     text = Path(output_path).read_text(encoding="utf-8")
     assert '"ok": true' in text
     assert '"status": "ready"' in text
+    assert '"v1_statistics_smoke"' in text
+    assert '"repeated_measures_anova"' in text
+    assert '"friedman"' in text
+    assert '"mediation"' in text
+    assert '"moderated_mediation"' in text
+    assert '"factor_pca_pca"' in text
+    assert '"regression_categorical_interaction"' in text

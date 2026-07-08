@@ -1,0 +1,23 @@
+slug: kmo
+kind: diagnostic
+title_ko: "KMO"
+title_en: "KMO"
+summary_ko: "Kaiser-Meyer-Olkin 표본적합도 지수로, 변수들이 요인분석에 적합한 상관 구조를 갖는지 보는 진단입니다."
+summary_en: "The Kaiser-Meyer-Olkin measure of sampling adequacy, a diagnostic for whether variables have a correlation pattern suitable for factor analysis."
+interpretation_ko: "값이 높을수록 변수 묶음이 요인분석에 더 적합한 상관 구조를 가질 가능성이 큽니다."
+interpretation_en: "Higher values indicate that the variable set is more likely to have a correlation structure suitable for factor analysis."
+when_to_use_ko: "요인분석 또는 PCA 전후에 변수 묶음의 적합성을 점검할 때 사용합니다."
+when_to_use_en: "Use it to check the adequacy of an item set for factor analysis or PCA."
+how_to_report_ko: "전체 KMO와 필요 시 변수별 KMO를 함께 보고합니다."
+how_to_report_en: "Report the overall KMO and, when useful, variable-level KMO values."
+pitfalls_ko: "KMO가 높아도 구성개념 타당도가 자동으로 입증되지는 않습니다."
+pitfalls_en: "A high KMO does not automatically prove construct validity."
+assumptions: []
+alternatives: []
+related:
+  - exploratory-factor-analysis
+references:
+  - citation: "Kaiser, H. F. (1974). An index of factorial simplicity. Psychometrika, 39, 31-36."
+    locator: null
+    verified: true
+verification_status: needs_review

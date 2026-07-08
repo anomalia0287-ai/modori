@@ -1,0 +1,22 @@
+slug: greenhouse-geisser
+kind: statistic
+title_ko: "Greenhouse-Geisser 보정"
+title_en: "Greenhouse-Geisser correction"
+summary_ko: "구형성 위반 시 반복측정 ANOVA의 자유도를 epsilon으로 조정하는 보정입니다."
+summary_en: "A correction that adjusts repeated-measures ANOVA degrees of freedom by epsilon when sphericity is violated."
+interpretation_ko: "epsilon이 작을수록 구형성 가정에서 더 멀어졌다는 뜻이며, 보정된 자유도와 p값을 사용해 더 보수적으로 판단합니다."
+interpretation_en: "A smaller epsilon indicates stronger departure from sphericity, so corrected degrees of freedom and p-values are used for a more conservative test."
+when_to_use_ko: "Mauchly 검정 등에서 구형성 위반이 의심될 때 사용합니다."
+when_to_use_en: "Use it when sphericity is suspected to be violated."
+how_to_report_ko: "보정된 자유도와 보정 p값을 원 p값과 구분해 보고합니다."
+how_to_report_en: "Report corrected degrees of freedom and corrected p-value separately from uncorrected values."
+pitfalls_ko: "보정은 효과크기 자체를 설명하지 않으므로 효과크기와 함께 보고해야 합니다."
+pitfalls_en: "The correction does not itself describe effect size, so report an effect size as well."
+assumptions: []
+alternatives:
+  - huynh-feldt
+  - friedman-test
+related:
+  - mauchly-sphericity
+references: []
+verification_status: needs_review

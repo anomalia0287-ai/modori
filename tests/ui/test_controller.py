@@ -305,9 +305,9 @@ def test_open_data_file_populates_recommendation_without_running_worker(tmp_path
     result = controller.openDataFile(tmp_path / "survey.csv", ImportOptions(confirm_new_session=True))
 
     assert result.ok is True
-    assert controller.recommendationTitle.startswith("신뢰도 분석")
-    assert controller.recommendationLevel in {"강한 추천", "가능한 후보"}
-    assert "접두사" in controller.recommendationReason
+    assert controller.recommendationTitle == "기술통계 표 1"
+    assert controller.recommendationLevel == "강한 추천"
+    assert "기술통계 표" in controller.recommendationReason
     assert controller.recommendationAlternativesText
     assert worker.calls == []
 
@@ -340,6 +340,53 @@ def test_default_open_data_file_imports_fixture_for_recommendations_without_work
     assert controller.recommendationCount > 0
     assert controller.recommendationTitle
     assert worker.calls == []
+
+
+def test_export_report_with_selections_passes_expanded_family_options(tmp_path) -> None:
+    from modori.ui.contracts import ReportExportOptions
+    from modori.ui.controller import UiController
+
+    seen: list[ReportExportOptions] = []
+    output_path = tmp_path / "report.docx"
+    output_path.write_bytes(b"docx")
+
+    def exporter(pipeline, options):
+        seen.append(options)
+        return output_path
+
+    controller = UiController(
+        pipeline=ImportablePipeline(["import", "report"]),
+        report_exporter=exporter,
+    )
+
+    assert (
+        controller.exportReportWithSelections(
+            "en",
+            False,
+            True,
+            False,
+            True,
+            False,
+            True,
+            True,
+            False,
+        )
+        is True
+    )
+
+    assert seen == [
+        ReportExportOptions(
+            language="en",
+            include_descriptives=False,
+            include_reliability=True,
+            include_comparison=False,
+            include_association=True,
+            include_group_models=False,
+            include_dimension_reduction=True,
+            include_regression=True,
+            include_figures=False,
+        )
+    ]
 
 
 def test_select_recommendation_updates_prepared_fields_without_running(tmp_path) -> None:
@@ -466,6 +513,12 @@ def test_run_prepared_recommendation_applies_selection_before_worker_submit(tmp_
         worker=worker,
     )
     controller.openDataFile(tmp_path / "survey.csv", ImportOptions(confirm_new_session=True))
+    reliability_index = next(
+        index
+        for index, candidate in enumerate(controller._recommendation_state.candidates)
+        if candidate.kind == "reliability"
+    )
+    assert controller.selectRecommendationAt(reliability_index) is True
 
     result = controller.runPreparedRecommendation()
 
@@ -493,13 +546,14 @@ def test_default_run_prepared_recommendation_builds_real_dataset_pipeline_withou
             step_ids = [step.id for step in self.controller.pipeline.steps]
             params_text = repr([step.params for step in self.controller.pipeline.steps])
             assert step_ids[0] == "import"
-            assert "reliability" in step_ids
+            assert "descriptives_table1" in step_ids
+            assert "reliability" not in step_ids
             assert "reverse-negative-items" not in step_ids
             assert "compose-job-sat" not in step_ids
             assert "compare-groups" not in step_ids
             assert "q3_R" not in params_text
             assert "job_sat" not in params_text
-            assert "'group'" not in params_text
+            assert "'group': 'group'" not in params_text
             self.calls.append((run_id, pipeline_version, job))
             return FakeFuture()
 

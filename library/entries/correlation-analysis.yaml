@@ -1,0 +1,25 @@
+slug: correlation-analysis
+kind: method
+title_ko: "상관분석"
+title_en: "Correlation analysis"
+summary_ko: "두 숫자형 변수 사이의 선형 또는 순위 기반 관련성 정도를 상관계수로 요약하는 분석입니다."
+summary_en: "An analysis that summarizes the strength of linear or rank-based association between numeric variables using correlation coefficients."
+interpretation_ko: null
+interpretation_en: null
+when_to_use_ko: "척도형 변수 간 선형 관련성이나 서열형 변수의 단조 관련성을 탐색할 때 사용합니다."
+when_to_use_en: "Use it to explore linear association among scale variables or monotonic association involving ordinal variables."
+how_to_report_ko: "상관계수, p값, 사용된 관측치 수, 결측 제외 수, Pearson 또는 Spearman 방법을 함께 보고합니다."
+how_to_report_en: "Report the coefficient, p-value, number of observations used, excluded missing cases, and whether Pearson or Spearman was used."
+pitfalls_ko: "상관은 인과나 예측을 의미하지 않습니다. 여러 변수쌍을 동시에 보면 다중비교 가능성을 함께 고려해야 합니다."
+pitfalls_en: "Correlation does not imply causality or prediction. When many pairs are reviewed, consider multiple-comparison risk."
+assumptions: []
+alternatives: []
+related:
+  - pearson-correlation
+  - spearman-correlation
+  - pairwise-deletion
+references:
+  - citation: "Field, A. (2018). Discovering Statistics Using IBM SPSS Statistics (5th ed.). SAGE."
+    locator: null
+    verified: true
+verification_status: needs_review

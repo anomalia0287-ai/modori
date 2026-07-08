@@ -1,0 +1,23 @@
+slug: mean-rank
+kind: statistic
+title_ko: "평균순위"
+title_en: "Mean rank"
+summary_ko: "순위 기반 검정에서 각 집단 관측치 순위의 평균입니다."
+summary_en: "The average of ranked observations within each group in a rank-based test."
+interpretation_ko: "평균순위가 큰 집단은 관측값이 전반적으로 높은 순위에 놓였다는 뜻입니다."
+interpretation_en: "A higher mean rank indicates that observations in that group generally had higher ranks."
+when_to_use_ko: null
+when_to_use_en: null
+how_to_report_ko: "Kruskal-Wallis 결과 표에서 집단별 n, 중앙값과 함께 평균순위를 보고합니다."
+how_to_report_en: "Report mean ranks by group along with n and medians in Kruskal-Wallis tables."
+pitfalls_ko: "평균순위만으로 통계적 유의성이나 인과를 말할 수 없습니다."
+pitfalls_en: "Mean rank alone does not establish statistical significance or causality."
+assumptions: []
+alternatives: []
+related:
+  - kruskal-wallis-test
+references:
+  - citation: "Field, A. (2018). Discovering Statistics Using IBM SPSS Statistics (5th ed.). SAGE."
+    locator: null
+    verified: true
+verification_status: needs_review

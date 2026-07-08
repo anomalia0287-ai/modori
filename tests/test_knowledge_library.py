@@ -535,7 +535,11 @@ def test_engine_vocabulary_is_derived_from_actual_user_facing_outputs() -> None:
 def test_real_seed_fixtures_load_cleanly() -> None:
     library = load_library()
 
-    assert {"welch-t-test", "cronbach-alpha"} <= library.all_slugs()
+    assert {
+        "welch-t-test",
+        "cronbach-alpha",
+        "descriptives-table1",
+    } <= library.all_slugs()
     assert (
         library.get("welch-t-test").verification_status
         is VerificationStatus.NEEDS_REVIEW
@@ -543,6 +547,32 @@ def test_real_seed_fixtures_load_cleanly() -> None:
     assert library.get("welch-t-test").references[0].verified is False
     assert library.resolve_help_key("welch_t") == "welch-t-test"
     assert library.resolve_help_key("cronbach_alpha") == "cronbach-alpha"
+    assert library.resolve_help_key("analysis.descriptives_table1") == "descriptives-table1"
+
+
+def test_descriptives_help_entry_states_scope_and_exclusions() -> None:
+    library = load_library()
+
+    entry = library.get("descriptives-table1")
+    combined_ko = " ".join(
+        text
+        for text in (
+            entry.summary_ko,
+            entry.when_to_use_ko,
+            entry.how_to_report_ko,
+            entry.pitfalls_ko,
+        )
+        if text
+    )
+
+    assert "기술통계" in entry.title_ko
+    assert "차이 검정" in combined_ko
+    assert "인과" in combined_ko
+    assert "결측" in combined_ko
+    assert "가중치" in combined_ko
+    assert "복합표본" in combined_ko
+    assert "다중대체" in combined_ko
+    assert "표준화 평균차" in combined_ko
 
 
 def test_seed_is_link_complete() -> None:

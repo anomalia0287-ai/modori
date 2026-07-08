@@ -1,0 +1,21 @@
+slug: index-of-moderated-mediation
+kind: statistic
+title_ko: "조절된 매개 index"
+title_en: "Index of moderated mediation"
+summary_ko: "조건부 간접효과가 조절변수 변화에 따라 얼마나 달라지는지 요약하는 값입니다."
+summary_en: "A summary of how the conditional indirect effect changes as the moderator changes."
+interpretation_ko: "값이 0에서 멀수록 조절변수 변화에 따라 간접효과가 더 달라진다는 뜻입니다. bootstrap CI가 0을 포함하는지로 불확실성을 판단합니다."
+interpretation_en: "Values farther from 0 indicate that the indirect effect changes more as the moderator changes. Use the bootstrap CI to judge uncertainty around 0."
+when_to_use_ko: "조절된 매개분석에서 조절된 간접효과의 핵심 지표로 사용합니다."
+when_to_use_en: "Use it as a key index for moderated mediation."
+how_to_report_ko: "점추정값과 bootstrap CI를 함께 보고합니다."
+how_to_report_en: "Report the point estimate with a bootstrap CI."
+pitfalls_ko: "index의 CI만으로 인과적 조절 매개를 단정하지 않습니다."
+pitfalls_en: "The index CI does not by itself justify causal moderated-mediation claims."
+assumptions: []
+alternatives: []
+related:
+  - moderated-mediation
+  - conditional-indirect-effect
+references: []
+verification_status: needs_review

@@ -1,0 +1,24 @@
+slug: fisher-exact-test
+kind: method
+title_ko: "Fisher 정확검정"
+title_en: "Fisher's exact test"
+summary_ko: "2x2 교차표에서 기대빈도가 낮을 때 사용할 수 있는 정확검정입니다."
+summary_en: "An exact test for 2x2 crosstabs, especially useful when expected counts are low."
+interpretation_ko: null
+interpretation_en: null
+when_to_use_ko: "2x2 교차표에서 Pearson 카이제곱 검정의 기대빈도 조건이 약할 때 사용합니다."
+when_to_use_en: "Use it for 2x2 crosstabs when Pearson chi-square expected-count conditions are weak."
+how_to_report_ko: "Fisher 정확검정 p값을 보고하고, 가능하면 2x2 표의 오즈비도 함께 제시합니다."
+how_to_report_en: "Report Fisher's exact p-value and, where useful, the odds ratio for the 2x2 table."
+pitfalls_ko: "현재 구현은 2x2 표만 지원합니다. 더 큰 표의 정확검정은 별도 검증 없이는 실행하지 않습니다."
+pitfalls_en: "The current implementation supports only 2x2 tables. Exact tests for larger tables require separate verification."
+assumptions: []
+alternatives:
+  - chi-square-test
+related:
+  - p-value
+references:
+  - citation: "Fisher, R. A. (1922). On the interpretation of χ² from contingency tables, and the calculation of P. Journal of the Royal Statistical Society, 85(1), 87-94."
+    locator: "85(1), 87-94"
+    verified: true
+verification_status: needs_review

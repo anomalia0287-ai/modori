@@ -103,6 +103,39 @@ def compare_step_with_policy(policy: dict) -> CompareGroupsStep:
     )
 
 
+def test_compare_groups_schema_migrates_legacy_params_and_rejects_unknown_current_params() -> None:
+    migrated = CompareGroupsStep.migrate_params(
+        {
+            "dv": "job_sat",
+            "group": "group",
+            "routing_policy": {"preset": "classic"},
+        }
+    )
+
+    assert CompareGroupsStep.validate_params(migrated) == {
+        "schema_version": CompareGroupsStep.CURRENT_SCHEMA_VERSION,
+        "dv": "job_sat",
+        "group": "group",
+        "routing_policy": {"preset": "classic"},
+    }
+
+    with pytest.raises(ValueError, match="newer schema_version"):
+        CompareGroupsStep.migrate_params(
+            {"schema_version": 999, "dv": "job_sat", "group": "group"}
+        )
+
+    with pytest.raises(ValueError, match="unknown compare_groups params"):
+        CompareGroupsStep.validate_params(
+            {
+                "schema_version": CompareGroupsStep.CURRENT_SCHEMA_VERSION,
+                "dv": "job_sat",
+                "group": "group",
+                "routing_policy": {"preset": "modern"},
+                "extra": "bad",
+            }
+        )
+
+
 def test_compare_groups_routes_to_welch_when_assumptions_hold() -> None:
     result = (
         compare_step()

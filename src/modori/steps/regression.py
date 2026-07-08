@@ -14,7 +14,7 @@ from statsmodels.stats.outliers_influence import variance_inflation_factor
 from statsmodels.stats.stattools import durbin_watson
 
 from modori.core import Dataset, Measure, PipelineContext, Step, StepResult, Variable
-from modori.results import ChartSpec, CoefficientRow, RegressionResult
+from modori.results import ChartSpec, CoefficientRow, RegressionResult, SimpleSlopeRow
 from modori.steps.data_prep import import_read_params_from_step_params
 from modori.table_io import TableLayoutOverride, read_full, read_header
 
@@ -59,6 +59,77 @@ def _as_float(value: Any, label: str) -> float:
     scalar = float(np.asarray(value).squeeze())
     _require_finite(label, [scalar])
     return scalar
+
+
+def _level_label(value: object) -> str:
+    return str(value)
+
+
+@dataclass(frozen=True)
+class _CategoricalEncoding:
+    variable: str
+    reference: str
+    levels: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class _InteractionSpec:
+    first: str
+    second: str
+
+    @property
+    def terms(self) -> tuple[str, str]:
+        return (self.first, self.second)
+
+
+@dataclass(frozen=True)
+class _TermMetadata:
+    name: str
+    term_type: str
+    source_variable: str | None = None
+    level: str | None = None
+    reference_level: str | None = None
+    components: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class _ScaleTerm:
+    variable: str
+    name: str
+    center: float | None
+
+
+@dataclass(frozen=True)
+class _DesignMatrix:
+    x_pred: pd.DataFrame
+    term_metadata: dict[str, _TermMetadata]
+    scale_terms: dict[str, _ScaleTerm]
+    categorical_terms: dict[str, dict[str, str]]
+    transformed_terms: dict[str, str]
+    centers: dict[str, float]
+
+
+def _require_regression_schema_version(params: Mapping[str, object], current: int) -> int | None:
+    version = params.get("schema_version")
+    if version is None:
+        return None
+    if not isinstance(version, int) or isinstance(version, bool):
+        raise ValueError("regression_ols schema_version must be an integer")
+    if version > current:
+        raise ValueError("regression_ols params use a newer schema_version")
+    if version < current:
+        raise ValueError(f"unsupported regression_ols schema_version: {version}")
+    return version
+
+
+def _reject_unknown_regression_params(
+    params: Mapping[str, object],
+    allowed: set[str],
+) -> None:
+    unknown = set(params) - allowed
+    if unknown:
+        names = ", ".join(sorted(unknown))
+        raise ValueError(f"unknown regression_ols params: {names}")
 
 
 def _file_type_from_params(path: Path, params: dict[str, Any]) -> str:
@@ -161,21 +232,91 @@ class RegressionCsvImportStep(Step):
 class MultipleRegressionStep(Step):
     step_type = "stats.regression_ols"
     produces_analysis = True
+    CURRENT_SCHEMA_VERSION = 1
+    CONTRACT_PARAM_EXAMPLES = {
+        "current": {
+            "schema_version": 1,
+            "dv": "y",
+            "predictors": ["x"],
+            "regression_policy": {"preset": "classic"},
+        },
+        "legacy": {"dv": "y", "predictors": ["x"], "policy": {"preset": "classic"}},
+        "newer": {"schema_version": 999, "dv": "y", "predictors": ["x"]},
+        "unknown_current": {
+            "schema_version": 1,
+            "dv": "y",
+            "predictors": ["x"],
+            "regression_policy": {"preset": "classic"},
+            "extra": "bad",
+        },
+    }
+
+    @classmethod
+    def migrate_params(cls, params: dict[str, object]) -> dict[str, object]:
+        version = _require_regression_schema_version(
+            params,
+            cls.CURRENT_SCHEMA_VERSION,
+        )
+        migrated = dict(params)
+        if version is None:
+            migrated["schema_version"] = cls.CURRENT_SCHEMA_VERSION
+        if "policy" in migrated:
+            if "regression_policy" in migrated:
+                raise ValueError(
+                    "regression_ols params cannot include both policy and regression_policy"
+                )
+            migrated["regression_policy"] = migrated.pop("policy")
+        return migrated
+
+    @classmethod
+    def validate_params(cls, params: dict[str, object]) -> dict[str, object]:
+        _reject_unknown_regression_params(
+            params,
+            {"schema_version", "dv", "predictors", "regression_policy"},
+        )
+        if params.get("schema_version") != cls.CURRENT_SCHEMA_VERSION:
+            raise ValueError("regression_ols params were not migrated to the current schema")
+        dv = params.get("dv")
+        if not isinstance(dv, str) or not dv:
+            raise ValueError("regression_ols param dv must be a non-empty string")
+        predictors = params.get("predictors")
+        if (
+            not isinstance(predictors, list)
+            or not all(isinstance(item, str) and item for item in predictors)
+        ):
+            raise ValueError("regression_ols param predictors must be a list of strings")
+        policy = params.get("regression_policy", {"preset": "modern"})
+        if not isinstance(policy, Mapping):
+            raise ValueError("regression_ols param regression_policy must be an object")
+        return {
+            "schema_version": cls.CURRENT_SCHEMA_VERSION,
+            "dv": dv,
+            "predictors": list(predictors),
+            "regression_policy": dict(policy),
+        }
 
     def compute(self, ctx: PipelineContext) -> StepResult:
-        dv = str(self.params["dv"])
-        predictors = [str(predictor) for predictor in self.params.get("predictors", [])]
-        policy = dict(
-            self.params.get(
-                "regression_policy",
-                self.params.get("policy", {"preset": "modern"}),
-            )
+        params = self.validate_params(self.migrate_params(dict(self.params)))
+        dv = str(params["dv"])
+        predictors = [str(predictor) for predictor in params["predictors"]]
+        policy = dict(params["regression_policy"])
+        categorical_encodings = self._categorical_encodings(policy)
+        interactions = self._interaction_specs(policy)
+        simple_slopes_enabled = self._simple_slopes_enabled(policy, interactions)
+        effective_predictors = self._effective_predictors(predictors, interactions)
+        self._validate_contract(
+            ctx.dataset,
+            dv,
+            predictors,
+            effective_predictors,
+            policy,
+            categorical_encodings,
+            interactions,
         )
-        self._validate_contract(ctx.dataset, dv, predictors, policy)
 
         order_var = policy.get("order_var")
         ordered_data = bool(policy.get("ordered_data", False)) or bool(order_var)
-        compute_columns = [dv, *predictors]
+        compute_columns = [dv, *effective_predictors]
         if order_var:
             compute_columns.append(str(order_var))
 
@@ -186,18 +327,26 @@ class MultipleRegressionStep(Step):
         n_total = int(len(ctx.dataset.df))
         n_obs = int(len(frame))
         n_dropped = int(n_total - n_obs)
-        if n_obs <= len(predictors) + 1:
+
+        y = pd.to_numeric(frame[dv], errors="raise").astype(float)
+        design = self._build_design_matrix(
+            frame=frame,
+            predictors=effective_predictors,
+            categorical_encodings=categorical_encodings,
+            interactions=interactions,
+            policy=policy,
+        )
+        x_pred = design.x_pred
+        term_names = list(x_pred.columns)
+        if n_obs <= len(term_names) + 1:
             raise ValueError(
                 "Regression requires more complete observations than estimated parameters."
             )
-
-        y = pd.to_numeric(frame[dv], errors="raise").astype(float)
-        x_pred = frame[predictors].apply(pd.to_numeric, errors="raise").astype(float)
         values = pd.concat([y.rename(dv), x_pred], axis=1)
         if not np.all(np.isfinite(values.to_numpy(dtype=float))):
             raise ValueError("Regression inputs must be finite numeric values.")
 
-        self._validate_variance(values, dv, predictors)
+        self._validate_variance(values, dv, term_names)
         x = sm.add_constant(x_pred, has_constant="add")
         x = x.rename(columns={"const": "(Intercept)"})
         x_arr = x.to_numpy(dtype=float)
@@ -205,7 +354,7 @@ class MultipleRegressionStep(Step):
         if np.linalg.matrix_rank(x_arr) < x_arr.shape[1]:
             raise ValueError(
                 "Regression predictors are perfectly collinear: "
-                f"{', '.join(predictors)}"
+                f"{', '.join(term_names)}"
             )
 
         model = sm.OLS(y_arr, x_arr).fit()
@@ -247,10 +396,10 @@ class MultipleRegressionStep(Step):
         _require_finite("p values", p_values)
         _require_finite("confidence intervals", ci)
 
-        f_statistic, f_p_value = self._model_test(selected, model, len(predictors), se_type)
-        vif_by_predictor = self._vifs(x_arr, predictors)
+        f_statistic, f_p_value = self._model_test(selected, model, len(term_names), se_type)
+        vif_by_predictor = self._vifs(x_arr, term_names)
         coefficients = self._coefficient_rows(
-            names=["(Intercept)", *predictors],
+            names=["(Intercept)", *term_names],
             params=params,
             ses=ses,
             t_values=t_values,
@@ -259,7 +408,17 @@ class MultipleRegressionStep(Step):
             y=y,
             x_pred=x_pred,
             vif_by_predictor=vif_by_predictor,
+            term_metadata=design.term_metadata,
         )
+        simple_slopes = self._simple_slopes(
+            interactions=interactions,
+            categorical_encodings=categorical_encodings,
+            design=design,
+            params=params,
+            covariance=np.asarray(selected.cov_params(), dtype=float),
+            df_resid=float(model.df_resid),
+            term_names=["(Intercept)", *term_names],
+        ) if simple_slopes_enabled else []
 
         max_vif = max(vif_by_predictor.values()) if vif_by_predictor else None
         diagnostics: dict[str, object] = {
@@ -275,6 +434,14 @@ class MultipleRegressionStep(Step):
             "max_vif": max_vif,
             "vif": vif_by_predictor,
             "model_test": "robust_wald_f" if se_type == "HC3" else "classical_f",
+            "categorical_predictors": {
+                name: {"reference": encoding.reference, "levels": list(encoding.levels)}
+                for name, encoding in categorical_encodings.items()
+                if name in effective_predictors
+            },
+            "interactions": [list(interaction.terms) for interaction in interactions],
+            "transformed_terms": design.transformed_terms,
+            "centers": design.centers,
         }
         warnings = self._warnings(
             policy=policy,
@@ -321,7 +488,7 @@ class MultipleRegressionStep(Step):
         ]
         result = RegressionResult(
             dv=dv,
-            predictors=predictors,
+            predictors=effective_predictors,
             n_obs=n_obs,
             n_total=n_total,
             n_dropped=n_dropped,
@@ -345,6 +512,7 @@ class MultipleRegressionStep(Step):
             ),
             educational_interpretation=educational_interpretation,
             diagnostic_chart_specs=diagnostic_chart_specs,
+            simple_slopes=simple_slopes,
         )
         return StepResult(
             new_columns={},
@@ -354,8 +522,14 @@ class MultipleRegressionStep(Step):
         )
 
     def reads(self) -> set[str]:
-        policy = dict(self.params.get("regression_policy", self.params.get("policy", {})))
-        reads = {str(self.params["dv"]), *{str(item) for item in self.params.get("predictors", [])}}
+        params = self.validate_params(self.migrate_params(dict(self.params)))
+        policy = dict(params["regression_policy"])
+        interactions = self._interaction_specs(policy)
+        effective_predictors = self._effective_predictors(
+            [str(item) for item in params["predictors"]],
+            interactions,
+        )
+        reads = {str(params["dv"]), *effective_predictors}
         if policy.get("order_var"):
             reads.add(str(policy["order_var"]))
         return reads
@@ -364,28 +538,61 @@ class MultipleRegressionStep(Step):
         return {f"analysis:{self.id}"}
 
     def provenance(self) -> str:
-        predictors = ", ".join(str(item) for item in self.params.get("predictors", []))
-        return f"OLS regression {self.params['dv']} on {predictors}"
+        params = self.validate_params(self.migrate_params(dict(self.params)))
+        policy = dict(params["regression_policy"])
+        interactions = self._interaction_specs(policy)
+        predictors = ", ".join(
+            self._effective_predictors([str(item) for item in params["predictors"]], interactions)
+        )
+        return f"OLS regression {params['dv']} on {predictors}"
 
     @staticmethod
     def _validate_contract(
         dataset: Dataset,
         dv: str,
         predictors: list[str],
+        effective_predictors: list[str],
         policy: dict[str, Any],
+        categorical_encodings: dict[str, _CategoricalEncoding],
+        interactions: list[_InteractionSpec],
     ) -> None:
         if not predictors:
             raise ValueError("MultipleRegressionStep requires at least one predictor.")
         if len(set(predictors)) != len(predictors):
             raise ValueError("Regression predictors must be unique.")
-        if dv in predictors:
+        if dv in effective_predictors:
             raise ValueError("Regression dependent variable cannot also be a predictor.")
         MultipleRegressionStep._require_scale_numeric(dataset, dv, "dependent variable")
-        for predictor in predictors:
-            MultipleRegressionStep._require_scale_numeric(dataset, predictor, "predictor")
+        for predictor in effective_predictors:
+            if predictor in categorical_encodings:
+                MultipleRegressionStep._require_present(dataset, predictor, "categorical predictor")
+            else:
+                variable = dataset.variables.get(predictor)
+                if variable is not None and variable.measure == Measure.NOMINAL:
+                    raise ValueError(
+                        f"Regression categorical predictor {predictor} requires explicit encoding "
+                        "in regression_policy.categorical_predictors."
+                    )
+                MultipleRegressionStep._require_scale_numeric(dataset, predictor, "predictor")
+        extra_encodings = set(categorical_encodings) - set(effective_predictors)
+        if extra_encodings:
+            names = ", ".join(sorted(extra_encodings))
+            raise ValueError(f"Regression categorical encoding declared for non-predictor: {names}")
+        if interactions:
+            MultipleRegressionStep._validate_interaction_contract(
+                dataset,
+                categorical_encodings,
+                interactions,
+                policy,
+            )
         order_var = policy.get("order_var")
         if order_var and str(order_var) not in dataset.variables:
             raise ValueError(f"Regression order_var {order_var} is not present in the dataset.")
+
+    @staticmethod
+    def _require_present(dataset: Dataset, column: str, role: str) -> None:
+        if column not in dataset.variables:
+            raise ValueError(f"Regression {role} {column} is not present in the dataset.")
 
     @staticmethod
     def _require_scale_numeric(dataset: Dataset, column: str, role: str) -> None:
@@ -397,6 +604,456 @@ class MultipleRegressionStep(Step):
         series = dataset.frame_for_compute([column])[column]
         if not pd.api.types.is_numeric_dtype(series.dropna()):
             raise ValueError(f"Regression {role} must be numeric: {column}")
+
+    @staticmethod
+    def _categorical_encodings(policy: dict[str, Any]) -> dict[str, _CategoricalEncoding]:
+        raw = policy.get("categorical_predictors", {})
+        if raw is None:
+            return {}
+        if not isinstance(raw, Mapping):
+            raise ValueError("regression_policy.categorical_predictors must be an object")
+
+        encodings: dict[str, _CategoricalEncoding] = {}
+        for variable, spec in raw.items():
+            name = str(variable)
+            if not name:
+                raise ValueError("categorical predictor names must be non-empty")
+            if not isinstance(spec, Mapping):
+                raise ValueError(f"categorical encoding for {name} must be an object")
+            if "reference" not in spec:
+                raise ValueError(f"categorical encoding for {name} requires a reference level")
+            raw_levels = spec.get("levels", spec.get("order"))
+            if not isinstance(raw_levels, list | tuple) or not raw_levels:
+                raise ValueError(f"categorical encoding for {name} requires explicit levels")
+
+            reference = _level_label(spec["reference"])
+            levels = tuple(_level_label(level) for level in raw_levels)
+            if len(set(levels)) != len(levels):
+                raise ValueError(f"categorical encoding for {name} has duplicate levels")
+            if reference not in levels:
+                raise ValueError(
+                    f"categorical encoding for {name} reference must appear in levels"
+                )
+            if len(levels) < 2:
+                raise ValueError(f"categorical encoding for {name} requires at least two levels")
+            encodings[name] = _CategoricalEncoding(
+                variable=name,
+                reference=reference,
+                levels=levels,
+            )
+        return encodings
+
+    @staticmethod
+    def _interaction_specs(policy: dict[str, Any]) -> list[_InteractionSpec]:
+        raw = policy.get("interactions", [])
+        if raw is None:
+            return []
+        if not isinstance(raw, list | tuple):
+            raise ValueError("regression_policy.interactions must be a list")
+
+        specs: list[_InteractionSpec] = []
+        seen: set[tuple[str, str]] = set()
+        for item in raw:
+            if isinstance(item, Mapping):
+                terms = item.get("terms")
+            else:
+                terms = item
+            if not isinstance(terms, list | tuple) or len(terms) != 2:
+                raise ValueError("regression interactions must declare exactly two terms")
+            first, second = (str(terms[0]), str(terms[1]))
+            if not first or not second:
+                raise ValueError("regression interaction terms must be non-empty")
+            if first == second:
+                raise ValueError("regression interaction terms must be distinct")
+            duplicate_key = tuple(sorted((first, second)))
+            if duplicate_key in seen:
+                raise ValueError(f"duplicate interaction: {first}:{second}")
+            seen.add(duplicate_key)
+            specs.append(_InteractionSpec(first=first, second=second))
+        return specs
+
+    @staticmethod
+    def _simple_slopes_enabled(
+        policy: dict[str, Any],
+        interactions: list[_InteractionSpec],
+    ) -> bool:
+        raw = policy.get("simple_slopes")
+        if raw is None:
+            return bool(interactions)
+        if raw is True:
+            if not interactions:
+                raise ValueError("Regression simple slopes require an explicit supported interaction.")
+            return True
+        if raw is False:
+            return False
+        if raw == "auto":
+            return bool(interactions)
+        raise ValueError(
+            "Unsupported regression simple_slopes policy; supported values are true, false, or 'auto'."
+        )
+
+    @staticmethod
+    def _effective_predictors(
+        predictors: list[str],
+        interactions: list[_InteractionSpec],
+    ) -> list[str]:
+        effective = list(predictors)
+        for interaction in interactions:
+            for term in interaction.terms:
+                if term not in effective:
+                    effective.append(term)
+        return effective
+
+    @staticmethod
+    def _validate_interaction_contract(
+        dataset: Dataset,
+        categorical_encodings: dict[str, _CategoricalEncoding],
+        interactions: list[_InteractionSpec],
+        policy: dict[str, Any],
+    ) -> None:
+        center_policy = policy.get("center_scale_interactions")
+        if center_policy != "mean":
+            raise ValueError(
+                "Regression scale interactions require explicit mean centering with "
+                "regression_policy.center_scale_interactions='mean'."
+            )
+        for interaction in interactions:
+            kinds = []
+            for term in interaction.terms:
+                MultipleRegressionStep._require_present(dataset, term, "interaction term")
+                kinds.append("categorical" if term in categorical_encodings else "scale")
+            if kinds == ["categorical", "categorical"]:
+                raise ValueError("Regression unsupported categorical-by-categorical interaction.")
+            if "scale" in kinds:
+                for term, kind in zip(interaction.terms, kinds, strict=True):
+                    if kind == "scale":
+                        MultipleRegressionStep._require_scale_numeric(
+                            dataset,
+                            term,
+                            "interaction term",
+                        )
+
+    @staticmethod
+    def _build_design_matrix(
+        *,
+        frame: pd.DataFrame,
+        predictors: list[str],
+        categorical_encodings: dict[str, _CategoricalEncoding],
+        interactions: list[_InteractionSpec],
+        policy: dict[str, Any],
+    ) -> _DesignMatrix:
+        centered_scale_variables = {
+            term
+            for interaction in interactions
+            for term in interaction.terms
+            if term not in categorical_encodings
+        }
+        if policy.get("center_scale_interactions") != "mean":
+            centered_scale_variables = set()
+
+        columns: dict[str, pd.Series] = {}
+        term_metadata: dict[str, _TermMetadata] = {}
+        scale_terms: dict[str, _ScaleTerm] = {}
+        categorical_terms: dict[str, dict[str, str]] = {}
+        transformed_terms: dict[str, str] = {}
+        centers: dict[str, float] = {}
+
+        def add_column(name: str, values: pd.Series, metadata: _TermMetadata) -> None:
+            if name in columns:
+                raise ValueError(f"Regression design term name collision: {name}")
+            columns[name] = values.astype(float)
+            term_metadata[name] = metadata
+
+        for predictor in predictors:
+            if predictor in categorical_encodings:
+                encoding = categorical_encodings[predictor]
+                observed = frame[predictor].map(_level_label)
+                undeclared = sorted(set(observed.dropna()) - set(encoding.levels))
+                if undeclared:
+                    levels = ", ".join(undeclared)
+                    raise ValueError(
+                        f"Regression categorical predictor {predictor} observed levels "
+                        f"not declared in encoding policy: {levels}"
+                    )
+                categorical_terms[predictor] = {}
+                for level in encoding.levels:
+                    if level == encoding.reference:
+                        continue
+                    term_name = f"{predictor}[T.{level}]"
+                    categorical_terms[predictor][level] = term_name
+                    add_column(
+                        term_name,
+                        (observed == level),
+                        _TermMetadata(
+                            name=term_name,
+                            term_type="categorical_level",
+                            source_variable=predictor,
+                            level=level,
+                            reference_level=encoding.reference,
+                            components=(predictor,),
+                        ),
+                    )
+                continue
+
+            raw = pd.to_numeric(frame[predictor], errors="raise").astype(float)
+            if predictor in centered_scale_variables:
+                center = _as_float(raw.mean(), f"mean for {predictor}")
+                term_name = f"{predictor}_centered"
+                values = raw - center
+                term_type = "scale_centered"
+                centers[predictor] = center
+            else:
+                center = None
+                term_name = predictor
+                values = raw
+                term_type = "scale"
+            transformed_terms[predictor] = term_name
+            scale_terms[predictor] = _ScaleTerm(
+                variable=predictor,
+                name=term_name,
+                center=center,
+            )
+            add_column(
+                term_name,
+                values,
+                _TermMetadata(
+                    name=term_name,
+                    term_type=term_type,
+                    source_variable=predictor,
+                    components=(predictor,),
+                ),
+            )
+
+        for interaction in interactions:
+            first, second = interaction.terms
+            first_is_categorical = first in categorical_encodings
+            second_is_categorical = second in categorical_encodings
+            if not first_is_categorical and not second_is_categorical:
+                first_term = scale_terms[first].name
+                second_term = scale_terms[second].name
+                term_name = f"{first_term}:{second_term}"
+                add_column(
+                    term_name,
+                    columns[first_term] * columns[second_term],
+                    _TermMetadata(
+                        name=term_name,
+                        term_type="interaction",
+                        components=(first, second),
+                    ),
+                )
+                continue
+
+            scale_var = second if first_is_categorical else first
+            categorical_var = first if first_is_categorical else second
+            scale_term = scale_terms[scale_var].name
+            encoding = categorical_encodings[categorical_var]
+            for level in encoding.levels:
+                if level == encoding.reference:
+                    continue
+                categorical_term = categorical_terms[categorical_var][level]
+                term_name = f"{scale_term}:{categorical_term}"
+                add_column(
+                    term_name,
+                    columns[scale_term] * columns[categorical_term],
+                    _TermMetadata(
+                        name=term_name,
+                        term_type="interaction",
+                        level=level,
+                        reference_level=encoding.reference,
+                        components=(scale_var, categorical_var),
+                    ),
+                )
+
+        x_pred = pd.DataFrame(columns, index=frame.index)
+        return _DesignMatrix(
+            x_pred=x_pred,
+            term_metadata=term_metadata,
+            scale_terms=scale_terms,
+            categorical_terms=categorical_terms,
+            transformed_terms=transformed_terms,
+            centers=centers,
+        )
+
+    @staticmethod
+    def _simple_slopes(
+        *,
+        interactions: list[_InteractionSpec],
+        categorical_encodings: dict[str, _CategoricalEncoding],
+        design: _DesignMatrix,
+        params: np.ndarray,
+        covariance: np.ndarray,
+        df_resid: float,
+        term_names: list[str],
+    ) -> list[SimpleSlopeRow]:
+        if not interactions:
+            return []
+        index_by_name = {name: index for index, name in enumerate(term_names)}
+        rows: list[SimpleSlopeRow] = []
+        for interaction in interactions:
+            first, second = interaction.terms
+            first_is_categorical = first in categorical_encodings
+            second_is_categorical = second in categorical_encodings
+            if not first_is_categorical and not second_is_categorical:
+                rows.extend(
+                    MultipleRegressionStep._scale_scale_simple_slopes(
+                        focal=first,
+                        moderator=second,
+                        design=design,
+                        params=params,
+                        covariance=covariance,
+                        df_resid=df_resid,
+                        index_by_name=index_by_name,
+                    )
+                )
+                continue
+
+            scale_var = second if first_is_categorical else first
+            categorical_var = first if first_is_categorical else second
+            rows.extend(
+                MultipleRegressionStep._scale_categorical_simple_slopes(
+                    scale_var=scale_var,
+                    categorical_var=categorical_var,
+                    encoding=categorical_encodings[categorical_var],
+                    design=design,
+                    params=params,
+                    covariance=covariance,
+                    df_resid=df_resid,
+                    index_by_name=index_by_name,
+                )
+            )
+        return rows
+
+    @staticmethod
+    def _scale_scale_simple_slopes(
+        *,
+        focal: str,
+        moderator: str,
+        design: _DesignMatrix,
+        params: np.ndarray,
+        covariance: np.ndarray,
+        df_resid: float,
+        index_by_name: dict[str, int],
+    ) -> list[SimpleSlopeRow]:
+        focal_term = design.scale_terms[focal].name
+        moderator_term = design.scale_terms[moderator].name
+        interaction_term = f"{focal_term}:{moderator_term}"
+        focal_index = index_by_name[focal_term]
+        interaction_index = index_by_name[interaction_term]
+        moderator_series = design.x_pred[moderator_term]
+        moderator_sd = _as_float(moderator_series.std(ddof=1), f"SD for {moderator}")
+        moderator_center = design.centers[moderator]
+        rows = []
+        for label, centered_value in [
+            ("mean - 1 SD", -moderator_sd),
+            ("mean", 0.0),
+            ("mean + 1 SD", moderator_sd),
+        ]:
+            rows.append(
+                MultipleRegressionStep._simple_slope_row(
+                    focal_predictor=focal,
+                    moderator=moderator,
+                    moderator_value=moderator_center + centered_value,
+                    moderator_label=label,
+                    slope_weights={focal_index: 1.0, interaction_index: centered_value},
+                    params=params,
+                    covariance=covariance,
+                    df_resid=df_resid,
+                    interaction_term=interaction_term,
+                )
+            )
+        return rows
+
+    @staticmethod
+    def _scale_categorical_simple_slopes(
+        *,
+        scale_var: str,
+        categorical_var: str,
+        encoding: _CategoricalEncoding,
+        design: _DesignMatrix,
+        params: np.ndarray,
+        covariance: np.ndarray,
+        df_resid: float,
+        index_by_name: dict[str, int],
+    ) -> list[SimpleSlopeRow]:
+        scale_term = design.scale_terms[scale_var].name
+        scale_index = index_by_name[scale_term]
+        rows: list[SimpleSlopeRow] = []
+        for level in encoding.levels:
+            if level == encoding.reference:
+                rows.append(
+                    MultipleRegressionStep._simple_slope_row(
+                        focal_predictor=scale_var,
+                        moderator=categorical_var,
+                        moderator_value=level,
+                        moderator_label=f"{level} (reference)",
+                        slope_weights={scale_index: 1.0},
+                        params=params,
+                        covariance=covariance,
+                        df_resid=df_resid,
+                        interaction_term=scale_term,
+                    )
+                )
+                continue
+            categorical_term = design.categorical_terms[categorical_var][level]
+            interaction_term = f"{scale_term}:{categorical_term}"
+            rows.append(
+                MultipleRegressionStep._simple_slope_row(
+                    focal_predictor=scale_var,
+                    moderator=categorical_var,
+                    moderator_value=level,
+                    moderator_label=level,
+                    slope_weights={
+                        scale_index: 1.0,
+                        index_by_name[interaction_term]: 1.0,
+                    },
+                    params=params,
+                    covariance=covariance,
+                    df_resid=df_resid,
+                    interaction_term=interaction_term,
+                )
+            )
+        return rows
+
+    @staticmethod
+    def _simple_slope_row(
+        *,
+        focal_predictor: str,
+        moderator: str,
+        moderator_value: float | str,
+        moderator_label: str,
+        slope_weights: dict[int, float],
+        params: np.ndarray,
+        covariance: np.ndarray,
+        df_resid: float,
+        interaction_term: str,
+    ) -> SimpleSlopeRow:
+        weights = np.zeros(len(params), dtype=float)
+        for index, weight in slope_weights.items():
+            weights[index] = weight
+        slope = _as_float(weights @ params, "simple slope")
+        variance = _as_float(weights @ covariance @ weights, "simple slope variance")
+        if variance < 0 and np.isclose(variance, 0.0, atol=1e-12):
+            variance = 0.0
+        if variance <= 0:
+            raise ValueError("Simple slope standard error must be positive.")
+        se = float(np.sqrt(variance))
+        t_value = _as_float(slope / se, "simple slope t value")
+        p_value = _as_float(2 * stats.t.sf(abs(t_value), df_resid), "simple slope p-value")
+        critical = _as_float(stats.t.ppf(0.975, df_resid), "simple slope critical value")
+        ci = (float(slope - critical * se), float(slope + critical * se))
+        _require_finite("simple slope confidence interval", ci)
+        return SimpleSlopeRow(
+            focal_predictor=focal_predictor,
+            moderator=moderator,
+            moderator_value=moderator_value,
+            moderator_label=moderator_label,
+            slope=slope,
+            se=se,
+            t=t_value,
+            p_value=p_value,
+            ci=ci,
+            interaction_term=interaction_term,
+        )
 
     @staticmethod
     def _validate_variance(values: pd.DataFrame, dv: str, predictors: list[str]) -> None:
@@ -473,6 +1130,7 @@ class MultipleRegressionStep(Step):
         y: pd.Series,
         x_pred: pd.DataFrame,
         vif_by_predictor: dict[str, float],
+        term_metadata: dict[str, _TermMetadata],
     ) -> list[CoefficientRow]:
         y_sd = float(y.std(ddof=1))
         rows: list[CoefficientRow] = []
@@ -480,6 +1138,10 @@ class MultipleRegressionStep(Step):
             beta = None
             beta_ci = None
             vif = None
+            metadata = term_metadata.get(
+                name,
+                _TermMetadata(name=name, term_type="intercept" if name == "(Intercept)" else "term"),
+            )
             if name != "(Intercept)":
                 x_sd = float(x_pred[name].std(ddof=1))
                 if x_sd <= 0 or y_sd <= 0:
@@ -500,6 +1162,11 @@ class MultipleRegressionStep(Step):
                     p_value=float(p_values[index]),
                     ci=(float(ci[index, 0]), float(ci[index, 1])),
                     vif=vif,
+                    term_type=metadata.term_type,
+                    source_variable=metadata.source_variable,
+                    level=metadata.level,
+                    reference_level=metadata.reference_level,
+                    components=metadata.components,
                 )
             )
         return rows
@@ -518,9 +1185,12 @@ class MultipleRegressionStep(Step):
         for row in coefficients:
             if row.name == "(Intercept)" or row.beta is None or row.p_value >= 0.05:
                 continue
+            if row.term_type not in {"scale", "scale_centered"}:
+                continue
             direction = "increases" if row.beta > 0 else "decreases"
+            display_name = row.source_variable or row.name
             interpretation.append(
-                f"When {row.name} is one standard deviation higher, {result_dv} tends to "
+                f"When {display_name} is one standard deviation higher, {result_dv} tends to "
                 f"{direction} by about {abs(row.beta):.2f} standard deviations, holding the "
                 "other predictors constant."
             )

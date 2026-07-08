@@ -12,9 +12,7 @@ Rectangle {
     property bool showOtherRecommendations: false
     property bool recommendationAvailable: uiController.recommendationCount > 0
     property bool canEditSelection: uiController.status !== "empty" && uiController.status !== "running"
-    property bool canCommitSelection: root.canEditSelection && root.selectedIntent === "reliability" && root.hasText(reliabilityItemsField.text)
-        || root.canEditSelection && root.selectedIntent === "comparison" && root.hasText(outcomeKeyField.text) && root.hasText(groupKeyField.text)
-        || root.canEditSelection && root.selectedIntent === "regression" && root.hasText(outcomeKeyField.text) && root.hasText(predictorKeysField.text)
+    property bool canCommitSelection: root.canCommitManualSelection()
 
     Theme {
         id: theme
@@ -24,12 +22,63 @@ Rectangle {
         return String(value).trim().length > 0
     }
 
+    function isVariableListIntent(value) {
+        return value === "descriptives" || value === "frequency_crosstab" || value === "correlation" || value === "factor_pca"
+    }
+
+    function isOutcomeGroupIntent(value) {
+        return value === "comparison" || value === "anova_oneway" || value === "kruskal_wallis" || value === "ancova"
+    }
+
+    function canCommitManualSelection() {
+        if (!root.canEditSelection) {
+            return false
+        }
+        if (root.selectedIntent === "reliability") {
+            return root.hasText(reliabilityItemsField.text)
+        }
+        if (root.isVariableListIntent(root.selectedIntent)) {
+            return root.hasText(variableKeysField.text)
+        }
+        if (root.selectedIntent === "regression") {
+            return root.hasText(outcomeKeyField.text) && root.hasText(predictorKeysField.text)
+        }
+        if (root.selectedIntent === "ancova") {
+            return root.hasText(outcomeKeyField.text) && root.hasText(groupKeyField.text) && root.hasText(covariateKeysField.text)
+        }
+        if (root.isOutcomeGroupIntent(root.selectedIntent)) {
+            return root.hasText(outcomeKeyField.text) && root.hasText(groupKeyField.text)
+        }
+        return false
+    }
+
     function commitSelectedIntent() {
+        if (root.selectedIntent === "descriptives") {
+            return uiController.configureDescriptivesFromText(variableKeysField.text, groupKeyField.text)
+        }
         if (root.selectedIntent === "reliability") {
             return uiController.configureReliabilityFromText(reliabilityItemsField.text)
         }
+        if (root.selectedIntent === "frequency_crosstab") {
+            return uiController.configureFrequencyCrosstabFromText(variableKeysField.text)
+        }
+        if (root.selectedIntent === "correlation") {
+            return uiController.configureCorrelationFromText(variableKeysField.text)
+        }
+        if (root.selectedIntent === "factor_pca") {
+            return uiController.configureFactorPcaFromText(variableKeysField.text)
+        }
         if (root.selectedIntent === "comparison") {
             return uiController.configureComparisonFromText(outcomeKeyField.text, groupKeyField.text)
+        }
+        if (root.selectedIntent === "anova_oneway") {
+            return uiController.configureAnovaOneWayFromText(outcomeKeyField.text, groupKeyField.text)
+        }
+        if (root.selectedIntent === "kruskal_wallis") {
+            return uiController.configureKruskalWallisFromText(outcomeKeyField.text, groupKeyField.text)
+        }
+        if (root.selectedIntent === "ancova") {
+            return uiController.configureAncovaFromText(outcomeKeyField.text, groupKeyField.text, covariateKeysField.text)
         }
         if (root.selectedIntent === "regression") {
             return uiController.configureRegressionFromText(outcomeKeyField.text, predictorKeysField.text)
@@ -129,6 +178,18 @@ Rectangle {
             }
 
             Button {
+                text: appBootstrap.text("guide.descriptives")
+                Accessible.name: appBootstrap.text("guide.descriptives")
+                visible: root.manualSelectionMode
+                Layout.fillWidth: true
+                onClicked: {
+                    root.manualSelectionMode = true
+                    root.selectedIntent = "descriptives"
+                    root.guideNote = uiController.explainModeEnabled ? uiController.explainPlainText("analysis.descriptives_table1", "ko") : ""
+                }
+            }
+
+            Button {
                 text: appBootstrap.text("guide.reliability")
                 Accessible.name: appBootstrap.text("guide.reliability")
                 visible: root.manualSelectionMode
@@ -141,6 +202,42 @@ Rectangle {
             }
 
             Button {
+                text: appBootstrap.text("guide.frequency_crosstab")
+                Accessible.name: appBootstrap.text("guide.frequency_crosstab")
+                visible: root.manualSelectionMode
+                Layout.fillWidth: true
+                onClicked: {
+                    root.manualSelectionMode = true
+                    root.selectedIntent = "frequency_crosstab"
+                    root.guideNote = uiController.explainModeEnabled ? uiController.explainPlainText("analysis.frequency_crosstab", "ko") : ""
+                }
+            }
+
+            Button {
+                text: appBootstrap.text("guide.correlation")
+                Accessible.name: appBootstrap.text("guide.correlation")
+                visible: root.manualSelectionMode
+                Layout.fillWidth: true
+                onClicked: {
+                    root.manualSelectionMode = true
+                    root.selectedIntent = "correlation"
+                    root.guideNote = uiController.explainModeEnabled ? uiController.explainPlainText("analysis.correlation", "ko") : ""
+                }
+            }
+
+            Button {
+                text: appBootstrap.text("guide.factor_pca")
+                Accessible.name: appBootstrap.text("guide.factor_pca")
+                visible: root.manualSelectionMode
+                Layout.fillWidth: true
+                onClicked: {
+                    root.manualSelectionMode = true
+                    root.selectedIntent = "factor_pca"
+                    root.guideNote = uiController.explainModeEnabled ? uiController.explainPlainText("analysis.factor_pca", "ko") : ""
+                }
+            }
+
+            Button {
                 text: appBootstrap.text("guide.comparison")
                 Accessible.name: appBootstrap.text("guide.comparison")
                 visible: root.manualSelectionMode
@@ -149,6 +246,42 @@ Rectangle {
                     root.manualSelectionMode = true
                     root.selectedIntent = "comparison"
                     root.guideNote = uiController.explainModeEnabled ? uiController.explainPlainText("ui.result.welch_t", "ko") : ""
+                }
+            }
+
+            Button {
+                text: appBootstrap.text("guide.anova_oneway")
+                Accessible.name: appBootstrap.text("guide.anova_oneway")
+                visible: root.manualSelectionMode
+                Layout.fillWidth: true
+                onClicked: {
+                    root.manualSelectionMode = true
+                    root.selectedIntent = "anova_oneway"
+                    root.guideNote = uiController.explainModeEnabled ? uiController.explainPlainText("analysis.anova_oneway", "ko") : ""
+                }
+            }
+
+            Button {
+                text: appBootstrap.text("guide.kruskal_wallis")
+                Accessible.name: appBootstrap.text("guide.kruskal_wallis")
+                visible: root.manualSelectionMode
+                Layout.fillWidth: true
+                onClicked: {
+                    root.manualSelectionMode = true
+                    root.selectedIntent = "kruskal_wallis"
+                    root.guideNote = uiController.explainModeEnabled ? uiController.explainPlainText("analysis.kruskal_wallis", "ko") : ""
+                }
+            }
+
+            Button {
+                text: appBootstrap.text("guide.ancova")
+                Accessible.name: appBootstrap.text("guide.ancova")
+                visible: root.manualSelectionMode
+                Layout.fillWidth: true
+                onClicked: {
+                    root.manualSelectionMode = true
+                    root.selectedIntent = "ancova"
+                    root.guideNote = uiController.explainModeEnabled ? uiController.explainPlainText("analysis.ancova", "ko") : ""
                 }
             }
 
@@ -190,8 +323,17 @@ Rectangle {
             }
 
             TextField {
+                id: variableKeysField
+                visible: root.manualSelectionMode && root.isVariableListIntent(root.selectedIntent)
+                Layout.fillWidth: true
+                placeholderText: appBootstrap.text("guide.variables_placeholder")
+                Accessible.name: appBootstrap.text("guide.variables_accessible")
+                selectByMouse: true
+            }
+
+            TextField {
                 id: outcomeKeyField
-                visible: root.manualSelectionMode && (root.selectedIntent === "comparison" || root.selectedIntent === "regression")
+                visible: root.manualSelectionMode && (root.isOutcomeGroupIntent(root.selectedIntent) || root.selectedIntent === "regression")
                 Layout.fillWidth: true
                 placeholderText: root.selectedIntent === "regression" ? appBootstrap.text("guide.dependent_placeholder") : appBootstrap.text("guide.outcome_placeholder")
                 Accessible.name: appBootstrap.text("guide.outcome_accessible")
@@ -200,10 +342,19 @@ Rectangle {
 
             TextField {
                 id: groupKeyField
-                visible: root.manualSelectionMode && root.selectedIntent === "comparison"
+                visible: root.manualSelectionMode && (root.isOutcomeGroupIntent(root.selectedIntent) || root.selectedIntent === "descriptives")
                 Layout.fillWidth: true
                 placeholderText: appBootstrap.text("guide.group_placeholder")
                 Accessible.name: appBootstrap.text("guide.group_accessible")
+                selectByMouse: true
+            }
+
+            TextField {
+                id: covariateKeysField
+                visible: root.manualSelectionMode && root.selectedIntent === "ancova"
+                Layout.fillWidth: true
+                placeholderText: appBootstrap.text("guide.covariates_placeholder")
+                Accessible.name: appBootstrap.text("guide.covariates_accessible")
                 selectByMouse: true
             }
 

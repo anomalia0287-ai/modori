@@ -15,6 +15,7 @@ from modori.ui.contracts import ImportOptions
 from modori.ui.controller import UiController
 from modori.ui.resources import root_qml_path
 from modori.ui.strings import UI_STRINGS_KO
+from modori.v1_statistics_smoke import v1_statistics_smoke_payload
 
 
 class AppBootstrap(QObject):
@@ -77,8 +78,14 @@ def _run_engine_smoke(data_path: Path, output_path: Path) -> int:
         else:
             rerun = None
             waited = False
+        v1_smoke = v1_statistics_smoke_payload()
         payload = {
-            "ok": bool(opened.ok and waited and controller.status == "ready"),
+            "ok": bool(
+                opened.ok
+                and waited
+                and controller.status == "ready"
+                and v1_smoke.get("ok") is True
+            ),
             "opened": opened.ok,
             "rerun": None if rerun is None else rerun.ok,
             "waited": waited,
@@ -87,6 +94,7 @@ def _run_engine_smoke(data_path: Path, output_path: Path) -> int:
             "result_summary_present": bool(controller.resultSummary),
             "data_rows": None if controller.dataModel is None else controller.dataModel.rowCount(),
             "data_columns": None if controller.dataModel is None else controller.dataModel.columnCount(),
+            "v1_statistics_smoke": v1_smoke,
         }
     except Exception as exc:
         payload = {"ok": False, "exception": f"{type(exc).__name__}: {exc}"}

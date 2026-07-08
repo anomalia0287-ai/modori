@@ -1,0 +1,24 @@
+slug: eta-squared
+kind: effect_size
+title_ko: "eta squared"
+title_en: "Eta squared"
+summary_ko: "분산분석에서 전체 변동 중 집단 차이와 관련된 비율을 요약하는 효과크기입니다."
+summary_en: "An ANOVA effect size summarizing the proportion of total variation associated with group differences."
+interpretation_ko: "값이 클수록 집단 구분과 관련된 변동 비율이 큽니다. 표본과 설계 맥락을 함께 봐야 합니다."
+interpretation_en: "Larger values indicate a larger proportion of variation associated with the group factor. Interpret with sample and design context."
+when_to_use_ko: null
+when_to_use_en: null
+how_to_report_ko: "예: eta squared = .24처럼 F 검정 결과와 함께 보고합니다."
+how_to_report_en: "Report with the F test, e.g., eta squared = .24."
+pitfalls_ko: "작은 표본에서는 과대 추정될 수 있어 omega squared도 함께 볼 수 있습니다."
+pitfalls_en: "It can be upward-biased in small samples; omega squared may be reviewed alongside it."
+assumptions: []
+alternatives:
+  - omega-squared
+related:
+  - anova-oneway
+references:
+  - citation: "Field, A. (2018). Discovering Statistics Using IBM SPSS Statistics (5th ed.). SAGE."
+    locator: null
+    verified: true
+verification_status: needs_review

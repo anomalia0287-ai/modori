@@ -1,0 +1,27 @@
+slug: repeated-measures-anova
+kind: method
+title_ko: "반복측정 분산분석"
+title_en: "Repeated-measures ANOVA"
+summary_ko: "같은 참여자에게서 세 개 이상 시점이나 조건의 평균 차이를 검정하는 분석입니다."
+summary_en: "A method for comparing means across three or more repeated levels from the same participants."
+interpretation_ko: null
+interpretation_en: null
+when_to_use_ko: "한 행이 한 참여자이고 반복 조건이 여러 열로 저장된 wide-format 자료에서 사용합니다."
+when_to_use_en: "Use it for wide-format repeated measures where one row is one participant and repeated levels are columns."
+how_to_report_ko: "F값, 자유도, p값, 구형성 진단, 보정 여부, 부분 eta squared, 사용 및 제외 사례 수를 함께 보고합니다."
+how_to_report_en: "Report F, degrees of freedom, p-value, sphericity diagnostics, correction policy, partial eta squared, cases used, and cases excluded."
+pitfalls_ko: "구형성 진단과 보정 없이 세 수준 이상 반복측정 결과를 해석하면 p값이 왜곡될 수 있습니다."
+pitfalls_en: "Interpreting repeated-measures results without sphericity diagnostics and correction can distort p-values."
+assumptions:
+  - mauchly-sphericity
+alternatives:
+  - friedman-test
+related:
+  - greenhouse-geisser
+  - huynh-feldt
+  - partial-eta-squared
+references:
+  - citation: "Field, A. (2018). Discovering Statistics Using IBM SPSS Statistics (5th ed.). SAGE."
+    locator: null
+    verified: true
+verification_status: needs_review

@@ -1,0 +1,29 @@
+slug: ancova
+kind: method
+title_ko: "공분산분석"
+title_en: "ANCOVA"
+summary_ko: "척도형 공변량을 모형에 포함해 집단별 결과 변수 차이를 조건부로 요약하는 선형모형 기반 분석입니다."
+summary_en: "A linear-model method that summarizes conditional group differences while including scale covariates."
+interpretation_ko: null
+interpretation_en: null
+when_to_use_ko: "집단 변수와 결과 변수 외에 사전점수 같은 척도형 공변량을 함께 고려해야 할 때 사용합니다."
+when_to_use_en: "Use it when a grouping variable and outcome are analyzed while also considering scale covariates such as pretest scores."
+how_to_report_ko: "회귀기울기 동질성 검정, 조정평균, 집단 효과 F값, 자유도, p값, 부분 eta squared를 함께 보고합니다."
+how_to_report_en: "Report the homogeneity-of-regression-slopes check, adjusted means, group-effect F statistic, degrees of freedom, p-value, and partial eta squared."
+pitfalls_ko: "공변량 보정은 인과 효과를 자동으로 보장하지 않습니다. 회귀기울기 동질성이 깨지면 표준 ANCOVA 집단 효과를 해석하지 않아야 합니다."
+pitfalls_en: "Covariate adjustment does not by itself establish causality. If homogeneity of regression slopes fails, the standard ANCOVA group effect should not be interpreted."
+assumptions:
+  - homogeneity-of-regression-slopes
+  - linearity
+  - homoscedasticity
+alternatives:
+  - anova-oneway
+related:
+  - adjusted-mean
+  - partial-eta-squared
+  - p-value
+references:
+  - citation: "Field, A. (2018). Discovering Statistics Using IBM SPSS Statistics (5th ed.). SAGE."
+    locator: null
+    verified: true
+verification_status: needs_review

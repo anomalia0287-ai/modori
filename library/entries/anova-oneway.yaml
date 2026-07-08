@@ -1,0 +1,30 @@
+slug: anova-oneway
+kind: method
+title_ko: "일원분산분석"
+title_en: "One-way ANOVA"
+summary_ko: "세 개 이상 집단의 척도형 결과 변수 평균 차이를 하나의 F 검정으로 요약하는 분석입니다."
+summary_en: "A method that summarizes mean differences in one scale outcome across three or more groups using an F test."
+interpretation_ko: null
+interpretation_en: null
+when_to_use_ko: "하나의 명목·서열 집단 변수와 하나의 척도형 결과 변수가 있고, 세 개 이상 집단의 평균 차이를 검토할 때 사용합니다."
+when_to_use_en: "Use it when one categorical grouping variable and one scale outcome are available and three or more group means are compared."
+how_to_report_ko: "F값, 자유도, p값, 효과크기(eta squared 또는 omega squared), 사용 사례 수와 제외 사례 수를 함께 보고합니다."
+how_to_report_en: "Report the F statistic, degrees of freedom, p-value, effect size such as eta squared or omega squared, cases used, and cases excluded."
+pitfalls_ko: "집단 차이는 인과를 뜻하지 않습니다. 등분산성, 극단값, 집단별 표본 수, 사후비교 방법을 함께 확인해야 합니다."
+pitfalls_en: "Group differences do not imply causality. Review homogeneity of variance, outliers, group sizes, and post-hoc method choice."
+assumptions:
+  - homogeneity-of-variance
+  - normality
+alternatives:
+  - kruskal-wallis-test
+related:
+  - levene-test
+  - tukey-hsd
+  - games-howell
+  - eta-squared
+  - omega-squared
+references:
+  - citation: "Field, A. (2018). Discovering Statistics Using IBM SPSS Statistics (5th ed.). SAGE."
+    locator: null
+    verified: true
+verification_status: needs_review

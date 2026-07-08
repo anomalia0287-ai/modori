@@ -57,6 +57,33 @@ def paired_step(
     )
 
 
+def test_paired_comparison_schema_migrates_legacy_params_and_rejects_unknown_current_params() -> None:
+    migrated = PairedComparisonStep.migrate_params({"before": "pre", "after": "post"})
+
+    assert PairedComparisonStep.validate_params(migrated) == {
+        "schema_version": PairedComparisonStep.CURRENT_SCHEMA_VERSION,
+        "before": "pre",
+        "after": "post",
+        "routing_policy": {"preset": "modern"},
+    }
+
+    with pytest.raises(ValueError, match="newer schema_version"):
+        PairedComparisonStep.migrate_params(
+            {"schema_version": 999, "before": "pre", "after": "post"}
+        )
+
+    with pytest.raises(ValueError, match="unknown paired_comparison params"):
+        PairedComparisonStep.validate_params(
+            {
+                "schema_version": PairedComparisonStep.CURRENT_SCHEMA_VERSION,
+                "before": "pre",
+                "after": "post",
+                "routing_policy": {"preset": "modern"},
+                "extra": "bad",
+            }
+        )
+
+
 def test_paired_comparison_uses_paired_t_for_approximately_normal_differences() -> None:
     before = [10, 11, 9, 10, 12, 11, 10, 9, 11, 10]
     after = [11.0, 12.2, 9.8, 11.1, 12.9, 12.0, 11.3, 9.7, 12.2, 10.8]

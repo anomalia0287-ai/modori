@@ -52,7 +52,7 @@ def test_default_controller_reference_flow_runs_to_report(tmp_path) -> None:
     assert controller.waitForLastRun(timeout=10) is True
 
     result_ids = [result.result_id for result in controller.resultsModel]
-    assert "reliability:selected_scale" in result_ids
+    assert "descriptives_table1" in result_ids
     assert controller.stale is False
 
     exported = controller.exportReport(ReportExportOptions(language="ko"))

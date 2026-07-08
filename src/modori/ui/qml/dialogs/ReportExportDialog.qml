@@ -41,6 +41,12 @@ Dialog {
         }
 
         CheckBox {
+            id: includeDescriptives
+            text: appBootstrap.text("dialog.report.include_descriptives")
+            checked: true
+        }
+
+        CheckBox {
             id: includeReliability
             text: appBootstrap.text("dialog.report.include_reliability")
             checked: true
@@ -49,6 +55,24 @@ Dialog {
         CheckBox {
             id: includeComparison
             text: appBootstrap.text("dialog.report.include_comparison")
+            checked: true
+        }
+
+        CheckBox {
+            id: includeAssociation
+            text: appBootstrap.text("dialog.report.include_association")
+            checked: true
+        }
+
+        CheckBox {
+            id: includeGroupModels
+            text: appBootstrap.text("dialog.report.include_group_models")
+            checked: true
+        }
+
+        CheckBox {
+            id: includeDimensionReduction
+            text: appBootstrap.text("dialog.report.include_dimension_reduction")
             checked: true
         }
 
@@ -70,8 +94,12 @@ Dialog {
             enabled: uiController.resultSummary.length > 0
             onClicked: uiController.exportReportWithSelections(
                 parent.selectedLanguage,
+                includeDescriptives.checked,
                 includeReliability.checked,
                 includeComparison.checked,
+                includeAssociation.checked,
+                includeGroupModels.checked,
+                includeDimensionReduction.checked,
                 includeRegression.checked,
                 includeFigures.checked
             )
