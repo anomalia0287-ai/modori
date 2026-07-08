@@ -27,15 +27,22 @@ Current statistics-bundle merge evidence from 2026-07-08:
   passed after the follow-up fix with `947 passed, 3 skipped`, `package-tool-ok`,
   `package-launch-smoke-ok`, `package-engine-smoke-ok`, and
   `package-public-data-smoke-ok`.
-- Clean VM: owner-operated functional check is a partial pass for the `7ff7ee8`
-  release-lane package. The owner reported normal operation inside
-  `Modori-CleanWin-QA-Direct` / `MODORIQA2` and shut the VM down with `끄기`;
-  a VM resource-shortage warning appeared during execution. Release evidence
-  remains open until exact `Run-Public-Data-Smoke.bat` /
-  `Run-Engine-Smoke-XLSX.bat` exit codes, JSON snippets, log/evidence paths,
-  payload freshness evidence, and recurrence/non-recurrence of the resource
-  warning are recorded. Statistical result-value correctness is covered by the
-  automated reference tests and package smoke, not by manual visual inspection.
+- Clean VM: owner-operated scripted smoke passed for the `7ff7ee8`
+  release-lane package. `RUN_ATTACH_PAYLOAD_AS_ADMIN.cmd` rebuilt and attached
+  `C:\VM\ModoriPayload\ModoriPayloadV2.vhdx` while
+  `Modori-CleanWin-QA-Direct` was `Off`; attach exit code `0`; log path
+  `C:\VM\ModoriPayload\attach-payload-v2.log`; transcript ended
+  `2026-07-08 11:46:02 +09:00`. Inside `MODORIQA2`,
+  `Run-Public-Data-Smoke.bat` returned exit code `0`, result `ok: true`,
+  `case_count: 10`, evidence path
+  `C:\Users\modoriqa\Desktop\Modori-QA-Evidence\public-data-smoke-2026-07-08-11-48-11-44`.
+  `Run-Engine-Smoke-XLSX.bat` returned exit code `0`, output
+  `C:\Users\modoriqa\Desktop\modori-engine-smoke.json`, `ok: true`,
+  `status: ready`, and `v1_statistics_smoke.ok: true` across 20 checks. The
+  visible app opened normally via `Run-Modori.bat`; Microsoft Word was not
+  installed in the VM, so Word application integration was not manually
+  verified there. Statistical result-value correctness is covered by automated
+  reference tests and package smoke, not by manual visual inspection.
 
 Current feature-build evidence from 2026-07-07:
 
