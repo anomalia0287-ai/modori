@@ -100,7 +100,7 @@ def _run_anova(frame: pd.DataFrame):
     ).compute_context_free(_dataset_for_anova(frame)).analysis
 
 
-def _smls01_frame() -> pd.DataFrame:
+def _smls_frame(*, offset: float) -> pd.DataFrame:
     def beta(index: int) -> float:
         if index == 1:
             return 0.2
@@ -108,11 +108,29 @@ def _smls01_frame() -> pd.DataFrame:
 
     return pd.DataFrame(
         [
-            {"treatment": treatment, "y": 1.0 + beta(treatment) + beta(replicate)}
+            {"treatment": treatment, "y": offset + beta(treatment) + beta(replicate)}
             for treatment in range(1, 10)
             for replicate in range(1, 22)
         ]
     )
+
+
+def _smls01_frame() -> pd.DataFrame:
+    return _smls_frame(offset=1.0)
+
+
+def test_smls07_effect_sizes_remain_stable_under_large_offset() -> None:
+    frame = _smls_frame(offset=1e12)
+    groups = tuple(
+        frame.loc[frame["treatment"] == treatment, "y"] for treatment in range(1, 10)
+    )
+
+    eta_squared, _omega_squared = OneWayAnovaStep._effect_sizes(
+        groups,
+        df_between=8,
+    )
+
+    assert eta_squared == pytest.approx(14.0 / 29.0, rel=1e-7, abs=1e-12)
 
 
 def test_numacc4_descriptives_match_nist_strd_certified_values() -> None:
@@ -141,6 +159,34 @@ def test_smls01_one_way_anova_matches_nist_strd_certified_values() -> None:
     assert result.assumptions.group_count == 9
     assert result.assumptions.min_group_n == 21
     assert result.assumptions.max_group_n == 21
+
+
+def test_smls04_one_way_anova_matches_nist_strd_certified_values() -> None:
+    result = _run_anova(_smls_frame(offset=1e6))
+
+    assert result.df_between == 8
+    assert result.df_within == 180
+    assert result.f_statistic == pytest.approx(21.0, rel=1e-10, abs=1e-12)
+    assert result.eta_squared == pytest.approx(14.0 / 29.0, rel=1e-10, abs=1e-12)
+    assert result.omega_squared == pytest.approx(
+        1.60 / 3.49,
+        rel=1e-10,
+        abs=1e-12,
+    )
+
+
+def test_smls07_one_way_anova_discloses_float64_achieved_precision() -> None:
+    result = _run_anova(_smls_frame(offset=1e12))
+
+    assert result.df_between == 8
+    assert result.df_within == 180
+    assert result.f_statistic == pytest.approx(21.0, rel=1e-7, abs=1e-9)
+    assert result.eta_squared == pytest.approx(14.0 / 29.0, rel=1e-7, abs=1e-12)
+    assert result.omega_squared == pytest.approx(
+        1.60 / 3.49,
+        rel=1e-7,
+        abs=1e-12,
+    )
 
 
 def test_longley_regression_matches_nist_strd_certified_values() -> None:

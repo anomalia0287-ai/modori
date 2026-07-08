@@ -66,8 +66,11 @@ points, ordered by product risk rather than textbook neatness:
    `Wampler1` and `Filip` are checked-in fail-closed fixtures for perfect-fit
    and numerically unsafe polynomial regression. `NumAcc4` is imported as a
    generated summary-statistics fixture from the NIST construction rule.
-   `SmLs01` is imported as a generated one-way ANOVA fixture from the NIST
-   construction rule. `NumAcc1-3` and higher-difficulty StRD ANOVA data remain.
+   `SmLs01`, `SmLs04`, and `SmLs07` are imported as generated one-way ANOVA
+   fixtures from the NIST construction rules; `SmLs07` is recorded as
+   achieved float64 precision rather than full 15-digit certified parity.
+   `AtmWtAg` remains blocked on the product-policy decision about
+   two-treatment one-way ANOVA. `NumAcc1-3` remain.
 4. Done for code policy: set bootstrap policy in code and tests: default 5000 user-facing resamples,
    reject or warn below 1000, deterministic reproduction tests for plumbing,
    and independent adequacy checks for interval behavior. Adequacy checks remain.

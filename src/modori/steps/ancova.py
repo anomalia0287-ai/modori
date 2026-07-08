@@ -312,7 +312,10 @@ class AncovaStep(Step):
         if rank < len(design.columns):
             raise ValueError("ANCOVA 설계행렬이 특이하거나 공선성이 있어 계산할 수 없습니다.")
         require_well_conditioned_ols_design(design_matrix, label="ANCOVA OLS")
-        return sm.OLS(y, design).fit()
+        y_offset = float(y.mean())
+        model = sm.OLS(y.astype(float) - y_offset, design).fit()
+        model._modori_y_offset = y_offset
+        return model
 
     @classmethod
     def _nested_effect(
@@ -444,7 +447,9 @@ class AncovaStep(Step):
                 )
             row = pd.DataFrame([row_data])
             row = row.loc[:, model.model.exog_names]
-            adjusted[value] = float(model.predict(row).iloc[0])
+            adjusted[value] = float(model.predict(row).iloc[0]) + float(
+                getattr(model, "_modori_y_offset", 0.0)
+            )
         return adjusted
 
     def _group_summaries(

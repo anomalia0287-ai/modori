@@ -471,13 +471,15 @@ class OneWayAnovaStep(Step):
         groups: tuple[pd.Series, ...],
         df_between: int,
     ) -> tuple[float, float]:
-        all_values = pd.concat(groups, ignore_index=True)
+        all_values = pd.concat(groups, ignore_index=True).astype(float)
         grand_mean = float(all_values.mean())
+        centered_groups = tuple(values.astype(float) - grand_mean for values in groups)
         ss_between = sum(
-            len(values) * (float(values.mean()) - grand_mean) ** 2 for values in groups
+            len(values) * float(values.mean()) ** 2 for values in centered_groups
         )
         ss_within = sum(
-            float(((values - float(values.mean())) ** 2).sum()) for values in groups
+            float(((values - float(values.mean())) ** 2).sum())
+            for values in centered_groups
         )
         ss_total = ss_between + ss_within
         df_within = len(all_values) - len(groups)

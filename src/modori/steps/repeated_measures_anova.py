@@ -247,13 +247,13 @@ class RepeatedMeasuresAnovaStep(Step):
     def _anova_components(frame: pd.DataFrame) -> dict[str, float]:
         values = frame.to_numpy(dtype=float)
         n_subjects, level_count = values.shape
-        grand_mean = float(values.mean())
-        level_means = values.mean(axis=0)
-        subject_means = values.mean(axis=1)
-        ss_total = float(((values - grand_mean) ** 2).sum())
-        ss_subjects = float(level_count * ((subject_means - grand_mean) ** 2).sum())
+        centered_values = values - float(values.mean())
+        level_means = centered_values.mean(axis=0)
+        subject_means = centered_values.mean(axis=1)
+        ss_total = float((centered_values**2).sum())
+        ss_subjects = float(level_count * (subject_means**2).sum())
         ss_within = ss_total - ss_subjects
-        ss_effect = float(n_subjects * ((level_means - grand_mean) ** 2).sum())
+        ss_effect = float(n_subjects * (level_means**2).sum())
         ss_error = ss_within - ss_effect
         if ss_error <= 0 or np.isclose(ss_error, 0.0, atol=1e-12):
             raise ValueError(

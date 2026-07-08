@@ -207,6 +207,29 @@ def test_listwise_missing_subjects_match_complete_case_manual_reference() -> Non
     )
 
 
+def test_repeated_measures_anova_is_invariant_to_large_additive_offset() -> None:
+    base_frame = pd.DataFrame(
+        {
+            "pre": [4.2, 5.1, 6.4, 5.8, 7.3, 6.2, 8.4, 7.6],
+            "mid": [5.3, 6.4, 7.0, 6.7, 8.1, 7.5, 8.8, 9.2],
+            "post": [7.1, 8.3, 8.4, 7.9, 9.5, 8.6, 10.1, 9.7],
+        }
+    )
+    offset_frame = base_frame + 1e6
+
+    base = run_step(dataset_factory(base_frame), _params(correction="none"))
+    offset = run_step(dataset_factory(offset_frame), _params(correction="none"))
+
+    assert offset.ss_effect == pytest.approx(base.ss_effect, rel=1e-10, abs=1e-10)
+    assert offset.ss_error == pytest.approx(base.ss_error, rel=1e-10, abs=1e-10)
+    assert offset.f_statistic == pytest.approx(base.f_statistic, rel=1e-10, abs=1e-10)
+    assert offset.partial_eta_squared == pytest.approx(
+        base.partial_eta_squared,
+        rel=1e-10,
+        abs=1e-12,
+    )
+
+
 def test_validation_rejects_unsupported_shapes_and_bad_inputs() -> None:
     dataset = _wide_dataset()
 

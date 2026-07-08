@@ -68,7 +68,9 @@ Run the same test and expect PASS.
 
 **Interfaces:**
 - Consumes: `_run_anova(frame: pd.DataFrame)`
-- Produces: generated SmLs04/SmLs07 tests and observed AtmWtAg test
+- Produces: generated SmLs04/SmLs07 tests. `AtmWtAg` is deferred because it is
+  a two-treatment ANOVA fixture and Modori currently validates one-way ANOVA as
+  three-or-more groups.
 
 - [ ] **Step 1: Extend fixture helpers**
 
@@ -95,7 +97,9 @@ def test_smls07_one_way_anova_discloses_float64_achieved_precision() -> None:
     assert result.eta_squared == pytest.approx(14.0 / 29.0, rel=1e-7, abs=1e-12)
 ```
 
-Add an AtmWtAg test with certified df, F, eta squared, and pooled t-square coherence against `scipy.stats.ttest_ind(equal_var=True)`.
+Do not add `AtmWtAg` in this task. Record it as a policy decision: accepting
+two-treatment ANOVA would change Modori's analysis-routing behavior and should
+be reviewed separately from the numerical-stability fix.
 
 - [ ] **Step 3: Verify StRD tests**
 

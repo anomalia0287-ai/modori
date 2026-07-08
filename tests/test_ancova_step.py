@@ -226,6 +226,72 @@ def test_homogeneity_of_slopes_violation_fails_closed_without_group_effect() -> 
     assert any("표준 ANCOVA 집단 효과" in warning for warning in result.warnings_ko)
 
 
+def test_ancova_effects_are_invariant_to_large_outcome_offset() -> None:
+    rows = [
+        {"group": "A", "pretest": 2.0, "outcome": 12.5},
+        {"group": "A", "pretest": 3.0, "outcome": 13.5},
+        {"group": "A", "pretest": 4.0, "outcome": 14.85},
+        {"group": "A", "pretest": 5.0, "outcome": 15.95},
+        {"group": "B", "pretest": 3.0, "outcome": 18.7},
+        {"group": "B", "pretest": 4.0, "outcome": 19.7},
+        {"group": "B", "pretest": 5.0, "outcome": 21.05},
+        {"group": "B", "pretest": 6.0, "outcome": 22.15},
+        {"group": "C", "pretest": 5.0, "outcome": 23.1},
+        {"group": "C", "pretest": 6.0, "outcome": 24.1},
+        {"group": "C", "pretest": 7.0, "outcome": 25.45},
+        {"group": "C", "pretest": 8.0, "outcome": 26.55},
+    ]
+    base = dataset_factory(
+        rows=rows,
+        measures={"group": "nominal", "pretest": "scale", "outcome": "scale"},
+    )
+    offset = dataset_factory(
+        rows=[{**row, "outcome": float(row["outcome"]) + 1e6} for row in rows],
+        measures={"group": "nominal", "pretest": "scale", "outcome": "scale"},
+    )
+
+    base_result = run_step(base, _params())
+    offset_result = run_step(offset, _params())
+
+    assert offset_result.homogeneity_check.f_statistic == pytest.approx(
+        base_result.homogeneity_check.f_statistic,
+        rel=1e-10,
+        abs=1e-10,
+    )
+    assert offset_result.homogeneity_check.effect_size == pytest.approx(
+        base_result.homogeneity_check.effect_size,
+        rel=1e-10,
+        abs=1e-12,
+    )
+    assert offset_result.group_effect is not None
+    assert base_result.group_effect is not None
+    assert offset_result.group_effect.f_statistic == pytest.approx(
+        base_result.group_effect.f_statistic,
+        rel=1e-10,
+        abs=1e-10,
+    )
+    assert offset_result.group_effect.effect_size == pytest.approx(
+        base_result.group_effect.effect_size,
+        rel=1e-10,
+        abs=1e-12,
+    )
+    for offset_effect, base_effect in zip(
+        offset_result.covariate_effects,
+        base_result.covariate_effects,
+        strict=True,
+    ):
+        assert offset_effect.f_statistic == pytest.approx(
+            base_effect.f_statistic,
+            rel=1e-10,
+            abs=1e-10,
+        )
+        assert offset_effect.effect_size == pytest.approx(
+            base_effect.effect_size,
+            rel=1e-10,
+            abs=1e-12,
+        )
+
+
 @pytest.mark.parametrize(
     "rows, measures, params, message",
     [

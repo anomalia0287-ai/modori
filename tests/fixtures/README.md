@@ -57,16 +57,27 @@ Use in Modori:
 - This locks large-offset mean and sample standard-deviation accuracy for
   `descriptives_table1` without checking in a repetitive 1001-line data file.
 
-NIST StRD one-way ANOVA source:
+NIST StRD one-way ANOVA sources:
 `https://www.itl.nist.gov/div898/strd/anova/SmLs01.html`
+`https://www.itl.nist.gov/div898/strd/anova/SmLs04.html`
+`https://www.itl.nist.gov/div898/strd/anova/SmLs07.html`
 
-Certified values and construction rule:
+Certified values and construction rules:
 `https://www.itl.nist.gov/div898/strd/anova/SmLs01_cv.html`
 `https://www.itl.nist.gov/div898/strd/anova/SmLs01_info.html`
+`https://www.itl.nist.gov/div898/strd/anova/SmLs04_cv.html`
+`https://www.itl.nist.gov/div898/strd/anova/SmLs04_info.html`
+`https://www.itl.nist.gov/div898/strd/anova/SmLs07_cv.html`
+`https://www.itl.nist.gov/div898/strd/anova/SmLs07_info.html`
 
 Use in Modori:
 
-- `SmLs01` is generated inside `tests/test_nist_strd_fixtures.py` from the
-  official construction rule for one-way balanced ANOVA.
-- This locks certified df, F statistic, and R-squared parity for
-  `anova_oneway` without checking in a repetitive generated data file.
+- `SmLs01`, `SmLs04`, and `SmLs07` are generated inside
+  `tests/test_nist_strd_fixtures.py` from the official construction rule for
+  one-way balanced ANOVA.
+- `SmLs04` locks the 7-constant-leading-digit cancellation regime.
+- `SmLs07` locks the 13-constant-leading-digit regime as achieved float64
+  precision, not full 15-digit certified parity.
+- These fixtures lock certified df, F statistic, R-squared/effect-size
+  behavior for `anova_oneway` without checking in repetitive generated data
+  files.
