@@ -2,6 +2,7 @@
 [CmdletBinding()]
 param(
     [string]$VMName = "Modori-CleanWin-QA-Direct",
+    [string]$WorkspaceRoot = "C:\Users\V\Desktop\TongTong",
     [string]$PayloadVhdPath = "C:\VM\ModoriPayload\ModoriPayloadV2.vhdx",
     [string]$LogPath = "C:\VM\ModoriPayload\attach-payload-v2.log"
 )
@@ -22,6 +23,36 @@ function Assert-Administrator {
     }
 }
 
+function Get-NewestSourceWriteTimeUtc {
+    param([Parameter(Mandatory = $true)][string[]]$Paths)
+
+    $newest = $null
+    foreach ($path in $Paths) {
+        if (-not (Test-Path -LiteralPath $path)) {
+            continue
+        }
+        $item = Get-Item -LiteralPath $path
+        if ($item.PSIsContainer) {
+            $newestChild = Get-ChildItem -LiteralPath $path -Recurse -File |
+                Sort-Object LastWriteTimeUtc -Descending |
+                Select-Object -First 1
+            if ($newestChild) {
+                $writeTime = $newestChild.LastWriteTimeUtc
+            } else {
+                $writeTime = $item.LastWriteTimeUtc
+            }
+        } else {
+            $writeTime = $item.LastWriteTimeUtc
+        }
+
+        if (-not $newest -or $writeTime -gt $newest) {
+            $newest = $writeTime
+        }
+    }
+
+    return $newest
+}
+
 Assert-Administrator
 
 Write-Section "Payload VHDX file"
@@ -31,6 +62,24 @@ if (Test-Path -LiteralPath $PayloadVhdPath) {
         Format-List
 } else {
     Write-Host "MISSING: $PayloadVhdPath"
+}
+
+Write-Section "Payload freshness"
+$sourceApp = Join-Path $WorkspaceRoot "dist\Modori"
+if (-not (Test-Path -LiteralPath $PayloadVhdPath)) {
+    Write-Host "STATUS: Payload V2 is missing; rebuild with attach_modori_payload_disk.ps1 -RebuildPayload"
+} elseif (-not (Test-Path -LiteralPath $sourceApp)) {
+    Write-Host "STATUS: Packaged app folder is missing; build dist\Modori before rebuilding Payload V2"
+} else {
+    $payloadVhd = Get-Item -LiteralPath $PayloadVhdPath
+    $newestSourceWriteTimeUtc = Get-NewestSourceWriteTimeUtc -Paths @($sourceApp)
+    Write-Host "Packaged app newest write time UTC: $newestSourceWriteTimeUtc"
+    Write-Host "Payload V2 write time UTC: $($payloadVhd.LastWriteTimeUtc)"
+    if ($newestSourceWriteTimeUtc -gt $payloadVhd.LastWriteTimeUtc.AddSeconds(1)) {
+        Write-Host "STATUS: Payload V2 is older than the packaged app; rerun attach_modori_payload_disk.ps1 with -RebuildPayload while the VM is Off."
+    } else {
+        Write-Host "STATUS: Payload V2 is current for the packaged app"
+    }
 }
 
 Write-Section "Attach log"

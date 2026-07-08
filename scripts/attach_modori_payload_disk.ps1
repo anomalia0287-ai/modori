@@ -321,6 +321,13 @@ Expected sample files:
 - Samples\public_data_formats\merged-public-header.xlsx
 - Samples\public_data_formats\aggregate-row.csv
 - Samples\public_data_formats\notice-only.xlsx
+
+Engine smoke expected JSON:
+- ok: true
+- v1_statistics_smoke.ok: true
+- v1_statistics_smoke.checks includes V1 statistical engine checks for Table 1,
+  reliability, frequency/crosstab, correlations, group comparisons, ANOVA,
+  Kruskal-Wallis, ANCOVA, Factor/PCA, and regression interaction coverage.
 "@
     Set-Content -LiteralPath (Join-Path $driveRoot "README.txt") -Value $readme -Encoding ASCII
 
@@ -347,6 +354,7 @@ Public data import contract samples:
 
 Rules:
 - Run-Engine-Smoke-XLSX.bat must use only the engine smoke sample.
+- Run-Engine-Smoke-XLSX.bat must print v1_statistics_smoke with all V1 statistical engine checks ok.
 - Run-Public-Data-Smoke.bat must validate public-data import contracts, not just app launch.
 - Run-Modori.bat is for visible UI verification.
 - Visible import samples are not a substitute for engine smoke.

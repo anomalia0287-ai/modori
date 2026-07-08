@@ -30,6 +30,11 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT%"
 set "RC=%ERRORLEVEL%"
 echo.
 echo Check script exit code: %RC%
+echo.
+echo Expected current-payload evidence:
+echo - STATUS: Payload V2 is attached to VM
+echo - STATUS: Payload V2 is current for the packaged app
+echo.
 echo Press any key to close this window.
 pause >nul
 exit /b %RC%

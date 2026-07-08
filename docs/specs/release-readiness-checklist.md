@@ -94,7 +94,9 @@ repository and keep the event loop alive for the configured timeout. The same
 packaging gate also runs packaged engine smoke through `Modori.exe
 --engine-smoke`, which opens a reference Excel file, runs the analysis/report
 path inside the packaged runtime, and fails if chart/report dependencies are
-missing.
+missing. For the V1 statistical coverage build, the packaged engine smoke JSON
+must also include `v1_statistics_smoke.ok: true` with every V1 statistical
+engine check marked `ok: true`.
 
 ## Release QA Runbook Gate
 

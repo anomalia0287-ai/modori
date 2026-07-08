@@ -32,6 +32,19 @@ set "RC=%ERRORLEVEL%"
 echo.
 echo Attach script exit code: %RC%
 echo Log: %LOG%
+echo.
+echo Expected success evidence in the log:
+echo - VM: Modori-CleanWin-QA-Direct / Off
+echo - Payload rebuild requested
+echo - Validate new payload contents
+echo - Attach payload disk to VM
+echo - Done
+echo.
+if exist "%LOG%" (
+    echo Last log lines:
+    powershell.exe -NoProfile -Command "Get-Content -LiteralPath '%LOG%' -Tail 40"
+)
+echo.
 echo Press any key to close this window.
 pause >nul
 exit /b %RC%

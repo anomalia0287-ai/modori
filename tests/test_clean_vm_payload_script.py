@@ -6,6 +6,7 @@ from pathlib import Path
 PAYLOAD_SCRIPT = Path("scripts/attach_modori_payload_disk.ps1")
 ATTACH_WRAPPER = Path("RUN_ATTACH_PAYLOAD_AS_ADMIN.cmd")
 CHECK_WRAPPER = Path("RUN_CHECK_PAYLOAD_V2_AS_ADMIN.cmd")
+CHECK_SCRIPT = Path("scripts/check_modori_payload_v2.ps1")
 
 
 def _payload_script_text() -> str:
@@ -22,6 +23,8 @@ def test_payload_script_writes_a_human_readable_contract_file() -> None:
 
     assert "QA_CONTRACT.txt" in text
     assert "engine-smoke-reference.xlsx" in text
+    assert "V1 statistical engine checks" in text
+    assert "v1_statistics_smoke" in text
     assert "visible-import-reference.xlsx" in text
     assert "public_data_formats" in text
     assert "Engine smoke sample" in text
@@ -67,6 +70,9 @@ def test_attach_wrapper_requires_explicit_admin_instead_of_hidden_self_elevation
     assert "This file must be run as Administrator." in text
     assert "No VM changes were made." in text
     assert "attach-payload-v2.log" in text
+    assert "Expected success evidence" in text
+    assert "Validate new payload contents" in text
+    assert "Attach payload disk to VM" in text
 
 
 def test_payload_v2_check_wrapper_is_read_only_and_requires_admin() -> None:
@@ -77,6 +83,18 @@ def test_payload_v2_check_wrapper_is_read_only_and_requires_admin() -> None:
     assert "check_modori_payload_v2.ps1" in text
     assert "This file must be run as Administrator." in text
     assert "No VM changes were made." in text
+    assert "Expected current-payload evidence" in text
+    assert "Payload V2 is current for the packaged app" in text
+
+
+def test_payload_v2_check_reports_stale_payload_against_packaged_app() -> None:
+    text = CHECK_SCRIPT.read_text(encoding="utf-8")
+
+    assert "Payload freshness" in text
+    assert "Get-NewestSourceWriteTimeUtc" in text
+    assert "STATUS: Payload V2 is older than the packaged app" in text
+    assert "STATUS: Payload V2 is current for the packaged app" in text
+    assert "-RebuildPayload" in text
 
 
 def test_existing_payload_vhdx_is_validated_before_attach() -> None:

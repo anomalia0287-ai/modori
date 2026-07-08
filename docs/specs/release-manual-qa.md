@@ -202,6 +202,14 @@ A4FE941EF6170E735B107D75244A4A2562722E881F293224B576A517E0796888
 | clean VM payload regeneration and rerun | Pass for owner-operated VM evidence | The owner confirmed the Payload V2 administrator regeneration and clean-VM rerun were completed for the build containing categorical recoding, visible grid work, and import column selection. VM: `Modori-CleanWin-QA-Direct`; payload label: `MODORIQA2`; result: exit code 0. |
 | release evidence blocker from prior runbook | Closed for this feature build | The remaining clean-VM evidence item is no longer pending for the 2026-07-07 feature build. Console text was not pasted here; the recorded basis is owner-operated VM confirmation plus the host/package gate above. |
 
+## 2026-07-08 Statistical Coverage Host Package QA
+
+| Item | Status | Evidence |
+| --- | --- | --- |
+| integrated V1 statistical coverage host gate | Pass | `scripts\quality_gate.py --with-package-check --with-package-build --with-packaged-launch` rebuilt the package and reported `896 passed, 3 skipped`, `package-tool-ok`, `package-launch-smoke-ok`, `package-engine-smoke-ok`, and `package-public-data-smoke-ok`. After payload preparation updates, `scripts\quality_gate.py --with-package-check --with-packaged-launch` reported `897 passed, 3 skipped` against the same packaged executable. The packaged engine smoke JSON includes 16 V1 statistical checks, all `ok: true`: descriptives/Table 1, reliability, frequency, crosstab/Fisher, Pearson, Spearman, Welch t, Mann-Whitney, paired t, Wilcoxon, one-way ANOVA, Kruskal-Wallis, ANCOVA, PCA, EFA, and regression categorical interaction. |
+| rebuilt host package | Pass | Packaged executable: `C:\Users\V\Desktop\TongTong\dist\Modori\Modori.exe`; SHA256 `894D040B19943079879610627DBDE16C3A8DB5C3EE6298501D2F956E7644C6E3`. |
+| clean VM preparation for this feature set | Ready for owner-operated VM execution | Payload V2 was rebuilt from the latest host package while `Modori-CleanWin-QA-Direct` was `Off`. `C:\VM\ModoriPayload\attach-payload-v2.log` records `Payload rebuild requested`, `Validate new payload contents`, `Attach payload disk to VM`, and `Done`, ending at `2026-07-08 05:47:48` local time. Current file evidence shows `C:\VM\ModoriPayload\ModoriPayloadV2.vhdx` was last written at `2026-07-08 05:52:08`, after the `2026-07-08 01:49:09` host package build. The prior payload was backed up to `C:\VM\ModoriPayload\ModoriPayloadV2.before-rebuild-20260708-054731.vhdx`. |
+
 ## Release Interpretation
 
 This document records an accepted target-machine visible walkthrough for the
