@@ -160,6 +160,12 @@ class KruskalWallisStep(Step):
         statistic = _as_finite_float(statistic_result.statistic, "Kruskal-Wallis H")
         p_value = _as_finite_float(statistic_result.pvalue, "Kruskal-Wallis p-value")
         degrees_of_freedom = len(group_values) - 1
+        method_details = {
+            "method": "chi_square_approximation",
+            "ties_present": _has_ties(np.concatenate(group_arrays)),
+            "tie_correction": "scipy_kruskal",
+            "groups": len(group_values),
+        }
         effect_size = _epsilon_squared(statistic, n_used, len(group_values))
         groups = self._group_summaries(
             dataset=dataset,
@@ -202,6 +208,7 @@ class KruskalWallisStep(Step):
                 "Kruskal-Wallis ChartSpec의 중앙 렌더링 훅이 아직 연결되지 않아 "
                 "차트를 생성하지 않는다."
             ),
+            method_details=method_details,
         )
 
     @staticmethod
@@ -338,6 +345,10 @@ def _epsilon_squared(statistic: float, n_used: int, group_count: int) -> float:
     if denominator <= 0:
         raise ValueError("epsilon_squared 계산에는 N이 그룹 수보다 커야 합니다.")
     return float((statistic - group_count + 1) / denominator)
+
+
+def _has_ties(values: np.ndarray) -> bool:
+    return bool(len(np.unique(values)) < len(values))
 
 
 def _as_finite_float(value: Any, label: str) -> float:

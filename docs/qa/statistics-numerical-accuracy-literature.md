@@ -53,8 +53,9 @@ points, ordered by product risk rather than textbook neatness:
    moderated mediation: near-collinear predictors, interaction terms, covariance
    estimates, condition-number thresholds, and clear rejection text.
 2. Partially done: add tie/discreteness/exact-policy fixtures for Likert-shaped rank methods.
-   Mann-Whitney exact-vs-asymptotic and Wilcoxon zero/tie policy are covered.
-   Kruskal-Wallis, Friedman, Spearman, and R/SPSS/JASP anchors remain.
+   Mann-Whitney exact-vs-asymptotic, Wilcoxon zero/tie policy, and
+   Kruskal-Wallis/Friedman/Spearman tied-rank policy disclosure are covered.
+   R/SPSS/JASP anchors and posthoc rank-family policies remain.
 3. Partially done: import NIST StRD certified fixtures before hand-rolled substitutes.
    `Longley` and `Wampler5` are product-path regression parity fixtures.
    `Wampler1` and `Filip` are checked-in fail-closed fixtures for perfect-fit

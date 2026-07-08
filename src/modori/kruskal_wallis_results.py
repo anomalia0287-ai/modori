@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Any
 
 from modori.results import ChartSpec
 
@@ -40,3 +41,4 @@ class KruskalWallisResult:
     apa_template_id: str | None = None
     chart_spec: ChartSpec | None = None
     no_canonical_chart_reason_ko: str | None = None
+    method_details: dict[str, Any] = field(default_factory=dict)

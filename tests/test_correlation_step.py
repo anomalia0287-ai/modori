@@ -174,6 +174,40 @@ def test_auto_matrix_uses_spearman_for_ordinal_pairs_and_preserves_param_order()
     assert all(pair.p_adjusted is None for pair in result.pairs)
 
 
+def test_spearman_records_tied_rank_policy_and_warning() -> None:
+    dataset = dataset_factory(
+        rows=[
+            {"satisfaction": 1, "income": 10.0},
+            {"satisfaction": 1, "income": 10.0},
+            {"satisfaction": 2, "income": 15.0},
+            {"satisfaction": 2, "income": 20.0},
+            {"satisfaction": 3, "income": 20.0},
+            {"satisfaction": 3, "income": 30.0},
+            {"satisfaction": 4, "income": 30.0},
+            {"satisfaction": 4, "income": 35.0},
+        ],
+        measures={"satisfaction": "ordinal", "income": "scale"},
+    )
+
+    result = run_step(dataset, _pair_params("satisfaction", "income", method="spearman"))
+    pair = result.pairs[0]
+    reference = stats.spearmanr(
+        [1, 1, 2, 2, 3, 3, 4, 4],
+        [10.0, 10.0, 15.0, 20.0, 20.0, 30.0, 30.0, 35.0],
+    )
+
+    assert pair.coefficient == pytest.approx(reference.statistic, abs=1e-12)
+    assert pair.p_value == pytest.approx(reference.pvalue, abs=1e-12)
+    assert pair.method_details == {
+        "method": "scipy_spearmanr",
+        "ties_present": True,
+        "x_ties_present": True,
+        "y_ties_present": True,
+        "p_value_method": "scipy_asymptotic",
+    }
+    assert any("동점" in warning for warning in pair.warnings_ko)
+
+
 def test_listwise_policy_uses_same_complete_case_set_for_all_matrix_pairs() -> None:
     dataset = dataset_factory(
         rows=[

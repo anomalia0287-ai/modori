@@ -160,6 +160,42 @@ def test_kruskal_wallis_matches_scipy_and_reports_group_summaries() -> None:
     assert result.groups[0].sd == pytest.approx(1.0)
 
 
+def test_kruskal_wallis_records_tied_rank_policy() -> None:
+    dataset = dataset_factory(
+        rows=[
+            {"arm": "A", "score": 1},
+            {"arm": "A", "score": 1},
+            {"arm": "A", "score": 2},
+            {"arm": "A", "score": 2},
+            {"arm": "B", "score": 2},
+            {"arm": "B", "score": 3},
+            {"arm": "B", "score": 3},
+            {"arm": "B", "score": 3},
+            {"arm": "C", "score": 4},
+            {"arm": "C", "score": 4},
+            {"arm": "C", "score": 5},
+            {"arm": "C", "score": 5},
+        ],
+        measures={"arm": "nominal", "score": "ordinal"},
+    )
+
+    result = run_step(dataset, _params())
+    reference = stats.kruskal(
+        [1, 1, 2, 2],
+        [2, 3, 3, 3],
+        [4, 4, 5, 5],
+    )
+
+    assert result.statistic == pytest.approx(reference.statistic, abs=1e-12)
+    assert result.p_value == pytest.approx(reference.pvalue, abs=1e-12)
+    assert result.method_details == {
+        "method": "chi_square_approximation",
+        "ties_present": True,
+        "tie_correction": "scipy_kruskal",
+        "groups": 3,
+    }
+
+
 def test_ordinal_dependent_and_group_are_supported_with_missing_value_codes() -> None:
     dataset = dataset_factory(
         rows=[

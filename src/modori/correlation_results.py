@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Any
 
 from modori.results import ChartSpec
 
@@ -20,6 +21,7 @@ class CorrelationPairResult:
     ci: tuple[float, float] | None = None
     p_adjusted: float | None = None
     warnings_ko: tuple[str, ...] = ()
+    method_details: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)

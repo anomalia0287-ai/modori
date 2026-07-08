@@ -228,9 +228,24 @@ class CorrelationStep(Step):
         if method == "pearson":
             statistic = stats.pearsonr(x_values, y_values)
             statistic_label = "r"
+            method_details = {"method": "scipy_pearsonr"}
+            warnings_ko: tuple[str, ...] = ()
         else:
             statistic = stats.spearmanr(x_values, y_values)
             statistic_label = "rho"
+            x_ties = _has_ties(x_values.to_numpy(dtype=float))
+            y_ties = _has_ties(y_values.to_numpy(dtype=float))
+            method_details = {
+                "method": "scipy_spearmanr",
+                "ties_present": bool(x_ties or y_ties),
+                "x_ties_present": x_ties,
+                "y_ties_present": y_ties,
+                "p_value_method": "scipy_asymptotic",
+            }
+            warnings_ko = (
+                "Spearman 상관은 동점 rank를 SciPy spearmanr 정책으로 처리했다. "
+                "동점이 많은 자료의 p-value는 소프트웨어별로 달라질 수 있다.",
+            ) if x_ties or y_ties else ()
 
         coefficient = _as_finite_float(statistic.statistic, f"{method} coefficient")
         p_value = _as_finite_float(statistic.pvalue, f"{method} p-value")
@@ -245,6 +260,8 @@ class CorrelationStep(Step):
             p_value=p_value,
             n=n,
             excluded_n=excluded_n,
+            warnings_ko=warnings_ko,
+            method_details=method_details,
         )
 
     @staticmethod
@@ -311,6 +328,10 @@ def _as_finite_float(value: Any, label: str) -> float:
     if not np.isfinite(scalar):
         raise ValueError(f"Correlation produced non-finite {label}; inference is undefined.")
     return scalar
+
+
+def _has_ties(values: np.ndarray) -> bool:
+    return bool(len(np.unique(values)) < len(values))
 
 
 Step.register_type(CorrelationStep.step_type, CorrelationStep)

@@ -116,6 +116,31 @@ def test_friedman_matches_scipy_and_pingouin_reference_with_kendalls_w() -> None
     assert result.no_canonical_chart_reason_ko
 
 
+def test_friedman_records_tied_rank_and_chi_square_approximation_policy() -> None:
+    frame = pd.DataFrame(
+        {
+            "pre": [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 5],
+            "mid": [1, 2, 2, 3, 3, 4, 4, 5, 5, 5, 5],
+            "post": [2, 2, 3, 3, 4, 4, 5, 5, 5, 5, 5],
+        }
+    )
+    dataset = dataset_factory(frame)
+
+    result = run_step(dataset, _params())
+    reference = stats.friedmanchisquare(frame["pre"], frame["mid"], frame["post"])
+
+    assert result.statistic == pytest.approx(reference.statistic, abs=1e-12)
+    assert result.p_value == pytest.approx(reference.pvalue, abs=1e-12)
+    assert result.method_details == {
+        "method": "chi_square_approximation",
+        "ties_present": True,
+        "tie_correction": "scipy_friedmanchisquare",
+        "subjects": 11,
+        "conditions": 3,
+    }
+    assert any("근사" in warning for warning in result.warnings_ko)
+
+
 def test_listwise_missing_subjects_match_complete_case_scipy_reference() -> None:
     frame = pd.DataFrame(
         {

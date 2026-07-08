@@ -152,10 +152,23 @@ class FriedmanStep(Step):
         statistic = _as_finite_float(test.statistic, "Friedman Q")
         p_value = _as_finite_float(test.pvalue, "Friedman p-value")
         degrees_of_freedom = len(measures) - 1
+        method_details = {
+            "method": "chi_square_approximation",
+            "ties_present": _has_row_ties(complete[measures].to_numpy(dtype=float)),
+            "tie_correction": "scipy_friedmanchisquare",
+            "subjects": n_used,
+            "conditions": len(measures),
+        }
         kendalls_w = _as_finite_float(
             statistic / (n_used * degrees_of_freedom),
             "Kendall's W",
         )
+        warnings = ["검증된 Friedman 사후검정은 아직 제공하지 않는다."]
+        if n_used <= 10 or len(measures) <= 6:
+            warnings.append(
+                "Friedman p-value는 카이제곱 근사에 기반하므로 작은 표본 또는 "
+                "조건 수가 적은 설계에서는 해석을 보수적으로 해야 한다."
+            )
         return FriedmanResult(
             analysis_key="friedman",
             title_ko="Friedman 검정",
@@ -180,9 +193,7 @@ class FriedmanStep(Step):
             p_value=p_value,
             kendalls_w=kendalls_w,
             posthoc=None,
-            warnings_ko=(
-                "검증된 Friedman 사후검정은 아직 제공하지 않는다.",
-            ),
+            warnings_ko=tuple(warnings),
             notes_ko=(
                 "Kendall's W는 Q / (N * (k - 1)) 공식을 사용했다.",
                 "중앙 차트 렌더링 훅이 없어 Friedman 차트는 아직 생성하지 않는다.",
@@ -192,6 +203,7 @@ class FriedmanStep(Step):
             no_canonical_chart_reason_ko=(
                 "Friedman ChartSpec의 중앙 렌더링 훅이 아직 연결되지 않아 차트를 생성하지 않는다."
             ),
+            method_details=method_details,
         )
 
     @staticmethod
@@ -247,6 +259,10 @@ def _as_finite_float(value: Any, label: str) -> float:
     if not np.isfinite(scalar):
         raise ValueError(f"Friedman test produced non-finite {label}.")
     return scalar
+
+
+def _has_row_ties(matrix: np.ndarray) -> bool:
+    return any(len(np.unique(row)) < len(row) for row in matrix)
 
 
 Step.register_type(FriedmanStep.step_type, FriedmanStep)
