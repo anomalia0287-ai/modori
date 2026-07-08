@@ -42,10 +42,16 @@ def test_recommendation_service_produces_item_group_candidates_for_bfi_columns()
     state = RecommendationService().recommend(_dataset(frame))
 
     assert state.default_candidate is not None
-    assert state.default_candidate.kind == "reliability"
+    assert state.default_candidate.kind == "descriptives"
     assert state.default_candidate.level == "강한 추천"
-    assert state.default_candidate.item_keys == ["A1", "A2", "A3", "A4", "A5"]
-    assert "같은 접두사" in state.default_candidate.reason_ko
+    assert state.default_candidate.variable_keys
+    reliability_default = next(
+        candidate
+        for candidate in state.candidates
+        if candidate.kind == "reliability" and candidate.item_keys == ["A1", "A2", "A3", "A4", "A5"]
+    )
+    assert reliability_default.level == "강한 추천"
+    assert "같은 접두사" in reliability_default.reason_ko
     assert ["C1", "C2", "C3", "C4", "C5"] in [
         candidate.item_keys
         for candidate in state.candidates
@@ -119,8 +125,11 @@ def test_recommendation_service_excludes_near_constant_group_columns() -> None:
         candidate.kind == "comparison" and candidate.group_key == "gender"
         for candidate in state.candidates
     )
-    assert state.default_candidate is None
-    assert state.message_ko == "안전하게 추천할 분석을 찾지 못했습니다. 직접 변수를 선택해 주세요."
+    assert state.default_candidate is not None
+    assert state.default_candidate.kind == "descriptives"
+    assert state.default_candidate.variable_keys == ["score"]
+    assert state.default_candidate.group_key == ""
+    assert state.message_ko == ""
 
 
 def test_recommendation_service_excludes_exactly_95_percent_near_constant_columns() -> None:
@@ -137,8 +146,11 @@ def test_recommendation_service_excludes_exactly_95_percent_near_constant_column
         candidate.kind == "comparison" and candidate.group_key == "gender"
         for candidate in state.candidates
     )
-    assert state.default_candidate is None
-    assert state.message_ko == "안전하게 추천할 분석을 찾지 못했습니다. 직접 변수를 선택해 주세요."
+    assert state.default_candidate is not None
+    assert state.default_candidate.kind == "descriptives"
+    assert state.default_candidate.variable_keys == ["score"]
+    assert state.default_candidate.group_key == ""
+    assert state.message_ko == ""
 
 
 def test_recommendation_service_returns_no_default_without_safe_candidate() -> None:
@@ -168,10 +180,11 @@ def test_recommendation_service_explains_caution_only_state() -> None:
     state = RecommendationService().recommend(_dataset(frame))
 
     assert state.candidates
-    assert {candidate.level for candidate in state.candidates} == {"주의 필요"}
-    assert state.default_candidate is None
-    assert state.selected_candidate is None
-    assert state.message_ko == "주의가 필요한 후보만 찾았습니다. 직접 확인한 뒤 선택해 주세요."
+    assert {"강한 추천", "주의 필요"} <= {candidate.level for candidate in state.candidates}
+    assert state.default_candidate is not None
+    assert state.default_candidate.kind == "descriptives"
+    assert state.selected_candidate == state.default_candidate
+    assert state.message_ko == ""
 
 
 def test_regression_caution_candidates_exclude_perfect_linear_pairs() -> None:
@@ -235,3 +248,58 @@ def test_caution_candidates_are_not_default_when_stronger_candidates_exist() -> 
     assert state.default_candidate is not None
     assert state.default_candidate.level != "주의 필요"
     assert any(candidate.level == "주의 필요" for candidate in state.candidates)
+
+
+def test_recommendation_service_exposes_factor_pca_candidate_without_stealing_default() -> None:
+    frame = pd.DataFrame(
+        {
+            "q1": [1, 2, 3, 4, 5, 6],
+            "q2": [2, 3, 4, 5, 6, 7],
+            "q3": [1, 3, 2, 4, 3, 5],
+            "q4": [5, 4, 3, 2, 1, 2],
+        }
+    )
+
+    state = RecommendationService().recommend(_dataset(frame))
+
+    assert state.default_candidate is not None
+    assert state.default_candidate.kind == "descriptives"
+    factor = next(candidate for candidate in state.candidates if candidate.kind == "factor_pca")
+    assert factor.level == "가능한 후보"
+    assert factor.variable_keys == ["q1", "q2", "q3", "q4"]
+
+
+def test_recommendation_service_exposes_repeated_measures_candidates() -> None:
+    frame = pd.DataFrame(
+        {
+            "time1": [1, 2, 3, 4, 5, 6],
+            "time2": [2, 3, 4, 5, 6, 7],
+            "time3": [3, 4, 5, 6, 7, 8],
+            "score": [4, 5, 6, 7, 8, 9],
+        }
+    )
+
+    state = RecommendationService().recommend(_dataset(frame))
+
+    assert state.default_candidate is not None
+    assert state.default_candidate.kind == "descriptives"
+    rm = next(candidate for candidate in state.candidates if candidate.kind == "repeated_measures_anova")
+    friedman = next(candidate for candidate in state.candidates if candidate.kind == "friedman")
+    assert rm.variable_keys == ["time1", "time2", "time3"]
+    assert friedman.variable_keys == ["time1", "time2", "time3"]
+
+
+def test_recommendation_service_exposes_mediation_as_caution_only() -> None:
+    frame = pd.DataFrame(
+        {
+            "x": [1, 2, 3, 4, 5, 6, 7, 8],
+            "m": [2, 3, 4, 4, 5, 6, 7, 8],
+            "y": [3, 4, 5, 6, 7, 8, 9, 10],
+        }
+    )
+
+    state = RecommendationService().recommend(_dataset(frame))
+
+    mediation = next(candidate for candidate in state.candidates if candidate.kind == "mediation")
+    assert mediation.level == "주의 필요"
+    assert state.default_candidate is not mediation

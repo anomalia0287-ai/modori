@@ -14,6 +14,12 @@ def test_controller_exposes_result_table_and_chart_after_run(tmp_path) -> None:
     controller = UiController()
 
     assert controller.openDataFilePath(str(data_path)) is True
+    reliability_index = next(
+        index
+        for index, candidate in enumerate(controller._recommendation_state.candidates)
+        if candidate.kind == "reliability"
+    )
+    assert controller.selectRecommendationAt(reliability_index) is True
     assert controller.runPreparedRecommendationNow() is True
     assert controller.waitForLastRun(timeout=10) is True
 
@@ -109,3 +115,63 @@ def test_explain_popover_and_report_dialog_are_local_qml_components() -> None:
     assert "Popup" in explain.read_text(encoding="utf-8")
     assert "Dialog" in report.read_text(encoding="utf-8")
     assert "uiController.exportReportWithSelections" in report.read_text(encoding="utf-8")
+
+
+def test_guide_rail_exposes_all_v1_manual_analysis_paths() -> None:
+    guide = qml_text("components/GuideRail.qml")
+
+    expected_calls = [
+        "uiController.configureDescriptivesFromText",
+        "uiController.configureFrequencyCrosstabFromText",
+        "uiController.configureCorrelationFromText",
+        "uiController.configureAnovaOneWayFromText",
+        "uiController.configureKruskalWallisFromText",
+        "uiController.configureAncovaFromText",
+        "uiController.configureFactorPcaFromText",
+    ]
+
+    for call in expected_calls:
+        assert call in guide
+
+
+def test_pipeline_rail_exposes_common_v1_analysis_shortcuts() -> None:
+    pipeline = qml_text("components/PipelineRail.qml")
+
+    expected_calls = [
+        "uiController.configureDescriptivesFromText",
+        "uiController.configureFrequencyCrosstabFromText",
+        "uiController.configureCorrelationFromText",
+        "uiController.configureAnovaOneWayFromText",
+        "uiController.configureKruskalWallisFromText",
+        "uiController.configureAncovaFromText",
+        "uiController.configureFactorPcaFromText",
+    ]
+
+    for call in expected_calls:
+        assert call in pipeline
+
+
+def test_report_dialog_exposes_expanded_analysis_family_filters() -> None:
+    report = qml_text("dialogs/ReportExportDialog.qml")
+
+    expected_ids = [
+        "includeDescriptives",
+        "includeReliability",
+        "includeComparison",
+        "includeAssociation",
+        "includeGroupModels",
+        "includeDimensionReduction",
+        "includeRegression",
+        "includeFigures",
+    ]
+    expected_strings = [
+        'appBootstrap.text("dialog.report.include_descriptives")',
+        'appBootstrap.text("dialog.report.include_association")',
+        'appBootstrap.text("dialog.report.include_group_models")',
+        'appBootstrap.text("dialog.report.include_dimension_reduction")',
+    ]
+
+    for expected_id in expected_ids:
+        assert f"id: {expected_id}" in report
+    for expected in expected_strings:
+        assert expected in report

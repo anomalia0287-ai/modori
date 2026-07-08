@@ -61,6 +61,37 @@ def regression_step(policy: dict | None = None, predictors: list[str] | None = N
     )
 
 
+def test_regression_schema_migrates_legacy_params_and_policy_alias() -> None:
+    migrated = MultipleRegressionStep.migrate_params(
+        {"dv": "mpg", "predictors": ["wt"], "policy": {"preset": "classic"}}
+    )
+
+    assert MultipleRegressionStep.validate_params(migrated) == {
+        "schema_version": MultipleRegressionStep.CURRENT_SCHEMA_VERSION,
+        "dv": "mpg",
+        "predictors": ["wt"],
+        "regression_policy": {"preset": "classic"},
+    }
+
+
+def test_regression_schema_rejects_newer_and_unknown_current_params() -> None:
+    with pytest.raises(ValueError, match="newer schema_version"):
+        MultipleRegressionStep.migrate_params(
+            {"schema_version": 999, "dv": "mpg", "predictors": ["wt"]}
+        )
+
+    with pytest.raises(ValueError, match="unknown regression_ols params"):
+        MultipleRegressionStep.validate_params(
+            {
+                "schema_version": MultipleRegressionStep.CURRENT_SCHEMA_VERSION,
+                "dv": "mpg",
+                "predictors": ["wt"],
+                "regression_policy": {"preset": "classic"},
+                "extra": "bad",
+            }
+        )
+
+
 def test_regression_import_writes_reads_only_csv_header(tmp_path, monkeypatch) -> None:
     path = tmp_path / "regression.csv"
     path.write_text("y,x\n1,2\n3,4\n", encoding="utf-8")

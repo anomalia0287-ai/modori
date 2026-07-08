@@ -376,3 +376,11 @@ class Step(ABC):
             params=dict(params),
             input_step_ids=list(input_step_ids),
         )
+
+
+def registered_step_types() -> tuple[str, ...]:
+    return tuple(Step._registry.keys())
+
+
+def step_class_for_type(step_type: str) -> type[Step]:
+    return Step._registry[step_type]

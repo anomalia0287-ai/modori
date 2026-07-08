@@ -153,6 +153,14 @@ def test_pipeline_operations_returns_display_results_by_known_analysis_kind(monk
     pipeline = FakePipeline()
     pipeline.analysis_objects = {
         "reliability:scale": object(),
+        "anova_oneway": object(),
+        "kruskal_wallis": object(),
+        "ancova": object(),
+        "factor_pca": object(),
+        "repeated_measures_anova": object(),
+        "friedman": object(),
+        "mediation": object(),
+        "moderated_mediation": object(),
         "unknown": object(),
     }
     calls: list[tuple[str, str]] = []
@@ -175,10 +183,20 @@ def test_pipeline_operations_returns_display_results_by_known_analysis_kind(monk
 
     displays = PipelineOperations(pipeline).display_results()
 
-    assert len(displays) == 1
+    assert len(displays) == 9
     assert isinstance(displays[0], DisplayResult)
     assert displays[0].kind == "reliability"
-    assert calls == [("reliability:scale", "reliability")]
+    assert calls == [
+        ("reliability:scale", "reliability"),
+        ("anova_oneway", "anova_oneway"),
+        ("kruskal_wallis", "kruskal_wallis"),
+        ("ancova", "ancova"),
+        ("factor_pca", "factor_pca"),
+        ("repeated_measures_anova", "repeated_measures_anova"),
+        ("friedman", "friedman"),
+        ("mediation", "mediation"),
+        ("moderated_mediation", "moderated_mediation"),
+    ]
 
 
 def test_pipeline_operations_adds_rendered_chart_paths_to_display_results() -> None:
@@ -346,6 +364,67 @@ def test_pipeline_operations_export_report_applies_dialog_options_to_report_step
             "include_figures": False,
         },
     )
+
+
+def test_pipeline_operations_export_report_filters_all_analysis_families(tmp_path) -> None:
+    output_path = tmp_path / "report.docx"
+    output_path.write_bytes(b"docx")
+
+    class Report:
+        docx_path = output_path
+
+    include_keys = [
+        "descriptives_table1",
+        "reliability:scale",
+        "comparison:score:group",
+        "frequency_crosstab",
+        "correlation",
+        "anova_oneway",
+        "kruskal_wallis",
+        "ancova",
+        "factor_pca",
+        "repeated_measures_anova",
+        "friedman",
+        "mediation",
+        "moderated_mediation",
+        "regression",
+    ]
+    pipeline = FakePipeline()
+    pipeline.steps.append(
+        FakeStep(
+            "report",
+            "report.apa",
+            params={
+                "include": include_keys,
+                "output_dir": str(tmp_path),
+                "filename": "report.docx",
+                "language": "ko",
+                "include_figures": True,
+            },
+        )
+    )
+    pipeline.analysis_objects = {"report": Report(), **{key: object() for key in include_keys}}
+
+    PipelineOperations(pipeline).export_report(
+        ReportExportOptions(
+            include_descriptives=False,
+            include_reliability=True,
+            include_comparison=False,
+            include_association=False,
+            include_group_models=True,
+            include_dimension_reduction=False,
+            include_regression=False,
+        )
+    )
+
+    assert pipeline.edits[-1][1]["include"] == [
+        "reliability:scale",
+        "anova_oneway",
+        "kruskal_wallis",
+        "ancova",
+        "repeated_measures_anova",
+        "friedman",
+    ]
 
 
 def test_pipeline_operations_report_export_options_can_be_toggled_back_on(tmp_path) -> None:

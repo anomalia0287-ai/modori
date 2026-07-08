@@ -1,0 +1,20 @@
+slug: conditional-indirect-effect
+kind: statistic
+title_ko: "조건부 간접효과"
+title_en: "Conditional indirect effect"
+summary_ko: "조절변수의 특정 수준에서 계산한 간접효과입니다."
+summary_en: "An indirect effect evaluated at a specific moderator value."
+interpretation_ko: "값은 지정한 조절변수 수준에서의 간접효과 크기와 방향을 뜻합니다. 신뢰구간이 0을 포함하는지와 조건 간 패턴을 함께 봐야 합니다."
+interpretation_en: "The value gives the size and direction of the indirect effect at the selected moderator level. Interpret it with whether the interval includes 0 and with the pattern across levels."
+when_to_use_ko: "조절된 매개분석에서 평균, 평균-1SD, 평균+1SD 같은 조절변수 수준별 결과를 보고할 때 사용합니다."
+when_to_use_en: "Use it to report moderated mediation results at moderator values such as mean, mean minus 1 SD, and mean plus 1 SD."
+how_to_report_ko: "조절변수 수준, 점추정값, bootstrap CI를 함께 보고합니다."
+how_to_report_en: "Report moderator value, point estimate, and bootstrap CI."
+pitfalls_ko: "조건부 값은 연구 맥락상 의미 있는 범위 안에 있어야 합니다."
+pitfalls_en: "Conditional values should lie in a meaningful range for the study."
+assumptions: []
+alternatives: []
+related:
+  - moderated-mediation
+references: []
+verification_status: needs_review

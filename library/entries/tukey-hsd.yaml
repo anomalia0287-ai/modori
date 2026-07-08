@@ -1,0 +1,26 @@
+slug: tukey-hsd
+kind: method
+title_ko: "Tukey HSD"
+title_en: "Tukey HSD"
+summary_ko: "일원분산분석 뒤 등분산 조건에서 여러 집단 쌍의 평균 차이를 비교하는 사후검정입니다."
+summary_en: "A post-hoc test for comparing multiple pairs of group means after one-way ANOVA under equal-variance conditions."
+interpretation_ko: null
+interpretation_en: null
+when_to_use_ko: "ANOVA 뒤 집단 쌍별 평균 차이를 확인하고, 등분산 가정을 크게 벗어나지 않을 때 사용합니다."
+when_to_use_en: "Use it after ANOVA to inspect pairwise mean differences when equal-variance assumptions are acceptable."
+how_to_report_ko: "비교한 집단 쌍, 평균차, 보정된 p값, 신뢰구간, 기각 여부를 보고합니다."
+how_to_report_en: "Report the pair, mean difference, adjusted p-value, confidence interval, and rejection decision."
+pitfalls_ko: "등분산 가정이 약하면 Games-Howell 같은 대안을 고려해야 합니다."
+pitfalls_en: "When equal variances are doubtful, consider alternatives such as Games-Howell."
+assumptions:
+  - homogeneity-of-variance
+alternatives:
+  - games-howell
+related:
+  - anova-oneway
+  - p-value
+references:
+  - citation: "Field, A. (2018). Discovering Statistics Using IBM SPSS Statistics (5th ed.). SAGE."
+    locator: null
+    verified: true
+verification_status: needs_review

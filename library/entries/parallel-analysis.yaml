@@ -1,0 +1,23 @@
+slug: parallel-analysis
+kind: diagnostic
+title_ko: "평행분석"
+title_en: "Parallel analysis"
+summary_ko: "무작위 데이터의 고유값과 관측 고유값을 비교해 유지할 성분 또는 요인 수를 제안하는 방법입니다."
+summary_en: "A method that compares observed eigenvalues with random-data eigenvalues to suggest how many components or factors to retain."
+interpretation_ko: "관측 고유값이 무작위 기준을 넘는 차원 수를 보조적으로 제안하며, 최종 결정은 이론과 해석 가능성을 함께 고려합니다."
+interpretation_en: "It suggests the number of dimensions whose observed eigenvalues exceed random-data criteria, while final retention decisions should also consider theory and interpretability."
+when_to_use_ko: "요인 수나 성분 수를 결정할 때 보조 기준으로 사용합니다."
+when_to_use_en: "Use it as an aid when choosing the number of factors or components."
+how_to_report_ko: "seed, 반복 수, 백분위 기준, 제안된 수를 함께 보고합니다."
+how_to_report_en: "Report the seed, iteration count, percentile rule, and suggested count."
+pitfalls_ko: "평행분석 제안은 자동 결정이 아니며 이론과 문항 내용을 함께 봐야 합니다."
+pitfalls_en: "The suggestion is not an automatic decision; theory and item content still matter."
+assumptions: []
+alternatives: []
+related:
+  - principal-component-analysis
+references:
+  - citation: "Horn, J. L. (1965). A rationale and test for the number of factors in factor analysis. Psychometrika, 30, 179-185."
+    locator: null
+    verified: true
+verification_status: needs_review

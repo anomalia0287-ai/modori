@@ -11,7 +11,22 @@ import pandas as pd
 from modori.core import Measure
 
 
-RecommendationKind = Literal["reliability", "comparison", "regression"]
+RecommendationKind = Literal[
+    "descriptives",
+    "reliability",
+    "comparison",
+    "regression",
+    "frequency_crosstab",
+    "correlation",
+    "anova_oneway",
+    "kruskal_wallis",
+    "ancova",
+    "factor_pca",
+    "repeated_measures_anova",
+    "friedman",
+    "mediation",
+    "moderated_mediation",
+]
 RecommendationLevel = Literal["강한 추천", "가능한 후보", "주의 필요"]
 
 _EMPTY_MESSAGE = "안전하게 추천할 분석을 찾지 못했습니다. 직접 변수를 선택해 주세요."
@@ -25,6 +40,7 @@ class RecommendationCandidate:
     title_ko: str
     level: RecommendationLevel
     reason_ko: str
+    variable_keys: list[str] = field(default_factory=list)
     item_keys: list[str] = field(default_factory=list)
     outcome_key: str = ""
     group_key: str = ""
@@ -40,26 +56,88 @@ class RecommendationState:
 
 
 class RecommendationService:
-    def recommend(self, dataset: object | None) -> RecommendationState:
+    def __init__(self, providers: object | None = None) -> None:
+        self._providers = (
+            self._default_providers() if providers is None else tuple(providers)
+        )
+
+    @staticmethod
+    def _default_providers() -> tuple[object, ...]:
+        from modori.compare_groups_recommendation import (
+            eligibility_provider as compare_groups_provider,
+        )
+        from modori.descriptives_table1_recommendation import (
+            eligibility_provider as descriptives_provider,
+        )
+        from modori.frequency_crosstab_recommendation import (
+            eligibility_provider as frequency_crosstab_provider,
+        )
+        from modori.regression_ols_recommendation import (
+            eligibility_provider as regression_ols_provider,
+        )
+        from modori.reliability_recommendation import (
+            eligibility_provider as reliability_provider,
+        )
+        from modori.correlation_recommendation import (
+            eligibility_provider as correlation_provider,
+        )
+        from modori.anova_oneway_recommendation import (
+            eligibility_provider as anova_oneway_provider,
+        )
+        from modori.kruskal_wallis_recommendation import (
+            eligibility_provider as kruskal_wallis_provider,
+        )
+        from modori.ancova_recommendation import (
+            eligibility_provider as ancova_provider,
+        )
+        from modori.factor_pca_recommendation import (
+            eligibility_provider as factor_pca_provider,
+        )
+        from modori.friedman_recommendation import (
+            eligibility_provider as friedman_provider,
+        )
+        from modori.mediation_recommendation import (
+            eligibility_provider as mediation_provider,
+        )
+        from modori.moderated_mediation_recommendation import (
+            eligibility_provider as moderated_mediation_provider,
+        )
+        from modori.repeated_measures_anova_recommendation import (
+            eligibility_provider as repeated_measures_provider,
+        )
+
+        return (
+            descriptives_provider(),
+            reliability_provider(),
+            compare_groups_provider(),
+            regression_ols_provider(),
+            frequency_crosstab_provider(),
+            correlation_provider(),
+            anova_oneway_provider(),
+            kruskal_wallis_provider(),
+            ancova_provider(),
+            factor_pca_provider(),
+            repeated_measures_provider(),
+            friedman_provider(),
+            mediation_provider(),
+            moderated_mediation_provider(),
+        )
+
+    def recommend(
+        self,
+        dataset: object | None,
+        *,
+        active_analysis: bool = False,
+    ) -> RecommendationState:
         frame = self._frame_for_recommendation(dataset)
         if not isinstance(frame, pd.DataFrame) or frame.empty:
             return self._empty_state()
-        variables = self._variables_for_recommendation(dataset)
 
-        usable = [
-            str(column)
-            for column in frame.columns
-            if self._is_usable_column(frame[column], str(column))
-        ]
-        numeric = [
-            column for column in usable if pd.api.types.is_numeric_dtype(frame[column])
-        ]
-
-        item_groups = self._item_groups(frame, numeric)
         candidates: list[RecommendationCandidate] = []
-        candidates.extend(self._reliability_candidates(item_groups))
-        candidates.extend(self._comparison_candidates(frame, numeric, usable))
-        candidates.extend(self._caution_candidates(frame, numeric, variables))
+        for provider in self._providers:
+            candidates.extend(
+                provider.candidates(dataset, active_analysis=active_analysis)
+            )
         candidates = self._rank(candidates)
 
         default = self._default_candidate(candidates)
@@ -281,7 +359,22 @@ class RecommendationService:
         candidates: list[RecommendationCandidate],
     ) -> list[RecommendationCandidate]:
         level_rank = {"강한 추천": 0, "가능한 후보": 1, "주의 필요": 2}
-        kind_rank = {"reliability": 0, "comparison": 1, "regression": 2}
+        kind_rank = {
+            "descriptives": 0,
+            "reliability": 1,
+            "comparison": 2,
+            "regression": 3,
+            "frequency_crosstab": 4,
+            "correlation": 5,
+            "anova_oneway": 6,
+            "kruskal_wallis": 7,
+            "ancova": 8,
+            "factor_pca": 9,
+            "repeated_measures_anova": 10,
+            "friedman": 11,
+            "mediation": 12,
+            "moderated_mediation": 13,
+        }
         return sorted(
             candidates,
             key=lambda candidate: (

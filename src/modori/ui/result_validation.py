@@ -8,7 +8,23 @@ from modori.ui.contracts import DisplayColumn, DisplayNote, DisplayResult, Displ
 
 _DISPLAY_ERROR_MESSAGE_KO = "결과를 표시하지 못했습니다."
 _DISPLAY_ERROR_CODE = "result_display_error"
-_DISPLAY_KINDS = {"reliability", "comparison", "regression", "report"}
+_DISPLAY_KINDS = {
+    "descriptives",
+    "reliability",
+    "comparison",
+    "regression",
+    "frequency_crosstab",
+    "correlation",
+    "anova_oneway",
+    "kruskal_wallis",
+    "ancova",
+    "factor_pca",
+    "repeated_measures_anova",
+    "friedman",
+    "mediation",
+    "moderated_mediation",
+    "report",
+}
 
 
 @dataclass(frozen=True)

@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import os
 import warnings
+from collections.abc import Mapping
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -44,13 +46,123 @@ STATISTICS_ENGINE_VOCABULARY = frozenset(
 )
 
 
+def _require_schema_version(
+    params: Mapping[str, object],
+    *,
+    current: int,
+    module_key: str,
+) -> int | None:
+    version = params.get("schema_version")
+    if version is None:
+        return None
+    if not isinstance(version, int) or isinstance(version, bool):
+        raise ValueError(f"{module_key} schema_version must be an integer")
+    if version > current:
+        raise ValueError(f"{module_key} params use a newer schema_version")
+    if version < current:
+        raise ValueError(f"unsupported {module_key} schema_version: {version}")
+    return version
+
+
+def _reject_unknown_params(
+    params: Mapping[str, object],
+    *,
+    allowed: set[str],
+    module_key: str,
+) -> None:
+    unknown = set(params) - allowed
+    if unknown:
+        names = ", ".join(sorted(unknown))
+        raise ValueError(f"unknown {module_key} params: {names}")
+
+
+def _string_param(params: Mapping[str, object], key: str, module_key: str) -> str:
+    value = params.get(key)
+    if not isinstance(value, str) or not value:
+        raise ValueError(f"{module_key} param {key} must be a non-empty string")
+    return value
+
+
+def _string_list_param(
+    params: Mapping[str, object],
+    key: str,
+    module_key: str,
+) -> list[str]:
+    value = params.get(key)
+    if (
+        not isinstance(value, list)
+        or not value
+        or not all(isinstance(item, str) and item for item in value)
+    ):
+        raise ValueError(f"{module_key} param {key} must be a non-empty list of strings")
+    return list(value)
+
+
+def _policy_param(
+    params: Mapping[str, object],
+    key: str,
+    default: dict[str, object],
+    module_key: str,
+) -> dict[str, object]:
+    value = params.get(key, default)
+    if not isinstance(value, Mapping):
+        raise ValueError(f"{module_key} param {key} must be an object")
+    return dict(value)
+
+
 @dataclass
 class ReliabilityStep(Step):
     step_type = "stats.reliability"
     produces_analysis = True
+    CURRENT_SCHEMA_VERSION = 1
+    CONTRACT_PARAM_EXAMPLES = {
+        "current": {
+            "schema_version": 1,
+            "items": ["q1", "q2", "q3"],
+            "scale_name": "scale",
+        },
+        "legacy": {"items": ["q1", "q2", "q3"], "scale_name": "scale"},
+        "newer": {"schema_version": 999, "items": ["q1", "q2", "q3"]},
+        "unknown_current": {
+            "schema_version": 1,
+            "items": ["q1", "q2", "q3"],
+            "extra": "bad",
+        },
+    }
+
+    @classmethod
+    def migrate_params(cls, params: dict[str, object]) -> dict[str, object]:
+        version = _require_schema_version(
+            params,
+            current=cls.CURRENT_SCHEMA_VERSION,
+            module_key="reliability",
+        )
+        if version is None:
+            return {"schema_version": cls.CURRENT_SCHEMA_VERSION, **params}
+        return params
+
+    @classmethod
+    def validate_params(cls, params: dict[str, object]) -> dict[str, object]:
+        _reject_unknown_params(
+            params,
+            allowed={"schema_version", "items", "scale_name"},
+            module_key="reliability",
+        )
+        if params.get("schema_version") != cls.CURRENT_SCHEMA_VERSION:
+            raise ValueError("reliability params were not migrated to the current schema")
+        items = _string_list_param(params, "items", "reliability")
+        scale_name = params.get("scale_name", "scale")
+        if not isinstance(scale_name, str) or not scale_name:
+            raise ValueError("reliability param scale_name must be a non-empty string")
+        return {
+            "schema_version": cls.CURRENT_SCHEMA_VERSION,
+            "items": items,
+            "scale_name": scale_name,
+        }
 
     def compute(self, ctx: PipelineContext) -> StepResult:
-        items = list(self.params["items"])
+        params = self.validate_params(self.migrate_params(dict(self.params)))
+        items = list(params["items"])
         if len(set(items)) != len(items):
             raise ValueError("Reliability items must be unique")
         if len(items) < 3:
@@ -58,7 +170,7 @@ class ReliabilityStep(Step):
                 "Reliability requires at least three items because "
                 "alpha-if-deleted is undefined for two-item scales."
             )
-        scale_name = str(self.params.get("scale_name", "scale"))
+        scale_name = str(params["scale_name"])
         frame = ctx.dataset.frame_for_compute(items).dropna(axis=0, how="any")
         if len(frame) < 2:
             raise ValueError("Reliability requires at least two complete cases.")
@@ -165,14 +277,17 @@ class ReliabilityStep(Step):
         return "low (caution)"
 
     def reads(self) -> set[str]:
-        return set(self.params["items"])
+        params = self.validate_params(self.migrate_params(dict(self.params)))
+        return set(params["items"])
 
     def writes(self) -> set[str]:
-        scale_name = str(self.params.get("scale_name", "scale"))
+        params = self.validate_params(self.migrate_params(dict(self.params)))
+        scale_name = str(params["scale_name"])
         return {f"reliability:{scale_name}"}
 
     def provenance(self) -> str:
-        return f"computed reliability for {self.params.get('scale_name', 'scale')}"
+        params = self.validate_params(self.migrate_params(dict(self.params)))
+        return f"computed reliability for {params['scale_name']}"
 
 
 Step.register_type(ReliabilityStep.step_type, ReliabilityStep)
@@ -182,10 +297,65 @@ Step.register_type(ReliabilityStep.step_type, ReliabilityStep)
 class CompareGroupsStep(Step):
     step_type = "stats.compare_groups"
     produces_analysis = True
+    CURRENT_SCHEMA_VERSION = 1
+    CONTRACT_PARAM_EXAMPLES = {
+        "current": {
+            "schema_version": 1,
+            "dv": "score",
+            "group": "group",
+            "routing_policy": {"preset": "modern"},
+        },
+        "legacy": {
+            "dv": "score",
+            "group": "group",
+            "routing_policy": {"preset": "modern"},
+        },
+        "newer": {"schema_version": 999, "dv": "score", "group": "group"},
+        "unknown_current": {
+            "schema_version": 1,
+            "dv": "score",
+            "group": "group",
+            "routing_policy": {"preset": "modern"},
+            "extra": "bad",
+        },
+    }
+
+    @classmethod
+    def migrate_params(cls, params: dict[str, object]) -> dict[str, object]:
+        version = _require_schema_version(
+            params,
+            current=cls.CURRENT_SCHEMA_VERSION,
+            module_key="compare_groups",
+        )
+        if version is None:
+            return {"schema_version": cls.CURRENT_SCHEMA_VERSION, **params}
+        return params
+
+    @classmethod
+    def validate_params(cls, params: dict[str, object]) -> dict[str, object]:
+        _reject_unknown_params(
+            params,
+            allowed={"schema_version", "dv", "group", "routing_policy"},
+            module_key="compare_groups",
+        )
+        if params.get("schema_version") != cls.CURRENT_SCHEMA_VERSION:
+            raise ValueError("compare_groups params were not migrated to the current schema")
+        return {
+            "schema_version": cls.CURRENT_SCHEMA_VERSION,
+            "dv": _string_param(params, "dv", "compare_groups"),
+            "group": _string_param(params, "group", "compare_groups"),
+            "routing_policy": _policy_param(
+                params,
+                "routing_policy",
+                {"preset": "modern"},
+                "compare_groups",
+            ),
+        }
 
     def compute(self, ctx: PipelineContext) -> StepResult:
-        dv = str(self.params["dv"])
-        group_var = str(self.params["group"])
+        params = self.validate_params(self.migrate_params(dict(self.params)))
+        dv = str(params["dv"])
+        group_var = str(params["group"])
         if dv == group_var:
             raise ValueError(
                 "CompareGroupsStep dependent variable and group variable must differ."
@@ -214,7 +384,12 @@ class CompareGroupsStep(Step):
         dv_label = ctx.dataset.variables[dv].label or dv
         group_label = ctx.dataset.variables[group_var].label or group_var
         assumptions = self._assumptions(first, second)
-        route, route_reason = self._route(first, second, assumptions)
+        route, route_reason = self._route(
+            first,
+            second,
+            assumptions,
+            policy=dict(params["routing_policy"]),
+        )
 
         if route == "mann_whitney":
             analysis = self._mann_whitney_result(
@@ -264,8 +439,13 @@ class CompareGroupsStep(Step):
         first: pd.Series,
         second: pd.Series,
         assumptions: dict[str, float],
+        policy: dict[str, Any] | None = None,
     ) -> tuple[str, str]:
-        policy = dict(self.params.get("routing_policy", {"preset": "modern"}))
+        policy = dict(
+            self.validate_params(self.migrate_params(dict(self.params)))["routing_policy"]
+            if policy is None
+            else policy
+        )
         preset = str(policy.get("preset", "modern"))
         if preset not in {"modern", "always_welch", "classic", "custom"}:
             raise ValueError(f"Unsupported routing_policy preset: {preset}")
@@ -501,13 +681,16 @@ class CompareGroupsStep(Step):
         return abs(magnitude) if mean_difference > 0 else -abs(magnitude)
 
     def reads(self) -> set[str]:
-        return {str(self.params["dv"]), str(self.params["group"])}
+        params = self.validate_params(self.migrate_params(dict(self.params)))
+        return {str(params["dv"]), str(params["group"])}
 
     def writes(self) -> set[str]:
-        return {f"comparison:{self.params['dv']}:{self.params['group']}"}
+        params = self.validate_params(self.migrate_params(dict(self.params)))
+        return {f"comparison:{params['dv']}:{params['group']}"}
 
     def provenance(self) -> str:
-        return f"compared {self.params['dv']} by {self.params['group']}"
+        params = self.validate_params(self.migrate_params(dict(self.params)))
+        return f"compared {params['dv']} by {params['group']}"
 
 
 Step.register_type(CompareGroupsStep.step_type, CompareGroupsStep)
@@ -517,10 +700,63 @@ Step.register_type(CompareGroupsStep.step_type, CompareGroupsStep)
 class PairedComparisonStep(Step):
     step_type = "stats.paired_comparison"
     produces_analysis = True
+    CURRENT_SCHEMA_VERSION = 1
+    CONTRACT_PARAM_EXAMPLES = {
+        "current": {
+            "schema_version": 1,
+            "before": "pre",
+            "after": "post",
+            "routing_policy": {"preset": "modern"},
+        },
+        "legacy": {"before": "pre", "after": "post"},
+        "newer": {"schema_version": 999, "before": "pre", "after": "post"},
+        "unknown_current": {
+            "schema_version": 1,
+            "before": "pre",
+            "after": "post",
+            "routing_policy": {"preset": "modern"},
+            "extra": "bad",
+        },
+    }
+
+    @classmethod
+    def migrate_params(cls, params: dict[str, object]) -> dict[str, object]:
+        version = _require_schema_version(
+            params,
+            current=cls.CURRENT_SCHEMA_VERSION,
+            module_key="paired_comparison",
+        )
+        if version is None:
+            return {"schema_version": cls.CURRENT_SCHEMA_VERSION, **params}
+        return params
+
+    @classmethod
+    def validate_params(cls, params: dict[str, object]) -> dict[str, object]:
+        _reject_unknown_params(
+            params,
+            allowed={"schema_version", "before", "after", "routing_policy"},
+            module_key="paired_comparison",
+        )
+        if params.get("schema_version") != cls.CURRENT_SCHEMA_VERSION:
+            raise ValueError(
+                "paired_comparison params were not migrated to the current schema"
+            )
+        return {
+            "schema_version": cls.CURRENT_SCHEMA_VERSION,
+            "before": _string_param(params, "before", "paired_comparison"),
+            "after": _string_param(params, "after", "paired_comparison"),
+            "routing_policy": _policy_param(
+                params,
+                "routing_policy",
+                {"preset": "modern"},
+                "paired_comparison",
+            ),
+        }
 
     def compute(self, ctx: PipelineContext) -> StepResult:
-        before = str(self.params["before"])
-        after = str(self.params["after"])
+        params = self.validate_params(self.migrate_params(dict(self.params)))
+        before = str(params["before"])
+        after = str(params["after"])
         if before == after:
             raise ValueError(
                 "PairedComparisonStep before and after variables must differ."
@@ -556,7 +792,11 @@ class PairedComparisonStep(Step):
         assumptions = {
             "shapiro_diff_p": float(stats.shapiro(differences).pvalue),
         }
-        route, route_reason = self._route(n_obs, assumptions)
+        route, route_reason = self._route(
+            n_obs,
+            assumptions,
+            policy=dict(params["routing_policy"]),
+        )
         before_label = ctx.dataset.variables[before].label or before
         after_label = ctx.dataset.variables[after].label or after
         if before_label == after_label:
@@ -623,8 +863,13 @@ class PairedComparisonStep(Step):
         self,
         n_obs: int,
         assumptions: dict[str, float],
+        policy: dict[str, Any] | None = None,
     ) -> tuple[str, str]:
-        policy = dict(self.params.get("routing_policy", {"preset": "modern"}))
+        policy = dict(
+            self.validate_params(self.migrate_params(dict(self.params)))["routing_policy"]
+            if policy is None
+            else policy
+        )
         preset = str(policy.get("preset", "modern"))
         if preset not in {"modern", "always_wilcoxon", "classic"}:
             raise ValueError(f"Unsupported routing_policy preset: {preset}")
@@ -798,13 +1043,16 @@ class PairedComparisonStep(Step):
         )
 
     def reads(self) -> set[str]:
-        return {str(self.params["before"]), str(self.params["after"])}
+        params = self.validate_params(self.migrate_params(dict(self.params)))
+        return {str(params["before"]), str(params["after"])}
 
     def writes(self) -> set[str]:
-        return {f"comparison:{self.params['before']}:{self.params['after']}:paired"}
+        params = self.validate_params(self.migrate_params(dict(self.params)))
+        return {f"comparison:{params['before']}:{params['after']}:paired"}
 
     def provenance(self) -> str:
-        return f"compared paired {self.params['before']} and {self.params['after']}"
+        params = self.validate_params(self.migrate_params(dict(self.params)))
+        return f"compared paired {params['before']} and {params['after']}"
 
 
 Step.register_type(PairedComparisonStep.step_type, PairedComparisonStep)

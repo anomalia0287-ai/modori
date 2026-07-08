@@ -1,0 +1,21 @@
+slug: mediation-analysis
+kind: method
+title_ko: "매개분석"
+title_en: "Mediation analysis"
+summary_ko: "X와 Y의 관련성이 매개변수 M을 통과하는 간접효과로 설명되는지 추정하는 회귀 기반 분석입니다."
+summary_en: "A regression-based analysis estimating whether the association between X and Y is carried through mediator M."
+interpretation_ko: null
+interpretation_en: null
+when_to_use_ko: "하나의 예측변수, 하나의 매개변수, 하나의 결과변수가 모두 척도형일 때 사용합니다."
+when_to_use_en: "Use it when X, M, and Y are observed scale variables."
+how_to_report_ko: "a, b, c', c 경로, 간접효과, bootstrap CI, 사용 및 제외 사례 수를 보고합니다."
+how_to_report_en: "Report a, b, c-prime, c paths, indirect effect, bootstrap CI, cases used, and cases excluded."
+pitfalls_ko: "횡단면 자료에서는 인과 매개로 단정하지 않습니다."
+pitfalls_en: "Do not claim causal mediation from cross-sectional data alone."
+assumptions: []
+alternatives: []
+related:
+  - indirect-effect
+  - bootstrap-ci
+references: []
+verification_status: needs_review

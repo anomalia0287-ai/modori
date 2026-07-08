@@ -1,0 +1,24 @@
+slug: partial-eta-squared
+kind: effect_size
+title_ko: "partial eta squared"
+title_en: "Partial eta squared"
+summary_ko: "모형의 다른 항을 고려한 뒤 특정 효과가 설명하는 변동 비율을 요약하는 효과크기입니다."
+summary_en: "An effect size summarizing the proportion of variance associated with a term after accounting for other model terms."
+interpretation_ko: "값이 클수록 해당 모형 항과 관련된 변동 비율이 큽니다."
+interpretation_en: "Larger values indicate more variance associated with that model term."
+when_to_use_ko: null
+when_to_use_en: null
+how_to_report_ko: "ANCOVA의 집단 효과나 공변량 효과와 함께 partial eta squared 값을 보고합니다."
+how_to_report_en: "Report partial eta squared with ANCOVA group or covariate effects."
+pitfalls_ko: "서로 다른 설계나 모형 간에 단순 비교하기 어렵고, 인과적 크기를 뜻하지 않습니다."
+pitfalls_en: "It is not always directly comparable across designs or models and does not imply causal magnitude."
+assumptions: []
+alternatives:
+  - eta-squared
+related:
+  - ancova
+references:
+  - citation: "Field, A. (2018). Discovering Statistics Using IBM SPSS Statistics (5th ed.). SAGE."
+    locator: null
+    verified: true
+verification_status: needs_review

@@ -1,0 +1,29 @@
+slug: factor-pca
+kind: method
+title_ko: "요인/PCA 분석"
+title_en: "Factor/PCA analysis"
+summary_ko: "여러 척도형 또는 숫자형 서열 문항의 상관 구조를 PCA 또는 탐색적 요인분석으로 요약하는 분석입니다."
+summary_en: "A method for summarizing the correlation structure of several scale or numeric ordinal items using PCA or exploratory factor analysis."
+interpretation_ko: "높은 적재량은 문항이 해당 차원과 강하게 관련됨을 시사하지만, 차원 이름과 타당도 판단은 이론과 문항 내용에 근거해야 합니다."
+interpretation_en: "High loadings suggest that items are strongly related to a dimension, but naming dimensions and judging validity require theory and item content."
+when_to_use_ko: "세 개 이상의 관련 문항이 하나 이상의 잠재 차원으로 묶일 가능성을 탐색할 때 사용합니다."
+when_to_use_en: "Use it when three or more related items may reflect one or more underlying dimensions."
+how_to_report_ko: "사용한 방법, 변수 수, 완전 사례 수, KMO, Bartlett 검정, 평행분석 설정과 제안 차원 수, 적재량을 함께 보고합니다."
+how_to_report_en: "Report the method, number of variables, complete cases, KMO, Bartlett test, parallel-analysis settings and suggested dimensions, and loadings."
+pitfalls_ko: "적재량만으로 구성개념의 실재나 타당도를 확정할 수 없습니다. 문항 내용과 이론적 해석이 필요합니다."
+pitfalls_en: "Loadings alone do not establish real constructs or validity. Item content and theoretical interpretation are required."
+assumptions: []
+alternatives:
+  - cronbach-alpha
+  - mcdonald-omega
+related:
+  - principal-component-analysis
+  - exploratory-factor-analysis
+  - kmo
+  - bartlett-sphericity
+  - parallel-analysis
+references:
+  - citation: "Tabachnick, B. G., & Fidell, L. S. (2019). Using Multivariate Statistics (7th ed.). Pearson."
+    locator: null
+    verified: true
+verification_status: needs_review

@@ -21,7 +21,7 @@ def test_package_engine_smoke_passes_when_payload_is_ok(monkeypatch, tmp_path) -
     def fake_run(command, check, timeout):
         output_path = command[3]
         with open(output_path, "w", encoding="utf-8") as handle:
-            json.dump({"ok": True}, handle)
+            json.dump({"ok": True, "v1_statistics_smoke": {"ok": True}}, handle)
         return subprocess.CompletedProcess(command, 0)
 
     monkeypatch.setattr(package_engine_smoke.subprocess, "run", fake_run)

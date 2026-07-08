@@ -1,0 +1,23 @@
+slug: epsilon-squared
+kind: effect_size
+title_ko: "epsilon squared"
+title_en: "Epsilon squared"
+summary_ko: "Kruskal-Wallis 검정에서 집단 구분과 순위 변동의 관련 정도를 요약하는 효과크기입니다."
+summary_en: "An effect size for the Kruskal-Wallis test summarizing association between groups and rank variation."
+interpretation_ko: "값이 클수록 집단별 순위 분포 차이가 더 큽니다. 표본 수와 집단 수를 함께 봐야 합니다."
+interpretation_en: "Larger values indicate greater rank-distribution differences across groups. Interpret with sample and group counts."
+when_to_use_ko: null
+when_to_use_en: null
+how_to_report_ko: "H 통계량, 자유도, p값과 함께 epsilon squared 값을 보고합니다."
+how_to_report_en: "Report epsilon squared with the H statistic, degrees of freedom, and p-value."
+pitfalls_ko: "효과크기는 omnibus 결과를 보완하지만 어떤 집단 쌍이 다른지는 알려주지 않습니다."
+pitfalls_en: "It complements the omnibus result but does not identify which pairs differ."
+assumptions: []
+alternatives: []
+related:
+  - kruskal-wallis-test
+references:
+  - citation: "Field, A. (2018). Discovering Statistics Using IBM SPSS Statistics (5th ed.). SAGE."
+    locator: null
+    verified: true
+verification_status: needs_review

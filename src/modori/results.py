@@ -81,6 +81,25 @@ class CoefficientRow:
     p_value: float
     ci: tuple[float, float]
     vif: float | None
+    term_type: str = "term"
+    source_variable: str | None = None
+    level: str | None = None
+    reference_level: str | None = None
+    components: tuple[str, ...] = field(default_factory=tuple)
+
+
+@dataclass(frozen=True)
+class SimpleSlopeRow:
+    focal_predictor: str
+    moderator: str
+    moderator_value: float | str
+    moderator_label: str
+    slope: float
+    se: float
+    t: float
+    p_value: float
+    ci: tuple[float, float]
+    interaction_term: str
 
 
 @dataclass(frozen=True)
@@ -104,3 +123,4 @@ class RegressionResult:
     chart_spec: ChartSpec
     educational_interpretation: list[str] = field(default_factory=list)
     diagnostic_chart_specs: list[ChartSpec] = field(default_factory=list)
+    simple_slopes: list[SimpleSlopeRow] = field(default_factory=list)

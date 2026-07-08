@@ -1,0 +1,26 @@
+slug: exploratory-factor-analysis
+kind: method
+title_ko: "탐색적 요인분석"
+title_en: "Exploratory factor analysis"
+summary_ko: "관측 문항들의 공분산을 더 적은 수의 잠재 요인으로 설명하려는 탐색적 분석입니다."
+summary_en: "An exploratory analysis that represents item covariance using a smaller number of latent factors."
+interpretation_ko: "적재량, 공통성, 요인 수는 잠재 구조 해석을 돕는 탐색적 근거이며, 확증적 타당도 증거로 보고하지 않습니다."
+interpretation_en: "Loadings, communalities, and factor count provide exploratory evidence for structure and should not be reported as confirmatory validity evidence."
+when_to_use_ko: "척도 문항의 잠재 차원 구조를 탐색할 때 사용합니다."
+when_to_use_en: "Use it to explore the latent dimensional structure of scale items."
+how_to_report_ko: "요인 수, 추출 방법, 회전 방법, 적재량, 공통성, 고유성을 보고합니다."
+how_to_report_en: "Report factor count, extraction method, rotation, loadings, communalities, and uniquenesses."
+pitfalls_ko: "탐색 결과는 확증적 타당도 증거가 아니며, 별도 표본이나 CFA로 확인할 수 있습니다."
+pitfalls_en: "Exploratory results are not confirmatory validity evidence and may need follow-up in another sample or CFA."
+assumptions: []
+alternatives:
+  - principal-component-analysis
+related:
+  - factor-loading
+  - communality
+  - uniqueness
+references:
+  - citation: "Fabrigar, L. R., & Wegener, D. T. (2012). Exploratory Factor Analysis. Oxford University Press."
+    locator: null
+    verified: true
+verification_status: needs_review

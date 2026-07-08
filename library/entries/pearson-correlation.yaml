@@ -1,0 +1,25 @@
+slug: pearson-correlation
+kind: statistic
+title_ko: "Pearson 상관계수"
+title_en: "Pearson correlation"
+summary_ko: "두 척도형 변수의 선형 관련성 정도를 -1에서 1 사이 값으로 나타내는 상관계수입니다."
+summary_en: "A coefficient from -1 to 1 that describes the linear association between two scale variables."
+interpretation_ko: "절댓값이 클수록 선형 관련성이 강합니다. 양수는 함께 증가하는 경향, 음수는 한쪽이 커질 때 다른 쪽이 작아지는 경향을 뜻합니다."
+interpretation_en: "Larger absolute values indicate stronger linear association. Positive values rise together; negative values move in opposite directions."
+when_to_use_ko: null
+when_to_use_en: null
+how_to_report_ko: "r, p값, N을 보고하고, 상관이 인과나 예측을 뜻하지 않는다는 점을 유지합니다."
+how_to_report_en: "Report r, p-value, and N, while avoiding causal or predictive language."
+pitfalls_ko: "비선형 관계, 이상치, 서열형 자료에서는 Pearson r이 부적절할 수 있습니다."
+pitfalls_en: "Pearson r can be inappropriate for nonlinear relationships, outliers, or ordinal data."
+assumptions: []
+alternatives:
+  - spearman-correlation
+related:
+  - correlation-analysis
+  - p-value
+references:
+  - citation: "Pearson, K. (1895). Notes on regression and inheritance in the case of two parents. Proceedings of the Royal Society of London, 58, 240-242."
+    locator: "58, 240-242"
+    verified: true
+verification_status: needs_review

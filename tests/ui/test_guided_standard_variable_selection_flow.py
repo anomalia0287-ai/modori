@@ -133,7 +133,10 @@ def test_guided_and_standard_apply_buttons_require_complete_fields() -> None:
     assert "property bool canCommitSelection" in guide
     assert 'property bool canEditSelection: uiController.status !== "empty" && uiController.status !== "running"' in guide
     assert "enabled: root.canCommitSelection" in guide
-    assert "root.canEditSelection && root.selectedIntent ===" in guide
+    assert "function canCommitManualSelection()" in guide
+    assert "if (!root.canEditSelection)" in guide
+    assert 'root.selectedIntent === "reliability"' in guide
+    assert "root.isVariableListIntent(root.selectedIntent)" in guide
     assert "root.hasText(reliabilityItemsField.text)" in guide
     assert "root.hasText(outcomeKeyField.text) && root.hasText(groupKeyField.text)" in guide
     assert "root.hasText(outcomeKeyField.text) && root.hasText(predictorKeysField.text)" in guide

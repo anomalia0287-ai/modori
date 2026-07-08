@@ -7,7 +7,23 @@ from modori.steps.reporting import prose_for, table_for
 from modori.ui.contracts import DisplayColumn, DisplayNote, DisplayResult, DisplayTable
 
 
-ResultKind = Literal["reliability", "comparison", "regression", "report"]
+ResultKind = Literal[
+    "descriptives",
+    "reliability",
+    "comparison",
+    "regression",
+    "frequency_crosstab",
+    "correlation",
+    "anova_oneway",
+    "kruskal_wallis",
+    "ancova",
+    "factor_pca",
+    "repeated_measures_anova",
+    "friedman",
+    "mediation",
+    "moderated_mediation",
+    "report",
+]
 
 
 def display_result_from_engine_result(
@@ -58,9 +74,20 @@ def _chart_paths_and_notes(paths: list[str]) -> tuple[list[str], list[DisplayNot
 
 def _title_for(kind: ResultKind, language: str) -> str:
     titles = {
+        "descriptives": {"ko": "기술통계", "en": "Descriptives"},
         "reliability": {"ko": "신뢰도", "en": "Reliability"},
         "comparison": {"ko": "집단비교", "en": "Group comparison"},
         "regression": {"ko": "회귀분석", "en": "Regression"},
+        "frequency_crosstab": {"ko": "빈도/교차분석", "en": "Frequencies/crosstabs"},
+        "correlation": {"ko": "상관분석", "en": "Correlation"},
+        "anova_oneway": {"ko": "일원분산분석", "en": "One-way ANOVA"},
+        "kruskal_wallis": {"ko": "Kruskal-Wallis 검정", "en": "Kruskal-Wallis test"},
+        "ancova": {"ko": "공분산분석", "en": "ANCOVA"},
+        "factor_pca": {"ko": "요인/PCA", "en": "Factor/PCA"},
+        "repeated_measures_anova": {"ko": "반복측정 분산분석", "en": "Repeated-measures ANOVA"},
+        "friedman": {"ko": "Friedman 검정", "en": "Friedman test"},
+        "mediation": {"ko": "매개분석", "en": "Mediation"},
+        "moderated_mediation": {"ko": "조절된 매개분석", "en": "Moderated mediation"},
         "report": {"ko": "보고서", "en": "Report"},
     }
     return titles[kind][language]

@@ -1,0 +1,25 @@
+slug: frequency-crosstab
+kind: method
+title_ko: "빈도분석과 교차분석"
+title_en: "Frequencies and crosstabs"
+summary_ko: "명목·서열 변수의 범주별 빈도와 비율을 요약하고, 두 범주형 변수의 교차표를 만드는 분석입니다."
+summary_en: "A descriptive analysis that summarizes category counts and percentages, and builds crosstabs for two categorical variables."
+interpretation_ko: null
+interpretation_en: null
+when_to_use_ko: "범주형 변수의 분포를 확인하거나 두 범주형 변수가 함께 어떻게 분포하는지 살펴볼 때 사용합니다."
+when_to_use_en: "Use it to inspect categorical distributions or how two categorical variables are distributed together."
+how_to_report_ko: "각 범주의 빈도, 비율, 결측 수를 제시합니다. 교차표는 행 비율, 열 비율, 전체 비율을 구분해 보고합니다."
+how_to_report_en: "Report category counts, percentages, and missing counts. For crosstabs, distinguish row, column, and total percentages."
+pitfalls_ko: "교차표는 관계의 방향이나 인과를 보여주지 않습니다. 기대빈도가 낮으면 Pearson 카이제곱 검정 해석에 주의가 필요합니다."
+pitfalls_en: "A crosstab does not show direction or causality. When expected counts are low, interpret Pearson's chi-square test cautiously."
+assumptions: []
+alternatives: []
+related:
+  - chi-square-test
+  - fisher-exact-test
+  - cramers-v
+references:
+  - citation: "Agresti, A. (2018). Statistical Methods for the Social Sciences (5th ed.). Pearson."
+    locator: null
+    verified: true
+verification_status: needs_review

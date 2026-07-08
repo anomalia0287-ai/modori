@@ -90,6 +90,146 @@ def test_validator_accepts_paired_comparison_step() -> None:
     assert result.ok is True
 
 
+@pytest.mark.parametrize(
+    ("step_type", "params", "variable_keys"),
+    [
+        (
+            "stats.anova_oneway",
+            {"schema_version": 1, "dv": "score", "group": "group"},
+            {"score", "group"},
+        ),
+        (
+            "stats.kruskal_wallis",
+            {"schema_version": 1, "dependent": "rating", "group": "group"},
+            {"rating", "group"},
+        ),
+        (
+            "stats.ancova",
+            {
+                "schema_version": 1,
+                "dv": "outcome",
+                "group": "group",
+                "covariates": ["pretest"],
+            },
+            {"outcome", "group", "pretest"},
+        ),
+        (
+            "stats.factor_pca",
+            {
+                "schema_version": 1,
+                "variables": ["q1", "q2", "q3"],
+                "method": "pca",
+            },
+            {"q1", "q2", "q3"},
+        ),
+        (
+            "stats.repeated_measures_anova",
+            {
+                "schema_version": 1,
+                "measures": ["pre", "mid", "post"],
+            },
+            {"pre", "mid", "post"},
+        ),
+        (
+            "stats.friedman",
+            {
+                "schema_version": 1,
+                "measures": ["pre", "mid", "post"],
+            },
+            {"pre", "mid", "post"},
+        ),
+        (
+            "stats.mediation",
+            {
+                "schema_version": 1,
+                "x": "x",
+                "mediator": "m",
+                "y": "y",
+                "covariates": ["c1"],
+            },
+            {"x", "m", "y", "c1"},
+        ),
+        (
+            "stats.moderated_mediation",
+            {
+                "schema_version": 1,
+                "model": 7,
+                "x": "x",
+                "mediator": "m",
+                "moderator": "w",
+                "y": "y",
+                "covariates": ["c1"],
+            },
+            {"x", "m", "w", "y", "c1"},
+        ),
+    ],
+)
+def test_validator_accepts_new_statistical_modules(
+    step_type: str,
+    params: dict[str, object],
+    variable_keys: set[str],
+) -> None:
+    result = validate(
+        [{"step_type": step_type, "params": params}],
+        variable_keys,
+    )
+
+    assert result.ok is True
+
+
+def test_validator_rejects_ancova_duplicate_variables() -> None:
+    result = validate(
+        [
+            {
+                "step_type": "stats.ancova",
+                "params": {
+                    "schema_version": 1,
+                    "dv": "outcome",
+                    "group": "group",
+                    "covariates": ["outcome"],
+                },
+            }
+        ],
+        {"outcome", "group"},
+    )
+
+    assert_invalid(result, "중복")
+
+
+def test_validator_rejects_factor_pca_too_few_variables() -> None:
+    result = validate(
+        [
+            {
+                "step_type": "stats.factor_pca",
+                "params": {"schema_version": 1, "variables": ["q1", "q2"]},
+            }
+        ],
+        {"q1", "q2"},
+    )
+
+    assert_invalid(result, "세 개 이상")
+
+
+def test_validator_rejects_mediation_duplicate_roles() -> None:
+    result = validate(
+        [
+            {
+                "step_type": "stats.mediation",
+                "params": {
+                    "schema_version": 1,
+                    "x": "x",
+                    "mediator": "x",
+                    "y": "y",
+                    "covariates": [],
+                },
+            }
+        ],
+        {"x", "y"},
+    )
+
+    assert_invalid(result, "중복")
+
+
 def test_validator_rejects_paired_comparison_same_variable() -> None:
     result = validate(
         [

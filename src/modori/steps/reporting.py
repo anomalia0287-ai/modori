@@ -22,6 +22,50 @@ from docx import Document
 from scipy import stats
 
 from modori.core import PipelineContext, Step, StepResult
+from modori.descriptives_table1_reporting import (
+    prose_for_descriptives,
+    table_for_descriptives,
+)
+from modori.descriptives_table1_results import DescriptivesTableResult
+from modori.frequency_crosstab_reporting import (
+    prose_for_frequency_crosstab,
+    table_for_frequency_crosstab,
+)
+from modori.frequency_crosstab_results import FrequencyCrosstabResult
+from modori.correlation_reporting import prose_for_correlation, table_for_correlation
+from modori.correlation_results import CorrelationResult
+from modori.anova_oneway_reporting import (
+    prose_for_anova_oneway,
+    table_for_anova_oneway,
+)
+from modori.anova_oneway_results import OneWayAnovaResult
+from modori.friedman_reporting import prose_for_friedman, table_for_friedman
+from modori.friedman_results import FriedmanResult
+from modori.kruskal_wallis_reporting import (
+    prose_for_kruskal_wallis,
+    table_for_kruskal_wallis,
+)
+from modori.kruskal_wallis_results import KruskalWallisResult
+from modori.mediation_reporting import prose_for_mediation, table_for_mediation
+from modori.mediation_results import MediationResult
+from modori.moderated_mediation_reporting import (
+    prose_for_moderated_mediation,
+    table_for_moderated_mediation,
+)
+from modori.moderated_mediation_results import ModeratedMediationResult
+from modori.repeated_measures_anova_reporting import (
+    prose_for_repeated_measures_anova,
+    table_for_repeated_measures_anova,
+)
+from modori.repeated_measures_anova_results import RepeatedMeasuresAnovaResult
+from modori.ancova_reporting import prose_for_ancova, table_for_ancova
+from modori.ancova_results import AncovaResult
+from modori.factor_pca_reporting import (
+    component_table_for_factor_pca,
+    loading_table_for_factor_pca,
+    prose_for_factor_pca,
+)
+from modori.factor_pca_results import FactorPcaResult
 from modori.results import (
     ChartSpec,
     CoefficientRow,
@@ -427,6 +471,28 @@ def _regression_prose(result: RegressionResult, language: str = "ko") -> str:
 
 
 def prose_for(result: object, language: str = "ko") -> str:
+    if isinstance(result, DescriptivesTableResult):
+        return prose_for_descriptives(result, language=language)
+    if isinstance(result, FrequencyCrosstabResult):
+        return prose_for_frequency_crosstab(result, language=language)
+    if isinstance(result, CorrelationResult):
+        return prose_for_correlation(result, language=language)
+    if isinstance(result, OneWayAnovaResult):
+        return prose_for_anova_oneway(result, language=language)
+    if isinstance(result, FriedmanResult):
+        return prose_for_friedman(result, language=language)
+    if isinstance(result, KruskalWallisResult):
+        return prose_for_kruskal_wallis(result, language=language)
+    if isinstance(result, MediationResult):
+        return prose_for_mediation(result, language=language)
+    if isinstance(result, ModeratedMediationResult):
+        return prose_for_moderated_mediation(result, language=language)
+    if isinstance(result, RepeatedMeasuresAnovaResult):
+        return prose_for_repeated_measures_anova(result, language=language)
+    if isinstance(result, AncovaResult):
+        return prose_for_ancova(result, language=language)
+    if isinstance(result, FactorPcaResult):
+        return prose_for_factor_pca(result, language=language)
     if isinstance(result, RegressionResult):
         return _regression_prose(result, language=language)
     if isinstance(result, ReliabilityResult):
@@ -437,6 +503,42 @@ def prose_for(result: object, language: str = "ko") -> str:
 
 
 def table_for(result: object) -> list[dict[str, str]]:
+    if isinstance(result, DescriptivesTableResult):
+        return table_for_descriptives(result)
+
+    if isinstance(result, FrequencyCrosstabResult):
+        return table_for_frequency_crosstab(result)
+
+    if isinstance(result, CorrelationResult):
+        return table_for_correlation(result)
+
+    if isinstance(result, OneWayAnovaResult):
+        return table_for_anova_oneway(result)
+
+    if isinstance(result, FriedmanResult):
+        return table_for_friedman(result)
+
+    if isinstance(result, KruskalWallisResult):
+        return table_for_kruskal_wallis(result)
+
+    if isinstance(result, MediationResult):
+        return table_for_mediation(result)
+
+    if isinstance(result, ModeratedMediationResult):
+        return table_for_moderated_mediation(result)
+
+    if isinstance(result, RepeatedMeasuresAnovaResult):
+        return table_for_repeated_measures_anova(result)
+
+    if isinstance(result, AncovaResult):
+        return table_for_ancova(result)
+
+    if isinstance(result, FactorPcaResult):
+        return [
+            *component_table_for_factor_pca(result),
+            *loading_table_for_factor_pca(result),
+        ]
+
     if isinstance(result, RegressionResult):
         return [
             {

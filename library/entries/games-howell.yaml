@@ -1,0 +1,25 @@
+slug: games-howell
+kind: method
+title_ko: "Games-Howell 사후검정"
+title_en: "Games-Howell post-hoc test"
+summary_ko: "등분산을 가정하기 어려울 때 집단 쌍별 평균 차이를 비교하는 사후검정입니다."
+summary_en: "A post-hoc test for pairwise mean differences when equal variances are not assumed."
+interpretation_ko: null
+interpretation_en: null
+when_to_use_ko: "ANOVA 뒤 Levene 검정 등에서 등분산성이 약하다고 판단될 때 사후비교 후보로 사용합니다."
+when_to_use_en: "Use it as a post-hoc option after ANOVA when homogeneity of variance is doubtful."
+how_to_report_ko: "집단 쌍, 평균차, p값을 보고하고, 사용한 구현과 조정 방식을 명시합니다."
+how_to_report_en: "Report the pair, mean difference, p-value, and the implementation and adjustment used."
+pitfalls_ko: "소프트웨어별 구현 차이가 있을 수 있으므로 참조 구현과 테스트로 검증해야 합니다."
+pitfalls_en: "Implementations may differ across software, so verify against a reference implementation."
+assumptions: []
+alternatives:
+  - tukey-hsd
+related:
+  - anova-oneway
+  - homogeneity-of-variance
+references:
+  - citation: "Field, A. (2018). Discovering Statistics Using IBM SPSS Statistics (5th ed.). SAGE."
+    locator: null
+    verified: true
+verification_status: needs_review

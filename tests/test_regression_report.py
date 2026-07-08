@@ -90,6 +90,57 @@ def test_regression_table_contains_intercept_and_predictors() -> None:
     assert rows[1]["vif"] == "1.40"
 
 
+def test_factor_pca_dispatches_to_reporting_helpers() -> None:
+    from modori.factor_pca_results import (
+        FactorPcaComponent,
+        FactorPcaLoading,
+        FactorPcaResult,
+    )
+
+    result = FactorPcaResult(
+        analysis_key="factor_pca",
+        title_ko="주성분분석",
+        method="pca",
+        variables=("q1", "q2", "q3"),
+        variable_labels={"q1": "문항1", "q2": "문항2", "q3": "문항3"},
+        n_total=20,
+        n_used=20,
+        n_excluded=0,
+        missing_policy="listwise",
+        rotation="none",
+        factor_count=None,
+        extraction_method=None,
+        components=(
+            FactorPcaComponent(
+                name="PC1",
+                eigenvalue=2.0,
+                explained_variance_ratio=0.667,
+                cumulative_variance_ratio=0.667,
+            ),
+        ),
+        loadings=(
+            FactorPcaLoading(
+                variable="q1",
+                variable_label="문항1",
+                dimension="PC1",
+                loading=0.8,
+            ),
+        ),
+        communalities={},
+        uniquenesses={},
+        kmo=None,
+        bartlett=None,
+        parallel_analysis=None,
+        warnings_ko=(),
+        notes_ko=(),
+    )
+
+    assert "주성분분석" in prose_for(result, "ko")
+    rows = table_for(result)
+    assert rows[0]["dimension"] == "PC1"
+    assert any(row.get("loading") == "0.800" for row in rows)
+
+
 def _png_pixels_per_meter(path: Path) -> tuple[int, int, int]:
     data = path.read_bytes()
     assert data.startswith(b"\x89PNG\r\n\x1a\n")

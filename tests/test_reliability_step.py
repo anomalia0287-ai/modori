@@ -40,6 +40,30 @@ def reliability_dataset() -> Dataset:
     )
 
 
+def test_reliability_schema_migrates_legacy_params_and_rejects_unknown_current_params() -> None:
+    migrated = ReliabilityStep.migrate_params(
+        {"items": ["q1", "q2", "q3"], "scale_name": "job_sat"}
+    )
+
+    assert ReliabilityStep.validate_params(migrated) == {
+        "schema_version": ReliabilityStep.CURRENT_SCHEMA_VERSION,
+        "items": ["q1", "q2", "q3"],
+        "scale_name": "job_sat",
+    }
+
+    with pytest.raises(ValueError, match="newer schema_version"):
+        ReliabilityStep.migrate_params({"schema_version": 999, "items": ["q1", "q2", "q3"]})
+
+    with pytest.raises(ValueError, match="unknown reliability params"):
+        ReliabilityStep.validate_params(
+            {
+                "schema_version": ReliabilityStep.CURRENT_SCHEMA_VERSION,
+                "items": ["q1", "q2", "q3"],
+                "extra": "bad",
+            }
+        )
+
+
 def _omega_total(loadings, uniquenesses) -> float:
     common_variance = float(loadings.sum() ** 2)
     error_variance = float(uniquenesses.sum())

@@ -1,0 +1,23 @@
+slug: bartlett-sphericity
+kind: diagnostic
+title_ko: "Bartlett 구형성 검정"
+title_en: "Bartlett test of sphericity"
+summary_ko: "상관행렬이 단위행렬과 다른지 검정해 요인분석 가능성을 점검하는 진단입니다."
+summary_en: "A diagnostic test of whether the correlation matrix differs from an identity matrix."
+interpretation_ko: "작은 p값은 상관행렬이 단위행렬과 다르다는 근거이며, 변수들 사이에 요약할 상관이 있음을 시사합니다."
+interpretation_en: "A small p-value is evidence that the correlation matrix differs from an identity matrix, suggesting that variables share correlations to summarize."
+when_to_use_ko: "요인분석 또는 PCA 전 변수들 사이에 충분한 상관이 있는지 확인할 때 사용합니다."
+when_to_use_en: "Use it to check whether variables have enough correlation for factor analysis or PCA."
+how_to_report_ko: "카이제곱 통계량과 p값을 보고합니다."
+how_to_report_en: "Report the chi-square statistic and p-value."
+pitfalls_ko: "표본 수가 크면 작은 상관도 유의해질 수 있으므로 KMO와 적재량을 함께 봅니다."
+pitfalls_en: "With large samples, small correlations may become significant, so review KMO and loadings as well."
+assumptions: []
+alternatives: []
+related:
+  - kmo
+references:
+  - citation: "Bartlett, M. S. (1954). A note on the multiplying factors for various chi square approximations. Journal of the Royal Statistical Society Series B, 16, 296-298."
+    locator: null
+    verified: true
+verification_status: needs_review

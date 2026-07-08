@@ -6,6 +6,7 @@ from typing import Any, Callable, Mapping
 from PySide6.QtCore import Property, QObject, Signal, Slot
 
 from modori.knowledge import Library
+from modori.ui.analysis_selection_controller import AnalysisSelectionControllerMixin
 from modori.ui.contracts import CommandResult, ExplainResult, ImportOptions, ReportExportOptions
 from modori.ui.controller_services import UiControllerServices
 from modori.ui.data_transform_controller import DataTransformControllerMixin
@@ -39,6 +40,7 @@ def export_report_from_pipeline(
 class UiController(
     QObject,
     RecommendationControllerMixin,
+    AnalysisSelectionControllerMixin,
     DataTransformControllerMixin,
     ImportLayoutControllerMixin,
 ):
@@ -349,45 +351,6 @@ class UiController(
             changed_step_ids=result.changed_step_ids,
         )
 
-    def configureReliabilitySelection(self, item_keys_text: str) -> CommandResult:
-        result = self._services.analysis_editor.reliability(
-            item_keys_text,
-            pipeline_version=self._pipeline_state.pipeline_version,
-        )
-        return self._apply_step_edit_result(result)
-
-    @Slot(str, result=bool)
-    def configureReliabilityFromText(self, item_keys_text: str) -> bool:
-        return self.configureReliabilitySelection(item_keys_text).ok
-
-    def configureComparisonSelection(self, outcome_key: str, group_key: str) -> CommandResult:
-        result = self._services.analysis_editor.comparison(
-            outcome_key,
-            group_key,
-            pipeline_version=self._pipeline_state.pipeline_version,
-        )
-        return self._apply_step_edit_result(result)
-
-    @Slot(str, str, result=bool)
-    def configureComparisonFromText(self, outcome_key: str, group_key: str) -> bool:
-        return self.configureComparisonSelection(outcome_key, group_key).ok
-
-    def configureRegressionSelection(
-        self,
-        outcome_key: str,
-        predictor_keys_text: str,
-    ) -> CommandResult:
-        result = self._services.analysis_editor.regression(
-            outcome_key,
-            predictor_keys_text,
-            pipeline_version=self._pipeline_state.pipeline_version,
-        )
-        return self._apply_step_edit_result(result)
-
-    @Slot(str, str, result=bool)
-    def configureRegressionFromText(self, outcome_key: str, predictor_keys_text: str) -> bool:
-        return self.configureRegressionSelection(outcome_key, predictor_keys_text).ok
-
     def rerun(self) -> CommandResult:
         if self.pipeline is None:
             return self._command_error("다시 실행할 분석이 없습니다.", "no_pipeline")
@@ -449,15 +412,23 @@ class UiController(
             True,
             True,
             True,
+            True,
+            True,
+            True,
+            True,
             include_figures,
         )
 
-    @Slot(str, bool, bool, bool, bool, result=bool)
+    @Slot(str, bool, bool, bool, bool, bool, bool, bool, bool, result=bool)
     def exportReportWithSelections(
         self,
         language: str,
+        include_descriptives: bool,
         include_reliability: bool,
         include_comparison: bool,
+        include_association: bool,
+        include_group_models: bool,
+        include_dimension_reduction: bool,
         include_regression: bool,
         include_figures: bool,
     ) -> bool:
@@ -465,8 +436,12 @@ class UiController(
         return self.exportReport(
             ReportExportOptions(
                 language=selected_language,
+                include_descriptives=bool(include_descriptives),
                 include_reliability=bool(include_reliability),
                 include_comparison=bool(include_comparison),
+                include_association=bool(include_association),
+                include_group_models=bool(include_group_models),
+                include_dimension_reduction=bool(include_dimension_reduction),
                 include_regression=bool(include_regression),
                 include_figures=bool(include_figures),
             )

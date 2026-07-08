@@ -1,0 +1,20 @@
+slug: kendalls-w
+kind: statistic
+title_ko: "Kendall's W"
+title_en: "Kendall's W"
+summary_ko: "Friedman 검정에서 반복 수준 간 순위 일치 또는 차이의 크기를 요약하는 효과크기입니다."
+summary_en: "An effect-size summary for rank differences in the Friedman test."
+interpretation_ko: "0에 가까우면 반복 조건 간 순위 차이가 작고, 1에 가까우면 조건 간 순위 차이가 더 뚜렷합니다."
+interpretation_en: "Values near 0 indicate small rank differences across repeated conditions; values near 1 indicate stronger differences."
+when_to_use_ko: "Friedman 검정 결과의 크기를 p값과 함께 설명할 때 사용합니다."
+when_to_use_en: "Use it to describe the magnitude of a Friedman result alongside the p-value."
+how_to_report_ko: "Friedman 통계량과 p값 옆에 Kendall's W 값을 함께 보고합니다."
+how_to_report_en: "Report Kendall's W alongside the Friedman statistic and p-value."
+pitfalls_ko: "W만으로 조건 간 어느 쌍이 다른지는 알 수 없습니다."
+pitfalls_en: "W does not identify which pairs of conditions differ."
+assumptions: []
+alternatives: []
+related:
+  - friedman-test
+references: []
+verification_status: needs_review

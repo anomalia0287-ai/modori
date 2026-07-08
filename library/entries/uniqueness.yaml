@@ -1,0 +1,23 @@
+slug: uniqueness
+kind: statistic
+title_ko: "고유성"
+title_en: "Uniqueness"
+summary_ko: "요인들이 설명하지 못한 변수 고유 분산의 비율입니다."
+summary_en: "The proportion of a variable's variance not explained by the retained factors."
+interpretation_ko: "값이 클수록 보존한 요인들이 설명하지 못한 변수 고유 분산이 더 큽니다."
+interpretation_en: "Larger values mean that more variable-specific variance remains unexplained by the retained factors."
+when_to_use_ko: "EFA에서 각 문항이 요인 구조에 남기는 고유 분산을 확인할 때 사용합니다."
+when_to_use_en: "Use it in EFA to review item-specific variance left unexplained by the factor structure."
+how_to_report_ko: "변수별 고유성을 적재량 또는 공통성 표와 함께 보고할 수 있습니다."
+how_to_report_en: "Report uniquenesses alongside loadings or communalities when useful."
+pitfalls_ko: "고유성이 높다고 해서 문항을 자동으로 제외해서는 안 되며 이론적 역할을 함께 봐야 합니다."
+pitfalls_en: "High uniqueness does not automatically mean an item should be dropped; consider its theoretical role."
+assumptions: []
+alternatives: []
+related:
+  - communality
+references:
+  - citation: "Fabrigar, L. R., & Wegener, D. T. (2012). Exploratory Factor Analysis. Oxford University Press."
+    locator: null
+    verified: true
+verification_status: needs_review

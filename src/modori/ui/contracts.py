@@ -56,8 +56,12 @@ class ImportOptions:
 @dataclass(frozen=True)
 class ReportExportOptions:
     language: Language = "ko"
+    include_descriptives: bool = True
     include_reliability: bool = True
     include_comparison: bool = True
+    include_association: bool = True
+    include_group_models: bool = True
+    include_dimension_reduction: bool = True
     include_regression: bool = True
     include_figures: bool = True
 
@@ -87,7 +91,23 @@ class DisplayNote:
 @dataclass(frozen=True)
 class DisplayResult:
     result_id: str
-    kind: Literal["reliability", "comparison", "regression", "report"]
+    kind: Literal[
+        "descriptives",
+        "reliability",
+        "comparison",
+        "regression",
+        "frequency_crosstab",
+        "correlation",
+        "anova_oneway",
+        "kruskal_wallis",
+        "ancova",
+        "factor_pca",
+        "repeated_measures_anova",
+        "friedman",
+        "mediation",
+        "moderated_mediation",
+        "report",
+    ]
     title_ko: str
     title_en: str
     prose_ko: str
@@ -123,8 +143,12 @@ class RegressionPatch:
 @dataclass(frozen=True)
 class ReportPatch:
     language: Language
+    include_descriptives: bool
     include_reliability: bool
     include_comparison: bool
+    include_association: bool
+    include_group_models: bool
+    include_dimension_reduction: bool
     include_regression: bool
     include_figures: bool
 
