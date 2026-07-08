@@ -527,6 +527,112 @@ def test_run_prepared_recommendation_applies_selection_before_worker_submit(tmp_
     assert len(worker.calls) == 1
 
 
+def test_advanced_recommendation_candidates_apply_to_pipeline_steps() -> None:
+    import pandas as pd
+
+    from modori.core import Dataset, Measure, Variable
+    from modori.ui.controller import UiController
+
+    class PipelineWithDataset:
+        def __init__(self, frame: pd.DataFrame) -> None:
+            self.current_dataset = Dataset(
+                df=frame,
+                variables={
+                    column: Variable(
+                        name=column,
+                        label=None,
+                        measure=Measure.SCALE,
+                        value_labels={},
+                        missing_values=[],
+                        dtype=str(frame[column].dtype),
+                        origin_step_id="import",
+                    )
+                    for column in frame.columns
+                },
+            )
+            self.steps = []
+            self.variable_keys = set(frame.columns)
+            self.edits: list[tuple[str, dict[str, object]]] = []
+
+        def edit_params(self, step_id, params):
+            self.edits.append((step_id, dict(params)))
+
+    cases = [
+        (
+            "repeated_measures_anova",
+            pd.DataFrame(
+                {
+                    "time1": [1, 2, 3, 4, 5, 6],
+                    "time2": [2, 3, 4, 5, 6, 7],
+                    "time3": [3, 4, 5, 6, 7, 8],
+                    "score": [4, 5, 6, 7, 8, 9],
+                }
+            ),
+            "repeated_measures_anova",
+            {"measures": ["time1", "time2", "time3"]},
+        ),
+        (
+            "friedman",
+            pd.DataFrame(
+                {
+                    "time1": [1, 2, 3, 4, 5, 6],
+                    "time2": [2, 3, 4, 5, 6, 7],
+                    "time3": [3, 4, 5, 6, 7, 8],
+                    "score": [4, 5, 6, 7, 8, 9],
+                }
+            ),
+            "friedman",
+            {"measures": ["time1", "time2", "time3"]},
+        ),
+        (
+            "mediation",
+            pd.DataFrame(
+                {
+                    "x": [1, 2, 3, 4, 5, 6, 7, 8],
+                    "m": [2, 3, 4, 4, 5, 6, 7, 8],
+                    "y": [3, 4, 5, 6, 7, 8, 9, 10],
+                }
+            ),
+            "mediation",
+            {"x": "x", "mediator": "m", "y": "y"},
+        ),
+        (
+            "moderated_mediation",
+            pd.DataFrame(
+                {
+                    "x": [1, 2, 3, 4, 5, 6, 7, 8],
+                    "m": [2, 3, 4, 4, 5, 6, 7, 8],
+                    "w": [1, 1, 2, 2, 3, 3, 4, 4],
+                    "y": [3, 4, 5, 6, 7, 8, 9, 10],
+                }
+            ),
+            "moderated_mediation",
+            {"model": 7, "x": "x", "mediator": "m", "moderator": "w", "y": "y"},
+        ),
+    ]
+
+    for kind, frame, expected_step_id, expected_params in cases:
+        pipeline = PipelineWithDataset(frame)
+        controller = UiController(pipeline=pipeline)
+        controller._refresh_recommendations()
+        index = next(
+            index
+            for index, candidate in enumerate(controller._recommendation_state.candidates)
+            if candidate.kind == kind
+        )
+
+        assert controller.selectRecommendationAt(index) is True
+        result = controller.applySelectedRecommendation()
+
+        assert result.ok is True
+        assert result.changed_step_ids == [expected_step_id]
+        assert pipeline.edits
+        edited_step_id, params = pipeline.edits[-1]
+        assert edited_step_id == expected_step_id
+        for key, value in expected_params.items():
+            assert params[key] == value
+
+
 def test_default_run_prepared_recommendation_builds_real_dataset_pipeline_without_reference_steps() -> None:
     from pathlib import Path
 

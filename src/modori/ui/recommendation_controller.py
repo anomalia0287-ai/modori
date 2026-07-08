@@ -151,6 +151,26 @@ class RecommendationControllerMixin:
             )
         if candidate.kind == "factor_pca":
             return self.configureFactorPcaSelection(", ".join(candidate.variable_keys))
+        if candidate.kind == "repeated_measures_anova":
+            return self.configureRepeatedMeasuresAnovaSelection(
+                ", ".join(candidate.variable_keys)
+            )
+        if candidate.kind == "friedman":
+            return self.configureFriedmanSelection(", ".join(candidate.variable_keys))
+        if candidate.kind == "mediation":
+            return self.configureMediationSelection(
+                candidate.variable_keys[0] if len(candidate.variable_keys) > 0 else "",
+                candidate.variable_keys[1] if len(candidate.variable_keys) > 1 else "",
+                candidate.variable_keys[2] if len(candidate.variable_keys) > 2 else "",
+            )
+        if candidate.kind == "moderated_mediation":
+            return self.configureModeratedMediationSelection(
+                "7",
+                candidate.variable_keys[0] if len(candidate.variable_keys) > 0 else "",
+                candidate.variable_keys[1] if len(candidate.variable_keys) > 1 else "",
+                candidate.variable_keys[2] if len(candidate.variable_keys) > 2 else "",
+                candidate.variable_keys[3] if len(candidate.variable_keys) > 3 else "",
+            )
         return self._command_error("지원하지 않는 추천 분석입니다.", "invalid_recommendation")
 
     @Slot(result=bool)

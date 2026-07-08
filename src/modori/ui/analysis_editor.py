@@ -131,6 +131,70 @@ class AnalysisSelectionEditor:
             pipeline_version=pipeline_version,
         )
 
+    def repeated_measures_anova(
+        self,
+        measures_text: str,
+        *,
+        pipeline_version: int,
+    ) -> CommandResult:
+        return self._apply(
+            lambda builder: builder.repeated_measures_anova(measures_text),
+            pipeline_version=pipeline_version,
+        )
+
+    def friedman(
+        self,
+        measures_text: str,
+        *,
+        pipeline_version: int,
+    ) -> CommandResult:
+        return self._apply(
+            lambda builder: builder.friedman(measures_text),
+            pipeline_version=pipeline_version,
+        )
+
+    def mediation(
+        self,
+        x_key: str,
+        mediator_key: str,
+        y_key: str,
+        covariate_keys_text: str = "",
+        *,
+        pipeline_version: int,
+    ) -> CommandResult:
+        return self._apply(
+            lambda builder: builder.mediation(
+                x_key,
+                mediator_key,
+                y_key,
+                covariate_keys_text,
+            ),
+            pipeline_version=pipeline_version,
+        )
+
+    def moderated_mediation(
+        self,
+        model: str,
+        x_key: str,
+        mediator_key: str,
+        moderator_key: str,
+        y_key: str,
+        covariate_keys_text: str = "",
+        *,
+        pipeline_version: int,
+    ) -> CommandResult:
+        return self._apply(
+            lambda builder: builder.moderated_mediation(
+                model,
+                x_key,
+                mediator_key,
+                moderator_key,
+                y_key,
+                covariate_keys_text,
+            ),
+            pipeline_version=pipeline_version,
+        )
+
     def _apply(
         self,
         build_command: Callable[[AnalysisSelectionCommandBuilder], PipelineStepCommand],

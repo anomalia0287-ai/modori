@@ -160,3 +160,95 @@ class AnalysisSelectionControllerMixin:
     @Slot(str, result=bool)
     def configureFactorPcaFromText(self, variable_keys_text: str) -> bool:
         return self.configureFactorPcaSelection(variable_keys_text).ok
+
+    def configureRepeatedMeasuresAnovaSelection(self, measures_text: str) -> CommandResult:
+        result = self._services.analysis_editor.repeated_measures_anova(
+            measures_text,
+            pipeline_version=self._pipeline_state.pipeline_version,
+        )
+        return self._apply_step_edit_result(result)
+
+    @Slot(str, result=bool)
+    def configureRepeatedMeasuresAnovaFromText(self, measures_text: str) -> bool:
+        return self.configureRepeatedMeasuresAnovaSelection(measures_text).ok
+
+    def configureFriedmanSelection(self, measures_text: str) -> CommandResult:
+        result = self._services.analysis_editor.friedman(
+            measures_text,
+            pipeline_version=self._pipeline_state.pipeline_version,
+        )
+        return self._apply_step_edit_result(result)
+
+    @Slot(str, result=bool)
+    def configureFriedmanFromText(self, measures_text: str) -> bool:
+        return self.configureFriedmanSelection(measures_text).ok
+
+    def configureMediationSelection(
+        self,
+        x_key: str,
+        mediator_key: str,
+        y_key: str,
+        covariate_keys_text: str = "",
+    ) -> CommandResult:
+        result = self._services.analysis_editor.mediation(
+            x_key,
+            mediator_key,
+            y_key,
+            covariate_keys_text,
+            pipeline_version=self._pipeline_state.pipeline_version,
+        )
+        return self._apply_step_edit_result(result)
+
+    @Slot(str, str, str, str, result=bool)
+    def configureMediationFromText(
+        self,
+        x_key: str,
+        mediator_key: str,
+        y_key: str,
+        covariate_keys_text: str,
+    ) -> bool:
+        return self.configureMediationSelection(
+            x_key,
+            mediator_key,
+            y_key,
+            covariate_keys_text,
+        ).ok
+
+    def configureModeratedMediationSelection(
+        self,
+        model: str,
+        x_key: str,
+        mediator_key: str,
+        moderator_key: str,
+        y_key: str,
+        covariate_keys_text: str = "",
+    ) -> CommandResult:
+        result = self._services.analysis_editor.moderated_mediation(
+            model,
+            x_key,
+            mediator_key,
+            moderator_key,
+            y_key,
+            covariate_keys_text,
+            pipeline_version=self._pipeline_state.pipeline_version,
+        )
+        return self._apply_step_edit_result(result)
+
+    @Slot(str, str, str, str, str, str, result=bool)
+    def configureModeratedMediationFromText(
+        self,
+        model: str,
+        x_key: str,
+        mediator_key: str,
+        moderator_key: str,
+        y_key: str,
+        covariate_keys_text: str,
+    ) -> bool:
+        return self.configureModeratedMediationSelection(
+            model,
+            x_key,
+            mediator_key,
+            moderator_key,
+            y_key,
+            covariate_keys_text,
+        ).ok
