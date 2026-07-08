@@ -141,6 +141,22 @@ def test_friedman_records_tied_rank_and_chi_square_approximation_policy() -> Non
     assert any("근사" in warning for warning in result.warnings_ko)
 
 
+def test_friedman_does_not_emit_small_sample_warning_for_large_subject_count() -> None:
+    frame = pd.DataFrame(
+        {
+            "pre": list(range(1, 21)),
+            "mid": list(range(2, 22)),
+            "post": list(range(3, 23)),
+        }
+    )
+    dataset = dataset_factory(frame)
+
+    result = run_step(dataset, _params())
+
+    assert result.n_used == 20
+    assert not any("카이제곱 근사" in warning for warning in result.warnings_ko)
+
+
 def test_listwise_missing_subjects_match_complete_case_scipy_reference() -> None:
     frame = pd.DataFrame(
         {

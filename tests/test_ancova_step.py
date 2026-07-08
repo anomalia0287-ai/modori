@@ -310,3 +310,33 @@ def test_required_diagnostics_fail_closed(
 
     with pytest.raises(ValueError, match=message):
         run_step(dataset, params)
+
+
+def test_ancova_rejects_ill_conditioned_full_rank_design() -> None:
+    rows = []
+    for index in range(24):
+        pretest = float(index + 1)
+        group = "A" if index < 12 else "B"
+        rows.append(
+            {
+                "group": group,
+                "pretest": pretest,
+                "pretest_copy": pretest + (1e-11 * np.sin(index * 1.37)),
+                "outcome": 2.0
+                + (0.3 * pretest)
+                + (1.0 if group == "B" else 0.0)
+                + (0.01 * np.cos(index)),
+            }
+        )
+    dataset = dataset_factory(
+        rows=rows,
+        measures={
+            "group": "nominal",
+            "pretest": "scale",
+            "pretest_copy": "scale",
+            "outcome": "scale",
+        },
+    )
+
+    with pytest.raises(ValueError, match="ill-conditioned"):
+        run_step(dataset, _params(covariates=["pretest", "pretest_copy"]))

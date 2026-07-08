@@ -308,8 +308,11 @@ def _fit_ols(frame: pd.DataFrame, *, outcome: str, predictors: list[str]) -> _Ol
     if ss_total <= 0:
         raise ValueError("mediation outcome variance must be positive")
     sigma2 = ss_resid / df_resid
-    covariance = sigma2 * np.linalg.inv(x_matrix.T @ x_matrix)
-    se = np.sqrt(np.diag(covariance))
+    covariance = _ols_covariance_from_svd(x_matrix, sigma2)
+    variances = np.diag(covariance)
+    if np.any(~np.isfinite(variances)) or np.any(variances <= 0.0):
+        raise ValueError("mediation coefficient variance must be positive")
+    se = np.sqrt(variances)
     t_values = coefficients / se
     p_values = 2 * stats.t.sf(np.abs(t_values), df_resid)
     critical = stats.t.ppf(0.975, df_resid)
@@ -334,6 +337,18 @@ def _fit_ols(frame: pd.DataFrame, *, outcome: str, predictors: list[str]) -> _Ol
         coefficients=effects,
         r_squared=_as_finite_float(1.0 - (ss_resid / ss_total), "R-squared"),
     )
+
+
+def _ols_covariance_from_svd(x_matrix: np.ndarray, sigma2: float) -> np.ndarray:
+    _u, singular_values, vt = np.linalg.svd(x_matrix, full_matrices=False)
+    if (
+        len(singular_values) != x_matrix.shape[1]
+        or np.any(~np.isfinite(singular_values))
+        or np.any(singular_values <= 0.0)
+    ):
+        raise ValueError("mediation design matrix must be full rank")
+    inv_xtx = (vt.T / (singular_values**2)) @ vt
+    return sigma2 * inv_xtx
 
 
 def _bootstrap_indirect_ci(

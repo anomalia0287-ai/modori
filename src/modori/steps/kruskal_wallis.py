@@ -175,10 +175,15 @@ class KruskalWallisStep(Step):
             group_values=group_values,
             include_group_mean_sd=bool(params["include_group_mean_sd"]),
         )
-        warnings = (
+        warnings = [
             "검증된 Kruskal-Wallis 사후검정은 아직 제공하지 않는다. "
             "쌍별 비교가 필요하면 방법과 p-value 조정 절차를 명시해 별도 검증해야 한다.",
-        )
+        ]
+        if min(len(values) for values in group_arrays) <= 5:
+            warnings.append(
+                "Kruskal-Wallis p-value는 카이제곱 근사에 기반하므로 각 그룹 표본이 "
+                "작은 설계에서는 해석을 보수적으로 해야 한다."
+            )
         return KruskalWallisResult(
             analysis_key="kruskal_wallis",
             title_ko="Kruskal-Wallis 검정",
@@ -197,7 +202,7 @@ class KruskalWallisStep(Step):
             effect_size_label="epsilon_squared",
             effect_size=effect_size,
             posthoc=None,
-            warnings_ko=warnings,
+            warnings_ko=tuple(warnings),
             notes_ko=(
                 "epsilon_squared는 (H - k + 1) / (N - k) 공식을 사용했다.",
                 "중앙 차트 렌더링 훅이 없어 표준 그룹 분포 차트는 아직 생성하지 않는다.",

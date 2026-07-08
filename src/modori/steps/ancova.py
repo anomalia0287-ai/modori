@@ -16,6 +16,7 @@ from modori.ancova_results import (
     AncovaResult,
 )
 from modori.core import Dataset, Measure, PipelineContext, Step, StepResult, Variable
+from modori.statistics_numerics import require_well_conditioned_ols_design
 
 
 _SUPPORTED_GROUP_MEASURES = {Measure.NOMINAL, Measure.ORDINAL}
@@ -306,9 +307,11 @@ class AncovaStep(Step):
     def _fit_model(y: pd.Series, design: pd.DataFrame):
         if len(design) <= len(design.columns):
             raise ValueError("ANCOVA에는 모형 자유도를 확보할 완전한 관측치가 더 필요합니다.")
-        rank = int(np.linalg.matrix_rank(design.to_numpy(dtype=float)))
+        design_matrix = design.to_numpy(dtype=float)
+        rank = int(np.linalg.matrix_rank(design_matrix))
         if rank < len(design.columns):
             raise ValueError("ANCOVA 설계행렬이 특이하거나 공선성이 있어 계산할 수 없습니다.")
+        require_well_conditioned_ols_design(design_matrix, label="ANCOVA OLS")
         return sm.OLS(y, design).fit()
 
     @classmethod

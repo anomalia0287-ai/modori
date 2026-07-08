@@ -141,6 +141,38 @@ def test_scale_summary_matches_pandas_sample_sd() -> None:
     assert summary.categories == ()
 
 
+def test_scale_summary_reuses_decimal_conversion_for_mean_and_sd(monkeypatch) -> None:
+    module = importlib.import_module("modori.steps.descriptives_table1")
+    original = module._decimal_values
+    calls = 0
+
+    def counting_decimal_values(values, key):
+        nonlocal calls
+        calls += 1
+        return original(values, key)
+
+    monkeypatch.setattr(module, "_decimal_values", counting_decimal_values)
+    dataset = dataset_factory(
+        rows=[{"score": "10000000.2"}, {"score": "10000000.1"}, {"score": "10000000.3"}],
+        measures={"score": "scale"},
+    )
+
+    result = run_step(dataset, _table_params(["score"]))
+
+    assert result.summaries[0].sd == pytest.approx(0.1, rel=1e-12, abs=1e-12)
+    assert calls == 1
+
+
+def test_scale_summary_rejects_boolean_values_explicitly() -> None:
+    dataset = dataset_factory(
+        rows=[{"flag": True}, {"flag": False}],
+        measures={"flag": "scale"},
+    )
+
+    with pytest.raises(ValueError, match="boolean"):
+        run_step(dataset, _table_params(["flag"]))
+
+
 def test_scale_summary_sd_is_none_for_single_observation() -> None:
     dataset = dataset_factory(
         rows=[{"age": 20}, {"age": None}],

@@ -239,20 +239,23 @@ class DescriptivesTableStep(Step):
         n_obs: int,
         n_missing: int,
     ) -> DescriptiveVariableSummary:
+        non_missing = series.dropna()
+        _reject_boolean_values(non_missing, key)
         try:
-            values = pd.to_numeric(series.dropna(), errors="raise").astype(float)
+            values = pd.to_numeric(non_missing, errors="raise").astype(float)
         except (TypeError, ValueError) as exc:
             raise ValueError(f"척도형 변수는 숫자여야 합니다: {key}") from exc
         if len(values) and not np.all(np.isfinite(values.to_numpy(dtype=float))):
             raise ValueError(f"척도형 변수는 유한한 숫자여야 합니다: {key}")
+        decimal_values = _decimal_values(non_missing, key)
         if n_obs == 0:
             mean = median = minimum = maximum = None
         else:
-            mean = _decimal_mean(series.dropna(), key)
+            mean = _decimal_mean(decimal_values)
             median = float(values.median())
             minimum = float(values.min())
             maximum = float(values.max())
-        sd = None if n_obs < 2 else _decimal_sample_sd(series.dropna(), key)
+        sd = None if n_obs < 2 else _decimal_sample_sd(decimal_values)
         return DescriptiveVariableSummary(
             key=key,
             label=label,
@@ -367,15 +370,18 @@ def _decimal_values(values: pd.Series, key: str) -> list[Decimal]:
     return decimals
 
 
-def _decimal_mean(values: pd.Series, key: str) -> float:
-    decimals = _decimal_values(values, key)
+def _reject_boolean_values(values: pd.Series, key: str) -> None:
+    if any(isinstance(value, (bool, np.bool_)) for value in values):
+        raise ValueError(f"척도형 변수는 boolean 값을 허용하지 않습니다: {key}")
+
+
+def _decimal_mean(decimals: list[Decimal]) -> float:
     with localcontext() as context:
         context.prec = 50
         return float(sum(decimals) / Decimal(len(decimals)))
 
 
-def _decimal_sample_sd(values: pd.Series, key: str) -> float:
-    decimals = _decimal_values(values, key)
+def _decimal_sample_sd(decimals: list[Decimal]) -> float:
     with localcontext() as context:
         context.prec = 50
         mean = sum(decimals) / Decimal(len(decimals))

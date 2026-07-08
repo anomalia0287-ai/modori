@@ -164,7 +164,7 @@ class FriedmanStep(Step):
             "Kendall's W",
         )
         warnings = ["검증된 Friedman 사후검정은 아직 제공하지 않는다."]
-        if n_used <= 10 or len(measures) <= 6:
+        if n_used <= 13 and len(measures) <= 4:
             warnings.append(
                 "Friedman p-value는 카이제곱 근사에 기반하므로 작은 표본 또는 "
                 "조건 수가 적은 설계에서는 해석을 보수적으로 해야 한다."

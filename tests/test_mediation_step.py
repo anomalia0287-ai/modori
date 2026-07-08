@@ -244,3 +244,17 @@ def test_mediation_rejects_ill_conditioned_ols_design() -> None:
             dataset_factory(frame),
             {**_params(), "covariates": ["c1", "near_x"]},
         )
+
+
+def test_mediation_ols_covariance_avoids_normal_equation_inverse(monkeypatch) -> None:
+    mediation_module = importlib.import_module("modori.steps.mediation")
+    frame = mediation_frame()
+
+    def fail_inv(_matrix):
+        raise AssertionError("normal-equation inverse should not be used")
+
+    monkeypatch.setattr(mediation_module.np.linalg, "inv", fail_inv)
+
+    fit = mediation_module._fit_ols(frame, outcome="y", predictors=["x", "m", "c1"])
+
+    assert fit.coefficients["x"].se > 0.0

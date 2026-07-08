@@ -196,6 +196,27 @@ def test_kruskal_wallis_records_tied_rank_policy() -> None:
     }
 
 
+def test_kruskal_wallis_warns_for_small_group_chi_square_approximation() -> None:
+    dataset = dataset_factory(
+        rows=[
+            {"arm": "A", "score": 1.0},
+            {"arm": "A", "score": 2.0},
+            {"arm": "A", "score": 3.0},
+            {"arm": "B", "score": 4.0},
+            {"arm": "B", "score": 5.0},
+            {"arm": "B", "score": 6.0},
+            {"arm": "C", "score": 7.0},
+            {"arm": "C", "score": 8.0},
+            {"arm": "C", "score": 9.0},
+        ],
+        measures={"arm": "nominal", "score": "scale"},
+    )
+
+    result = run_step(dataset, _params())
+
+    assert any("카이제곱 근사" in warning for warning in result.warnings_ko)
+
+
 def test_ordinal_dependent_and_group_are_supported_with_missing_value_codes() -> None:
     dataset = dataset_factory(
         rows=[
