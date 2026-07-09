@@ -28,6 +28,7 @@ using one of these operations without being added to this audited allowlist.
 | `scripts/package_engine_smoke.py` | `mkdir`, `resolve` | Local packaged-engine smoke setup under the workspace `.tmp/packaged-engine-smoke` directory. It creates a deterministic reference workbook and reads the packaged app's smoke JSON; it does not delete user data. |
 | `scripts/package_public_data_smoke.py` | `mkdir`, `resolve` | Local packaged public-data import smoke setup under the workspace `.tmp/packaged-public-data-smoke` directory. It runs the packaged app against checked-in public-data fixtures and reads the smoke JSON; it does not delete user data. |
 | `scripts/stress_matrix.py` | `mkdir`, `write_text` | Local stress evidence generation under caller-selected output paths; release checklist uses ignored `.stress-matrix`. It creates deterministic synthetic datasets, JSON results, and report artifacts, not user-data cleanup. |
+| `scripts/quality_gate.py` | `resolve` | Local release-gate environment setup only. It resolves the workspace-local `.tools/r-env/Scripts/Rscript.exe` path when present so R-gated statistical reference tests run instead of skipping. It does not create, modify, or delete files. |
 
 ## Decisions
 

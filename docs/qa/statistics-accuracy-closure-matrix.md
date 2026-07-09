@@ -39,16 +39,16 @@ rejected by fail-closed policy, or documented as outside product scope.
 | ANOVA family | One-way ANOVA, RM-ANOVA, and ANCOVA have centered SS/OLS paths and large-offset audits; NIST `AtmWtAg` is covered through the compare-groups Student `t^2 = F` identity; Tukey/Games-Howell posthoc tails have direct studentized-range fixtures. | Decide two-treatment ANOVA policy for `anova_oneway`; add broader posthoc edge fixtures only if product scope expands. |
 | Compare groups t-family | Welch and Student t paths use centered common-offset inputs for test statistics; NIST `AtmWtAg` anchors Student t against certified `F = t^2`; Welch has a large-offset formula-oracle fixture. | Add broader two-group fixtures only if product scope expands. |
 | Regression OLS | NIST Longley/Wampler fixtures, condition-number gates, perfect-fit fail-closed, outcome-offset audit, complete-case parity, and HC3 robust-covariance parity are in place. | Add broader regression diagnostics only if product scope expands. |
-| Mediation/moderated mediation | SVD-backed OLS covariance, condition gates, bootstrap iteration policy, deterministic CI reproduction for Model 7/14, complete-case/no-covariate parity fixtures, and slow known-effect coverage smoke for simple mediation and the Model 7/14 moderated-mediation indexes are in place. | Add controlled-index cross-engine references and broader coverage designs if scope expands. |
-| Rank-based nonparametric tests | Method details, tie policies, exact/asymptotic selection, and small-sample warnings are recorded in tests. | Add optional R/SPSS/JASP anchors when the external runtimes are available. |
-| Factor/PCA | Singular, near-singular, non-convergent, and invalid Heywood-like factor estimates now fail closed; parallel analysis defaults to 1000 iterations and warns below 1000. | Add cross-engine PCA/EFA references. |
-| Reliability omega | Singular, near-singular, non-convergent, and invalid Heywood-like omega estimates now fail closed; FactorAnalyzer runtime/user warnings are not treated as valid estimates. | Add R `psych` golden output for difficult item matrices. |
+| Mediation/moderated mediation | SVD-backed OLS covariance, condition gates, bootstrap iteration policy, deterministic CI reproduction for Model 7/14, complete-case/no-covariate parity fixtures, slow known-effect coverage smoke for simple mediation and the Model 7/14 moderated-mediation indexes, and R `lm()` controlled-index percentile-CI anchors are in place. | Add broader coverage designs only if scope expands. |
+| Rank-based nonparametric tests | Method details, tie policies, exact/asymptotic selection, small-sample warnings, and R base anchors for Mann-Whitney, Wilcoxon p-values, Kruskal-Wallis, and Friedman are recorded in tests. | Add SPSS/JASP anchors only if external review requires those specific engines. |
+| Factor/PCA | Singular, near-singular, non-convergent, and invalid Heywood-like factor estimates now fail closed; parallel analysis defaults to 1000 iterations and warns below 1000; R `psych` KMO/Bartlett and base-R PCA eigen/loadings anchors are in place. | Add EFA cross-engine anchors only if EFA claim scope expands beyond current factor-analyzer parity plus fail-closed policy. |
+| Reliability omega | Singular, near-singular, non-convergent, and invalid Heywood-like omega estimates now fail closed; FactorAnalyzer runtime/user warnings are not treated as valid estimates; simple fixture and public BFI Likert fixture are anchored against R `psych::omega`. | Add broader omega fixtures only if new item-matrix shapes are added to product claims. |
 
 ## Next Execution Order
 
-1. Add controlled-index cross-engine bootstrap references when the R runtime
-   is available.
-2. Add cross-engine factor/PCA and R `psych` omega anchors when the R runtime
-   is available.
-3. Add cross-engine rank anchors once R/SPSS/JASP evidence is available.
-4. Re-run presentation/report checks after each calculation closure pass.
+1. Run the full local quality gate with slow statistical checks after this R
+   cross-engine closure pass.
+2. Re-run presentation/report drift checks after the calculation gate.
+3. Keep remaining work limited to explicit scope-expansion decisions:
+   two-treatment ANOVA in `anova_oneway`, broader bootstrap coverage designs,
+   SPSS/JASP anchors, and EFA anchors beyond factor-analyzer parity.

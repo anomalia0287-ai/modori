@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from scripts.quality_gate import quality_commands
+from scripts.quality_gate import quality_commands, reference_environment
 
 
 def test_quality_gate_default_commands_are_local_only() -> None:
@@ -49,6 +49,19 @@ def test_quality_gate_can_opt_into_package_build_and_launch() -> None:
     assert ["scripts/package_launch_smoke.py"] in commands
     assert ["scripts/package_engine_smoke.py"] in commands
     assert ["scripts/package_public_data_smoke.py"] in commands
+
+
+def test_quality_gate_auto_detects_workspace_r_runtime(tmp_path, monkeypatch) -> None:
+    local_rscript = tmp_path / ".tools" / "r-env" / "Scripts" / "Rscript.exe"
+    local_rscript.parent.mkdir(parents=True)
+    local_rscript.write_text("", encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("MODORI_RSCRIPT", raising=False)
+
+    env = reference_environment()
+
+    assert env["MODORI_RSCRIPT"] == str(local_rscript.resolve())
+    assert str(tmp_path / ".tools" / "r-env" / "Library" / "bin") in env["PATH"]
 
 
 def test_release_checklist_documents_dependency_release_gate() -> None:

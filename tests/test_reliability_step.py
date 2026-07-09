@@ -190,7 +190,10 @@ def test_reliability_step_matches_pingouin_documented_cronbach_dataset() -> None
 
 
 def test_mcdonald_omega_matches_r_psych_when_r_is_available() -> None:
-    rscript = os.environ.get("MODORI_RSCRIPT") or shutil.which("Rscript")
+    rscript = os.environ.get("MODORI_RSCRIPT")
+    if not rscript:
+        local = Path(__file__).resolve().parents[1] / ".tools" / "r-env" / "Scripts" / "Rscript.exe"
+        rscript = str(local) if local.exists() else shutil.which("Rscript")
     if rscript is None:
         pytest.skip("Rscript is not installed; R psych omega check cannot run here.")
 
@@ -199,9 +202,9 @@ def test_mcdonald_omega_matches_r_psych_when_r_is_available() -> None:
         encoding="utf-8"
     ).strip()
     env = os.environ.copy()
-    explicit_rscript = os.environ.get("MODORI_RSCRIPT")
-    if explicit_rscript:
-        prefix = Path(explicit_rscript).resolve().parents[1]
+    explicit_or_local_rscript = rscript
+    if explicit_or_local_rscript:
+        prefix = Path(explicit_or_local_rscript).resolve().parents[1]
         r_paths = [
             prefix / "Library" / "bin",
             prefix / "Scripts",

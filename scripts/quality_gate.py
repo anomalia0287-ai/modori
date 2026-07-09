@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import argparse
+import os
 import subprocess
 import sys
 from collections.abc import Sequence
+from pathlib import Path
 
 
 def quality_commands(
@@ -47,6 +49,29 @@ def quality_commands(
     return commands
 
 
+def reference_environment() -> dict[str, str]:
+    env = os.environ.copy()
+    rscript = env.get("MODORI_RSCRIPT")
+    if not rscript:
+        local_rscript = Path(".tools") / "r-env" / "Scripts" / "Rscript.exe"
+        if local_rscript.exists():
+            rscript = str(local_rscript.resolve())
+            env["MODORI_RSCRIPT"] = rscript
+    if rscript:
+        prefix = Path(rscript).resolve().parents[1]
+        r_paths = [
+            prefix / "Library" / "bin",
+            prefix / "Scripts",
+            prefix / "lib" / "R" / "bin",
+            prefix / "lib" / "R" / "bin" / "x64",
+        ]
+        env["PATH"] = os.pathsep.join(str(path) for path in r_paths) + os.pathsep + env.get(
+            "PATH",
+            "",
+        )
+    return env
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Run TongTong's local dependency and static-analysis gate."
@@ -77,6 +102,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="Also run slow statistical adequacy checks.",
     )
     args = parser.parse_args(argv)
+    env = reference_environment()
 
     for command in quality_commands(
         include_pip_audit=args.with_pip_audit,
@@ -87,7 +113,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     ):
         display = " ".join([sys.executable, *command])
         print(f"$ {display}", flush=True)
-        completed = subprocess.run([sys.executable, *command], check=False)
+        completed = subprocess.run([sys.executable, *command], check=False, env=env)
         if completed.returncode != 0:
             return completed.returncode
     return 0

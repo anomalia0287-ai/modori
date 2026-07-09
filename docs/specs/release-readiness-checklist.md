@@ -179,16 +179,19 @@ docs\superpowers\handoffs\2026-07-03-clean-win-vm-verification-handoff.md
 ## Statistical Reference Gate
 
 Before claiming statistical-reference readiness on this Windows workspace, run
-the R-gated reference tests with `MODORI_RSCRIPT` pointing at the local R runtime:
+the R-gated reference tests. `scripts\quality_gate.py` auto-detects the
+workspace-local R runtime, and individual pytest runs can still set
+`MODORI_RSCRIPT` explicitly:
 
 ```powershell
 $env:MODORI_RSCRIPT = ".tools\r-env\Scripts\Rscript.exe"
-.\.venv\Scripts\python.exe -m pytest -q -rs -p no:cacheprovider tests\test_reliability_step.py::test_mcdonald_omega_matches_r_psych_when_r_is_available tests\test_regression_step.py::test_regression_matches_committed_r_reference_when_r_is_available
+.\.venv\Scripts\python.exe -m pytest -q -rs -p no:cacheprovider tests\test_r_cross_engine_references.py tests\test_reliability_step.py::test_mcdonald_omega_matches_r_psych_when_r_is_available tests\test_regression_step.py::test_regression_matches_committed_r_reference_when_r_is_available
 ```
 
 The required R packages are documented in
 `docs/specs/statistical-reference-environment.md`: `psych` for omega and
-`sandwich` for HC3 robust covariance.
+`sandwich` for HC3 robust covariance. The bootstrap R anchors use base R
+`lm()` with Python-controlled resampling indices and do not require `boot`.
 
 ## UI/UX Manual QA Gate
 

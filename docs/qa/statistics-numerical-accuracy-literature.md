@@ -54,13 +54,15 @@ points, ordered by product risk rather than textbook neatness:
    terms, covariance estimates, condition-number thresholds, and clear
    rejection text. Mediation and moderated mediation now compute OLS covariance
    through an SVD-backed helper instead of `inv(X.T @ X)`.
-2. Partially done: add tie/discreteness/exact-policy fixtures for Likert-shaped rank methods.
+2. Done for current scope: add tie/discreteness/exact-policy fixtures for Likert-shaped rank methods.
    Mann-Whitney exact-vs-asymptotic, Wilcoxon zero/tie policy, and
    Kruskal-Wallis/Friedman/Spearman tied-rank policy disclosure are covered.
    Friedman chi-square approximation warnings are limited to small repeated
    designs, and Kruskal-Wallis warns when group sizes are small for the
-   chi-square approximation. R/SPSS/JASP anchors and posthoc rank-family
-   policies remain.
+   chi-square approximation. R base anchors now lock tied Mann-Whitney,
+   Wilcoxon p-values, Kruskal-Wallis, and Friedman. SPSS/JASP anchors and
+   posthoc rank-family policies remain outside current scope unless explicitly
+   requested.
 3. Partially done: import NIST StRD certified fixtures before hand-rolled substitutes.
    `Longley` and `Wampler5` are product-path regression parity fixtures.
    `Wampler1` and `Filip` are checked-in fail-closed fixtures for perfect-fit
@@ -72,16 +74,19 @@ points, ordered by product risk rather than textbook neatness:
    `AtmWtAg` is imported through the compare-groups Student `t^2 = F`
    identity while the `anova_oneway` two-treatment policy remains separate.
    `NumAcc1-3` remain.
-4. Partially done: set bootstrap policy in code and tests: default 5000 user-facing resamples,
+4. Done for current scope: set bootstrap policy in code and tests: default 5000 user-facing resamples,
    reject or warn below 1000, deterministic reproduction tests for plumbing,
    and slow known-effect coverage smoke for simple mediation and the Model
    7/14 moderated-mediation indexes. Complete-case and no-covariate parity
-   fixtures now cover local data-shape variants. Controlled-index cross-engine
-   references and broader coverage designs remain.
+   fixtures now cover local data-shape variants. R `lm()` controlled-index
+   cross-engine references now lock percentile CIs for simple mediation and
+   moderated-mediation Model 7/14. Broader coverage designs remain outside
+   current scope unless explicitly requested.
 5. Done: extend `docs/qa/statistics-accuracy-ledger.md` with `factor_pca`,
    `reliability_omega`, `anova_oneway`, rank-based nonparametric policy, mixed
    absolute/relative tolerance, and bootstrap terminology that distinguishes
-   deterministic reproduction from adequacy.
+   deterministic reproduction from adequacy. R `psych`/base-R anchors now cover
+   KMO, Bartlett, PCA eigenvalues/loadings, and omega on public BFI Likert data.
 6. Partially done: audit and lock tail p-value paths for owned t/F routes
    and ANOVA posthoc source disclosure.
    The current lock rejects subtractive `1 - cdf` forms in mediation,
