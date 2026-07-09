@@ -92,6 +92,26 @@ registries, or remote APIs. It covers:
 - full pytest without pytest cache writes.
 - `pip check`.
 
+## Slow Statistical Gate
+
+Run the slow statistical adequacy gate before claiming bootstrap interval
+readiness:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\quality_gate.py --with-slow-stats
+```
+
+`--with-slow-stats` appends:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\slow_stats_gate.py
+```
+
+The slow statistics gate sets `MODORI_RUN_SLOW_STATS=1` and runs pytest tests
+marked `slow_stats`. It is intentionally separate from the default offline
+gate because it runs repeated bootstrap simulations. Passing this gate is
+initial interval-performance evidence, not cross-engine parity.
+
 ## Release Advisory Gate
 
 Run the advisory dependency scan only when network access is explicitly approved:

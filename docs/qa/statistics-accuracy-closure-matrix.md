@@ -2,7 +2,7 @@
 
 Status: working closure map for `release/readiness-1-9`.
 
-Last updated: 2026-07-08 KST.
+Last updated: 2026-07-09 KST.
 
 This matrix defines what Modori must prove before calculation reliability can
 be described as product-ready. A passing smoke test is not enough. A module is
@@ -39,18 +39,18 @@ rejected by fail-closed policy, or documented as outside product scope.
 | ANOVA family | One-way ANOVA, RM-ANOVA, and ANCOVA have centered SS/OLS paths and large-offset audits; NIST `AtmWtAg` is covered through the compare-groups Student `t^2 = F` identity. | Decide two-treatment ANOVA policy for `anova_oneway`; add independent studentized-range edge fixtures. |
 | Compare groups t-family | Welch and Student t paths use centered common-offset inputs for test statistics; NIST `AtmWtAg` anchors Student t against certified `F = t^2`. | Add a certified or formula-oracle Welch large-offset fixture. |
 | Regression OLS | NIST Longley/Wampler fixtures, condition-number gates, perfect-fit fail-closed, and outcome-offset audit are in place. | Add missing-row and heteroskedasticity golden fixtures. |
-| Mediation/moderated mediation | SVD-backed OLS covariance, condition gates, and bootstrap iteration policy are in place. | Add independent bootstrap adequacy checks and Model 14 deterministic CI reproduction. |
+| Mediation/moderated mediation | SVD-backed OLS covariance, condition gates, bootstrap iteration policy, and slow known-effect coverage smoke for simple mediation and the Model 7 moderated-mediation index are in place. | Add Model 14 deterministic CI reproduction, controlled-index cross-engine references, and Model 14 coverage smoke. |
 | Rank-based nonparametric tests | Method details, tie policies, exact/asymptotic selection, and small-sample warnings are recorded in tests. | Add optional R/SPSS/JASP anchors when the external runtimes are available. |
 | Factor/PCA | Singular, near-singular, non-convergent, and invalid Heywood-like factor estimates now fail closed; parallel analysis defaults to 1000 iterations and warns below 1000. | Add cross-engine PCA/EFA references. |
 | Reliability omega | Singular, near-singular, non-convergent, and invalid Heywood-like omega estimates now fail closed; FactorAnalyzer runtime/user warnings are not treated as valid estimates. | Add R `psych` golden output for difficult item matrices. |
 
 ## Next Execution Order
 
-1. Close bootstrap CI adequacy with a slow marker or controlled-index
-   independent reference; do not call deterministic same-seed reproduction
-   adequacy.
-2. Add cross-engine factor/PCA and R `psych` omega anchors when the R runtime
+1. Add Model 14 deterministic CI reproduction and Model 14 coverage smoke.
+2. Add controlled-index cross-engine bootstrap references when the R runtime
    is available.
-3. Add cross-engine rank anchors once R/SPSS/JASP evidence is available.
-4. Add studentized-range extreme-tail fixtures for Tukey and Games-Howell.
-5. Re-run presentation/report checks after each calculation closure pass.
+3. Add cross-engine factor/PCA and R `psych` omega anchors when the R runtime
+   is available.
+4. Add cross-engine rank anchors once R/SPSS/JASP evidence is available.
+5. Add studentized-range extreme-tail fixtures for Tukey and Games-Howell.
+6. Re-run presentation/report checks after each calculation closure pass.

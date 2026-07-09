@@ -2,7 +2,7 @@
 
 Status: working literature map for calculation accuracy hardening.
 
-Last updated: 2026-07-08 KST.
+Last updated: 2026-07-09 KST.
 
 This document maps mathematics, numerical-analysis, and computational-physics
 literature to concrete Modori accuracy work. It is not a generic bibliography.
@@ -72,9 +72,11 @@ points, ordered by product risk rather than textbook neatness:
    `AtmWtAg` is imported through the compare-groups Student `t^2 = F`
    identity while the `anova_oneway` two-treatment policy remains separate.
    `NumAcc1-3` remain.
-4. Done for code policy: set bootstrap policy in code and tests: default 5000 user-facing resamples,
+4. Partially done: set bootstrap policy in code and tests: default 5000 user-facing resamples,
    reject or warn below 1000, deterministic reproduction tests for plumbing,
-   and independent adequacy checks for interval behavior. Adequacy checks remain.
+   and slow known-effect coverage smoke for simple mediation and the Model 7
+   moderated-mediation index. Controlled-index cross-engine references, Model
+   14 CI reproduction, and broader coverage designs remain.
 5. Done: extend `docs/qa/statistics-accuracy-ledger.md` with `factor_pca`,
    `reliability_omega`, `anova_oneway`, rank-based nonparametric policy, mixed
    absolute/relative tolerance, and bootstrap terminology that distinguishes

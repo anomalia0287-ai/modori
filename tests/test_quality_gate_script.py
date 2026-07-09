@@ -36,6 +36,12 @@ def test_quality_gate_can_opt_into_packaging_check() -> None:
     assert ["scripts/package_windows.py", "--check"] in commands
 
 
+def test_quality_gate_can_opt_into_slow_statistics_gate() -> None:
+    commands = quality_commands(include_slow_stats=True)
+
+    assert ["scripts/slow_stats_gate.py"] in commands
+
+
 def test_quality_gate_can_opt_into_package_build_and_launch() -> None:
     commands = quality_commands(include_package_build=True, include_packaged_launch=True)
 
@@ -52,6 +58,7 @@ def test_release_checklist_documents_dependency_release_gate() -> None:
 
     assert "scripts\\quality_gate.py" in text
     assert "--with-pip-audit" in text
+    assert "--with-slow-stats" in text
     assert ".pip-audit-cache" in text
     assert "default gate" in text
     assert "offline" in text

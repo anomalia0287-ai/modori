@@ -12,6 +12,7 @@ def quality_commands(
     include_package_check: bool = False,
     include_package_build: bool = False,
     include_packaged_launch: bool = False,
+    include_slow_stats: bool = False,
 ) -> list[list[str]]:
     commands = [
         ["-m", "compileall", "-q", "src", "tests", "scripts"],
@@ -29,6 +30,8 @@ def quality_commands(
         commands.append(["scripts/package_launch_smoke.py"])
         commands.append(["scripts/package_engine_smoke.py"])
         commands.append(["scripts/package_public_data_smoke.py"])
+    if include_slow_stats:
+        commands.append(["scripts/slow_stats_gate.py"])
     if include_pip_audit:
         commands.append(
             [
@@ -68,6 +71,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         action="store_true",
         help="Also smoke-test the packaged executable in offscreen mode.",
     )
+    parser.add_argument(
+        "--with-slow-stats",
+        action="store_true",
+        help="Also run slow statistical adequacy checks.",
+    )
     args = parser.parse_args(argv)
 
     for command in quality_commands(
@@ -75,6 +83,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         include_package_check=args.with_package_check,
         include_package_build=args.with_package_build,
         include_packaged_launch=args.with_packaged_launch,
+        include_slow_stats=args.with_slow_stats,
     ):
         display = " ".join([sys.executable, *command])
         print(f"$ {display}", flush=True)
