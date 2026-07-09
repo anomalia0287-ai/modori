@@ -495,6 +495,32 @@ def test_mann_whitney_records_exact_method_when_small_samples_have_no_ties() -> 
     assert result.p_value == pytest.approx(reference.pvalue, abs=1e-12)
 
 
+def test_mann_whitney_uses_exact_method_for_mid_small_untied_samples() -> None:
+    step = compare_step_with_policy(
+        {
+            "preset": "custom",
+            "normality_p": 0.99,
+            "nonparametric_n_cutoff": 30,
+        }
+    )
+    first = [1, 2, 3, 4, 5, 6, 7, 28, 29]
+    second = [8, 9, 10, 11, 12, 13, 14, 15, 16]
+
+    result = step.compute_context_free(comparison_dataset(first, second)).analysis
+    reference = stats.mannwhitneyu(
+        first,
+        second,
+        alternative="two-sided",
+        method="exact",
+        use_continuity=True,
+    )
+
+    assert result.test_name == "mann_whitney"
+    assert result.method_details["method"] == "exact"
+    assert result.method_details["ties_present"] is False
+    assert result.p_value == pytest.approx(reference.pvalue, abs=1e-12)
+
+
 def test_mann_whitney_effect_is_stable_when_rows_are_shuffled() -> None:
     dataset = comparison_dataset(
         [1, 1, 1, 1, 10, 10],

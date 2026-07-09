@@ -196,6 +196,7 @@ def test_mcdonald_omega_matches_r_psych_when_r_is_available() -> None:
         rscript = str(local) if local.exists() else shutil.which("Rscript")
     if rscript is None:
         pytest.skip("Rscript is not installed; R psych omega check cannot run here.")
+    rscript = str(Path(rscript).resolve())
 
     script = Path(__file__).parent / "r" / "omega_reference.R"
     expected_stdout = (Path(__file__).parent / "r" / "omega_reference.stdout.txt").read_text(

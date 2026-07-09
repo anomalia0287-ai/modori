@@ -193,6 +193,10 @@ The required R packages are documented in
 `sandwich` for HC3 robust covariance. The bootstrap R anchors use base R
 `lm()` with Python-controlled resampling indices and do not require `boot`.
 
+Do not describe this release as SPSS-equivalent or JASP-equivalent. Current
+calculation claims are limited to NIST, R/base-R, R `psych`/`lm()`, dependency
+library parity, and formula/Decimal oracle evidence.
+
 ## UI/UX Manual QA Gate
 
 Use `docs/specs/release-manual-qa.md` as the current manual QA matrix and

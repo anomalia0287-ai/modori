@@ -17,9 +17,11 @@ Accuracy hardening commit: `84d2228 test: strengthen statistics accuracy evidenc
 Numerical literature map commit: `8dc5822 docs: map numerical accuracy literature`
 
 Review-correction hardening after that map adds OLS condition-number rejection,
-rank tie/exact method disclosure, NIST StRD Longley parity, bootstrap iteration
-policy, and tail-p-value regression locks. The PR page remains the source of
-truth for the exact current head.
+rank tie/exact method disclosure, NIST StRD Longley/Wampler/ANOVA parity,
+bootstrap iteration policy, R controlled-index bootstrap anchors, R
+`psych`/base-R factor and rank anchors, Decimal/formula oracles, and
+tail-p-value regression locks. The PR page remains the source of truth for the
+exact current head.
 
 ## What Changed
 
@@ -34,6 +36,11 @@ This release lane integrates the Survey Pipeline V1 statistics bundle and the fo
 
 - Full host pytest inside package gate: `947 passed, 3 skipped`.
 - Full host pytest after accuracy hardening: `951 passed, 3 skipped`.
+- Current local calculation-reliability gate:
+  `scripts\quality_gate.py --with-slow-stats` reported `1015 passed, 4 skipped`
+  plus slow statistics `3 passed, 1016 deselected`.
+- R cross-engine reference gate reported `8 passed` with the workspace-local
+  R runtime.
 - Package gate:
   `scripts\quality_gate.py --with-package-check --with-package-build --with-packaged-launch`
   completed with `package-tool-ok`, `package-launch-smoke-ok`,
@@ -61,10 +68,11 @@ This release lane integrates the Survey Pipeline V1 statistics bundle and the fo
    `anova_oneway`, and rank-based nonparametric tests.
 3. Review validation behavior for invalid roles, missing variables, unsupported shapes, singular models, and ill-conditioned OLS designs.
 4. Treat Microsoft Word export as not manually verified in the clean VM because Word is not installed there.
+5. Treat calculation claims as R/NIST/formula anchored. This release is not
+   claiming SPSS-equivalent or JASP-equivalent breadth.
 
 ## Operational Publication Status
 
 The release branch is published to GitHub and draft PR #1 is open for external
 review. There is no current GitHub publication blocker. The open limitations are
-calculation-accuracy hardening, Word-installed report-export verification, and
-external statistical review.
+Word-installed report-export verification and external statistical review.

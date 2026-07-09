@@ -61,3 +61,6 @@ Current evidence:
 
 These tests must pass rather than skip before claiming the statistical reference
 environment is release-ready on this Windows workspace.
+
+These references support R/NIST/formula-anchored calculation claims only. They
+do not support a public SPSS-equivalent or JASP-equivalent breadth claim.

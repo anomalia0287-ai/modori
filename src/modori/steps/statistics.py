@@ -45,6 +45,7 @@ STATISTICS_ENGINE_VOCABULARY = frozenset(
         "wilcoxon",
     }
 )
+_MANN_WHITNEY_EXACT_MAX_MIN_N = 25
 
 
 def _require_schema_version(
@@ -649,7 +650,8 @@ class CompareGroupsStep(Step):
         ties_present = len(np.unique(combined)) < len(combined)
         method = (
             "asymptotic"
-            if ties_present or min(len(first_values), len(second_values)) > 8
+            if ties_present
+            or min(len(first_values), len(second_values)) > _MANN_WHITNEY_EXACT_MAX_MIN_N
             else "exact"
         )
         return {

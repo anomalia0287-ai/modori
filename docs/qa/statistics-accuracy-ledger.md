@@ -58,16 +58,16 @@ verified separately from raw result-object values.
 | `descriptives_table1` | NIST StRD NumAcc4 generated fixture and module tests. | Large-offset mean and sample standard deviation use one shared Decimal-backed conversion and match certified NumAcc4 values. Boolean SCALE values are explicitly rejected. | Median/min/max remain float64 summaries; NumAcc1-3 and autocorrelation are not product-surfaced fixtures yet. | Add NumAcc1-3 where they expose distinct product risk; only add autocorrelation if Modori surfaces it. |
 | `factor_pca` | Current tests cover PCA/EFA behavior, eigenvalue/loadings surfaces, validation paths, and R `psych`/base-R anchors for KMO, Bartlett, PCA eigenvalues, and PCA loadings. | Correlation-matrix validation, singular correlation rejection, condition-number rejection for near-singular correlation matrices, KMO/Bartlett diagnostic handling, invalid Heywood-like EFA estimate rejection, deterministic parallel-analysis seed, user-facing parallel-analysis default `1000`, warning below `1000`, external R anchor on the public BFI Likert fixture. | EFA loadings remain factor-analyzer parity plus fail-closed policy, not hard R `psych::fa` parity. | Add EFA cross-engine anchors only if EFA claim scope expands. |
 | `reliability_omega` | Current tests include R-gated omega parity and R `psych::omega` parity on a public BFI Likert fixture. | Cronbach alpha paths, corrected item-total correlations, omega singular-correlation rejection, omega condition-number rejection for near-singular item matrices, FactorAnalyzer runtime/user warning fail-closed, invalid Heywood-like omega estimate rejection, R `psych` omega anchors for simple and real Likert fixtures. | McDonald's omega uses maximum-likelihood factor extraction and remains method-sensitive across engines; tolerances are intentionally looser than deterministic algebraic statistics. | Add broader omega fixtures only if new item-matrix shapes are added to product claims. |
-| `anova_oneway` | SciPy `f_oneway` parity tests, NIST StRD SmLs01/SmLs04/SmLs07 fixtures, and posthoc coverage via statsmodels/Pingouin paths. | Group validation, Levene assumption summaries, omnibus ANOVA, certified df/F/R-squared parity, centered effect-size SS path, large-offset eta/omega stability, posthoc result surfaces, Tukey/Games-Howell p-value source disclosure, studentized-range survival-function policy lock, direct extreme-tail Tukey/Games-Howell fixtures. | `SmLs07` is recorded as achieved float64 precision rather than full 15-digit certified parity. `AtmWtAg` is covered through `compare_groups_t`, but `anova_oneway` still routes/validates one-way ANOVA as three-or-more groups. | Decide whether two-treatment ANOVA should be accepted in `anova_oneway`; add broader posthoc edge fixtures only if product scope expands. |
-| `rank_based_nonparametric_tests` | Current coverage spans Mann-Whitney, Wilcoxon, Kruskal-Wallis, Friedman, and Spearman through module tests, plus R base anchors for tied Mann-Whitney, Wilcoxon p-value, Kruskal-Wallis, and Friedman fixtures. | Mann-Whitney records tie policy and exact-vs-asymptotic selection; Wilcoxon records zero-difference, tie, correction, and method policy; Kruskal-Wallis, Friedman, and Spearman now record tied-rank/method policy details on Likert-shaped fixtures; Kruskal-Wallis warns on small group sizes where chi-square approximation is weak; R-base statistic/df/p parity is locked where statistic conventions align. | SPSS/JASP anchors are not included; Kruskal-Wallis and Friedman posthoc remain intentionally unsupported. | Add SPSS/JASP anchors only if external review requires those engines. |
+| `anova_oneway` | SciPy `f_oneway` parity tests, NIST StRD SmLs01/SmLs04/SmLs07 fixtures, a large-offset unbalanced Decimal oracle, and posthoc coverage via statsmodels/Pingouin paths. | Group validation, Levene assumption summaries, omnibus ANOVA, certified df/F/R-squared parity, centered effect-size SS path, large-offset eta/omega stability, unbalanced group-size 50-digit Decimal oracle, posthoc result surfaces, Tukey/Games-Howell p-value source disclosure, studentized-range survival-function policy lock, direct extreme-tail Tukey/Games-Howell fixtures. | `SmLs07` is recorded as achieved float64 precision rather than full 15-digit certified parity. `AtmWtAg` is covered through `compare_groups_t`, but `anova_oneway` still routes/validates one-way ANOVA as three-or-more groups. | Decide whether two-treatment ANOVA should be accepted in `anova_oneway`; add broader posthoc edge fixtures only if product scope expands. |
+| `rank_based_nonparametric_tests` | Current coverage spans Mann-Whitney, Wilcoxon, Kruskal-Wallis, Friedman, and Spearman through module tests, plus R base anchors for tied Mann-Whitney, Wilcoxon p-value, Kruskal-Wallis, and Friedman fixtures. | Mann-Whitney records tie policy and exact-vs-asymptotic selection; untied Mann-Whitney exact is used through `min(n) <= 25`; untied `26-49` is an intentional policy difference from R's wider exact default; Wilcoxon records zero-difference, tie, correction, and method policy; Kruskal-Wallis, Friedman, and Spearman now record tied-rank/method policy details on Likert-shaped fixtures; Kruskal-Wallis warns on small group sizes where chi-square approximation is weak; R-base statistic/df/p parity is locked where statistic conventions align. | SPSS/JASP anchors are not included; Kruskal-Wallis and Friedman posthoc remain intentionally unsupported. Public claims must be phrased as R/NIST/formula anchored, not SPSS-equivalent. | Add SPSS/JASP anchors only if external review requires those engines. |
 
 ## Release Evidence
 
 - Local calculation-reliability gate:
   `.\.venv\Scripts\python.exe scripts\quality_gate.py --with-slow-stats`
   passed on 2026-07-09 KST with `compileall`, `ruff`, `bandit`,
-  `launch-smoke-ok`, full pytest `1012 passed, 4 skipped`, `pip check`, and
-  slow statistics pytest `3 passed, 1013 deselected`.
+  `launch-smoke-ok`, full pytest `1015 passed, 4 skipped`, `pip check`, and
+  slow statistics pytest `3 passed, 1016 deselected`.
 - Host quality gate:
   `scripts\quality_gate.py --with-package-check --with-package-build --with-packaged-launch`
   reported `947 passed, 3 skipped`, `package-tool-ok`,
@@ -81,7 +81,7 @@ verified separately from raw result-object values.
 - Current numerical-policy focus command:
   `pytest -p no:cacheprovider tests/test_descriptives_table1_step.py tests/test_regression_step.py tests/test_regression_categorical_interaction.py tests/test_ancova_step.py tests/test_mediation_step.py tests/test_moderated_mediation_step.py tests/test_compare_groups_step.py tests/test_paired_comparison_step.py tests/test_friedman_step.py tests/test_kruskal_wallis_step.py tests/test_anova_oneway_step.py tests/test_factor_pca_step.py tests/test_reliability_step.py tests/test_statistics_numerics.py tests/test_nist_strd_fixtures.py tests/test_tail_probability_policy.py -q`
 - Slow bootstrap adequacy smoke:
-  `scripts\slow_stats_gate.py` reported `3 passed, 1013 deselected` for
+  `scripts\slow_stats_gate.py` reported `3 passed, 1016 deselected` for
   simple mediation percentile CI and moderated-mediation Model 7/14 index
   known-effect coverage checks.
 - R cross-engine reference gate:
@@ -95,6 +95,11 @@ verified separately from raw result-object values.
 ## Known Limits
 
 The recommendation layer is heuristic. It can identify candidate analyses from variable metadata, names, cardinality, repeated-measure column patterns, and safe data shape checks, but it does not prove research-design validity. Calculation correctness must remain deterministic and test-backed; SLM assistance must not compute statistics or bypass validators.
+
+Public calculation-accuracy claims are limited to the evidence actually present:
+NIST StRD, R/base-R or R `psych`/`lm()` anchors, SciPy/statsmodels/Pingouin
+library parity, and explicit formula/Decimal oracles. The current release must
+not be described as SPSS-equivalent or JASP-equivalent.
 
 The deterministic bootstrap tests prove repeatable implementation plumbing.
 The R controlled-index tests prove cross-engine parity for identical resampled

@@ -56,9 +56,10 @@ def reference_environment() -> dict[str, str]:
         local_rscript = Path(".tools") / "r-env" / "Scripts" / "Rscript.exe"
         if local_rscript.exists():
             rscript = str(local_rscript.resolve())
-            env["MODORI_RSCRIPT"] = rscript
     if rscript:
-        prefix = Path(rscript).resolve().parents[1]
+        rscript = str(Path(rscript).resolve())
+        env["MODORI_RSCRIPT"] = rscript
+        prefix = Path(rscript).parents[1]
         r_paths = [
             prefix / "Library" / "bin",
             prefix / "Scripts",

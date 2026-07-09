@@ -64,6 +64,19 @@ def test_quality_gate_auto_detects_workspace_r_runtime(tmp_path, monkeypatch) ->
     assert str(tmp_path / ".tools" / "r-env" / "Library" / "bin") in env["PATH"]
 
 
+def test_quality_gate_normalizes_relative_rscript_override(tmp_path, monkeypatch) -> None:
+    local_rscript = tmp_path / ".tools" / "r-env" / "Scripts" / "Rscript.exe"
+    local_rscript.parent.mkdir(parents=True)
+    local_rscript.write_text("", encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("MODORI_RSCRIPT", ".tools\\r-env\\Scripts\\Rscript.exe")
+
+    env = reference_environment()
+
+    assert env["MODORI_RSCRIPT"] == str(local_rscript.resolve())
+    assert str(tmp_path / ".tools" / "r-env" / "Library" / "bin") in env["PATH"]
+
+
 def test_release_checklist_documents_dependency_release_gate() -> None:
     text = Path("docs/specs/release-readiness-checklist.md").read_text(
         encoding="utf-8"

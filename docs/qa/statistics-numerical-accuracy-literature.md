@@ -60,8 +60,10 @@ points, ordered by product risk rather than textbook neatness:
    Friedman chi-square approximation warnings are limited to small repeated
    designs, and Kruskal-Wallis warns when group sizes are small for the
    chi-square approximation. R base anchors now lock tied Mann-Whitney,
-   Wilcoxon p-values, Kruskal-Wallis, and Friedman. SPSS/JASP anchors and
-   posthoc rank-family policies remain outside current scope unless explicitly
+   Wilcoxon p-values, Kruskal-Wallis, and Friedman. Untied Mann-Whitney exact
+   p-values are used through `min(n) <= 25`; `26-49` is an intentional policy
+   difference from R's wider exact default. SPSS/JASP anchors and posthoc
+   rank-family policies remain outside current scope unless explicitly
    requested.
 3. Partially done: import NIST StRD certified fixtures before hand-rolled substitutes.
    `Longley` and `Wampler5` are product-path regression parity fixtures.
@@ -73,7 +75,8 @@ points, ordered by product risk rather than textbook neatness:
    achieved float64 precision rather than full 15-digit certified parity.
    `AtmWtAg` is imported through the compare-groups Student `t^2 = F`
    identity while the `anova_oneway` two-treatment policy remains separate.
-   `NumAcc1-3` remain.
+   A generated unbalanced one-way ANOVA fixture now uses a 50-digit Decimal
+   oracle to cover the StRD-balanced-data gap. `NumAcc1-3` remain.
 4. Done for current scope: set bootstrap policy in code and tests: default 5000 user-facing resamples,
    reject or warn below 1000, deterministic reproduction tests for plumbing,
    and slow known-effect coverage smoke for simple mediation and the Model

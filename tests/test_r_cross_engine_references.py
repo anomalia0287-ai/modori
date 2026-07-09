@@ -72,6 +72,7 @@ def _rscript_and_env() -> tuple[str, dict[str, str]]:
         rscript = str(local) if local.exists() else shutil.which("Rscript")
     if not rscript:
         pytest.skip("Rscript is not installed; cross-engine R reference checks cannot run.")
+    rscript = str(Path(rscript).resolve())
 
     env = os.environ.copy()
     prefix = Path(rscript).resolve().parents[1]

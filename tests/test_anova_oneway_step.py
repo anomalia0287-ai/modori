@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib
 import math
 from collections.abc import Mapping
+from decimal import Decimal, localcontext
 
 import numpy as np
 import pandas as pd
@@ -91,6 +92,34 @@ def _balanced_dataset() -> Dataset:
     )
 
 
+def _decimal_unbalanced_anova(
+    groups: list[list[Decimal]],
+) -> dict[str, Decimal]:
+    with localcontext() as ctx:
+        ctx.prec = 50
+        all_values = [value for group in groups for value in group]
+        grand_mean = sum(all_values) / Decimal(len(all_values))
+        group_means = [sum(group) / Decimal(len(group)) for group in groups]
+        ss_between = sum(
+            Decimal(len(group)) * (mean - grand_mean) ** 2
+            for group, mean in zip(groups, group_means, strict=True)
+        )
+        ss_within = sum(
+            sum((value - mean) ** 2 for value in group)
+            for group, mean in zip(groups, group_means, strict=True)
+        )
+        ss_total = ss_between + ss_within
+        df_between = Decimal(len(groups) - 1)
+        df_within = Decimal(len(all_values) - len(groups))
+        ms_within = ss_within / df_within
+        return {
+            "f": (ss_between / df_between) / ms_within,
+            "eta_squared": ss_between / ss_total,
+            "omega_squared": (ss_between - (df_between * ms_within))
+            / (ss_total + ms_within),
+        }
+
+
 def test_current_schema_rejects_missing_unknown_and_newer_params() -> None:
     with pytest.raises(ValueError, match="require schema_version"):
         _step_cls().migrate_params({"dv": "score", "group": "arm"})
@@ -165,6 +194,91 @@ def test_omnibus_matches_scipy_and_reports_counts_groups_assumptions_effects() -
     )
     assert result.chart_spec is None
     assert result.no_canonical_chart_reason_ko
+
+
+def test_unbalanced_large_offset_anova_matches_decimal_oracle() -> None:
+    offset = Decimal("1000000")
+    group_specs = [
+        ("A", Decimal("-0.45"), ["-0.12", "0.04", "0.08"]),
+        ("B", Decimal("0.10"), ["-0.25", "-0.10", "-0.02", "0.03", "0.09", "0.11", "0.14"]),
+        (
+            "C",
+            Decimal("0.42"),
+            [
+                "-0.30",
+                "-0.21",
+                "-0.13",
+                "-0.08",
+                "-0.03",
+                "0.02",
+                "0.07",
+                "0.11",
+                "0.15",
+                "0.18",
+                "0.22",
+                "0.25",
+                "0.29",
+                "0.31",
+                "0.36",
+            ],
+        ),
+        (
+            "D",
+            Decimal("0.88"),
+            [
+                "-0.35",
+                "-0.28",
+                "-0.22",
+                "-0.17",
+                "-0.11",
+                "-0.06",
+                "-0.01",
+                "0.04",
+                "0.08",
+                "0.13",
+                "0.17",
+                "0.20",
+                "0.24",
+                "0.27",
+                "0.30",
+                "0.34",
+                "0.37",
+                "0.41",
+                "0.44",
+                "0.47",
+                "0.50",
+            ],
+        ),
+    ]
+    groups = [
+        [offset + mean + Decimal(residual) for residual in residuals]
+        for _label, mean, residuals in group_specs
+    ]
+    rows = [
+        {"arm": label, "score": float(value)}
+        for (label, _mean, _residuals), values in zip(group_specs, groups, strict=True)
+        for value in values
+    ]
+    dataset = dataset_factory(rows=rows, measures={"arm": "nominal", "score": "scale"})
+    oracle = _decimal_unbalanced_anova(groups)
+
+    result = run_step(dataset, _params(posthoc="none"))
+
+    assert [group.n for group in result.groups] == [3, 7, 15, 21]
+    assert result.f_statistic == pytest.approx(float(oracle["f"]), rel=1e-10)
+    assert result.p_value == pytest.approx(
+        stats.f.sf(float(oracle["f"]), result.df_between, result.df_within),
+        rel=1e-9,
+        abs=1e-300,
+    )
+    assert result.eta_squared == pytest.approx(
+        float(oracle["eta_squared"]),
+        rel=1e-10,
+    )
+    assert result.omega_squared == pytest.approx(
+        float(oracle["omega_squared"]),
+        rel=1e-10,
+    )
 
 
 def test_group_order_uses_value_label_order_then_normalized_lexical_order() -> None:
