@@ -259,6 +259,40 @@ def test_compare_groups_routes_to_welch_when_variance_is_unequal() -> None:
     assert result.mean_diff_ci == pytest.approx((-5.76, 0.76), abs=0.001)
 
 
+def test_welch_t_large_common_offset_matches_formula_oracle() -> None:
+    offset = 1e12
+    first_base = [-0.50, -0.25, 0.00, 0.25, 0.50, -0.25, 0.25, 0.00]
+    second_base = [-0.50, 0.50, 1.00, 1.50, 2.00, 2.50, 1.00, 2.00, 3.00, 1.50, 2.50]
+    first = [offset + value for value in first_base]
+    second = [offset + value for value in second_base]
+
+    result = compare_step().compute_context_free(comparison_dataset(first, second)).analysis
+
+    first_series = pd.Series(first_base, dtype=float)
+    second_series = pd.Series(second_base, dtype=float)
+    first_var = float(first_series.var(ddof=1))
+    second_var = float(second_series.var(ddof=1))
+    first_n = len(first_series)
+    second_n = len(second_series)
+    mean_difference = float(first_series.mean() - second_series.mean())
+    se_squared = (first_var / first_n) + (second_var / second_n)
+    se = se_squared**0.5
+    df = (se_squared**2) / (
+        ((first_var / first_n) ** 2 / (first_n - 1))
+        + ((second_var / second_n) ** 2 / (second_n - 1))
+    )
+    statistic = mean_difference / se
+    p_value = 2.0 * stats.t.sf(abs(statistic), df)
+    critical = stats.t.ppf(0.975, df)
+    ci = (mean_difference - critical * se, mean_difference + critical * se)
+
+    assert result.test_name == "welch_t"
+    assert result.statistic == pytest.approx(statistic, abs=1e-10)
+    assert result.df == pytest.approx(df, abs=1e-10)
+    assert result.p_value == pytest.approx(p_value, abs=1e-12)
+    assert result.mean_diff_ci == pytest.approx((round(ci[0], 2), round(ci[1], 2)))
+
+
 def test_compare_groups_results_are_stable_when_rows_are_shuffled() -> None:
     dataset = comparison_dataset(
         [10, 11, 9, 10, 12, 11, 10, 9, 11, 10],
