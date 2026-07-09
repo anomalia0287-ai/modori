@@ -507,12 +507,20 @@ class FactorPcaStep(Step):
 
         factor_names = [f"F{index + 1}" for index in range(factor_count)]
         components = tuple(FactorPcaComponent(name=name) for name in factor_names)
-        loadings = _loading_rows(dataset, variables, factor_names, analyzer.loadings_)
+        loadings_matrix = np.asarray(analyzer.loadings_, dtype=float)
+        communalities_values = np.asarray(analyzer.get_communalities(), dtype=float)
+        uniquenesses_values = np.asarray(analyzer.get_uniquenesses(), dtype=float)
+        _validate_factor_estimates(
+            loadings_matrix,
+            communalities_values,
+            uniquenesses_values,
+        )
+        loadings = _loading_rows(dataset, variables, factor_names, loadings_matrix)
         communalities = {
             variable: float(value)
             for variable, value in zip(
                 variables,
-                analyzer.get_communalities(),
+                communalities_values,
                 strict=True,
             )
         }
@@ -520,12 +528,10 @@ class FactorPcaStep(Step):
             variable: float(value)
             for variable, value in zip(
                 variables,
-                analyzer.get_uniquenesses(),
+                uniquenesses_values,
                 strict=True,
             )
         }
-        if not np.all(np.isfinite(analyzer.loadings_)):
-            raise ValueError("EFA 적재량이 유한하지 않아 분석을 중단합니다.")
         return components, loadings, communalities, uniquenesses
 
     @staticmethod
@@ -567,6 +573,29 @@ def _loading_rows(
                 )
             )
     return tuple(rows)
+
+
+def _validate_factor_estimates(
+    loadings: np.ndarray,
+    communalities: np.ndarray,
+    uniquenesses: np.ndarray,
+) -> None:
+    if (
+        not np.all(np.isfinite(loadings))
+        or not np.all(np.isfinite(communalities))
+        or not np.all(np.isfinite(uniquenesses))
+    ):
+        raise ValueError("EFA 요인 추정치가 유한하지 않아 분석을 중단합니다.")
+    if (
+        np.any(np.abs(loadings) > 1.0)
+        or np.any(communalities < 0.0)
+        or np.any(communalities > 1.0)
+        or np.any(uniquenesses <= 0.0)
+        or np.any(uniquenesses > 1.0)
+    ):
+        raise ValueError(
+            "EFA produced invalid Heywood-like factor estimates; inference is undefined."
+        )
 
 
 def _float_tuple(values: np.ndarray) -> tuple[float, ...]:

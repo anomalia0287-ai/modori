@@ -273,6 +273,31 @@ def test_efa_varimax_matches_factor_analyzer_reference() -> None:
     )
 
 
+def test_efa_rejects_heywood_like_factor_estimates(monkeypatch) -> None:
+    class HeywoodFactorAnalyzer:
+        def __init__(self, *args, **kwargs) -> None:
+            self.loadings_ = np.array([[1.05], [0.90], [0.85], [0.80], [0.70]])
+
+        def fit(self, frame: pd.DataFrame) -> None:
+            return None
+
+        def get_communalities(self):
+            return np.array([1.1025, 0.81, 0.7225, 0.64, 0.49])
+
+        def get_uniquenesses(self):
+            return np.array([-0.1025, 0.19, 0.2775, 0.36, 0.51])
+
+    import modori.steps.factor_pca as factor_pca_step
+
+    monkeypatch.setattr(factor_pca_step, "FactorAnalyzer", HeywoodFactorAnalyzer)
+
+    with pytest.raises(ValueError, match="Heywood|invalid"):
+        run_step(
+            dataset_factory(frame=factor_frame()),
+            _params(method="efa", rotation="none", factor_count=1),
+        )
+
+
 @pytest.mark.parametrize(
     "frame, measures, params, message",
     [

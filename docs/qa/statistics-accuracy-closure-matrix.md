@@ -41,16 +41,16 @@ rejected by fail-closed policy, or documented as outside product scope.
 | Regression OLS | NIST Longley/Wampler fixtures, condition-number gates, perfect-fit fail-closed, and outcome-offset audit are in place. | Add missing-row and heteroskedasticity golden fixtures. |
 | Mediation/moderated mediation | SVD-backed OLS covariance, condition gates, and bootstrap iteration policy are in place. | Add independent bootstrap adequacy checks and Model 14 deterministic CI reproduction. |
 | Rank-based nonparametric tests | Method details, tie policies, exact/asymptotic selection, and small-sample warnings are recorded in tests. | Add optional R/SPSS/JASP anchors when the external runtimes are available. |
-| Factor/PCA | Singular and near-singular correlation matrices now fail closed before KMO/EFA output; parallel analysis defaults to 1000 iterations and warns below 1000. | Add cross-engine PCA/EFA references. |
-| Reliability omega | Singular and near-singular omega matrices now fail closed; FactorAnalyzer runtime/user warnings are not treated as valid estimates. | Add Heywood/convergence fixtures and R `psych` golden output for difficult item matrices. |
+| Factor/PCA | Singular, near-singular, non-convergent, and invalid Heywood-like factor estimates now fail closed; parallel analysis defaults to 1000 iterations and warns below 1000. | Add cross-engine PCA/EFA references. |
+| Reliability omega | Singular, near-singular, non-convergent, and invalid Heywood-like omega estimates now fail closed; FactorAnalyzer runtime/user warnings are not treated as valid estimates. | Add R `psych` golden output for difficult item matrices. |
 
 ## Next Execution Order
 
-1. Close the reliability/factor difficult-matrix fixtures until near-singular,
-   non-convergent, and invalid-estimate cases fail closed predictably.
-2. Close bootstrap CI adequacy with a slow marker or controlled-index
+1. Close bootstrap CI adequacy with a slow marker or controlled-index
    independent reference; do not call deterministic same-seed reproduction
    adequacy.
+2. Add cross-engine factor/PCA and R `psych` omega anchors when the R runtime
+   is available.
 3. Add cross-engine rank anchors once R/SPSS/JASP evidence is available.
 4. Add studentized-range extreme-tail fixtures for Tukey and Games-Howell.
 5. Re-run presentation/report checks after each calculation closure pass.

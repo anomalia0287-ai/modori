@@ -277,6 +277,30 @@ def test_reliability_step_rejects_ill_conditioned_omega_matrix() -> None:
         step.compute_context_free(dataset)
 
 
+def test_reliability_step_rejects_heywood_like_omega_estimates(monkeypatch) -> None:
+    class HeywoodFactorAnalyzer:
+        def __init__(self, *args, **kwargs) -> None:
+            self.loadings_ = pd.DataFrame([[1.05], [0.90], [0.85], [0.80]]).to_numpy()
+
+        def fit(self, frame: pd.DataFrame) -> None:
+            return None
+
+        def get_uniquenesses(self):
+            return pd.Series([-0.1025, 0.19, 0.2775, 0.36]).to_numpy()
+
+    import modori.steps.statistics as statistics_step
+
+    monkeypatch.setattr(statistics_step, "FactorAnalyzer", HeywoodFactorAnalyzer)
+    step = ReliabilityStep(
+        id="reliability",
+        title="Reliability",
+        params={"items": ["q1", "q2", "q3", "q4"], "scale_name": "job_sat"},
+    )
+
+    with pytest.raises(ValueError, match="Heywood|invalid"):
+        step.compute_context_free(reliability_dataset())
+
+
 def test_reliability_step_rejects_fewer_than_three_items() -> None:
     step = ReliabilityStep(
         id="reliability",

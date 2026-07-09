@@ -282,6 +282,13 @@ class ReliabilityStep(Step):
                 "McDonald's omega produced non-finite factor estimates; "
                 "inference is undefined."
             )
+        if np.any(np.abs(loadings) > 1.0) or np.any(uniquenesses <= 0.0) or np.any(
+            uniquenesses > 1.0
+        ):
+            raise ValueError(
+                "McDonald's omega produced invalid Heywood-like factor estimates; "
+                "inference is undefined."
+            )
         common_variance = float(loadings.sum() ** 2)
         error_variance = float(uniquenesses.sum())
         return common_variance / (common_variance + error_variance)
