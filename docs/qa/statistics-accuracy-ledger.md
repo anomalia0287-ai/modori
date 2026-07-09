@@ -15,6 +15,11 @@ Numerical-analysis literature and implementation obligations are mapped in
 Closure criteria and remaining risk categories are tracked in
 `docs/qa/statistics-accuracy-closure-matrix.md`.
 
+Manual external-GUI evidence is tracked separately in
+`docs/qa/jamovi-gui-validation-runbook.md`. jamovi fixture agreement is useful
+for reviewer confidence, but it is not a substitute for the automated
+calculation gates and does not support SPSS/JASP-equivalent claims.
+
 ## Tolerance Policy
 
 Default numeric tolerance for bounded deterministic statistics is `abs <=
@@ -87,6 +92,10 @@ verified separately from raw result-object values.
 - R cross-engine reference gate:
   `pytest -q -rs -p no:cacheprovider tests/test_r_cross_engine_references.py tests/test_reliability_step.py::test_mcdonald_omega_matches_r_psych_when_r_is_available tests/test_regression_step.py::test_regression_matches_committed_r_reference_when_r_is_available`
   reported `8 passed` with the workspace-local R runtime.
+- jamovi GUI fixture pack:
+  `tests/test_jamovi_validation_fixtures.py` locks the expected values used by
+  `docs/qa/jamovi-gui-validation-runbook.md`. Manual jamovi screenshots or
+  exports are optional external-GUI evidence and should be stored outside git.
 - Presentation/report drift check:
   reporting, prose-contract, report-step, UI report binding/export, result
   state, and pipeline result-binding tests passed with `68 passed` after this

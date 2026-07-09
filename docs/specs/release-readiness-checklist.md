@@ -197,6 +197,16 @@ Do not describe this release as SPSS-equivalent or JASP-equivalent. Current
 calculation claims are limited to NIST, R/base-R, R `psych`/`lm()`, dependency
 library parity, and formula/Decimal oracle evidence.
 
+Optional external GUI spot-check:
+
+```text
+docs\qa\jamovi-gui-validation-runbook.md
+```
+
+The jamovi fixture pack is manual evidence only. It can support reviewer
+confidence that representative CSV fixtures agree in a free GUI statistics
+tool, but it is not part of the automated release gate.
+
 ## UI/UX Manual QA Gate
 
 Use `docs/specs/release-manual-qa.md` as the current manual QA matrix and

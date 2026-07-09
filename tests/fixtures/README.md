@@ -17,6 +17,21 @@ Use in Modori:
 - Reverse-code range: 1 to 6.
 - Group variable: `gender`.
 
+## `jamovi/*.csv`
+
+Small manual GUI-validation fixtures for jamovi 2.7.x.
+
+Use in Modori:
+
+- Optional external-GUI evidence only; these fixtures do not replace automated
+  NIST/R/Decimal/formula-oracle tests.
+- The manual runbook is `docs/qa/jamovi-gui-validation-runbook.md`.
+- Covered analyses: independent t, Mann-Whitney, Wilcoxon signed-rank,
+  one-way ANOVA, Kruskal-Wallis, multiple regression, and Pearson correlation.
+- Expected values are locked by `tests/test_jamovi_validation_fixtures.py`.
+- Evidence from these files supports "jamovi GUI representative fixture
+  agreement" only, not SPSS/JASP-equivalent breadth.
+
 ## `nist/*.csv`
 
 Source: NIST/ITL Statistical Reference Datasets, linear least-squares
