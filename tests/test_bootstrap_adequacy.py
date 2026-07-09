@@ -61,6 +61,38 @@ def _moderated_mediation_frame(seed: int, n: int = 150) -> tuple[pd.DataFrame, f
     return centered, moderator_sd
 
 
+def _model_14_moderated_mediation_frame(
+    seed: int,
+    n: int = 160,
+) -> tuple[pd.DataFrame, float]:
+    rng = np.random.default_rng(seed)
+    x = rng.normal(size=n)
+    moderator = rng.normal(size=n)
+    covariate = rng.normal(size=n)
+    x_centered = x - float(x.mean())
+    w_centered = moderator - float(moderator.mean())
+    mediator = 0.42 * x_centered + 0.18 * covariate + rng.normal(scale=1.0, size=n)
+    y = (
+        0.10 * x_centered
+        + 0.34 * mediator
+        + 0.22 * w_centered
+        + 0.16 * mediator * w_centered
+        + 0.12 * covariate
+        + rng.normal(scale=1.0, size=n)
+    )
+    raw = pd.DataFrame(
+        {"x": x, "w": moderator, "m": mediator, "y": y, "cov": covariate}
+    )
+    centered = ModeratedMediationStep._centered_frame(
+        raw,
+        x="x",
+        mediator="m",
+        moderator="w",
+    )
+    moderator_sd = _as_finite_float(raw["w"].std(ddof=1), "moderator SD")
+    return centered, moderator_sd
+
+
 def _assert_coverage_smoke(
     intervals: list[tuple[float, float]],
     *,
@@ -113,6 +145,31 @@ def test_model_7_percentile_bootstrap_index_has_known_effect_coverage_smoke() ->
         _effect_cis, index_ci = _bootstrap_cis(
             frame,
             model=7,
+            mediator="m",
+            y="y",
+            covariates=["cov"],
+            moderator_sd=moderator_sd,
+            iterations=1000,
+            seed=seed + 10000,
+            ci=0.95,
+        )
+        intervals.append(index_ci)
+
+    _assert_coverage_smoke(
+        intervals,
+        true_effect=true_index,
+        minimum_hits=16,
+    )
+
+
+def test_model_14_percentile_bootstrap_index_has_known_effect_coverage_smoke() -> None:
+    true_index = 0.42 * 0.16
+    intervals = []
+    for seed in range(2026071100, 2026071120):
+        frame, moderator_sd = _model_14_moderated_mediation_frame(seed)
+        _effect_cis, index_ci = _bootstrap_cis(
+            frame,
+            model=14,
             mediator="m",
             y="y",
             covariates=["cov"],

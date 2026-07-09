@@ -153,6 +153,54 @@ def bootstrap_model_7_reference(
     return effect_cis, index_ci
 
 
+def bootstrap_model_14_reference(
+    frame: pd.DataFrame,
+    *,
+    iterations: int,
+    seed: int,
+    ci: float,
+) -> tuple[dict[str, tuple[float, float]], tuple[float, float]]:
+    rng = np.random.default_rng(seed)
+    moderator_sd = float(frame["w"].std(ddof=1))
+    effects_by_label: dict[str, list[float]] = {
+        "mean - 1 SD": [],
+        "mean": [],
+        "mean + 1 SD": [],
+    }
+    index_values: list[float] = []
+    points = {
+        "mean - 1 SD": -moderator_sd,
+        "mean": 0.0,
+        "mean + 1 SD": moderator_sd,
+    }
+
+    for _ in range(iterations):
+        sample = frame.iloc[rng.integers(0, len(frame), size=len(frame))].reset_index(
+            drop=True
+        )
+        mediator_model = ols_coefficients(sample, "m", ["x_centered", "c1"])
+        outcome_model = ols_coefficients(
+            sample,
+            "y",
+            ["x_centered", "m", "w_centered", "m:w_centered", "c1"],
+        )
+        a = mediator_model["x_centered"]
+        b1 = outcome_model["m"]
+        b3 = outcome_model["m:w_centered"]
+        for label, centered_value in points.items():
+            effects_by_label[label].append(a * (b1 + b3 * centered_value))
+        index_values.append(a * b3)
+
+    alpha = 1.0 - ci
+    percentiles = [100.0 * alpha / 2.0, 100.0 * (1.0 - alpha / 2.0)]
+    effect_cis = {
+        label: tuple(np.percentile(values, percentiles))
+        for label, values in effects_by_label.items()
+    }
+    index_ci = tuple(np.percentile(index_values, percentiles))
+    return effect_cis, index_ci
+
+
 def test_current_schema_rejects_missing_unknown_and_newer_params() -> None:
     with pytest.raises(ValueError, match="require schema_version"):
         _step_cls().migrate_params({"model": 7, "x": "x", "mediator": "m", "moderator": "w", "y": "y"})
@@ -261,6 +309,26 @@ def test_model_14_reports_conditional_indirect_effects_and_index() -> None:
     )
     assert result.index_of_moderated_mediation == pytest.approx(expected_index, abs=1e-10)
     assert result.index_ci[0] < result.index_of_moderated_mediation < result.index_ci[1]
+
+
+def test_model_14_bootstrap_cis_match_independent_percentile_reference() -> None:
+    frame = moderated_frame()
+    ref = centered_reference_frame(frame)
+    params = _params(model=14)
+
+    result = run_step(dataset_factory(frame), params)
+    effect_cis, index_ci = bootstrap_model_14_reference(
+        ref,
+        iterations=params["bootstrap"]["iterations"],
+        seed=params["bootstrap"]["seed"],
+        ci=params["bootstrap"]["ci"],
+    )
+
+    assert result.index_ci == pytest.approx(index_ci, abs=1e-10)
+    actual_effect_cis = {
+        effect.moderator_label: effect.ci for effect in result.conditional_effects
+    }
+    assert actual_effect_cis == pytest.approx(effect_cis, abs=1e-10)
 
 
 def test_validation_rejects_unsupported_model_duplicate_roles_and_non_scale() -> None:
