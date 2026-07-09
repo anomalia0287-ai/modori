@@ -36,7 +36,7 @@ rejected by fail-closed policy, or documented as outside product scope.
 | Area | Current State | Remaining Closure Work |
 | --- | --- | --- |
 | Descriptives/Table 1 | NIST NumAcc4 fixture and Decimal mean/sample-SD path are in place. | Add NumAcc1-3 only if they expose distinct product risk. |
-| ANOVA family | One-way ANOVA, RM-ANOVA, and ANCOVA have centered SS/OLS paths and large-offset audits; NIST `AtmWtAg` is covered through the compare-groups Student `t^2 = F` identity. | Decide two-treatment ANOVA policy for `anova_oneway`; add independent studentized-range edge fixtures. |
+| ANOVA family | One-way ANOVA, RM-ANOVA, and ANCOVA have centered SS/OLS paths and large-offset audits; NIST `AtmWtAg` is covered through the compare-groups Student `t^2 = F` identity; Tukey/Games-Howell posthoc tails have direct studentized-range fixtures. | Decide two-treatment ANOVA policy for `anova_oneway`; add broader posthoc edge fixtures only if product scope expands. |
 | Compare groups t-family | Welch and Student t paths use centered common-offset inputs for test statistics; NIST `AtmWtAg` anchors Student t against certified `F = t^2`. | Add a certified or formula-oracle Welch large-offset fixture. |
 | Regression OLS | NIST Longley/Wampler fixtures, condition-number gates, perfect-fit fail-closed, and outcome-offset audit are in place. | Add missing-row and heteroskedasticity golden fixtures. |
 | Mediation/moderated mediation | SVD-backed OLS covariance, condition gates, bootstrap iteration policy, deterministic CI reproduction for Model 7/14, complete-case/no-covariate parity fixtures, and slow known-effect coverage smoke for simple mediation and the Model 7/14 moderated-mediation indexes are in place. | Add controlled-index cross-engine references and broader coverage designs if scope expands. |
@@ -51,5 +51,4 @@ rejected by fail-closed policy, or documented as outside product scope.
 2. Add cross-engine factor/PCA and R `psych` omega anchors when the R runtime
    is available.
 3. Add cross-engine rank anchors once R/SPSS/JASP evidence is available.
-4. Add studentized-range extreme-tail fixtures for Tukey and Games-Howell.
-5. Re-run presentation/report checks after each calculation closure pass.
+4. Re-run presentation/report checks after each calculation closure pass.

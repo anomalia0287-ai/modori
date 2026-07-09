@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import importlib
+import math
 from collections.abc import Mapping
 
+import numpy as np
 import pandas as pd
 import pytest
 from scipy import stats
@@ -217,6 +219,42 @@ def test_tukey_posthoc_matches_statsmodels_for_equal_variance_case() -> None:
     )
 
 
+def test_tukey_posthoc_extreme_tail_matches_studentized_range_sf() -> None:
+    base = np.array([-1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, -0.5, 0.5, 0.0])
+    rows = [
+        {"arm": arm, "score": float(offset + value)}
+        for arm, offset in [("A", 0.0), ("B", 3.2), ("C", 6.4)]
+        for value in base
+    ]
+    dataset = dataset_factory(
+        rows=rows,
+        measures={"arm": "nominal", "score": "scale"},
+    )
+
+    result = run_step(dataset, _params(posthoc="auto"))
+
+    assert result.posthoc.method == "tukey_hsd"
+    comparison = next(
+        item
+        for item in result.posthoc.comparisons
+        if (item.group1_value, item.group2_value) == ("A", "C")
+    )
+    groups = [
+        dataset.df.loc[dataset.df["arm"] == arm, "score"].to_numpy(dtype=float)
+        for arm in ["A", "B", "C"]
+    ]
+    ss_within = sum(float(((group - group.mean()) ** 2).sum()) for group in groups)
+    df_within = sum(len(group) - 1 for group in groups)
+    mse = ss_within / df_within
+    q_statistic = abs(groups[2].mean() - groups[0].mean()) / math.sqrt(
+        mse / len(groups[0])
+    )
+    expected = stats.studentized_range.sf(q_statistic, len(groups), df_within)
+
+    assert 0.0 < expected < 1e-12
+    assert comparison.p_value == pytest.approx(expected, rel=1e-10, abs=1e-16)
+
+
 def test_games_howell_posthoc_matches_pingouin_when_levene_rejects() -> None:
     pg = pytest.importorskip("pingouin")
     dataset = dataset_factory(
@@ -258,6 +296,48 @@ def test_games_howell_posthoc_matches_pingouin_when_levene_rejects() -> None:
         reference["pval"].to_list(),
         abs=1e-12,
     )
+
+
+def test_games_howell_extreme_tail_matches_studentized_range_sf() -> None:
+    pytest.importorskip("pingouin")
+    base = np.array([-1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, -0.5, 0.5, 0.0])
+    rows = [
+        {"arm": arm, "score": float(mean + scale * value)}
+        for arm, mean, scale in [("A", 0.0, 0.2), ("B", 15.0, 2.0), ("C", 30.0, 5.0)]
+        for value in base
+    ]
+    dataset = dataset_factory(
+        rows=rows,
+        measures={"arm": "nominal", "score": "scale"},
+    )
+
+    result = run_step(dataset, _params(posthoc="auto"))
+
+    assert result.assumptions.levene_p_value < 0.05
+    assert result.posthoc.method == "games_howell"
+    comparison = next(
+        item
+        for item in result.posthoc.comparisons
+        if (item.group1_value, item.group2_value) == ("A", "B")
+    )
+    first = dataset.df.loc[dataset.df["arm"] == "A", "score"].to_numpy(dtype=float)
+    second = dataset.df.loc[dataset.df["arm"] == "B", "score"].to_numpy(dtype=float)
+    first_var = float(first.var(ddof=1))
+    second_var = float(second.var(ddof=1))
+    first_n = len(first)
+    second_n = len(second)
+    se_squared = (first_var / first_n) + (second_var / second_n)
+    q_statistic = math.sqrt(2.0) * abs(first.mean() - second.mean()) / math.sqrt(
+        se_squared
+    )
+    df = (se_squared**2) / (
+        ((first_var / first_n) ** 2 / (first_n - 1))
+        + ((second_var / second_n) ** 2 / (second_n - 1))
+    )
+    expected = stats.studentized_range.sf(q_statistic, 3, df)
+
+    assert 0.0 < expected < 1e-8
+    assert comparison.p_value == pytest.approx(expected, rel=1e-10, abs=1e-16)
 
 
 def test_posthoc_none_policy_skips_pairwise_tests_with_explicit_reason() -> None:

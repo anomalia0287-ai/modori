@@ -87,8 +87,8 @@ points, ordered by product risk rather than textbook neatness:
    The current lock rejects subtractive `1 - cdf` forms in mediation,
    regression simple slopes, ANCOVA, one-way ANOVA, and repeated-measures
    ANOVA. Tukey/Games-Howell results now disclose their studentized-range
-   survival-function source. Chi-square, beta, gamma, and independent
-   studentized-range edge fixtures remain.
+   survival-function source and have direct studentized-range extreme-tail
+   fixtures. Chi-square, beta, and gamma edge fixtures remain.
 
 ## Implementation Rules
 

@@ -56,7 +56,7 @@ values.
 | `descriptives_table1` | NIST StRD NumAcc4 generated fixture and module tests. | Large-offset mean and sample standard deviation use one shared Decimal-backed conversion and match certified NumAcc4 values. Boolean SCALE values are explicitly rejected. | Median/min/max remain float64 summaries; NumAcc1-3 and autocorrelation are not product-surfaced fixtures yet. | Add NumAcc1-3 where they expose distinct product risk; only add autocorrelation if Modori surfaces it. |
 | `factor_pca` | Current tests cover PCA/EFA behavior, eigenvalue/loadings surfaces, and validation paths. | Correlation-matrix validation, singular correlation rejection, condition-number rejection for near-singular correlation matrices, KMO/Bartlett diagnostic handling, invalid Heywood-like EFA estimate rejection, deterministic parallel-analysis seed, user-facing parallel-analysis default `1000`, warning below `1000`. | KMO inverse sensitivity and invalid factor estimates are now fail-closed for tested inputs, but cross-engine PCA/EFA references are not ledger-complete. | Add cross-engine PCA/EFA references. |
 | `reliability_omega` | Current tests include R-gated omega parity when the R environment is available. | Cronbach alpha paths, corrected item-total correlations, omega singular-correlation rejection, omega condition-number rejection for near-singular item matrices, FactorAnalyzer runtime/user warning fail-closed, invalid Heywood-like omega estimate rejection. | McDonald's omega uses maximum-likelihood factor extraction; explicit R `psych` golden fixtures for difficult item matrices are not ledger-complete. | Add an explicit R `psych` golden suite for difficult item matrices. |
-| `anova_oneway` | SciPy `f_oneway` parity tests, NIST StRD SmLs01/SmLs04/SmLs07 fixtures, and posthoc coverage via statsmodels/Pingouin paths. | Group validation, Levene assumption summaries, omnibus ANOVA, certified df/F/R-squared parity, centered effect-size SS path, large-offset eta/omega stability, posthoc result surfaces, Tukey/Games-Howell p-value source disclosure, studentized-range survival-function policy lock. | `SmLs07` is recorded as achieved float64 precision rather than full 15-digit certified parity. `AtmWtAg` is covered through `compare_groups_t`, but `anova_oneway` still routes/validates one-way ANOVA as three-or-more groups. Independent studentized-range edge fixtures are not ledger-complete. | Decide whether two-treatment ANOVA should be accepted in `anova_oneway`; add extreme-tail posthoc fixtures for Tukey/Games-Howell. |
+| `anova_oneway` | SciPy `f_oneway` parity tests, NIST StRD SmLs01/SmLs04/SmLs07 fixtures, and posthoc coverage via statsmodels/Pingouin paths. | Group validation, Levene assumption summaries, omnibus ANOVA, certified df/F/R-squared parity, centered effect-size SS path, large-offset eta/omega stability, posthoc result surfaces, Tukey/Games-Howell p-value source disclosure, studentized-range survival-function policy lock, direct extreme-tail Tukey/Games-Howell fixtures. | `SmLs07` is recorded as achieved float64 precision rather than full 15-digit certified parity. `AtmWtAg` is covered through `compare_groups_t`, but `anova_oneway` still routes/validates one-way ANOVA as three-or-more groups. | Decide whether two-treatment ANOVA should be accepted in `anova_oneway`; add broader posthoc edge fixtures only if product scope expands. |
 | `rank_based_nonparametric_tests` | Current coverage spans Mann-Whitney, Wilcoxon, Kruskal-Wallis, Friedman, and Spearman through module tests. | Mann-Whitney records tie policy and exact-vs-asymptotic selection; Wilcoxon records zero-difference, tie, correction, and method policy; Kruskal-Wallis, Friedman, and Spearman now record tied-rank/method policy details on Likert-shaped fixtures; Kruskal-Wallis warns on small group sizes where chi-square approximation is weak. | Cross-engine disagreements against R/SPSS/JASP are not ledger-complete. Kruskal-Wallis and Friedman posthoc remain intentionally unsupported. | Add R/SPSS/JASP anchors and explicit small-sample/exact-policy documentation for each rank family. |
 
 ## Release Evidence
@@ -64,8 +64,8 @@ values.
 - Local calculation-reliability gate:
   `.\.venv\Scripts\python.exe scripts\quality_gate.py --with-slow-stats`
   passed on 2026-07-09 KST with `compileall`, `ruff`, `bandit`,
-  `launch-smoke-ok`, full pytest `998 passed, 6 skipped`, `pip check`, and
-  slow statistics pytest `3 passed, 1001 deselected`.
+  `launch-smoke-ok`, full pytest `1000 passed, 6 skipped`, `pip check`, and
+  slow statistics pytest `3 passed, 1003 deselected`.
 - Host quality gate:
   `scripts\quality_gate.py --with-package-check --with-package-build --with-packaged-launch`
   reported `947 passed, 3 skipped`, `package-tool-ok`,
@@ -79,7 +79,7 @@ values.
 - Current numerical-policy focus command:
   `pytest -p no:cacheprovider tests/test_descriptives_table1_step.py tests/test_regression_step.py tests/test_regression_categorical_interaction.py tests/test_ancova_step.py tests/test_mediation_step.py tests/test_moderated_mediation_step.py tests/test_compare_groups_step.py tests/test_paired_comparison_step.py tests/test_friedman_step.py tests/test_kruskal_wallis_step.py tests/test_anova_oneway_step.py tests/test_factor_pca_step.py tests/test_reliability_step.py tests/test_statistics_numerics.py tests/test_nist_strd_fixtures.py tests/test_tail_probability_policy.py -q`
 - Slow bootstrap adequacy smoke:
-  `scripts\slow_stats_gate.py` reported `3 passed, 1001 deselected` for
+  `scripts\slow_stats_gate.py` reported `3 passed, 1003 deselected` for
   simple mediation percentile CI and moderated-mediation Model 7/14 index
   known-effect coverage checks.
 
