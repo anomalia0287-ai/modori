@@ -267,7 +267,7 @@ def test_analysis_command_builder_builds_factor_pca_step_edit() -> None:
         "rotation": "none",
         "parallel_analysis": {
             "seed": 20260707,
-            "iterations": 100,
+            "iterations": 1000,
             "percentile": 95.0,
         },
     }

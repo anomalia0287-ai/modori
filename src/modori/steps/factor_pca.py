@@ -30,7 +30,12 @@ _SUPPORTED_METHODS = {"pca", "efa"}
 _SUPPORTED_MISSING_POLICIES = {"listwise"}
 _SUPPORTED_EFA_ROTATIONS = {"none", "varimax"}
 _SUPPORTED_EFA_EXTRACTION_METHODS = {"minres"}
-_PARALLEL_DEFAULTS = {"seed": 20260707, "iterations": 100, "percentile": 95.0}
+_MIN_RECOMMENDED_PARALLEL_ITERATIONS = 1000
+_PARALLEL_DEFAULTS = {
+    "seed": 20260707,
+    "iterations": _MIN_RECOMMENDED_PARALLEL_ITERATIONS,
+    "percentile": 95.0,
+}
 
 
 @dataclass
@@ -251,7 +256,10 @@ class FactorPcaStep(Step):
             )
             title_ko = "탐색적 요인분석"
 
-        warnings_ko = self._warnings(n_excluded)
+        warnings_ko = self._warnings(
+            n_excluded,
+            parallel_iterations=int(params["parallel_analysis"]["iterations"]),
+        )
         notes_ko = (
             "KMO와 Bartlett 검정은 요인분석 적합성 진단이며 구성개념을 자동으로 입증하지 않는다.",
             "평행분석 제안 수는 보조 기준이며 연구자가 이론과 문항 내용을 함께 판단해야 한다.",
@@ -521,12 +529,21 @@ class FactorPcaStep(Step):
         return components, loadings, communalities, uniquenesses
 
     @staticmethod
-    def _warnings(n_excluded: int) -> tuple[str, ...]:
+    def _warnings(
+        n_excluded: int,
+        *,
+        parallel_iterations: int,
+    ) -> tuple[str, ...]:
         warnings_ko = [
             "요인/PCA 결과는 탐색적 근거이며 구성개념을 자동으로 단정하지 않는다.",
         ]
         if n_excluded:
             warnings_ko.append(f"listwise 결측 처리로 {n_excluded}건을 제외했다.")
+        if parallel_iterations < _MIN_RECOMMENDED_PARALLEL_ITERATIONS:
+            warnings_ko.append(
+                "평행분석 반복 수가 1000회 미만입니다. 사용자에게 제시하는 "
+                "요인 수 판단에서는 1000회 이상을 권장합니다."
+            )
         return tuple(warnings_ko)
 
 

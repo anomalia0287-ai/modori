@@ -214,6 +214,30 @@ def test_pca_matches_numpy_correlation_reference_and_runs_diagnostics() -> None:
     )
 
 
+def test_parallel_analysis_defaults_to_user_facing_1000_iterations() -> None:
+    params = _step_cls().validate_params(
+        {
+            "schema_version": 1,
+            "variables": ["q1", "q2", "q3", "q4", "q5"],
+            "method": "pca",
+            "missing_policy": "listwise",
+            "rotation": "none",
+        }
+    )
+
+    assert params["parallel_analysis"]["iterations"] == 1000
+
+
+def test_parallel_analysis_warns_when_custom_iterations_are_below_user_facing_floor() -> None:
+    result = run_step(
+        dataset_factory(frame=factor_frame()),
+        _params(method="pca", parallel_analysis={"seed": 2718, "iterations": 25, "percentile": 95.0}),
+    )
+
+    assert result.parallel_analysis.iterations == 25
+    assert any("1000" in warning and "평행분석" in warning for warning in result.warnings_ko)
+
+
 def test_efa_varimax_matches_factor_analyzer_reference() -> None:
     frame = factor_frame()
     dataset = dataset_factory(frame=frame)

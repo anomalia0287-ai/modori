@@ -350,7 +350,7 @@ class AnalysisSelectionCommandBuilder:
                 "rotation": "none",
                 "parallel_analysis": {
                     "seed": 20260707,
-                    "iterations": 100,
+                    "iterations": 1000,
                     "percentile": 95.0,
                 },
             }
