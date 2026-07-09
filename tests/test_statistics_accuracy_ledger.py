@@ -17,6 +17,7 @@ def test_statistics_accuracy_ledger_records_high_risk_module_coverage() -> None:
         "moderated_mediation",
         "ancova",
         "regression_ols",
+        "compare_groups_t",
         "descriptives_table1",
         "factor_pca",
         "reliability_omega",
@@ -41,6 +42,19 @@ def test_statistics_accuracy_ledger_records_high_risk_module_coverage() -> None:
         assert evidence in text
 
 
+def test_closure_matrix_keeps_adequacy_as_statistical_performance_evidence() -> None:
+    text = Path("docs/qa/statistics-accuracy-closure-matrix.md").read_text(
+        encoding="utf-8"
+    )
+    adequacy_row = next(
+        line for line in text.splitlines() if line.startswith("| Adequacy |")
+    )
+
+    assert "Coverage simulation" in adequacy_row
+    assert "iteration policy" not in adequacy_row
+    assert "fail-closed limits" not in adequacy_row
+
+
 def test_statistics_literature_map_records_certified_and_product_specific_risks() -> None:
     text = LITERATURE_MAP.read_text(encoding="utf-8")
 
@@ -49,6 +63,7 @@ def test_statistics_literature_map_records_certified_and_product_specific_risks(
         "NumAcc",
         "NumAcc4",
         "SmLs01",
+        "AtmWtAg",
         "Longley",
         "Filip",
         "Wampler",

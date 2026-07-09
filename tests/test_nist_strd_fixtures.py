@@ -4,13 +4,19 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import pytest
+from scipy import stats
 
 from modori.core import Dataset, Measure, Variable
 from modori.statistics_numerics import (
     DEFAULT_OLS_MAX_CONDITION_NUMBER,
     ols_condition_number,
 )
-from modori.steps import DescriptivesTableStep, MultipleRegressionStep, OneWayAnovaStep
+from modori.steps import (
+    CompareGroupsStep,
+    DescriptivesTableStep,
+    MultipleRegressionStep,
+    OneWayAnovaStep,
+)
 
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures" / "nist"
@@ -49,6 +55,24 @@ def _dataset_for_anova(frame: pd.DataFrame) -> Dataset:
                 origin_step_id=None,
             ),
             "y": _scale_variable("y"),
+        },
+    )
+
+
+def _dataset_for_compare_groups(frame: pd.DataFrame) -> Dataset:
+    return Dataset(
+        df=frame,
+        variables={
+            "instrument": Variable(
+                name="instrument",
+                label="instrument",
+                measure=Measure.NOMINAL,
+                value_labels={},
+                missing_values=[],
+                dtype="int",
+                origin_step_id=None,
+            ),
+            "atomic_weight": _scale_variable("atomic_weight"),
         },
     )
 
@@ -100,6 +124,22 @@ def _run_anova(frame: pd.DataFrame):
     ).compute_context_free(_dataset_for_anova(frame)).analysis
 
 
+def _run_compare_groups(frame: pd.DataFrame):
+    return CompareGroupsStep(
+        id="nist-compare-groups",
+        title="NIST compare groups",
+        params={
+            "dv": "atomic_weight",
+            "group": "instrument",
+            "routing_policy": {
+                "preset": "custom",
+                "default_test": "student_t",
+                "use_levene": False,
+            },
+        },
+    ).compute_context_free(_dataset_for_compare_groups(frame)).analysis
+
+
 def _smls_frame(*, offset: float) -> pd.DataFrame:
     def beta(index: int) -> float:
         if index == 1:
@@ -117,6 +157,67 @@ def _smls_frame(*, offset: float) -> pd.DataFrame:
 
 def _smls01_frame() -> pd.DataFrame:
     return _smls_frame(offset=1.0)
+
+
+def _atm_wt_ag_frame() -> pd.DataFrame:
+    instrument_1 = [
+        107.8681568,
+        107.8681465,
+        107.8681572,
+        107.8681785,
+        107.8681446,
+        107.8681903,
+        107.8681526,
+        107.8681494,
+        107.8681616,
+        107.8681587,
+        107.8681519,
+        107.8681486,
+        107.8681419,
+        107.8681569,
+        107.8681508,
+        107.8681672,
+        107.8681385,
+        107.8681518,
+        107.8681662,
+        107.8681424,
+        107.8681360,
+        107.8681333,
+        107.8681610,
+        107.8681477,
+    ]
+    instrument_2 = [
+        107.8681079,
+        107.8681344,
+        107.8681513,
+        107.8681197,
+        107.8681604,
+        107.8681385,
+        107.8681642,
+        107.8681365,
+        107.8681151,
+        107.8681082,
+        107.8681517,
+        107.8681448,
+        107.8681198,
+        107.8681482,
+        107.8681334,
+        107.8681609,
+        107.8681101,
+        107.8681512,
+        107.8681469,
+        107.8681360,
+        107.8681254,
+        107.8681261,
+        107.8681450,
+        107.8681368,
+    ]
+    return pd.DataFrame(
+        {
+            "instrument": [1] * len(instrument_1) + [2] * len(instrument_2),
+            "atomic_weight": instrument_1 + instrument_2,
+        }
+    )
 
 
 def test_smls07_effect_sizes_remain_stable_under_large_offset() -> None:
@@ -187,6 +288,20 @@ def test_smls07_one_way_anova_discloses_float64_achieved_precision() -> None:
         rel=1e-7,
         abs=1e-12,
     )
+
+
+def test_atm_wt_ag_compare_groups_student_t_matches_nist_strd_certified_f() -> None:
+    result = _run_compare_groups(_atm_wt_ag_frame())
+    certified_f = 1.59467335677930e1
+
+    assert result.test_name == "student_t"
+    assert result.df == pytest.approx(46.0, abs=0.0)
+    assert result.statistic * result.statistic == pytest.approx(
+        certified_f,
+        rel=1e-10,
+        abs=1e-12,
+    )
+    assert result.p_value == pytest.approx(stats.f.sf(certified_f, 1, 46), rel=1e-10)
 
 
 def test_longley_regression_matches_nist_strd_certified_values() -> None:

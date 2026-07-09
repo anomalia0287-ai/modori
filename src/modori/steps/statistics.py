@@ -547,7 +547,10 @@ class CompareGroupsStep(Step):
         n_total: int,
         n_dropped: int,
     ) -> ComparisonResult:
-        test = pg.ttest(first, second, correction=correction).iloc[0]
+        pooled_offset = float(pd.concat([first, second]).mean())
+        first_for_test = first.astype(float) - pooled_offset
+        second_for_test = second.astype(float) - pooled_offset
+        test = pg.ttest(first_for_test, second_for_test, correction=correction).iloc[0]
         test_name = "welch_t" if correction else "student_t"
         ci = tuple(float(value) for value in test["CI95"])
         return ComparisonResult(

@@ -61,6 +61,7 @@ NIST StRD one-way ANOVA sources:
 `https://www.itl.nist.gov/div898/strd/anova/SmLs01.html`
 `https://www.itl.nist.gov/div898/strd/anova/SmLs04.html`
 `https://www.itl.nist.gov/div898/strd/anova/SmLs07.html`
+`https://www.itl.nist.gov/div898/strd/anova/AtmWtAg.html`
 
 Certified values and construction rules:
 `https://www.itl.nist.gov/div898/strd/anova/SmLs01_cv.html`
@@ -69,6 +70,8 @@ Certified values and construction rules:
 `https://www.itl.nist.gov/div898/strd/anova/SmLs04_info.html`
 `https://www.itl.nist.gov/div898/strd/anova/SmLs07_cv.html`
 `https://www.itl.nist.gov/div898/strd/anova/SmLs07_info.html`
+`https://www.itl.nist.gov/div898/strd/anova/AtmWtAg_cv.html`
+`https://www.itl.nist.gov/div898/strd/anova/AtmWtAg_info.html`
 
 Use in Modori:
 
@@ -78,6 +81,11 @@ Use in Modori:
 - `SmLs04` locks the 7-constant-leading-digit cancellation regime.
 - `SmLs07` locks the 13-constant-leading-digit regime as achieved float64
   precision, not full 15-digit certified parity.
-- These fixtures lock certified df, F statistic, R-squared/effect-size
-  behavior for `anova_oneway` without checking in repetitive generated data
-  files.
+- `AtmWtAg` is committed as an in-test observed-data fixture for
+  `compare_groups` Student t. The certified one-way ANOVA `F` is checked
+  through the two-group identity `F = t^2`; this does not change
+  `anova_oneway`'s current three-or-more-group product policy.
+- The SmLs fixtures lock certified df, F statistic, and
+  R-squared/effect-size behavior for `anova_oneway` without checking in
+  repetitive generated data files. `AtmWtAg` locks the certified two-group
+  identity through `compare_groups`.

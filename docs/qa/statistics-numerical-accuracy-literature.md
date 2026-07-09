@@ -69,8 +69,9 @@ points, ordered by product risk rather than textbook neatness:
    `SmLs01`, `SmLs04`, and `SmLs07` are imported as generated one-way ANOVA
    fixtures from the NIST construction rules; `SmLs07` is recorded as
    achieved float64 precision rather than full 15-digit certified parity.
-   `AtmWtAg` remains blocked on the product-policy decision about
-   two-treatment one-way ANOVA. `NumAcc1-3` remain.
+   `AtmWtAg` is imported through the compare-groups Student `t^2 = F`
+   identity while the `anova_oneway` two-treatment policy remains separate.
+   `NumAcc1-3` remain.
 4. Done for code policy: set bootstrap policy in code and tests: default 5000 user-facing resamples,
    reject or warn below 1000, deterministic reproduction tests for plumbing,
    and independent adequacy checks for interval behavior. Adequacy checks remain.

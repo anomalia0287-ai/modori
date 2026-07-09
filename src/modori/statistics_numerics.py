@@ -63,7 +63,8 @@ def require_well_conditioned_correlation_matrix(
         raise ValueError(
             f"{label} correlation matrix is ill-conditioned "
             f"(condition number {condition_number:.3g} exceeds "
-            f"{max_condition_number:.3g}); inference is undefined."
+            f"{max_condition_number:.3g}); variables/items are nearly redundant, "
+            "so factor/reliability estimates are unstable."
         )
     return condition_number
 
