@@ -145,14 +145,16 @@ def bootstrap_indirect_reference(
     *,
     iterations: int,
     seed: int,
+    covariates: list[str] | None = None,
 ) -> tuple[float, float]:
+    covariates = ["c1"] if covariates is None else covariates
     rng = np.random.default_rng(seed)
     effects = []
     n = len(frame)
     for _ in range(iterations):
         sample = frame.iloc[rng.integers(0, n, size=n)].reset_index(drop=True)
-        a = ols_coefficients(sample, "m", ["x", "c1"])[1]
-        b = ols_coefficients(sample, "y", ["x", "m", "c1"])[2]
+        a = ols_coefficients(sample, "m", ["x", *covariates])[1]
+        b = ols_coefficients(sample, "y", ["x", "m", *covariates])[2]
         effects.append(float(a * b))
     return tuple(np.percentile(effects, [2.5, 97.5]))
 
@@ -211,6 +213,61 @@ def test_simple_mediation_matches_independent_ols_and_deterministic_bootstrap() 
     assert any("1000회 미만" in warning for warning in result.warnings_ko)
     assert result.chart_spec is None
     assert result.no_canonical_chart_reason_ko
+
+
+def test_mediation_without_covariates_matches_independent_reference() -> None:
+    frame = mediation_frame()
+    params = {**_params(), "covariates": []}
+
+    result = run_step(dataset_factory(frame), params)
+
+    a_reference = ols_coefficients(frame, "m", ["x"])
+    b_reference = ols_coefficients(frame, "y", ["x", "m"])
+    c_reference = ols_coefficients(frame, "y", ["x"])
+    ci_low, ci_high = bootstrap_indirect_reference(
+        frame,
+        iterations=300,
+        seed=20260708,
+        covariates=[],
+    )
+
+    assert result.covariates == ()
+    assert result.n_used == 28
+    assert result.n_excluded == 0
+    assert result.path_a.b == pytest.approx(a_reference[1], abs=1e-10)
+    assert result.path_b.b == pytest.approx(b_reference[2], abs=1e-10)
+    assert result.direct_effect.b == pytest.approx(b_reference[1], abs=1e-10)
+    assert result.total_effect.b == pytest.approx(c_reference[1], abs=1e-10)
+    assert result.indirect_ci == pytest.approx((ci_low, ci_high), abs=1e-10)
+
+
+def test_mediation_listwise_missing_rows_match_complete_case_reference() -> None:
+    frame = mediation_frame()
+    frame.loc[1, "x"] = np.nan
+    frame.loc[5, "m"] = np.nan
+    frame.loc[8, "y"] = np.nan
+    frame.loc[13, "c1"] = np.nan
+    complete = frame.dropna(axis=0, how="any").copy()
+
+    result = run_step(dataset_factory(frame), _params())
+
+    a_reference = ols_coefficients(complete, "m", ["x", "c1"])
+    b_reference = ols_coefficients(complete, "y", ["x", "m", "c1"])
+    c_reference = ols_coefficients(complete, "y", ["x", "c1"])
+    ci_low, ci_high = bootstrap_indirect_reference(
+        complete,
+        iterations=300,
+        seed=20260708,
+    )
+
+    assert result.n_total == 28
+    assert result.n_used == 24
+    assert result.n_excluded == 4
+    assert result.path_a.b == pytest.approx(a_reference[1], abs=1e-10)
+    assert result.path_b.b == pytest.approx(b_reference[2], abs=1e-10)
+    assert result.direct_effect.b == pytest.approx(b_reference[1], abs=1e-10)
+    assert result.total_effect.b == pytest.approx(c_reference[1], abs=1e-10)
+    assert result.indirect_ci == pytest.approx((ci_low, ci_high), abs=1e-10)
 
 
 def test_validation_rejects_duplicate_roles_non_scale_and_singular_models() -> None:

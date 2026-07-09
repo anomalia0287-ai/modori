@@ -75,8 +75,9 @@ points, ordered by product risk rather than textbook neatness:
 4. Partially done: set bootstrap policy in code and tests: default 5000 user-facing resamples,
    reject or warn below 1000, deterministic reproduction tests for plumbing,
    and slow known-effect coverage smoke for simple mediation and the Model
-   7/14 moderated-mediation indexes. Controlled-index cross-engine references
-   and broader coverage designs remain.
+   7/14 moderated-mediation indexes. Complete-case and no-covariate parity
+   fixtures now cover local data-shape variants. Controlled-index cross-engine
+   references and broader coverage designs remain.
 5. Done: extend `docs/qa/statistics-accuracy-ledger.md` with `factor_pca`,
    `reliability_omega`, `anova_oneway`, rank-based nonparametric policy, mixed
    absolute/relative tolerance, and bootstrap terminology that distinguishes

@@ -111,7 +111,9 @@ def bootstrap_model_7_reference(
     iterations: int,
     seed: int,
     ci: float,
+    covariates: list[str] | None = None,
 ) -> tuple[dict[str, tuple[float, float]], tuple[float, float]]:
+    covariates = ["c1"] if covariates is None else covariates
     rng = np.random.default_rng(seed)
     moderator_sd = float(frame["w"].std(ddof=1))
     effects_by_label: dict[str, list[float]] = {
@@ -133,9 +135,13 @@ def bootstrap_model_7_reference(
         mediator_model = ols_coefficients(
             sample,
             "m",
-            ["x_centered", "w_centered", "x_centered:w_centered", "c1"],
+            ["x_centered", "w_centered", "x_centered:w_centered", *covariates],
         )
-        outcome_model = ols_coefficients(sample, "y", ["x_centered", "m", "c1"])
+        outcome_model = ols_coefficients(
+            sample,
+            "y",
+            ["x_centered", "m", *covariates],
+        )
         a1 = mediator_model["x_centered"]
         a3 = mediator_model["x_centered:w_centered"]
         b = outcome_model["m"]
@@ -159,7 +165,9 @@ def bootstrap_model_14_reference(
     iterations: int,
     seed: int,
     ci: float,
+    covariates: list[str] | None = None,
 ) -> tuple[dict[str, tuple[float, float]], tuple[float, float]]:
+    covariates = ["c1"] if covariates is None else covariates
     rng = np.random.default_rng(seed)
     moderator_sd = float(frame["w"].std(ddof=1))
     effects_by_label: dict[str, list[float]] = {
@@ -178,11 +186,11 @@ def bootstrap_model_14_reference(
         sample = frame.iloc[rng.integers(0, len(frame), size=len(frame))].reset_index(
             drop=True
         )
-        mediator_model = ols_coefficients(sample, "m", ["x_centered", "c1"])
+        mediator_model = ols_coefficients(sample, "m", ["x_centered", *covariates])
         outcome_model = ols_coefficients(
             sample,
             "y",
-            ["x_centered", "m", "w_centered", "m:w_centered", "c1"],
+            ["x_centered", "m", "w_centered", "m:w_centered", *covariates],
         )
         a = mediator_model["x_centered"]
         b1 = outcome_model["m"]
@@ -281,6 +289,60 @@ def test_model_7_bootstrap_cis_match_independent_percentile_reference() -> None:
     assert actual_effect_cis == pytest.approx(effect_cis, abs=1e-10)
 
 
+def test_model_7_listwise_missing_rows_match_complete_case_reference() -> None:
+    frame = moderated_frame()
+    frame.loc[1, "x"] = np.nan
+    frame.loc[5, "w"] = np.nan
+    frame.loc[9, "m"] = np.nan
+    frame.loc[12, "y"] = np.nan
+    frame.loc[17, "c1"] = np.nan
+    complete = frame.dropna(axis=0, how="any").copy()
+    ref = centered_reference_frame(complete)
+    params = _params(model=7)
+
+    result = run_step(dataset_factory(frame), params)
+
+    mediator_model = ols_coefficients(
+        ref,
+        "m",
+        ["x_centered", "w_centered", "x_centered:w_centered", "c1"],
+    )
+    outcome_model = ols_coefficients(ref, "y", ["x_centered", "m", "c1"])
+    moderator_sd = float(ref["w"].std(ddof=1))
+    expected = {
+        "mean - 1 SD": (
+            mediator_model["x_centered"]
+            + mediator_model["x_centered:w_centered"] * -moderator_sd
+        )
+        * outcome_model["m"],
+        "mean": mediator_model["x_centered"] * outcome_model["m"],
+        "mean + 1 SD": (
+            mediator_model["x_centered"]
+            + mediator_model["x_centered:w_centered"] * moderator_sd
+        )
+        * outcome_model["m"],
+    }
+    effect_cis, index_ci = bootstrap_model_7_reference(
+        ref,
+        iterations=params["bootstrap"]["iterations"],
+        seed=params["bootstrap"]["seed"],
+        ci=params["bootstrap"]["ci"],
+    )
+
+    assert result.n_total == 32
+    assert result.n_used == 27
+    assert result.n_excluded == 5
+    assert {effect.moderator_label: effect.effect for effect in result.conditional_effects} == pytest.approx(
+        expected,
+        abs=1e-10,
+    )
+    assert result.index_ci == pytest.approx(index_ci, abs=1e-10)
+    actual_effect_cis = {
+        effect.moderator_label: effect.ci for effect in result.conditional_effects
+    }
+    assert actual_effect_cis == pytest.approx(effect_cis, abs=1e-10)
+
+
 def test_model_14_reports_conditional_indirect_effects_and_index() -> None:
     frame = moderated_frame()
     ref = centered_reference_frame(frame)
@@ -324,6 +386,47 @@ def test_model_14_bootstrap_cis_match_independent_percentile_reference() -> None
         ci=params["bootstrap"]["ci"],
     )
 
+    assert result.index_ci == pytest.approx(index_ci, abs=1e-10)
+    actual_effect_cis = {
+        effect.moderator_label: effect.ci for effect in result.conditional_effects
+    }
+    assert actual_effect_cis == pytest.approx(effect_cis, abs=1e-10)
+
+
+def test_model_14_without_covariates_matches_independent_reference() -> None:
+    frame = moderated_frame()
+    ref = centered_reference_frame(frame)
+    params = {**_params(model=14), "covariates": []}
+
+    result = run_step(dataset_factory(frame), params)
+
+    mediator_model = ols_coefficients(ref, "m", ["x_centered"])
+    outcome_model = ols_coefficients(
+        ref,
+        "y",
+        ["x_centered", "m", "w_centered", "m:w_centered"],
+    )
+    moderator_sd = float(ref["w"].std(ddof=1))
+    expected = {
+        "mean - 1 SD": mediator_model["x_centered"]
+        * (outcome_model["m"] + outcome_model["m:w_centered"] * -moderator_sd),
+        "mean": mediator_model["x_centered"] * outcome_model["m"],
+        "mean + 1 SD": mediator_model["x_centered"]
+        * (outcome_model["m"] + outcome_model["m:w_centered"] * moderator_sd),
+    }
+    effect_cis, index_ci = bootstrap_model_14_reference(
+        ref,
+        iterations=params["bootstrap"]["iterations"],
+        seed=params["bootstrap"]["seed"],
+        ci=params["bootstrap"]["ci"],
+        covariates=[],
+    )
+
+    assert result.covariates == ()
+    assert {effect.moderator_label: effect.effect for effect in result.conditional_effects} == pytest.approx(
+        expected,
+        abs=1e-10,
+    )
     assert result.index_ci == pytest.approx(index_ci, abs=1e-10)
     actual_effect_cis = {
         effect.moderator_label: effect.ci for effect in result.conditional_effects
