@@ -7,6 +7,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import pytest
+import statsmodels.api as sm
 
 from modori.core import Dataset, Measure, Pipeline, Variable
 from modori.results import RegressionResult
@@ -297,6 +298,33 @@ def test_regression_reports_missing_data_counts_and_warning() -> None:
     assert any("threshold" in warning.lower() for warning in result.warnings)
 
 
+def test_regression_missing_rows_match_complete_case_reference() -> None:
+    frame = mtcars_frame()
+    frame.loc[0, "mpg"] = np.nan
+    frame.loc[3, "wt"] = np.nan
+    frame.loc[8, "hp"] = np.nan
+    frame.loc[12, "cyl"] = np.nan
+    complete = frame.dropna(axis=0, how="any").copy()
+
+    result = regression_step(
+        {"preset": "classic", "missing_warning_threshold": 0.10}
+    ).compute_context_free(regression_dataset(frame)).analysis
+    reference = numpy_ols_reference(complete, "mpg", ["wt", "hp", "cyl"])
+
+    assert result.n_total == 32
+    assert result.n_obs == 28
+    assert result.n_dropped == 4
+    assert [row.b for row in result.coefficients] == pytest.approx(
+        reference["b"],
+        abs=1e-10,
+    )
+    assert [row.se for row in result.coefficients] == pytest.approx(
+        reference["se"],
+        abs=1e-10,
+    )
+    assert result.r_squared == pytest.approx(reference["r_squared"], abs=1e-12)
+
+
 @pytest.mark.parametrize(
     "frame, measures, predictors, message",
     [
@@ -438,6 +466,40 @@ def test_modern_policy_switches_to_hc3_and_uses_robust_model_f_test() -> None:
     assert any("variance" in item for item in result.educational_interpretation)
     assert any(item.startswith("Diagnostic note:") for item in result.educational_interpretation)
     assert any(spec.type == "residual_vs_fitted" for spec in result.diagnostic_chart_specs)
+
+
+def test_hc3_coefficients_match_statsmodels_robust_reference() -> None:
+    dataset = heteroscedastic_dataset()
+    result = MultipleRegressionStep(
+        id="reg-hc3-reference",
+        title="HC3 regression reference",
+        params={
+            "dv": "y",
+            "predictors": ["x", "z"],
+            "regression_policy": {"preset": "custom", "se_type": "HC3"},
+        },
+    ).compute_context_free(dataset).analysis
+
+    x = sm.add_constant(dataset.df[["x", "z"]], has_constant="add")
+    reference = sm.OLS(dataset.df["y"], x).fit().get_robustcov_results(cov_type="HC3")
+
+    assert result.se_type == "HC3"
+    assert [row.b for row in result.coefficients] == pytest.approx(
+        reference.params,
+        abs=1e-10,
+    )
+    assert [row.se for row in result.coefficients] == pytest.approx(
+        reference.bse,
+        abs=1e-10,
+    )
+    assert [row.t for row in result.coefficients] == pytest.approx(
+        reference.tvalues,
+        abs=1e-10,
+    )
+    assert [row.p_value for row in result.coefficients] == pytest.approx(
+        reference.pvalues,
+        abs=1e-10,
+    )
 
 
 def test_classic_policy_warns_but_keeps_classical_standard_errors() -> None:
