@@ -82,6 +82,9 @@ values.
   `scripts\slow_stats_gate.py` reported `3 passed, 1003 deselected` for
   simple mediation percentile CI and moderated-mediation Model 7/14 index
   known-effect coverage checks.
+- Presentation/report drift check:
+  reporting, prose-contract, report-step, and UI report binding/export tests
+  passed with `84 passed` after the calculation-reliability closure pass.
 
 ## Known Limits
 
