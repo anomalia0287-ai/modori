@@ -23,13 +23,14 @@ def _variable(
     measure: Measure,
     *,
     value_labels: dict[float, str] | None = None,
+    missing_values: list[object] | None = None,
 ) -> Variable:
     return Variable(
         name=name,
         label=name,
         measure=measure,
         value_labels=value_labels or {},
-        missing_values=[],
+        missing_values=missing_values or [],
         dtype="object",
         origin_step_id="fixture",
     )
@@ -88,6 +89,55 @@ def test_ordered_factor_levels_have_a_total_order_without_metadata() -> None:
         "Alpha",
         "beta",
     ]
+
+
+def test_ordered_factor_levels_do_not_conflate_bool_with_numeric_missing_code() -> None:
+    frame = pd.DataFrame({"condition": [False, True, False, True]})
+    variable = _variable("condition", Measure.NOMINAL, missing_values=[1.0])
+
+    options = value_tokens.ordered_observed_value_options(
+        _dataset(frame, variable),
+        "condition",
+    )
+
+    assert [decode_value_token(row["token"]) for row in options] == [False, True]
+
+
+def test_complete_case_level_identities_share_typed_missing_policy() -> None:
+    frame = pd.DataFrame(
+        {
+            "score": [1.0, float("nan"), Decimal("999.0"), 2.0],
+            "condition": [False, True, True, True],
+            "site": [1, 2, 2, 1],
+        }
+    )
+    dataset = Dataset(
+        df=frame,
+        variables={
+            "score": _variable(
+                "score",
+                Measure.SCALE,
+                missing_values=[999.0],
+            ),
+            "condition": _variable(
+                "condition",
+                Measure.NOMINAL,
+                missing_values=[1.0],
+            ),
+            "site": _variable("site", Measure.ORDINAL),
+        },
+    )
+
+    identities = value_tokens.complete_case_level_identities(
+        dataset,
+        required_keys=("score", "condition", "site"),
+        factor_keys=("condition", "site"),
+    )
+
+    assert identities == {
+        "condition": {("boolean", False), ("boolean", True)},
+        "site": {("numeric", 1)},
+    }
 
 
 def test_ordered_factor_levels_do_not_change_logistic_first_observed_contract() -> None:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from decimal import Decimal
 import json
 import math
 from typing import TypeAlias
@@ -114,7 +115,7 @@ def observed_value_options(dataset: object, variable_key: str) -> list[dict[str,
     seen: set[str] = set()
     seen_labels: set[str] = set()
     for raw_value in frame[key].tolist():
-        if _is_missing(raw_value, missing_values):
+        if is_declared_missing(raw_value, missing_values):
             continue
         token = canonical_value_token(raw_value)
         if token in seen:
@@ -213,20 +214,90 @@ def categorical_reference_options(
     return rows
 
 
-def _is_missing(value: object, declared: Sequence[object]) -> bool:
+def is_declared_missing(value: object, declared: Sequence[object]) -> bool:
     try:
         missing = pd.isna(value)
     except (TypeError, ValueError):
         missing = False
-    if isinstance(missing, bool) and missing:
+    if isinstance(missing, bool | np.bool_) and bool(missing):
         return True
+    try:
+        value_identity = _declared_missing_identity(value)
+    except ValueError:
+        return False
     for marker in declared:
         try:
-            if bool(value == marker):
-                return True
-        except (TypeError, ValueError):
+            marker_identity = _declared_missing_identity(marker)
+        except ValueError:
             continue
+        if value_identity == marker_identity:
+            return True
     return False
+
+
+def _declared_missing_identity(value: object) -> tuple[str, object]:
+    if isinstance(value, np.generic):
+        value = value.item()
+    if isinstance(value, bool):
+        return "boolean", value
+    if isinstance(value, Decimal):
+        if not value.is_finite():
+            raise ValueError("Missing-value identities require finite decimals")
+        return "numeric", value
+    if isinstance(value, int):
+        return "numeric", Decimal(value)
+    if isinstance(value, float):
+        if not math.isfinite(value):
+            raise ValueError("Missing-value identities require finite floats")
+        return "numeric", Decimal(str(value))
+    if isinstance(value, str):
+        return "string", value
+    raise ValueError("Unsupported missing-value identity")
+
+
+def complete_case_level_identities(
+    dataset: object,
+    *,
+    required_keys: Sequence[str],
+    factor_keys: Sequence[str],
+) -> dict[str, set[tuple[str, object]]]:
+    required = tuple(str(key).strip() for key in required_keys)
+    factors = tuple(str(key).strip() for key in factor_keys)
+    if (
+        not required
+        or not factors
+        or any(not key for key in (*required, *factors))
+        or len(set(required)) != len(required)
+        or len(set(factors)) != len(factors)
+        or not set(factors) <= set(required)
+    ):
+        raise ValueError("Complete-case keys must be distinct, non-empty, and nested")
+
+    frame = getattr(dataset, "df", None)
+    variables = getattr(dataset, "variables", None)
+    if not isinstance(frame, pd.DataFrame) or not isinstance(variables, Mapping):
+        raise ValueError("Complete-case identities require a dataset")
+    if any(key not in frame.columns or key not in variables for key in required):
+        raise ValueError("Complete-case identity keys must exist in the dataset")
+
+    missing_values: dict[str, Sequence[object]] = {}
+    for key in required:
+        markers = getattr(variables[key], "missing_values", ())
+        if not isinstance(markers, Sequence) or isinstance(markers, str):
+            raise ValueError("Variable missing values must be a sequence")
+        missing_values[key] = markers
+
+    positions = {key: index for index, key in enumerate(required)}
+    identities = {key: set() for key in factors}
+    for row in frame.loc[:, list(required)].itertuples(index=False, name=None):
+        if any(
+            is_declared_missing(row[positions[key]], missing_values[key])
+            for key in required
+        ):
+            continue
+        for key in factors:
+            identities[key].add(normalized_value_key(row[positions[key]]))
+    return identities
 
 
 def display_value_label(variable: object, value: ScalarValue) -> str:
