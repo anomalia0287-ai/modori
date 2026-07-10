@@ -763,6 +763,7 @@ class ReviewerAnnotation:
     required_clarification_facts: tuple[str, ...] = ()
     acceptable_abstention_reasons: tuple[str, ...] = ()
     active_minutes: float = 0.0
+    failure_severity: str = "E3"
 
     def __post_init__(self) -> None:
         validated = GoldRecord(
@@ -772,6 +773,7 @@ class ReviewerAnnotation:
             acceptable_recommendations=self.acceptable_recommendations,
             required_clarification_facts=self.required_clarification_facts,
             acceptable_abstention_reasons=self.acceptable_abstention_reasons,
+            failure_severity=self.failure_severity,
         )
         object.__setattr__(self, "case_id", validated.case_id)
         object.__setattr__(self, "evidence_stage", validated.evidence_stage)
