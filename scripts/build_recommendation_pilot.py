@@ -10,7 +10,12 @@ from pathlib import Path
 
 from openpyxl import load_workbook
 
-from modori.recommendation_benchmark import BenchmarkContractError
+from modori.recommendation_baseline import load_case_dataset, predict_current_baseline
+from modori.recommendation_benchmark import (
+    BenchmarkContractError,
+    PredictionRecord,
+    canonical_json,
+)
 from modori.recommendation_benchmark_io import (
     PilotCaseSummary,
     build_blank_pilot_workbooks,
@@ -23,6 +28,8 @@ from modori.recommendation_benchmark_io import (
 _LICENSE = "LicenseRef-Modori-Synthetic-Benchmark-1.0"
 _SOURCE = "Modori deterministic synthetic recommendation pilot"
 _SOURCE_VERSION = "2026-07-10.v1"
+_ADAPTER_VERSION = "current-recommendation-service-v1"
+_REPO_ROOT = Path(__file__).resolve().parents[1]
 _TERMS = """# Modori Synthetic Benchmark Fixture Terms
 
 These files are deterministic synthetic test fixtures created for the Modori project.
@@ -571,6 +578,32 @@ def _manifest_record(case: PilotCaseDefinition, checksum: str) -> dict[str, obje
     }
 
 
+def _sha256_file(path: Path) -> str:
+    return f"sha256:{hashlib.sha256(path.read_bytes()).hexdigest()}"
+
+
+def _baseline_source_hashes() -> dict[str, str]:
+    paths = {
+        _REPO_ROOT / "src" / "modori" / "analysis_catalog.py",
+        _REPO_ROOT / "src" / "modori" / "core" / "model.py",
+        _REPO_ROOT / "src" / "modori" / "recommendation_baseline.py",
+        _REPO_ROOT / "src" / "modori" / "recommendations.py",
+        _REPO_ROOT / "src" / "modori" / "steps" / "data_prep.py",
+        _REPO_ROOT / "src" / "modori" / "table_io.py",
+        *(_REPO_ROOT / "src" / "modori").glob("*_recommendation.py"),
+    }
+    return {
+        path.relative_to(_REPO_ROOT).as_posix(): _sha256_file(path)
+        for path in sorted(paths)
+    }
+
+
+def _write_json_object(path: Path, value: Mapping[str, object], *, overwrite: bool) -> None:
+    if path.exists() and not overwrite:
+        raise BenchmarkContractError(f"JSON output already exists: {path}")
+    path.write_text(canonical_json(value) + "\n", encoding="utf-8", newline="\n")
+
+
 def build_pilot_pack(root: Path, *, overwrite: bool = False) -> PilotPackReport:
     cases = pilot_case_definitions()
     public_root = root / "public"
@@ -606,6 +639,35 @@ def build_pilot_pack(root: Path, *, overwrite: bool = False) -> PilotPackReport:
         overwrite=overwrite,
     )
     write_jsonl(root / "manifest.jsonl", manifest, overwrite=overwrite)
+    predictions = tuple(
+        predict_current_baseline(
+            case.to_mapping(),
+            load_case_dataset(case.to_mapping(), pilot_root),
+        )
+        for case in cases
+    )
+    write_jsonl(
+        pilot_root / "baseline-a-predictions.jsonl",
+        predictions,
+        overwrite=overwrite,
+    )
+    case_path = pilot_root / "cases.jsonl"
+    prediction_path = pilot_root / "baseline-a-predictions.jsonl"
+    source_files = _baseline_source_hashes()
+    _write_json_object(
+        pilot_root / "baseline-a-metadata.json",
+        {
+            "schema_version": 1,
+            "variant": "A",
+            "adapter_version": _ADAPTER_VERSION,
+            "prediction_count": len(predictions),
+            "prediction_checksum": _sha256_file(prediction_path),
+            "case_set_checksum": _sha256_file(case_path),
+            "source_fingerprint": f"sha256:{hashlib.sha256(canonical_json(source_files).encode('utf-8')).hexdigest()}",
+            "source_files": source_files,
+        },
+        overwrite=overwrite,
+    )
     build_blank_pilot_workbooks(
         (case.summary() for case in cases),
         pilot_root,
@@ -646,11 +708,72 @@ def _assert_no_gold_keys(value: object) -> None:
 def validate_pilot_pack(root: Path) -> PilotPackReport:
     manifest = read_jsonl(root / "manifest.jsonl", _as_mapping)
     cases = read_jsonl(root / "public" / "pilot" / "cases.jsonl", _as_mapping)
+    predictions = read_jsonl(
+        root / "public" / "pilot" / "baseline-a-predictions.jsonl",
+        PredictionRecord.from_mapping,
+    )
+    metadata_path = root / "public" / "pilot" / "baseline-a-metadata.json"
+    if not metadata_path.is_file():
+        raise BenchmarkContractError("baseline metadata is missing")
+    try:
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise BenchmarkContractError("baseline metadata is invalid JSON") from exc
+    if not isinstance(metadata, Mapping):
+        raise BenchmarkContractError("baseline metadata must be an object")
+    expected_metadata_keys = {
+        "schema_version",
+        "variant",
+        "adapter_version",
+        "prediction_count",
+        "prediction_checksum",
+        "case_set_checksum",
+        "source_fingerprint",
+        "source_files",
+    }
+    if set(metadata) != expected_metadata_keys:
+        raise BenchmarkContractError("baseline metadata schema mismatch")
+    prediction_path = root / "public" / "pilot" / "baseline-a-predictions.jsonl"
+    case_path = root / "public" / "pilot" / "cases.jsonl"
+    if metadata.get("prediction_checksum") != _sha256_file(prediction_path):
+        raise BenchmarkContractError("baseline prediction checksum mismatch")
+    if metadata.get("case_set_checksum") != _sha256_file(case_path):
+        raise BenchmarkContractError("baseline case-set checksum mismatch")
+    source_files = metadata.get("source_files")
+    if not isinstance(source_files, Mapping) or not source_files:
+        raise BenchmarkContractError("baseline source file manifest is invalid")
+    expected_source_fingerprint = (
+        f"sha256:{hashlib.sha256(canonical_json(source_files).encode('utf-8')).hexdigest()}"
+    )
+    if metadata.get("source_fingerprint") != expected_source_fingerprint:
+        raise BenchmarkContractError("baseline source fingerprint mismatch")
+    if (
+        metadata.get("schema_version") != 1
+        or metadata.get("variant") != "A"
+        or metadata.get("adapter_version") != _ADAPTER_VERSION
+        or metadata.get("prediction_count") != len(predictions)
+    ):
+        raise BenchmarkContractError("baseline metadata values are invalid")
     if len(cases) != 20 or len(manifest) != 20:
         raise BenchmarkContractError("pilot pack must contain exactly 20 cases")
     case_ids = [str(case.get("case_id", "")) for case in cases]
     if len(set(case_ids)) != len(case_ids):
         raise BenchmarkContractError("pilot cases contain duplicate case IDs")
+    expected_prediction_keys = {
+        (
+            _required_text(case, "case_id"),
+            _required_text(case, "evidence_stage"),
+        )
+        for case in cases
+    }
+    actual_prediction_keys = {
+        (prediction.case_id, prediction.evidence_stage) for prediction in predictions
+    }
+    if (
+        len(predictions) != len(actual_prediction_keys)
+        or actual_prediction_keys != expected_prediction_keys
+    ):
+        raise BenchmarkContractError("baseline predictions do not match pilot case-stages")
     manifest_by_case = {str(record.get("case_id", "")): record for record in manifest}
     if set(manifest_by_case) != set(case_ids) or len(manifest_by_case) != len(manifest):
         raise BenchmarkContractError("manifest and pilot cases do not match")

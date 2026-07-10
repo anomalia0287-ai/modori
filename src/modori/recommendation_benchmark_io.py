@@ -4,8 +4,11 @@ import hashlib
 import json
 import os
 import tempfile
+import zipfile
+import xml.etree.ElementTree as ET
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import TypeVar
 
@@ -79,6 +82,16 @@ _ROLE_COLUMNS = (
     "covariates",
     "measures",
 )
+_FIXED_WORKBOOK_DATETIME = datetime(2026, 7, 10, 0, 0, 0)
+_FIXED_ZIP_DATETIME = (2026, 7, 10, 0, 0, 0)
+_CORE_NAMESPACES = {
+    "cp": "http://schemas.openxmlformats.org/package/2006/metadata/core-properties",
+    "dc": "http://purl.org/dc/elements/1.1/",
+    "dcterms": "http://purl.org/dc/terms/",
+    "xsi": "http://www.w3.org/2001/XMLSchema-instance",
+}
+for _prefix, _uri in _CORE_NAMESPACES.items():
+    ET.register_namespace(_prefix, _uri)
 
 
 def _nonempty_text(value: object, field_name: str) -> str:
@@ -362,6 +375,59 @@ def _build_workbook(
     return workbook
 
 
+def _save_reproducible_workbook(workbook: Workbook, path: Path) -> None:
+    workbook.properties.created = _FIXED_WORKBOOK_DATETIME
+    workbook.properties.modified = _FIXED_WORKBOOK_DATETIME
+    raw_descriptor, raw_name = tempfile.mkstemp(
+        dir=path.parent,
+        prefix=f".{path.stem}.",
+        suffix=".raw.xlsx",
+    )
+    normalized_descriptor, normalized_name = tempfile.mkstemp(
+        dir=path.parent,
+        prefix=f".{path.stem}.",
+        suffix=".normalized.xlsx",
+    )
+    os.close(raw_descriptor)
+    os.close(normalized_descriptor)
+    raw_path = Path(raw_name)
+    normalized_path = Path(normalized_name)
+    try:
+        workbook.save(raw_path)
+        with zipfile.ZipFile(raw_path, "r") as source, zipfile.ZipFile(
+            normalized_path,
+            "w",
+        ) as target:
+            for source_info in sorted(source.infolist(), key=lambda item: item.filename):
+                target_info = zipfile.ZipInfo(
+                    filename=source_info.filename,
+                    date_time=_FIXED_ZIP_DATETIME,
+                )
+                target_info.compress_type = source_info.compress_type
+                target_info.comment = source_info.comment
+                target_info.create_system = source_info.create_system
+                target_info.external_attr = source_info.external_attr
+                target_info.internal_attr = source_info.internal_attr
+                target_info.extract_version = source_info.extract_version
+                target_info.create_version = source_info.create_version
+                data = source.read(source_info.filename)
+                if source_info.filename == "docProps/core.xml":
+                    root = ET.fromstring(data)
+                    fixed_timestamp = _FIXED_WORKBOOK_DATETIME.isoformat() + "Z"
+                    for tag_name in ("created", "modified"):
+                        element = root.find(
+                            f"{{{_CORE_NAMESPACES['dcterms']}}}{tag_name}"
+                        )
+                        if element is not None:
+                            element.text = fixed_timestamp
+                    data = ET.tostring(root, encoding="utf-8")
+                target.writestr(target_info, data)
+        normalized_path.replace(path)
+    finally:
+        raw_path.unlink(missing_ok=True)
+        normalized_path.unlink(missing_ok=True)
+
+
 def build_blank_pilot_workbooks(
     cases: Iterable[PilotCaseSummary],
     output_dir: Path,
@@ -381,7 +447,7 @@ def build_blank_pilot_workbooks(
         raise BenchmarkContractError(f"workbook output already exists: {existing[0]}")
     for path, adjudication in zip(paths, (False, False, True), strict=True):
         workbook = _build_workbook(case_tuple, adjudication=adjudication)
-        workbook.save(path)
+        _save_reproducible_workbook(workbook, path)
         workbook.close()
     return paths
 

@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 from openpyxl import load_workbook
 
-from modori.recommendation_benchmark import BenchmarkContractError
+from modori.recommendation_benchmark import BenchmarkContractError, PredictionRecord
 from modori.recommendation_benchmark_io import read_jsonl
 from scripts.build_recommendation_pilot import (
     build_pilot_pack,
@@ -21,11 +21,11 @@ def _mapping(value: object) -> dict[str, object]:
     return value
 
 
-def _text_hashes(root: Path) -> dict[str, str]:
+def _file_hashes(root: Path) -> dict[str, str]:
     return {
         path.relative_to(root).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
         for path in sorted(root.rglob("*"))
-        if path.is_file() and path.suffix.lower() != ".xlsx"
+        if path.is_file()
     }
 
 
@@ -65,7 +65,27 @@ def test_generated_pilot_pack_has_valid_manifest_checksums_and_blank_workbooks(
     assert report.manifest_count == 20
     manifest = read_jsonl(root / "manifest.jsonl", _mapping)
     cases = read_jsonl(root / "public" / "pilot" / "cases.jsonl", _mapping)
+    predictions = read_jsonl(
+        root / "public" / "pilot" / "baseline-a-predictions.jsonl",
+        PredictionRecord.from_mapping,
+    )
+    metadata = json.loads(
+        (root / "public" / "pilot" / "baseline-a-metadata.json").read_text(
+            encoding="utf-8"
+        )
+    )
     assert len(manifest) == len(cases) == 20
+    assert len(predictions) == 20
+    assert metadata["variant"] == "A"
+    assert metadata["adapter_version"] == "current-recommendation-service-v1"
+    assert metadata["prediction_count"] == 20
+    assert metadata["prediction_checksum"].startswith("sha256:")
+    assert metadata["case_set_checksum"].startswith("sha256:")
+    assert metadata["source_fingerprint"].startswith("sha256:")
+    assert "score" not in metadata
+    assert {(prediction.case_id, prediction.evidence_stage) for prediction in predictions} == {
+        (str(case["case_id"]), str(case["evidence_stage"])) for case in cases
+    }
     assert all(record["split_role"] == "economics_pilot" for record in manifest)
     assert all(record["license"] == "LicenseRef-Modori-Synthetic-Benchmark-1.0" for record in manifest)
     assert all(record["sensitivity"] == "synthetic_no_real_pii" for record in manifest)
@@ -94,7 +114,7 @@ def test_pilot_pack_generation_is_deterministic_for_text_and_data_files(
     build_pilot_pack(first)
     build_pilot_pack(second)
 
-    assert _text_hashes(first) == _text_hashes(second)
+    assert _file_hashes(first) == _file_hashes(second)
 
 
 def test_pilot_pack_validation_detects_data_tampering(tmp_path: Path) -> None:
@@ -107,6 +127,36 @@ def test_pilot_pack_validation_detects_data_tampering(tmp_path: Path) -> None:
     )
 
     with pytest.raises(BenchmarkContractError, match="checksum mismatch"):
+        validate_pilot_pack(root)
+
+
+def test_pilot_pack_validation_detects_incomplete_baseline_predictions(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "recommendation_benchmark"
+    build_pilot_pack(root)
+    prediction_path = root / "public" / "pilot" / "baseline-a-predictions.jsonl"
+    lines = prediction_path.read_text(encoding="utf-8").splitlines()
+    prediction_path.write_text("\n".join(lines[:-1]) + "\n", encoding="utf-8")
+
+    with pytest.raises(BenchmarkContractError, match="baseline prediction checksum mismatch"):
+        validate_pilot_pack(root)
+
+
+def test_pilot_pack_validation_detects_valid_shape_baseline_tampering(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "recommendation_benchmark"
+    build_pilot_pack(root)
+    prediction_path = root / "public" / "pilot" / "baseline-a-predictions.jsonl"
+    rows = [json.loads(line) for line in prediction_path.read_text(encoding="utf-8").splitlines()]
+    rows[0]["level"] = "candidate"
+    prediction_path.write_text(
+        "\n".join(json.dumps(row, ensure_ascii=False, sort_keys=True) for row in rows) + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(BenchmarkContractError, match="baseline prediction checksum mismatch"):
         validate_pilot_pack(root)
 
 
