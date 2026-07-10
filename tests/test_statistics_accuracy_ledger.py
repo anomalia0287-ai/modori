@@ -5,6 +5,7 @@ from pathlib import Path
 
 LEDGER = Path("docs/qa/statistics-accuracy-ledger.md")
 LITERATURE_MAP = Path("docs/qa/statistics-numerical-accuracy-literature.md")
+LOGISTIC_EVIDENCE = Path("docs/qa/logistic-regression-reference-evidence.md")
 
 
 def test_statistics_accuracy_ledger_records_high_risk_module_coverage() -> None:
@@ -17,6 +18,7 @@ def test_statistics_accuracy_ledger_records_high_risk_module_coverage() -> None:
         "moderated_mediation",
         "ancova",
         "regression_ols",
+        "logistic_regression",
         "compare_groups_t",
         "descriptives_table1",
         "factor_pca",
@@ -40,6 +42,27 @@ def test_statistics_accuracy_ledger_records_high_risk_module_coverage() -> None:
     ]
     for evidence in required_evidence:
         assert evidence in text
+
+
+def test_logistic_reference_evidence_records_reproducible_closure_facts() -> None:
+    text = LOGISTIC_EVIDENCE.read_text(encoding="utf-8")
+
+    required_terms = [
+        "R 4.5.3",
+        "80-digit",
+        "1e-10",
+        "1e-11",
+        "112 passed",
+        "1201 passed, 4 skipped",
+        "3 passed, 1202 deselected",
+        "B9DAFA2F51933A2569770BAAD8B3A4CF35AF8D9C72C9A9785EEF094E216A8876",
+        "package-engine-smoke-ok",
+        "LogisticRegressionResult",
+        "not adequacy evidence",
+        "Independent review remains",
+    ]
+    for term in required_terms:
+        assert term in text
 
 
 def test_closure_matrix_keeps_adequacy_as_statistical_performance_evidence() -> None:

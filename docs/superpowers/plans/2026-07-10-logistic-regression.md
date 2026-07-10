@@ -528,11 +528,11 @@ git commit -m "feat: add logistic regression product flow"
 - Adds one successful logistic result to the in-process and packaged engine smoke.
 - Produces a final evidence document with exact commands, counts, R path, tolerances, and residual limitations.
 
-- [ ] **Step 1: Add a nonseparated smoke fixture and assertions**
+- [x] **Step 1: Add a nonseparated smoke fixture and assertions**
 
 Assert opened/rerun status, DTO type, finite omnibus statistic, coefficient rows, classification counts, and warning disclosure.
 
-- [ ] **Step 2: Run focused module closure**
+- [x] **Step 2: Run focused module closure**
 
 ```powershell
 $env:MODORI_RSCRIPT='C:\Users\V\Desktop\TongTong\.tools\r-env\Scripts\Rscript.exe'
@@ -542,7 +542,7 @@ $env:PYTHONPATH=(Resolve-Path 'src').Path
 
 Expected: R tests execute; zero failures and zero logistic-specific skips.
 
-- [ ] **Step 3: Run the complete quality and slow-statistics gates**
+- [x] **Step 3: Run the complete quality and slow-statistics gates**
 
 ```powershell
 $env:MODORI_RSCRIPT='C:\Users\V\Desktop\TongTong\.tools\r-env\Scripts\Rscript.exe'
@@ -550,15 +550,15 @@ $env:PYTHONPATH=(Resolve-Path 'src').Path
 & 'C:\Users\V\Desktop\TongTong\.venv\Scripts\python.exe' scripts/quality_gate.py --with-slow-stats
 ```
 
-- [ ] **Step 4: Build and smoke the packaged application**
+- [x] **Step 4: Build and smoke the packaged application**
 
 Run the package build and packaged engine smoke using the existing release commands. The logistic result must be present in the JSON evidence.
 
-- [ ] **Step 5: Perform a source audit**
+- [x] **Step 5: Perform a source audit**
 
 Search for lower-tail p-value calculations, direct matrix inverse, uncaught statsmodels warnings, implicit event mapping, free-text event entry, `Hosmer`, and unsupported public claims. Every match is either removed or justified in the evidence document.
 
-- [ ] **Step 6: Commit closure evidence**
+- [x] **Step 6: Commit closure evidence**
 
 ```powershell
 git add src/modori/v1_statistics_smoke.py tests/test_v1_statistics_smoke.py scripts/package_engine_smoke.py docs/qa

@@ -1,4 +1,6 @@
 from pathlib import Path
+import json
+from types import SimpleNamespace
 
 import pandas as pd
 
@@ -17,6 +19,10 @@ def test_app_engine_smoke_writes_success_payload(tmp_path) -> None:
 
     assert result == 0
     text = Path(output_path).read_text(encoding="utf-8")
+    payload = json.loads(text)
+    assert payload["opened"] is True
+    assert payload["rerun"] is True
+    assert payload["waited"] is True
     assert '"ok": true' in text
     assert '"status": "ready"' in text
     assert '"v1_statistics_smoke"' in text
@@ -26,3 +32,53 @@ def test_app_engine_smoke_writes_success_payload(tmp_path) -> None:
     assert '"moderated_mediation"' in text
     assert '"factor_pca_pca"' in text
     assert '"regression_categorical_interaction"' in text
+    logistic = next(
+        check
+        for check in payload["v1_statistics_smoke"]["checks"]
+        if check["key"] == "logistic_regression"
+    )
+    assert logistic == {
+        "analysis_type": "LogisticRegressionResult",
+        "key": "logistic_regression",
+        "ok": True,
+    }
+
+
+def test_app_engine_smoke_fails_when_analysis_rerun_is_rejected(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    import modori.app as app
+
+    class RejectingController:
+        recommendationCount = 0
+        status = "ready"
+        lastError = "rerun rejected"
+        resultSummary = ""
+        dataModel = None
+
+        def openDataFile(self, _path, _options):
+            return SimpleNamespace(ok=True)
+
+        def rerun(self):
+            return SimpleNamespace(ok=False)
+
+        def waitForLastRun(self, *, timeout):
+            assert timeout == 30
+            return True
+
+    monkeypatch.setattr(app, "UiController", RejectingController)
+    monkeypatch.setattr(
+        app,
+        "v1_statistics_smoke_payload",
+        lambda: {"ok": True, "checks": []},
+    )
+    output_path = tmp_path / "engine-smoke.json"
+
+    result = app._run_engine_smoke(tmp_path / "input.xlsx", output_path)
+
+    payload = json.loads(output_path.read_text(encoding="utf-8"))
+    assert result == 1
+    assert payload["opened"] is True
+    assert payload["rerun"] is False
+    assert payload["ok"] is False

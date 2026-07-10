@@ -104,6 +104,17 @@ verified separately from raw result-object values.
   knowledge-library, accuracy-ledger, and legacy report-path tests reported
   `127 passed` after final-probability Fisher covariance and plural-chart
   reporting were added.
+- Logistic product and packaged closure candidate on 2026-07-10 KST:
+  the focused engine/reference/report/recommendation/UI/smoke command reported
+  `112 passed` with zero logistic-specific skips. The complete
+  `scripts/quality_gate.py --with-slow-stats` run reported `1201 passed,
+  4 skipped`, and the slow layer reported `3 passed, 1202 deselected`.
+  A fresh Windows package reported `package-launch-smoke-ok`,
+  `package-engine-smoke-ok`, and `package-public-data-smoke-ok`; packaged JSON
+  contained 21 successful V1 checks including `logistic_regression` as
+  `LogisticRegressionResult`. Exact commands, environment, tolerances, source
+  audit, package hash, and residual limits are recorded in
+  `docs/qa/logistic-regression-reference-evidence.md`.
 - jamovi GUI fixture pack:
   `tests/test_jamovi_validation_fixtures.py` locks the expected values used by
   `docs/qa/jamovi-gui-validation-runbook.md`. Manual jamovi screenshots or

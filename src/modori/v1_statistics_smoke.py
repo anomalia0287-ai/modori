@@ -7,8 +7,10 @@ import numpy as np
 import pandas as pd
 
 from modori.core import Dataset, Measure, Variable
+from modori.logistic_regression_results import LogisticRegressionResult
 from modori.steps import (
     AncovaStep,
+    BinaryLogisticRegressionStep,
     CompareGroupsStep,
     CorrelationStep,
     DescriptivesTableStep,
@@ -113,6 +115,30 @@ def _assert_factor_method(expected: str) -> Callable[[Any], None]:
 def _assert_regression_interaction(result: Any) -> None:
     if not getattr(result, "simple_slopes", None):
         raise ValueError("regression interaction smoke did not produce simple slopes")
+
+
+def _assert_logistic_result(result: Any) -> None:
+    if not isinstance(result, LogisticRegressionResult):
+        raise ValueError(
+            f"expected LogisticRegressionResult, got {type(result).__name__}"
+        )
+    if not np.isfinite(result.likelihood_ratio_chi_square):
+        raise ValueError("logistic omnibus statistic is not finite")
+    if not result.coefficients:
+        raise ValueError("logistic smoke did not produce coefficient rows")
+    for row in result.coefficients:
+        if not all(np.isfinite(value) for value in (row.b, row.se, row.p_value)):
+            raise ValueError(f"logistic coefficient row is not finite: {row.name}")
+    classification = result.classification
+    classified = classification.tn + classification.fp + classification.fn + classification.tp
+    if classified != result.n_obs:
+        raise ValueError(
+            f"logistic classification counts cover {classified}, expected {result.n_obs}"
+        )
+    if not isinstance(result.warning_codes, tuple) or not isinstance(result.warnings, tuple):
+        raise ValueError("logistic warning disclosure is not immutable")
+    if len(result.warning_codes) != len(result.warnings):
+        raise ValueError("logistic warning codes and messages do not align")
 
 
 def _assert_positive_attr(attribute: str) -> Callable[[Any], None]:
@@ -741,6 +767,52 @@ def _regression_interaction_check() -> tuple[MultipleRegressionStep, Dataset, Ca
     )
 
 
+def _logistic_regression_check() -> tuple[
+    BinaryLogisticRegressionStep,
+    Dataset,
+    Callable[[Any], None],
+]:
+    event_counts = {
+        -2.0: {-1.0: 2, 0.0: 1, 1.0: 1},
+        -1.0: {-1.0: 2, 0.0: 1, 1.0: 1},
+        0.0: {-1.0: 3, 0.0: 3, 1.0: 1},
+        1.0: {-1.0: 3, 0.0: 3, 1.0: 2},
+        2.0: {-1.0: 3, 0.0: 3, 1.0: 2},
+    }
+    rows = [
+        {"event": int(replicate < event_counts[x1][x2]), "x1": x1, "x2": x2}
+        for x1 in (-2.0, -1.0, 0.0, 1.0, 2.0)
+        for x2 in (-1.0, 0.0, 1.0)
+        for replicate in range(4)
+    ]
+    dataset = _dataset(
+        rows,
+        {"event": Measure.NOMINAL, "x1": Measure.SCALE, "x2": Measure.SCALE},
+        value_labels={"event": {0: "non-event", 1: "event"}},
+    )
+    return (
+        BinaryLogisticRegressionStep(
+            id="smoke-logistic-regression",
+            title="Smoke binary logistic regression",
+            params={
+                "schema_version": 1,
+                "outcome": "event",
+                "event_value": 1,
+                "predictors": ["x1", "x2"],
+                "logistic_policy": {
+                    "preset": "conservative",
+                    "classification_threshold": 0.5,
+                    "calibration_bins": 10,
+                    "categorical_predictors": {},
+                },
+                "language": "ko",
+            },
+        ),
+        dataset,
+        _assert_logistic_result,
+    )
+
+
 _CHECK_FACTORIES: tuple[tuple[str, Callable[[], tuple[object, Dataset, Callable[[Any], None]]]], ...] = (
     ("descriptives_table1", _descriptives_check),
     ("reliability", _reliability_check),
@@ -762,4 +834,5 @@ _CHECK_FACTORIES: tuple[tuple[str, Callable[[], tuple[object, Dataset, Callable[
     ("factor_pca_pca", _factor_pca_check),
     ("factor_pca_efa", _factor_efa_check),
     ("regression_categorical_interaction", _regression_interaction_check),
+    ("logistic_regression", _logistic_regression_check),
 )

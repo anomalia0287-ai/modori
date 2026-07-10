@@ -29,6 +29,11 @@ def test_v1_statistics_smoke_executes_every_v1_engine_path() -> None:
         "factor_pca_pca",
         "factor_pca_efa",
         "regression_categorical_interaction",
+        "logistic_regression",
     }
     assert all(check["ok"] is True for check in payload["checks"])
     assert all(check["analysis_type"] for check in payload["checks"])
+    logistic = next(
+        check for check in payload["checks"] if check["key"] == "logistic_regression"
+    )
+    assert logistic["analysis_type"] == "LogisticRegressionResult"

@@ -9,6 +9,7 @@ PRODUCTION_TAIL_MODULES = (
     Path("src/modori/steps/ancova.py"),
     Path("src/modori/steps/anova_oneway.py"),
     Path("src/modori/steps/repeated_measures_anova.py"),
+    Path("src/modori/steps/logistic_regression.py"),
 )
 
 
@@ -30,3 +31,10 @@ def test_survival_function_policy_preserves_extreme_t_tail_probability() -> None
 
     assert sf_p_value > 0.0
     assert cdf_complement_p_value == 0.0
+
+
+def test_logistic_source_uses_survival_tail_without_direct_matrix_inverse() -> None:
+    source = Path("src/modori/steps/logistic_regression.py").read_text(encoding="utf-8")
+
+    assert "stats.chi2.sf(" in source
+    assert "linalg.inv(" not in source

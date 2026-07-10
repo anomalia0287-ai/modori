@@ -78,11 +78,33 @@ def run_engine_smoke(
 
     payload = json.loads(output_path.read_text(encoding="utf-8"))
     v1_statistics_smoke = payload.get("v1_statistics_smoke")
+    checks = (
+        v1_statistics_smoke.get("checks")
+        if isinstance(v1_statistics_smoke, dict)
+        else None
+    )
+    logistic_ok = isinstance(checks, list) and any(
+        isinstance(check, dict)
+        and check.get("key") == "logistic_regression"
+        and check.get("ok") is True
+        and check.get("analysis_type") == "LogisticRegressionResult"
+        for check in checks
+    )
     if (
         payload.get("ok") is not True
+        or payload.get("opened") is not True
+        or payload.get("rerun") is not True
+        or payload.get("waited") is not True
+        or payload.get("status") != "ready"
         or not isinstance(v1_statistics_smoke, dict)
         or v1_statistics_smoke.get("ok") is not True
+        or not logistic_ok
     ):
+        if not logistic_ok:
+            print(
+                "Missing or failed logistic_regression packaged smoke evidence",
+                file=sys.stderr,
+            )
         print(json.dumps(payload, ensure_ascii=False, sort_keys=True), file=sys.stderr)
         return 1
     print("package-engine-smoke-ok")
