@@ -5,7 +5,7 @@ import json
 import math
 from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass, field
-from statistics import NormalDist
+from statistics import NormalDist, median
 from typing import Literal
 
 
@@ -751,4 +751,270 @@ def newcombe_paired_difference_interval(
     return (
         max(-1.0, difference - lower_distance),
         min(1.0, difference + upper_distance),
+    )
+
+
+@dataclass(frozen=True)
+class ReviewerAnnotation:
+    case_id: str
+    evidence_stage: str
+    action_class: ActionClass | str
+    acceptable_recommendations: tuple[RecommendationIdentity, ...] = ()
+    required_clarification_facts: tuple[str, ...] = ()
+    acceptable_abstention_reasons: tuple[str, ...] = ()
+    active_minutes: float = 0.0
+
+    def __post_init__(self) -> None:
+        validated = GoldRecord(
+            case_id=self.case_id,
+            evidence_stage=self.evidence_stage,
+            action_class=self.action_class,
+            acceptable_recommendations=self.acceptable_recommendations,
+            required_clarification_facts=self.required_clarification_facts,
+            acceptable_abstention_reasons=self.acceptable_abstention_reasons,
+        )
+        object.__setattr__(self, "case_id", validated.case_id)
+        object.__setattr__(self, "evidence_stage", validated.evidence_stage)
+        if not math.isfinite(self.active_minutes) or self.active_minutes <= 0.0:
+            raise BenchmarkContractError(
+                "reviewer active minutes must be finite and positive"
+            )
+
+
+@dataclass(frozen=True)
+class ReviewerSubmission:
+    reviewer_id: str
+    annotations: tuple[ReviewerAnnotation, ...]
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "reviewer_id",
+            _require_nonempty_string(self.reviewer_id, "reviewer ID"),
+        )
+        if not self.annotations:
+            raise BenchmarkContractError("reviewer annotations must not be empty")
+        keys = [_record_key(annotation) for annotation in self.annotations]
+        if len(set(keys)) != len(keys):
+            raise BenchmarkContractError("reviewer submission contains duplicate case-stages")
+
+
+@dataclass(frozen=True)
+class AdjudicationRecord:
+    case_id: str
+    evidence_stage: str
+    resolution_minutes: float
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "case_id", _require_nonempty_string(self.case_id, "case ID"))
+        object.__setattr__(
+            self,
+            "evidence_stage",
+            _require_nonempty_string(self.evidence_stage, "evidence stage"),
+        )
+        if not math.isfinite(self.resolution_minutes) or self.resolution_minutes < 0.0:
+            raise BenchmarkContractError(
+                "adjudication minutes must be finite and non-negative"
+            )
+
+
+@dataclass(frozen=True)
+class AgreementReport:
+    case_count: int
+    primary_action_alpha: float | None
+    primary_action_status: str
+    recommendation_jaccard: float | None
+    recommendation_exact: float | None
+    clarification_jaccard: float | None
+    clarification_exact: float | None
+
+
+@dataclass(frozen=True)
+class LabelingRates:
+    reviewer_hourly: float
+    adjudicator_hourly: float
+    setup_cost: float = 0.0
+    data_steward_cost: float = 0.0
+    project_management_cost: float = 0.0
+
+    def __post_init__(self) -> None:
+        for name in ("reviewer_hourly", "adjudicator_hourly"):
+            value = getattr(self, name)
+            if not math.isfinite(value) or value <= 0.0:
+                raise BenchmarkContractError(f"{name} must be finite and positive")
+        for name in ("setup_cost", "data_steward_cost", "project_management_cost"):
+            value = getattr(self, name)
+            if not math.isfinite(value) or value < 0.0:
+                raise BenchmarkContractError(f"{name} must be finite and non-negative")
+
+
+@dataclass(frozen=True)
+class CostProjection:
+    pilot_case_count: int
+    stage_case_count: int
+    median_reviewer_minutes: float
+    median_adjudication_minutes: float
+    projected_reviewer_hours: float
+    projected_adjudication_hours: float
+    projected_expert_hours_with_contingency: float
+    base_labor_cost: float
+    contingency_cost: float
+    fixed_cost: float
+    total_cost: float
+
+
+def _submission_index(
+    submission: ReviewerSubmission,
+) -> dict[tuple[str, str], ReviewerAnnotation]:
+    return {_record_key(annotation): annotation for annotation in submission.annotations}
+
+
+def _paired_submission_indices(
+    reviewer_a: ReviewerSubmission,
+    reviewer_b: ReviewerSubmission,
+) -> tuple[
+    dict[tuple[str, str], ReviewerAnnotation],
+    dict[tuple[str, str], ReviewerAnnotation],
+]:
+    if reviewer_a.reviewer_id == reviewer_b.reviewer_id:
+        raise BenchmarkContractError("submissions require different reviewer IDs")
+    index_a = _submission_index(reviewer_a)
+    index_b = _submission_index(reviewer_b)
+    if set(index_a) != set(index_b):
+        raise BenchmarkContractError("reviewer submissions must cover identical case-stages")
+    return index_a, index_b
+
+
+def _nominal_krippendorff_alpha(
+    labels_a: Sequence[str],
+    labels_b: Sequence[str],
+) -> tuple[float | None, str]:
+    case_count = len(labels_a)
+    disagreements = sum(a != b for a, b in zip(labels_a, labels_b, strict=True))
+    observed_disagreement = disagreements / case_count
+    counts: dict[str, int] = {}
+    for label in (*labels_a, *labels_b):
+        counts[label] = counts.get(label, 0) + 1
+    observation_count = 2 * case_count
+    expected_disagreement = 1.0 - sum(
+        count * (count - 1) for count in counts.values()
+    ) / (observation_count * (observation_count - 1))
+    if expected_disagreement == 0.0:
+        return None, "not_estimable"
+    return 1.0 - observed_disagreement / expected_disagreement, "ok"
+
+
+def _set_agreement(
+    sets_a: Sequence[frozenset[object]],
+    sets_b: Sequence[frozenset[object]],
+) -> tuple[float | None, float | None]:
+    jaccard_values: list[float] = []
+    exact_values: list[float] = []
+    for first, second in zip(sets_a, sets_b, strict=True):
+        union = first | second
+        if not union:
+            continue
+        jaccard_values.append(len(first & second) / len(union))
+        exact_values.append(float(first == second))
+    if not jaccard_values:
+        return None, None
+    return sum(jaccard_values) / len(jaccard_values), sum(exact_values) / len(
+        exact_values
+    )
+
+
+def reviewer_agreement(
+    reviewer_a: ReviewerSubmission,
+    reviewer_b: ReviewerSubmission,
+) -> AgreementReport:
+    index_a, index_b = _paired_submission_indices(reviewer_a, reviewer_b)
+    keys = sorted(index_a)
+    labels_a = [str(index_a[key].action_class) for key in keys]
+    labels_b = [str(index_b[key].action_class) for key in keys]
+    alpha, alpha_status = _nominal_krippendorff_alpha(labels_a, labels_b)
+    recommendation_jaccard, recommendation_exact = _set_agreement(
+        [frozenset(index_a[key].acceptable_recommendations) for key in keys],
+        [frozenset(index_b[key].acceptable_recommendations) for key in keys],
+    )
+    clarification_jaccard, clarification_exact = _set_agreement(
+        [frozenset(index_a[key].required_clarification_facts) for key in keys],
+        [frozenset(index_b[key].required_clarification_facts) for key in keys],
+    )
+    return AgreementReport(
+        case_count=len(keys),
+        primary_action_alpha=alpha,
+        primary_action_status=alpha_status,
+        recommendation_jaccard=recommendation_jaccard,
+        recommendation_exact=recommendation_exact,
+        clarification_jaccard=clarification_jaccard,
+        clarification_exact=clarification_exact,
+    )
+
+
+def project_labeling_cost(
+    reviewers: Sequence[ReviewerSubmission],
+    adjudications: Sequence[AdjudicationRecord],
+    *,
+    stage_case_count: int,
+    rates: LabelingRates,
+    contingency: float = 0.25,
+) -> CostProjection:
+    if len(reviewers) != 2:
+        raise BenchmarkContractError("cost projection requires exactly two reviewers")
+    reviewer_a, reviewer_b = reviewers
+    index_a, index_b = _paired_submission_indices(reviewer_a, reviewer_b)
+    if len(index_a) != 20:
+        raise BenchmarkContractError("cost projection requires exactly 20 pilot cases")
+    if not isinstance(stage_case_count, int) or stage_case_count <= 0:
+        raise BenchmarkContractError("stage case count must be a positive integer")
+    if not math.isfinite(contingency) or not 0.0 <= contingency <= 1.0:
+        raise BenchmarkContractError("contingency must be between zero and one")
+
+    adjudication_by_key: dict[tuple[str, str], AdjudicationRecord] = {}
+    for record in adjudications:
+        key = _record_key(record)
+        if key in adjudication_by_key:
+            raise BenchmarkContractError("duplicate adjudication case-stage")
+        adjudication_by_key[key] = record
+    if set(adjudication_by_key) != set(index_a) or set(index_a) != set(index_b):
+        raise BenchmarkContractError(
+            "adjudications must cover both complete reviewer submissions"
+        )
+
+    reviewer_minutes = [
+        annotation.active_minutes
+        for submission in reviewers
+        for annotation in submission.annotations
+    ]
+    adjudication_minutes = [
+        adjudication_by_key[key].resolution_minutes for key in sorted(adjudication_by_key)
+    ]
+    median_reviewer_minutes = float(median(reviewer_minutes))
+    median_adjudication_minutes = float(median(adjudication_minutes))
+    projected_reviewer_hours = (
+        stage_case_count * 2.0 * median_reviewer_minutes / 60.0
+    )
+    projected_adjudication_hours = (
+        stage_case_count * median_adjudication_minutes / 60.0
+    )
+    base_expert_hours = projected_reviewer_hours + projected_adjudication_hours
+    base_labor_cost = (
+        projected_reviewer_hours * rates.reviewer_hourly
+        + projected_adjudication_hours * rates.adjudicator_hourly
+    )
+    contingency_cost = base_labor_cost * contingency
+    fixed_cost = rates.setup_cost + rates.data_steward_cost + rates.project_management_cost
+    return CostProjection(
+        pilot_case_count=len(index_a),
+        stage_case_count=stage_case_count,
+        median_reviewer_minutes=median_reviewer_minutes,
+        median_adjudication_minutes=median_adjudication_minutes,
+        projected_reviewer_hours=projected_reviewer_hours,
+        projected_adjudication_hours=projected_adjudication_hours,
+        projected_expert_hours_with_contingency=base_expert_hours
+        * (1.0 + contingency),
+        base_labor_cost=base_labor_cost,
+        contingency_cost=contingency_cost,
+        fixed_cost=fixed_cost,
+        total_cost=base_labor_cost + contingency_cost + fixed_cost,
     )

@@ -6,13 +6,19 @@ import pytest
 
 from modori.recommendation_benchmark import (
     BenchmarkContractError,
+    AdjudicationRecord,
+    LabelingRates,
     GoldRecord,
     PredictionRecord,
     PrimaryAction,
     RecommendationIdentity,
+    ReviewerAnnotation,
+    ReviewerSubmission,
     ScorerConfig,
     canonical_json,
     newcombe_paired_difference_interval,
+    project_labeling_cost,
+    reviewer_agreement,
     score_predictions,
     scorer_fingerprint,
     wilson_lower_bound,
@@ -473,3 +479,185 @@ def test_newcombe_interval_rejects_empty_or_unpaired_inputs() -> None:
         newcombe_paired_difference_interval([], [], 0.95)
     with pytest.raises(BenchmarkContractError, match="equal length"):
         newcombe_paired_difference_interval([True], [True, False], 0.95)
+
+
+def annotation(
+    case_id: str,
+    action_class: str,
+    *,
+    recommendations: tuple[RecommendationIdentity, ...] = (),
+    clarification_facts: tuple[str, ...] = (),
+    active_minutes: float = 10.0,
+) -> ReviewerAnnotation:
+    return ReviewerAnnotation(
+        case_id=case_id,
+        evidence_stage="cold_start",
+        action_class=action_class,
+        acceptable_recommendations=recommendations,
+        required_clarification_facts=clarification_facts,
+        acceptable_abstention_reasons=(
+            ("unsupported_design",) if action_class == "abstention_required" else ()
+        ),
+        active_minutes=active_minutes,
+    )
+
+
+def test_reviewer_agreement_computes_alpha_and_nonempty_set_metrics() -> None:
+    first = identity(outcome="first")
+    second = identity(outcome="second")
+    third = identity(outcome="third")
+    reviewer_a = ReviewerSubmission(
+        reviewer_id="reviewer-a",
+        annotations=(
+            annotation("case-1", "recommendation_eligible", recommendations=(first, second)),
+            annotation("case-2", "recommendation_eligible", recommendations=(third,)),
+            annotation(
+                "case-3",
+                "clarification_required",
+                clarification_facts=("paired_status", "unit"),
+            ),
+            annotation("case-4", "abstention_required"),
+        ),
+    )
+    reviewer_b = ReviewerSubmission(
+        reviewer_id="reviewer-b",
+        annotations=(
+            annotation("case-1", "recommendation_eligible", recommendations=(first,)),
+            annotation(
+                "case-2",
+                "clarification_required",
+                clarification_facts=("research_goal",),
+            ),
+            annotation(
+                "case-3",
+                "clarification_required",
+                clarification_facts=("paired_status",),
+            ),
+            annotation("case-4", "abstention_required"),
+        ),
+    )
+
+    report = reviewer_agreement(reviewer_a, reviewer_b)
+
+    assert report.case_count == 4
+    assert report.primary_action_alpha == pytest.approx(2.0 / 3.0)
+    assert report.primary_action_status == "ok"
+    assert report.recommendation_jaccard == pytest.approx(0.25)
+    assert report.recommendation_exact == 0.0
+    assert report.clarification_jaccard == pytest.approx(0.25)
+    assert report.clarification_exact == 0.0
+
+
+def test_reviewer_agreement_does_not_pass_constant_or_nonapplicable_labels() -> None:
+    candidate = identity()
+    submission_a = ReviewerSubmission(
+        reviewer_id="reviewer-a",
+        annotations=(
+            annotation("case-1", "recommendation_eligible", recommendations=(candidate,)),
+            annotation("case-2", "recommendation_eligible", recommendations=(candidate,)),
+        ),
+    )
+    submission_b = ReviewerSubmission(
+        reviewer_id="reviewer-b",
+        annotations=submission_a.annotations,
+    )
+
+    report = reviewer_agreement(submission_a, submission_b)
+
+    assert report.primary_action_alpha is None
+    assert report.primary_action_status == "not_estimable"
+    assert report.recommendation_jaccard == 1.0
+    assert report.recommendation_exact == 1.0
+    assert report.clarification_jaccard is None
+    assert report.clarification_exact is None
+
+
+def test_labeling_cost_projects_two_reviewers_adjudication_and_fixed_costs() -> None:
+    reviewer_a = ReviewerSubmission(
+        reviewer_id="reviewer-a",
+        annotations=tuple(
+            annotation(
+                f"case-{index:02d}",
+                "abstention_required",
+                active_minutes=10.0,
+            )
+            for index in range(1, 21)
+        ),
+    )
+    reviewer_b = ReviewerSubmission(
+        reviewer_id="reviewer-b",
+        annotations=tuple(
+            annotation(
+                f"case-{index:02d}",
+                "abstention_required",
+                active_minutes=12.0,
+            )
+            for index in range(1, 21)
+        ),
+    )
+    adjudications = tuple(
+        AdjudicationRecord(
+            case_id=f"case-{index:02d}",
+            evidence_stage="cold_start",
+            resolution_minutes=4.0,
+        )
+        for index in range(1, 21)
+    )
+
+    projection = project_labeling_cost(
+        (reviewer_a, reviewer_b),
+        adjudications,
+        stage_case_count=150,
+        rates=LabelingRates(
+            reviewer_hourly=100.0,
+            adjudicator_hourly=150.0,
+            setup_cost=1000.0,
+            data_steward_cost=500.0,
+            project_management_cost=250.0,
+        ),
+    )
+
+    assert projection.pilot_case_count == 20
+    assert projection.median_reviewer_minutes == 11.0
+    assert projection.median_adjudication_minutes == 4.0
+    assert projection.projected_reviewer_hours == pytest.approx(55.0)
+    assert projection.projected_adjudication_hours == pytest.approx(10.0)
+    assert projection.projected_expert_hours_with_contingency == pytest.approx(81.25)
+    assert projection.base_labor_cost == pytest.approx(7000.0)
+    assert projection.contingency_cost == pytest.approx(1750.0)
+    assert projection.fixed_cost == pytest.approx(1750.0)
+    assert projection.total_cost == pytest.approx(10500.0)
+
+
+def test_agreement_and_cost_reject_incomplete_or_invalid_submissions() -> None:
+    candidate = identity()
+    reviewer_a = ReviewerSubmission(
+        reviewer_id="same",
+        annotations=(
+            annotation("case-1", "recommendation_eligible", recommendations=(candidate,)),
+        ),
+    )
+    reviewer_b = ReviewerSubmission(
+        reviewer_id="same",
+        annotations=(
+            annotation("case-2", "recommendation_eligible", recommendations=(candidate,)),
+        ),
+    )
+
+    with pytest.raises(BenchmarkContractError, match="different reviewer IDs"):
+        reviewer_agreement(reviewer_a, reviewer_b)
+    with pytest.raises(BenchmarkContractError, match="exactly 20 pilot cases"):
+        project_labeling_cost(
+            (reviewer_a, ReviewerSubmission("other", reviewer_a.annotations)),
+            (
+                AdjudicationRecord("case-1", "cold_start", 1.0),
+            ),
+            stage_case_count=150,
+            rates=LabelingRates(100.0, 150.0),
+        )
+    with pytest.raises(BenchmarkContractError, match="finite and positive"):
+        annotation(
+            "case-invalid",
+            "abstention_required",
+            active_minutes=float("nan"),
+        )
