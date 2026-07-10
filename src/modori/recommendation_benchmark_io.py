@@ -6,7 +6,7 @@ import os
 import tempfile
 import zipfile
 import xml.etree.ElementTree as ET
-from collections.abc import Callable, Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -31,6 +31,7 @@ T = TypeVar("T")
 
 _REVIEWER_SHEETS = (
     "Instructions",
+    "Study Cards",
     "Case Reviews",
     "Recommendations",
     "Clarifications",
@@ -38,6 +39,22 @@ _REVIEWER_SHEETS = (
 )
 _ADJUDICATION_SHEETS = (*_REVIEWER_SHEETS, "Adjudication", "Resolution Minutes")
 _HEADERS = {
+    "Study Cards": (
+        "case_id",
+        "evidence_stage",
+        "title_ko",
+        "research_question_ko",
+        "unit_of_observation",
+        "sampling",
+        "grouping",
+        "time_structure",
+        "weights_clusters",
+        "variable_meanings",
+        "known_missing_codes",
+        "facts_visible",
+        "facts_clarification_only",
+        "data_file",
+    ),
     "Case Reviews": (
         "case_id",
         "evidence_stage",
@@ -100,6 +117,32 @@ def _nonempty_text(value: object, field_name: str) -> str:
     return value.strip()
 
 
+def _display_text(value: object) -> str:
+    if value is None or not str(value).strip():
+        return "없음"
+    return str(value).strip()
+
+
+def _display_mapping(value: object) -> str:
+    if not isinstance(value, Mapping) or not value:
+        return "없음"
+    lines: list[str] = []
+    for key in sorted(value, key=str):
+        raw = value[key]
+        if isinstance(raw, Sequence) and not isinstance(raw, str):
+            displayed = ", ".join(str(item) for item in raw) or "없음"
+        else:
+            displayed = _display_text(raw)
+        lines.append(f"{key}: {displayed}")
+    return "\n".join(lines)
+
+
+def _display_sequence(value: object) -> str:
+    if isinstance(value, str) or not isinstance(value, Sequence) or not value:
+        return "없음"
+    return "\n".join(f"• {str(item).strip()}" for item in value if str(item).strip()) or "없음"
+
+
 @dataclass(frozen=True)
 class PilotCaseSummary:
     case_id: str
@@ -107,6 +150,15 @@ class PilotCaseSummary:
     title_ko: str
     research_question_ko: str
     data_file: str
+    unit_of_observation: str = ""
+    sampling: str = ""
+    grouping: str = ""
+    time_structure: str = ""
+    weights_clusters: str = ""
+    variable_meanings: str = ""
+    known_missing_codes: str = ""
+    facts_visible: str = ""
+    facts_clarification_only: str = ""
 
     def __post_init__(self) -> None:
         for field_name in (
@@ -121,6 +173,54 @@ class PilotCaseSummary:
                 field_name,
                 _nonempty_text(getattr(self, field_name), field_name),
             )
+        for field_name in (
+            "unit_of_observation",
+            "sampling",
+            "grouping",
+            "time_structure",
+            "weights_clusters",
+            "variable_meanings",
+            "known_missing_codes",
+            "facts_visible",
+            "facts_clarification_only",
+        ):
+            value = getattr(self, field_name)
+            if not isinstance(value, str):
+                raise BenchmarkContractError(f"{field_name} must be a string")
+
+    @classmethod
+    def from_case_mapping(cls, mapping: Mapping[str, object]) -> PilotCaseSummary:
+        study_card = mapping.get("study_card")
+        if not isinstance(study_card, Mapping):
+            raise BenchmarkContractError("pilot case study_card must be an object")
+        return cls(
+            case_id=_nonempty_text(mapping.get("case_id"), "case_id"),
+            evidence_stage=_nonempty_text(
+                mapping.get("evidence_stage"),
+                "evidence_stage",
+            ),
+            title_ko=_nonempty_text(mapping.get("title_ko"), "title_ko"),
+            research_question_ko=_nonempty_text(
+                mapping.get("research_question_ko"),
+                "research_question_ko",
+            ),
+            data_file=_nonempty_text(mapping.get("data_file"), "data_file"),
+            unit_of_observation=_display_text(
+                study_card.get("unit_of_observation")
+            ),
+            sampling=_display_text(study_card.get("sampling")),
+            grouping=_display_text(study_card.get("grouping")),
+            time_structure=_display_text(study_card.get("time_structure")),
+            weights_clusters=_display_text(study_card.get("weights_clusters")),
+            variable_meanings=_display_mapping(study_card.get("variable_meanings")),
+            known_missing_codes=_display_mapping(
+                study_card.get("known_missing_codes")
+            ),
+            facts_visible=_display_sequence(study_card.get("facts_visible")),
+            facts_clarification_only=_display_sequence(
+                study_card.get("facts_clarification_only")
+            ),
+        )
 
 
 @dataclass(frozen=True)
@@ -289,6 +389,53 @@ def _build_workbook(
     instructions["A1"].alignment = Alignment(wrap_text=True, vertical="top")
     instructions.row_dimensions[1].height = 64
     _set_widths(instructions, {"A": 28, "B": 78})
+
+    study_cards = workbook.create_sheet("Study Cards")
+    study_cards.append(_HEADERS["Study Cards"])
+    for case in cases:
+        row = study_cards.max_row + 1
+        values = (
+            case.case_id,
+            case.evidence_stage,
+            case.title_ko,
+            case.research_question_ko,
+            case.unit_of_observation or "없음",
+            case.sampling or "없음",
+            case.grouping or "없음",
+            case.time_structure or "없음",
+            case.weights_clusters or "없음",
+            case.variable_meanings or "없음",
+            case.known_missing_codes or "없음",
+            case.facts_visible or "없음",
+            case.facts_clarification_only or "없음",
+            case.data_file,
+        )
+        for column, value in enumerate(values, start=1):
+            cell = study_cards.cell(row=row, column=column)
+            _set_literal_text(cell, value)
+            cell.alignment = Alignment(wrap_text=True, vertical="top")
+        study_cards.row_dimensions[row].height = 72
+    _style_header(study_cards, len(_HEADERS["Study Cards"]))
+    study_cards.freeze_panes = "C2"
+    _set_widths(
+        study_cards,
+        {
+            "A": 24,
+            "B": 18,
+            "C": 30,
+            "D": 48,
+            "E": 34,
+            "F": 32,
+            "G": 32,
+            "H": 34,
+            "I": 38,
+            "J": 42,
+            "K": 28,
+            "L": 42,
+            "M": 42,
+            "N": 32,
+        },
+    )
 
     reviews = workbook.create_sheet("Case Reviews")
     reviews.append(_HEADERS["Case Reviews"])
@@ -550,6 +697,41 @@ def _review_rows(
     return rows
 
 
+def _validate_study_cards(
+    workbook: object,
+    expected: Mapping[tuple[str, str], PilotCaseSummary],
+) -> None:
+    rows: dict[tuple[str, str], tuple[object, ...]] = {}
+    for row in _nonempty_rows(workbook["Study Cards"]):
+        key = _case_key_from_row(row, "Study Cards")
+        if key in rows:
+            raise BenchmarkContractError(f"duplicate Study Cards row: {key}")
+        if key not in expected:
+            raise BenchmarkContractError(f"unexpected Study Cards row: {key}")
+        rows[key] = row
+    if set(rows) != set(expected):
+        raise BenchmarkContractError("Study Cards must cover every expected case-stage")
+    for key, case in expected.items():
+        expected_values = (
+            case.case_id,
+            case.evidence_stage,
+            case.title_ko,
+            case.research_question_ko,
+            case.unit_of_observation or "없음",
+            case.sampling or "없음",
+            case.grouping or "없음",
+            case.time_structure or "없음",
+            case.weights_clusters or "없음",
+            case.variable_meanings or "없음",
+            case.known_missing_codes or "없음",
+            case.facts_visible or "없음",
+            case.facts_clarification_only or "없음",
+            case.data_file,
+        )
+        if tuple(rows[key][:14]) != expected_values:
+            raise BenchmarkContractError(f"study card drift for {key}")
+
+
 def _split_values(value: object) -> tuple[str, ...]:
     if value is None or not str(value).strip():
         return ()
@@ -620,6 +802,7 @@ def load_reviewer_workbook(
     workbook = load_workbook(path, data_only=False, read_only=False)
     try:
         _validate_workbook_structure(workbook, adjudication=False)
+        _validate_study_cards(workbook, expected)
         reviewer_id = _nonempty_text(workbook["Instructions"]["B2"].value, "reviewer ID")
         review_rows = _review_rows(workbook, expected, require_minutes=True)
         recommendations = _recommendation_rows(workbook, expected)
@@ -651,6 +834,7 @@ def load_adjudication_workbook(
     workbook = load_workbook(path, data_only=False, read_only=False)
     try:
         _validate_workbook_structure(workbook, adjudication=True)
+        _validate_study_cards(workbook, expected)
         adjudicator_id = _nonempty_text(
             workbook["Instructions"]["B2"].value,
             "adjudicator ID",

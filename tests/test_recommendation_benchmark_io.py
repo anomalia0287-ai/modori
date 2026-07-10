@@ -70,6 +70,15 @@ def pilot_cases() -> tuple[PilotCaseSummary, ...]:
             title_ko="두 집단 점수",
             research_question_ko="두 집단의 점수 차이를 확인한다.",
             data_file="data/case-1.csv",
+            unit_of_observation="한 행은 참여자 한 명이다.",
+            sampling="두 독립 집단의 합성 표본이다.",
+            grouping="arm이 집단을 구분한다.",
+            time_structure="한 시점이다.",
+            weights_clusters="없다.",
+            variable_meanings="arm: 집단\nscore: 결과 점수",
+            known_missing_codes="없음",
+            facts_visible="각 참여자는 한 집단에만 속한다.",
+            facts_clarification_only="없음",
         ),
         PilotCaseSummary(
             case_id="case-2",
@@ -77,6 +86,15 @@ def pilot_cases() -> tuple[PilotCaseSummary, ...]:
             title_ko="지원하지 않는 군집 설계",
             research_question_ko="군집 표본의 차이를 확인한다.",
             data_file="data/case-2.csv",
+            unit_of_observation="한 행은 참여자 한 명이다.",
+            sampling="군집 표본이다.",
+            grouping="arm이 집단을 구분한다.",
+            time_structure="한 시점이다.",
+            weights_clusters="cluster_id와 weight를 반영해야 한다.",
+            variable_meanings="cluster_id: 군집\nweight: 가중치",
+            known_missing_codes="없음",
+            facts_visible="가중치와 군집 열이 있다.",
+            facts_clarification_only="없음",
         ),
     )
 
@@ -92,6 +110,7 @@ def test_blank_workbooks_have_korean_instructions_stable_schema_and_no_answers(
     workbook = load_workbook(reviewer_a, data_only=False)
     assert workbook.sheetnames == [
         "Instructions",
+        "Study Cards",
         "Case Reviews",
         "Recommendations",
         "Clarifications",
@@ -102,6 +121,9 @@ def test_blank_workbooks_have_korean_instructions_stable_schema_and_no_answers(
     assert "A1:B1" in {str(cell_range) for cell_range in workbook["Instructions"].merged_cells.ranges}
     assert workbook["Instructions"].row_dimensions[1].height >= 60
     assert workbook["Instructions"]["B2"].value is None
+    assert workbook["Study Cards"]["E2"].value == "한 행은 참여자 한 명이다."
+    assert "score: 결과 점수" in workbook["Study Cards"]["J2"].value
+    assert workbook["Study Cards"].freeze_panes == "C2"
     reviews = workbook["Case Reviews"]
     assert [reviews.cell(row=row, column=1).value for row in (2, 3)] == [
         "case-1",

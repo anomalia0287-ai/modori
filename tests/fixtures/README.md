@@ -1,5 +1,19 @@
 # Test fixtures
 
+## `recommendation_benchmark/`
+
+Deterministic synthetic recommendation benchmark economics pilot.
+
+Use in Modori:
+
+- Exactly 20 study-card cases and 19 CSV files, including a same-data/different-question pair.
+- Blank independent reviewer workbooks and a separate adjudication workbook.
+- Current A predictions are captured with case, prediction, and source fingerprints.
+- The pilot measures labeling time and agreement; it is not accuracy evidence.
+- No checked-in case contains real PII or an expert gold label.
+- Human procedure: `docs/qa/recommendation-benchmark-pilot-runbook.md`.
+- Controlled vocabulary: `docs/qa/recommendation-benchmark-annotation-guide.md`.
+
 ## `psych_bfi.csv`
 
 Source: Rdatasets mirror of the R `psych` package `bfi` dataset.

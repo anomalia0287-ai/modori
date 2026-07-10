@@ -72,13 +72,7 @@ class PilotCaseDefinition:
         }
 
     def summary(self) -> PilotCaseSummary:
-        return PilotCaseSummary(
-            case_id=self.case_id,
-            evidence_stage=self.evidence_stage,
-            title_ko=self.title_ko,
-            research_question_ko=self.research_question_ko,
-            data_file=self.data_file,
-        )
+        return PilotCaseSummary.from_case_mapping(self.to_mapping())
 
 
 @dataclass(frozen=True)
@@ -783,7 +777,6 @@ def validate_pilot_pack(root: Path) -> PilotPackReport:
     for case in cases:
         _assert_no_gold_keys(case)
         case_id = _required_text(case, "case_id")
-        evidence_stage = _required_text(case, "evidence_stage")
         if case.get("sensitivity") != "synthetic_no_real_pii":
             raise BenchmarkContractError(f"invalid sensitivity for {case_id}")
         study_card = case.get("study_card")
@@ -802,15 +795,7 @@ def validate_pilot_pack(root: Path) -> PilotPackReport:
         }
         if set(study_card) != required_card_keys:
             raise BenchmarkContractError(f"study card schema mismatch for {case_id}")
-        summaries.append(
-            PilotCaseSummary(
-                case_id=case_id,
-                evidence_stage=evidence_stage,
-                title_ko=_required_text(case, "title_ko"),
-                research_question_ko=_required_text(case, "research_question_ko"),
-                data_file=_required_text(case, "data_file"),
-            )
-        )
+        summaries.append(PilotCaseSummary.from_case_mapping(case))
         record = manifest_by_case[case_id]
         if record.get("split_role") != "economics_pilot":
             raise BenchmarkContractError(f"invalid split role for {case_id}")
