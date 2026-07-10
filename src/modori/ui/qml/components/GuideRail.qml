@@ -16,6 +16,10 @@ Rectangle {
     property bool canCommitSelection: root.canCommitManualSelection()
     property var logisticOutcomeRows: []
     property var logisticReferenceRows: []
+    property var factorialOutcomeRows: []
+    property var factorialFactorRows: []
+    property var factorialFactorALevelRows: []
+    property var factorialFactorBLevelRows: []
 
     Theme {
         id: theme
@@ -58,6 +62,57 @@ Rectangle {
             : []
     }
 
+    function factorialLevelLabels(rows) {
+        var labels = []
+        for (var index = 0; index < rows.length; index += 1) {
+            labels.push(String(rows[index].label))
+        }
+        return labels.join(", ")
+    }
+
+    function refreshFactorialVariableRows() {
+        root.factorialOutcomeRows = uiController.factorialVariableOptions("outcome")
+        root.factorialFactorRows = uiController.factorialVariableOptions("factor")
+        factorialOutcomeCombo.currentIndex = -1
+        factorialFactorACombo.currentIndex = -1
+        factorialFactorBCombo.currentIndex = -1
+        root.factorialFactorALevelRows = []
+        root.factorialFactorBLevelRows = []
+    }
+
+    function refreshFactorialFactorALevelRows() {
+        root.factorialFactorALevelRows = factorialFactorACombo.currentIndex >= 0
+            ? uiController.factorialLevelOptions(String(factorialFactorACombo.currentValue))
+            : []
+    }
+
+    function refreshFactorialFactorBLevelRows() {
+        root.factorialFactorBLevelRows = factorialFactorBCombo.currentIndex >= 0
+            ? uiController.factorialLevelOptions(String(factorialFactorBCombo.currentValue))
+            : []
+    }
+
+    function canApplyFactorial() {
+        return root.canEditSelection
+            && factorialOutcomeCombo.currentIndex >= 0
+            && factorialFactorACombo.currentIndex >= 0
+            && factorialFactorBCombo.currentIndex >= 0
+            && factorialFactorACombo.currentValue !== factorialFactorBCombo.currentValue
+            && root.factorialFactorALevelRows.length >= 2
+            && root.factorialFactorALevelRows.length <= 6
+            && root.factorialFactorBLevelRows.length >= 2
+            && root.factorialFactorBLevelRows.length <= 6
+    }
+
+    function beginFactorialSelection() {
+        root.manualSelectionMode = true
+        root.selectedIntent = "anova_factorial"
+        root.guideNote = uiController.explainModeEnabled
+            ? uiController.explainPlainText("analysis.anova_factorial", "ko")
+            : ""
+        root.refreshFactorialVariableRows()
+    }
+
     function recommendationItemAt(index) {
         return recommendationRepeater.itemAt(index)
     }
@@ -81,6 +136,9 @@ Rectangle {
                 && root.logisticOutcomeRows.length === 2
                 && logisticEventCombo.currentIndex >= 0
                 && root.logisticReferenceTokens() !== null
+        }
+        if (root.selectedIntent === "anova_factorial") {
+            return root.canApplyFactorial()
         }
         if (root.selectedIntent === "ancova") {
             return root.hasText(outcomeKeyField.text) && root.hasText(groupKeyField.text) && root.hasText(covariateKeysField.text)
@@ -112,6 +170,13 @@ Rectangle {
         }
         if (root.selectedIntent === "anova_oneway") {
             return uiController.configureAnovaOneWayFromText(outcomeKeyField.text, groupKeyField.text)
+        }
+        if (root.selectedIntent === "anova_factorial") {
+            return uiController.configureFactorialAnovaFromKeys(
+                String(factorialOutcomeCombo.currentValue),
+                String(factorialFactorACombo.currentValue),
+                String(factorialFactorBCombo.currentValue)
+            )
         }
         if (root.selectedIntent === "kruskal_wallis") {
             return uiController.configureKruskalWallisFromText(outcomeKeyField.text, groupKeyField.text)
@@ -324,6 +389,15 @@ Rectangle {
             }
 
             Button {
+                objectName: "guideFactorialIntentButton"
+                text: appBootstrap.text("guide.anova_factorial")
+                Accessible.name: appBootstrap.text("guide.anova_factorial")
+                visible: root.manualSelectionMode
+                Layout.fillWidth: true
+                onClicked: root.beginFactorialSelection()
+            }
+
+            Button {
                 text: appBootstrap.text("guide.kruskal_wallis")
                 Accessible.name: appBootstrap.text("guide.kruskal_wallis")
                 visible: root.manualSelectionMode
@@ -444,6 +518,68 @@ Rectangle {
                 Accessible.name: appBootstrap.text("guide.predictors_accessible")
                 selectByMouse: true
                 onTextChanged: root.refreshLogisticReferenceRows()
+            }
+
+            ComboBox {
+                id: factorialOutcomeCombo
+                objectName: "guideFactorialOutcomeCombo"
+                visible: root.manualSelectionMode && root.selectedIntent === "anova_factorial"
+                model: root.factorialOutcomeRows
+                textRole: "label"
+                valueRole: "key"
+                currentIndex: -1
+                displayText: currentIndex >= 0 ? currentText : appBootstrap.text("guide.factorial_outcome")
+                Accessible.name: appBootstrap.text("guide.factorial_outcome")
+                Layout.fillWidth: true
+                onModelChanged: currentIndex = -1
+            }
+
+            ComboBox {
+                id: factorialFactorACombo
+                objectName: "guideFactorialFactorACombo"
+                visible: root.manualSelectionMode && root.selectedIntent === "anova_factorial"
+                model: root.factorialFactorRows
+                textRole: "label"
+                valueRole: "key"
+                currentIndex: -1
+                displayText: currentIndex >= 0 ? currentText : appBootstrap.text("guide.factorial_factor_a")
+                Accessible.name: appBootstrap.text("guide.factorial_factor_a")
+                Layout.fillWidth: true
+                onCurrentValueChanged: root.refreshFactorialFactorALevelRows()
+                onModelChanged: currentIndex = -1
+            }
+
+            ComboBox {
+                id: factorialFactorBCombo
+                objectName: "guideFactorialFactorBCombo"
+                visible: root.manualSelectionMode && root.selectedIntent === "anova_factorial"
+                model: root.factorialFactorRows
+                textRole: "label"
+                valueRole: "key"
+                currentIndex: -1
+                displayText: currentIndex >= 0 ? currentText : appBootstrap.text("guide.factorial_factor_b")
+                Accessible.name: appBootstrap.text("guide.factorial_factor_b")
+                Layout.fillWidth: true
+                onCurrentValueChanged: root.refreshFactorialFactorBLevelRows()
+                onModelChanged: currentIndex = -1
+            }
+
+            Label {
+                objectName: "guideFactorialFactorALevels"
+                text: appBootstrap.text("guide.factorial_levels_a") + ": " + root.factorialLevelLabels(root.factorialFactorALevelRows)
+                visible: root.manualSelectionMode && root.selectedIntent === "anova_factorial"
+                color: theme.textControl
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+
+            Label {
+                objectName: "guideFactorialFactorBLevels"
+                text: appBootstrap.text("guide.factorial_levels_b") + ": " + root.factorialLevelLabels(root.factorialFactorBLevelRows)
+                visible: root.manualSelectionMode && root.selectedIntent === "anova_factorial"
+                color: theme.textControl
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
             }
 
             Label {

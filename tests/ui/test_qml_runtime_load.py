@@ -5,9 +5,11 @@ from pathlib import Path
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6.QtCore import QObject, QUrl, qInstallMessageHandler
+from PySide6.QtCore import QObject, QPointF, QUrl, qInstallMessageHandler
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine, QQmlComponent, QQmlEngine
+from PySide6.QtQuick import QQuickItem
+from PySide6.QtTest import QTest
 
 from modori.app import AppBootstrap
 from modori.ui.controller import UiController
@@ -251,6 +253,122 @@ def test_logistic_recommendation_click_opens_unconfirmed_manual_configuration(
         assert event_combo.property("currentIndex") == -1
         assert [step.step_type for step in controller.pipeline.steps] == before_step_types
         assert controller.pipeline_version == before_version
+        assert _significant_warnings(messages) == []
+    finally:
+        root.deleteLater()
+        app.processEvents()
+        del engine
+
+
+def test_factorial_selectors_require_distinct_roles_and_only_configure_step(
+    tmp_path,
+) -> None:
+    data_path = tmp_path / "factorial.csv"
+    rows = ["score,condition,site"]
+    for condition in ("control", "treatment"):
+        for site in ("north", "south"):
+            for replicate in range(3):
+                score = 10.0 + replicate * 0.25 + (condition == "treatment") * 2
+                rows.append(
+                    f"{score:.2f},{condition},{site}"
+                )
+    data_path.write_text("\n".join(rows) + "\n", encoding="utf-8")
+    controller = UiController(reduce_effects=True)
+    assert controller.openDataFilePath(str(data_path)) is True
+    assert len(controller.factorialLevelOptions("condition")) == 2
+    assert len(controller.factorialLevelOptions("site")) == 2
+    engine, root, messages = _load_main_with_warnings(controller)
+    app = _app()
+
+    try:
+        outcome = root.findChild(QObject, "pipelineFactorialOutcomeCombo")
+        factor_a = root.findChild(QObject, "pipelineFactorialFactorACombo")
+        factor_b = root.findChild(QObject, "pipelineFactorialFactorBCombo")
+        levels_a = root.findChild(QObject, "pipelineFactorialFactorALevels")
+        levels_b = root.findChild(QObject, "pipelineFactorialFactorBLevels")
+        apply_button = root.findChild(QObject, "pipelineApplyFactorialButton")
+        assert outcome is not None
+        assert factor_a is not None
+        assert factor_b is not None
+        assert levels_a is not None
+        assert levels_b is not None
+        assert apply_button is not None
+        assert outcome.property("count") == 1
+        assert factor_a.property("count") == 2
+        assert factor_b.property("count") == 2
+        assert outcome.property("currentIndex") == -1
+        assert factor_a.property("currentIndex") == -1
+        assert factor_b.property("currentIndex") == -1
+        assert apply_button.property("enabled") is False
+
+        outcome.setProperty("currentIndex", 0)
+        factor_a.setProperty("currentIndex", 0)
+        factor_b.setProperty("currentIndex", 0)
+        app.processEvents()
+        assert apply_button.property("enabled") is False
+
+        factor_b.setProperty("currentIndex", 1)
+        app.processEvents()
+        assert apply_button.property("enabled") is True, {
+            "outcome": outcome.property("currentValue"),
+            "factor_a": factor_a.property("currentValue"),
+            "factor_b": factor_b.property("currentValue"),
+            "levels_a": levels_a.property("text"),
+            "levels_b": levels_b.property("text"),
+        }
+        assert "control" in levels_a.property("text")
+        assert "treatment" in levels_a.property("text")
+        assert "north" in levels_b.property("text")
+        assert "south" in levels_b.property("text")
+
+        guide = root.findChild(QObject, "guideRail")
+        guide_intent = root.findChild(QObject, "guideFactorialIntentButton")
+        assert guide is not None
+        assert guide_intent is not None
+        guide.setProperty("manualSelectionMode", True)
+        guide_intent.clicked.emit()
+        app.processEvents()
+        assert guide.property("selectedIntent") == "anova_factorial"
+        assert root.findChild(QObject, "guideFactorialOutcomeCombo").property("count") == 1
+        assert root.findChild(QObject, "guideFactorialFactorACombo").property("count") == 2
+        assert root.findChild(QObject, "guideFactorialFactorBCombo").property("count") == 2
+        QTest.qWait(100)
+        app.processEvents()
+        guide_items = [
+            root.findChild(QQuickItem, object_name)
+            for object_name in (
+                "guideFactorialOutcomeCombo",
+                "guideFactorialFactorACombo",
+                "guideFactorialFactorBCombo",
+                "guideFactorialFactorALevels",
+                "guideFactorialFactorBLevels",
+            )
+        ]
+        assert all(item is not None for item in guide_items)
+        guide_rects = [
+            (
+                item.mapToScene(QPointF(0, 0)).y(),
+                item.property("height"),
+            )
+            for item in guide_items
+        ]
+        assert all(
+            current_y + current_height <= next_y
+            for (current_y, current_height), (next_y, _) in zip(
+                guide_rects,
+                guide_rects[1:],
+            )
+        )
+
+        before_version = controller.pipeline_version
+        apply_button.clicked.emit()
+        app.processEvents()
+        assert controller.pipeline_version == before_version + 1
+        assert [step.step_type for step in controller.pipeline.steps][-2:] == [
+            "stats.anova_factorial",
+            "report.apa",
+        ]
+        assert controller.pipeline.analysis_objects == {}
         assert _significant_warnings(messages) == []
     finally:
         root.deleteLater()

@@ -15,6 +15,10 @@ Rectangle {
     property bool canEditSelection: uiController.status !== "empty" && uiController.status !== "running"
     property var logisticOutcomeRows: []
     property var logisticReferenceRows: []
+    property var factorialOutcomeRows: []
+    property var factorialFactorRows: []
+    property var factorialFactorALevelRows: []
+    property var factorialFactorBLevelRows: []
 
     Theme {
         id: theme
@@ -69,6 +73,68 @@ Rectangle {
             logisticPredictorsField.text,
             references
         )
+    }
+
+    function factorialLevelLabels(rows) {
+        var labels = []
+        for (var index = 0; index < rows.length; index += 1) {
+            labels.push(String(rows[index].label))
+        }
+        return labels.join(", ")
+    }
+
+    function refreshFactorialVariableRows() {
+        root.factorialOutcomeRows = uiController.factorialVariableOptions("outcome")
+        root.factorialFactorRows = uiController.factorialVariableOptions("factor")
+        factorialOutcomeCombo.currentIndex = -1
+        factorialFactorACombo.currentIndex = -1
+        factorialFactorBCombo.currentIndex = -1
+        root.factorialFactorALevelRows = []
+        root.factorialFactorBLevelRows = []
+    }
+
+    function refreshFactorialFactorALevelRows() {
+        root.factorialFactorALevelRows = factorialFactorACombo.currentIndex >= 0
+            ? uiController.factorialLevelOptions(String(factorialFactorACombo.currentValue))
+            : []
+    }
+
+    function refreshFactorialFactorBLevelRows() {
+        root.factorialFactorBLevelRows = factorialFactorBCombo.currentIndex >= 0
+            ? uiController.factorialLevelOptions(String(factorialFactorBCombo.currentValue))
+            : []
+    }
+
+    function canApplyFactorial() {
+        return root.canEditSelection
+            && factorialOutcomeCombo.currentIndex >= 0
+            && factorialFactorACombo.currentIndex >= 0
+            && factorialFactorBCombo.currentIndex >= 0
+            && factorialFactorACombo.currentValue !== factorialFactorBCombo.currentValue
+            && root.factorialFactorALevelRows.length >= 2
+            && root.factorialFactorALevelRows.length <= 6
+            && root.factorialFactorBLevelRows.length >= 2
+            && root.factorialFactorBLevelRows.length <= 6
+    }
+
+    function applyFactorial() {
+        if (!root.canApplyFactorial()) {
+            return false
+        }
+        return uiController.configureFactorialAnovaFromKeys(
+            String(factorialOutcomeCombo.currentValue),
+            String(factorialFactorACombo.currentValue),
+            String(factorialFactorBCombo.currentValue)
+        )
+    }
+
+    Component.onCompleted: refreshFactorialVariableRows()
+
+    Connections {
+        target: uiController
+        function onStateChanged() {
+            root.refreshFactorialVariableRows()
+        }
     }
 
     ScrollView {
@@ -235,6 +301,71 @@ Rectangle {
                     anovaOutcomeField.text,
                     anovaGroupField.text
                 )
+            }
+
+            ComboBox {
+                id: factorialOutcomeCombo
+                objectName: "pipelineFactorialOutcomeCombo"
+                width: theme.fieldWidthSmall
+                model: root.factorialOutcomeRows
+                textRole: "label"
+                valueRole: "key"
+                currentIndex: -1
+                displayText: currentIndex >= 0 ? currentText : appBootstrap.text("pipeline.factorial_outcome")
+                Accessible.name: appBootstrap.text("pipeline.factorial_outcome")
+                onModelChanged: currentIndex = -1
+            }
+
+            ComboBox {
+                id: factorialFactorACombo
+                objectName: "pipelineFactorialFactorACombo"
+                width: theme.fieldWidthSmall
+                model: root.factorialFactorRows
+                textRole: "label"
+                valueRole: "key"
+                currentIndex: -1
+                displayText: currentIndex >= 0 ? currentText : appBootstrap.text("pipeline.factorial_factor_a")
+                Accessible.name: appBootstrap.text("pipeline.factorial_factor_a")
+                onCurrentValueChanged: root.refreshFactorialFactorALevelRows()
+                onModelChanged: currentIndex = -1
+            }
+
+            ComboBox {
+                id: factorialFactorBCombo
+                objectName: "pipelineFactorialFactorBCombo"
+                width: theme.fieldWidthSmall
+                model: root.factorialFactorRows
+                textRole: "label"
+                valueRole: "key"
+                currentIndex: -1
+                displayText: currentIndex >= 0 ? currentText : appBootstrap.text("pipeline.factorial_factor_b")
+                Accessible.name: appBootstrap.text("pipeline.factorial_factor_b")
+                onCurrentValueChanged: root.refreshFactorialFactorBLevelRows()
+                onModelChanged: currentIndex = -1
+            }
+
+            Label {
+                objectName: "pipelineFactorialFactorALevels"
+                text: appBootstrap.text("pipeline.factorial_levels_a") + ": " + root.factorialLevelLabels(root.factorialFactorALevelRows)
+                color: theme.textControl
+                width: theme.fieldWidthSmall
+                wrapMode: Text.WordWrap
+            }
+
+            Label {
+                objectName: "pipelineFactorialFactorBLevels"
+                text: appBootstrap.text("pipeline.factorial_levels_b") + ": " + root.factorialLevelLabels(root.factorialFactorBLevelRows)
+                color: theme.textControl
+                width: theme.fieldWidthSmall
+                wrapMode: Text.WordWrap
+            }
+
+            Button {
+                objectName: "pipelineApplyFactorialButton"
+                text: appBootstrap.text("pipeline.apply_anova_factorial")
+                Accessible.name: appBootstrap.text("pipeline.apply_anova_factorial")
+                enabled: root.canApplyFactorial()
+                onClicked: root.applyFactorial()
             }
 
             TextField {

@@ -110,6 +110,23 @@ class AnalysisSelectionEditor:
             pipeline_version=pipeline_version,
         )
 
+    def factorial_anova(
+        self,
+        outcome_key: str,
+        factor_a_key: str,
+        factor_b_key: str,
+        *,
+        pipeline_version: int,
+    ) -> CommandResult:
+        return self._apply(
+            lambda builder: builder.factorial_anova(
+                outcome_key,
+                factor_a_key,
+                factor_b_key,
+            ),
+            pipeline_version=pipeline_version,
+        )
+
     def kruskal_wallis(
         self,
         dependent_key: str,

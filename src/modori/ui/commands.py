@@ -6,6 +6,10 @@ import re
 from typing import Any, Protocol
 
 from modori.statistics_numerics import DEFAULT_BOOTSTRAP_ITERATIONS
+from modori.factorial_anova_selection import (
+    factorial_level_options,
+    factorial_variable_options,
+)
 from modori.regression_design import categorical_level_label
 from modori.ui.patches import PatchValidationError
 from modori.ui.value_tokens import (
@@ -387,6 +391,98 @@ class AnalysisSelectionCommandBuilder:
             step_type=step_type,
             params=params,
             message_ko="일원분산분석 변수가 변경되었습니다.",
+        )
+
+    def factorial_anova(
+        self,
+        outcome_key: str,
+        factor_a_key: str,
+        factor_b_key: str,
+    ) -> PipelineStepCommand:
+        outcome = str(outcome_key).strip()
+        factor_a = str(factor_a_key).strip()
+        factor_b = str(factor_b_key).strip()
+        requested = [outcome, factor_a, factor_b]
+        if any(not key for key in requested) or self._has_duplicates(requested):
+            raise PatchValidationError(
+                "결과 변수와 두 요인은 모두 선택되어야 하며 서로 달라야 합니다.",
+                error_code="invalid_selection",
+            )
+        self._require_known_variables(requested)
+        if self._dataset is None:
+            raise PatchValidationError(
+                "현재 데이터에서 이원 분산분석 변수를 확인할 수 없습니다.",
+                error_code="invalid_selection",
+            )
+
+        try:
+            outcome_keys = {
+                row["key"]
+                for row in factorial_variable_options(self._dataset, "outcome")
+            }
+            factor_keys = {
+                row["key"]
+                for row in factorial_variable_options(self._dataset, "factor")
+            }
+        except ValueError as exc:
+            raise PatchValidationError(
+                "현재 데이터의 변수 역할을 안전하게 확인할 수 없습니다.",
+                error_code="invalid_selection",
+            ) from exc
+        if outcome not in outcome_keys or not {factor_a, factor_b} <= factor_keys:
+            raise PatchValidationError(
+                "결과 변수는 수치형 척도이고 두 요인은 안전한 명목형 또는 서열형이어야 합니다.",
+                error_code="invalid_selection",
+            )
+
+        complete_case_keys = (outcome, factor_a, factor_b)
+        try:
+            levels_a = factorial_level_options(
+                self._dataset,
+                factor_a,
+                complete_case_keys=complete_case_keys,
+            )
+            levels_b = factorial_level_options(
+                self._dataset,
+                factor_b,
+                complete_case_keys=complete_case_keys,
+            )
+        except (KeyError, TypeError, ValueError) as exc:
+            raise PatchValidationError(
+                "완전사례의 요인 수준을 안전하게 확인할 수 없습니다.",
+                error_code="invalid_selection",
+            ) from exc
+        if not levels_a or not levels_b:
+            raise PatchValidationError(
+                "완전사례에서 각 요인은 구별 가능한 2~6개 수준을 가져야 합니다.",
+                error_code="invalid_selection",
+            )
+
+        params = {
+            "schema_version": 1,
+            "dv": outcome,
+            "factor_a": factor_a,
+            "factor_b": factor_b,
+            "factor_a_levels": [
+                decode_value_token(row["token"]) for row in levels_a
+            ],
+            "factor_b_levels": [
+                decode_value_token(row["token"]) for row in levels_b
+            ],
+            "factorial_policy": {
+                "sum_of_squares": "type_iii_equal_cell_weight",
+                "simple_effects": "interaction_gated_holm",
+                "alpha": 0.05,
+            },
+            "language": "ko",
+        }
+        step_type = "stats.anova_factorial"
+        step = self._step_by_type(step_type)
+        return PipelineStepCommand(
+            step_id="anova_factorial" if step is None else str(step.id),
+            step_type=step_type,
+            params=params,
+            message_ko="이원 Type III 분산분석 설정이 변경되었습니다.",
         )
 
     def kruskal_wallis(self, dependent_key: str, group_key: str) -> PipelineStepCommand:

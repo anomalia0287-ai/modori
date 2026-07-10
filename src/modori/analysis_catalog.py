@@ -530,6 +530,7 @@ _MODULE_SPECS["anova_factorial"] = AnalysisModuleSpec(
         "tests/ui/test_pipeline_ops.py",
         "tests/ui/test_run_validation.py",
         "tests/ui/test_result_binding.py",
+        "tests/ui/test_factorial_anova_flow.py",
     ),
     help_keys=(
         "analysis.anova_factorial",

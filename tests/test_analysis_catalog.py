@@ -135,6 +135,7 @@ def test_factorial_anova_catalog_contract_is_narrow_and_evidence_gated() -> None
         "tests/test_factorial_anova_step.py",
         "tests/test_factorial_anova_references.py",
         "tests/test_factorial_anova_reporting.py",
+        "tests/ui/test_factorial_anova_flow.py",
     } <= set(spec.contract_tests)
     assert spec.help_keys == (
         "analysis.anova_factorial",

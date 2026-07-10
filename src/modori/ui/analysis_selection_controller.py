@@ -4,6 +4,10 @@ import re
 
 from PySide6.QtCore import Slot
 
+from modori.factorial_anova_selection import (
+    factorial_level_options,
+    factorial_variable_options,
+)
 from modori.ui.contracts import CommandResult
 from modori.ui.value_tokens import (
     categorical_reference_options,
@@ -12,6 +16,26 @@ from modori.ui.value_tokens import (
 
 
 class AnalysisSelectionControllerMixin:
+    @Slot(str, result="QVariantList")
+    def factorialVariableOptions(self, role: str) -> list[dict[str, str]]:
+        try:
+            return factorial_variable_options(
+                self._services.pipeline_ops.current_dataset(),
+                role,
+            )
+        except ValueError:
+            return []
+
+    @Slot(str, result="QVariantList")
+    def factorialLevelOptions(self, variable_key: str) -> list[dict[str, str]]:
+        try:
+            return factorial_level_options(
+                self._services.pipeline_ops.current_dataset(),
+                variable_key,
+            )
+        except ValueError:
+            return []
+
     @Slot(str, result="QVariantList")
     def logisticOutcomeOptions(self, outcome_key: str) -> list[dict[str, str]]:
         try:
@@ -171,6 +195,33 @@ class AnalysisSelectionControllerMixin:
     @Slot(str, str, result=bool)
     def configureAnovaOneWayFromText(self, outcome_key: str, group_key: str) -> bool:
         return self.configureAnovaOneWaySelection(outcome_key, group_key).ok
+
+    def configureFactorialAnovaSelection(
+        self,
+        outcome_key: str,
+        factor_a_key: str,
+        factor_b_key: str,
+    ) -> CommandResult:
+        result = self._services.analysis_editor.factorial_anova(
+            outcome_key,
+            factor_a_key,
+            factor_b_key,
+            pipeline_version=self._pipeline_state.pipeline_version,
+        )
+        return self._apply_step_edit_result(result)
+
+    @Slot(str, str, str, result=bool)
+    def configureFactorialAnovaFromKeys(
+        self,
+        outcome_key: str,
+        factor_a_key: str,
+        factor_b_key: str,
+    ) -> bool:
+        return self.configureFactorialAnovaSelection(
+            outcome_key,
+            factor_a_key,
+            factor_b_key,
+        ).ok
 
     def configureKruskalWallisSelection(
         self,
