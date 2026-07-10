@@ -2,9 +2,10 @@
 
 Date: 2026-07-10 KST
 
-Status: the owner approved the calculation boundary and architecture. This
-written specification awaits owner review before an implementation plan is
-created.
+Status: owner-approved after an independent reviewer reimplemented the Section 6
+quadratic-form contract and compared it with statsmodels Sum-contrast Type III.
+The four review amendments in Sections 6, 8, 9, and 14.3 are part of the approval.
+An implementation plan may now be created.
 
 ## 1. Decision Summary
 
@@ -35,8 +36,8 @@ formulas, and an 80-digit mpmath implementation are reference evidence only.
 - Balanced or unbalanced cell counts.
 - Listwise deletion across outcome, factor A, and factor B.
 - Korean-first reports with English parity.
-- Main-effect, interaction, simple-effect, cell-summary, assumption, and
-  interaction-plot output.
+- Main-effect, interaction, simple-effect, equal-cell-weight marginal-mean,
+  cell-summary, assumption, and interaction-plot output.
 
 ### 2.2 Not Supported
 
@@ -206,6 +207,14 @@ The Helmert basis is a numerical basis only. Replacing it with any other
 full-rank basis for the same contrast subspace must leave SS, F, and p unchanged
 within the approved tolerance.
 
+V1 reports partial eta squared for omnibus and simple effects. It deliberately
+does not report omega squared. In an unbalanced Type III design, competing
+generalized and partial omega-squared definitions encode different denominator
+and estimand choices; selecting one would add a second unresolved effect-size
+policy while implying consistency with one-way ANOVA that does not exist. This
+omission is explicit, not an implementation gap. A later omega-squared field
+requires a separately reviewed estimand contract and reference fixtures.
+
 ## 7. Cancellation-Safe Cell Summaries
 
 Each cell is processed independently with one shared conversion of outcome values
@@ -251,11 +260,53 @@ freedom. All `a+b` simple-effect p-values form one family and receive the Holm
 step-down adjustment. Raw and adjusted p-values are both stored; decisions and
 prose use adjusted p-values only.
 
+The one-family choice is intentionally symmetric and conservative. It spends one
+multiplicity budget across both directions rather than treating A-within-B and
+B-within-A as two unrelated families. This lowers power compared with two
+direction-specific Holm families. V1 rejects that alternative because exposing
+or silently choosing separate families would increase the overall search space
+and add a user-facing researcher degree of freedom. It also rejects unadjusted
+simple effects and user-selected family membership.
+
+The interaction gate is a product interpretation policy, not a mathematical
+requirement for computing simple effects. Hierarchical gating can suppress a
+scientifically relevant simple effect when the omnibus interaction misses the
+threshold, and selection through the gate prevents an unconditional claim that
+Holm alone controls error across the interaction test plus every follow-up. The
+report therefore calls these results `interaction-gated omnibus simple effects`,
+records the gate and one-family policy in method details, and makes no
+confirmatory familywise-error claim for the combined gate-and-follow-up process.
+V1 keeps the gate to bound novice-facing output; planned simple effects without
+that gate remain outside product scope.
+
 The three planned omnibus Type III p-values are not multiplicity-adjusted. The
 report calls them planned omnibus tests and makes no familywise-error claim across
 those three rows.
 
-## 9. Cell Estimates And Interaction Plot
+## 9. Marginal And Cell Estimates
+
+The report exposes the quantities tested by each Type III main effect. For every
+factor A level `i`, return the equal-cell-weight marginal mean and pooled-error
+pointwise interval:
+
+```text
+MM_Ai    = (1 / b) * sum_j m_ij
+SE_MM_Ai = sqrt((MSE / b^2) * sum_j (1 / n_ij))
+CI_MM_Ai = MM_Ai +/- t.ppf(0.975, df_error) * SE_MM_Ai
+```
+
+For every factor B level `j`:
+
+```text
+MM_Bj    = (1 / a) * sum_i m_ij
+SE_MM_Bj = sqrt((MSE / a^2) * sum_i (1 / n_ij))
+CI_MM_Bj = MM_Bj +/- t.ppf(0.975, df_error) * SE_MM_Bj
+```
+
+These are the same equal-cell-weight marginal quantities used by `L_A` and
+`L_B`; they are not sample-size-weighted observed margins and do not extrapolate
+to empty cells. Their intervals are pointwise, not simultaneous, and interval
+overlap is not used as a replacement significance test.
 
 For each cell, return raw mean, sample SD, row count, and a pooled-error pointwise
 95% CI:
@@ -331,6 +382,9 @@ no automatic Welch, HC3, transformation, trimming, or outlier deletion path.
   - raw value, stable display label, and factor key;
 - `FactorialCellSummary`
   - both level identities, `n`, mean, SD, pooled SE, and pointwise CI;
+- `FactorialMarginalSummary`
+  - factor identity, level identity, equal-cell-weight marginal mean, pooled SE,
+    and pointwise CI;
 - `FactorialEffectResult`
   - `effect` (`factor_a`, `factor_b`, or `interaction`), labels, Type III SS,
     numerator/denominator df, MS, F, p, and partial eta squared;
@@ -341,14 +395,15 @@ no automatic Welch, HC3, transformation, trimming, or outlier deletion path.
   - Levene and Shapiro values or explicit unavailable states, cell-count range,
     imbalance ratio, and zero-variance cells;
 - `FactorialAnovaResult`
-  - roles and level order, complete-case counts, cell summaries, three omnibus
-    effects, residual SSE/df/MSE, optional simple effects, assumptions,
-    language-neutral warning codes, rendered warnings, method details, chart
-    specs, and report template ID.
+  - roles and level order, complete-case counts, marginal summaries, cell
+    summaries, three omnibus effects, residual SSE/df/MSE, optional simple
+    effects, assumptions, language-neutral warning codes, rendered warnings,
+    method details, chart specs, and report template ID.
 
 Cross-field invariants verify counts, effect ranks, residual df, SS/MS/F
-identities, p-value bounds, effect-size bounds, simple-effect gate state, Holm
-monotonicity, warning alignment, and chart data provenance.
+identities, p-value bounds, effect-size bounds, marginal-mean/SE identities,
+simple-effect gate state, Holm monotonicity, warning alignment, and chart data
+provenance.
 
 ## 12. Reporting And User Flow
 
@@ -360,9 +415,10 @@ The report order is fixed:
 4. Holm-adjusted omnibus simple effects when the interaction gate opens.
 5. Marginal main effects with a warning against isolated interpretation when the
    interaction is significant.
-6. Cell means and pointwise intervals.
-7. Levene, residual Shapiro, cell imbalance, and every warning.
-8. Interaction plot.
+6. Equal-cell-weight marginal means and pointwise intervals for both factors.
+7. Cell means and pointwise intervals.
+8. Levene, residual Shapiro, cell imbalance, and every warning.
+9. Interaction plot.
 
 Prose uses association/difference language. It never says a factor caused the
 outcome unless causality is separately established outside the engine, and V1
@@ -405,6 +461,7 @@ change this engine contract or calculate results.
 - direct checks of `L_A`, `L_B`, `L_AB`, ranks, df, SS/MS/F, and partial eta
   squared;
 - interaction gate and one-family Holm adjustment;
+- equal-cell-weight marginal-mean and pooled-SE formulas for both factors;
 - pointwise pooled-MSE intervals;
 - warning and unavailable-diagnostic contracts;
 - `f.sf` source lock and rejection of CDF complements or direct matrix inverse.
@@ -431,6 +488,13 @@ change this engine contract or calculate results.
 3. Test-only 80-digit mpmath cell-mean oracle for unbalanced, high-offset data.
 4. NIST balanced two-way formulas as a formula oracle. NIST StRD does not provide
    a certified unbalanced factorial fixture, so no such claim is made.
+
+The extreme-offset fixture at `1e12` is anchored only to the mpmath oracle.
+R and statsmodels anchors use zero-centered data or fixtures satisfying
+`abs(grand_location) / pooled_within_cell_sd <= 1e3`. They are implementation
+comparators, not truth sources for the extreme-offset fixture; their own
+large-location precision loss must never be converted into a wider Modori
+tolerance.
 
 Ordinary anchored comparisons use both absolute and relative tolerances with a
 maximum ceiling of `1e-10`; the high-precision oracle ceiling is `1e-11` where
