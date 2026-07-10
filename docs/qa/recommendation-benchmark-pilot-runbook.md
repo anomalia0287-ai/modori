@@ -83,6 +83,11 @@ Reviewer A는 `reviewer-a.xlsx`, Reviewer B는 `reviewer-b.xlsx`만 사용한다
 - `clarification_required`: `Clarifications`에 decision-changing fact ID 기록
 - `abstention_required`: `Abstentions`에 reason code 기록
 
+보조 시트의 `case_id`와 `evidence_stage`는 미리 채워져 있다.
+`Recommendations`에는 사례당 rank 1-3 슬롯, `Clarifications`에는 사례당 질문
+3개 슬롯, `Abstentions`에는 사례당 1개 슬롯이 있다. 해당하지 않는 빈 슬롯은
+그대로 두고, ID·stage·rank를 수정하거나 새 행을 추가하지 않는다.
+
 여러 변수는 세미콜론으로 구분한다. workbook에 수식을 입력하거나 시트·열을
 추가/삭제하지 않는다. `active_minutes`에는 실제 판정 시간만 숫자로 입력하고 휴식,
 전화, 다른 업무 시간은 제외한다.
@@ -123,6 +128,12 @@ Reviewer A는 `reviewer-a.xlsx`, Reviewer B는 `reviewer-b.xlsx`만 사용한다
 .\.venv\Scripts\python.exe scripts\recommendation_benchmark.py validate-pack --pack-root tests\fixtures\recommendation_benchmark --output .tmp\recommendation-pack-validation.json
 ```
 
+출력의 `scorer_fingerprint`는 설정값만이 아니라 scorer core, workbook I/O,
+CLI 소스의 줄바꿈 정규화 SHA-256 implementation digest를 포함한다. digest는
+Python 구현·버전·컴파일러, OS/아키텍처, OpenPyXL·defusedxml 버전의 runtime
+identity도 결합한다. 이 값이 바뀌면 이전에 개봉한 frozen split의 점수를 새
+scorer 증거로 재사용하지 않는다.
+
 제출 파일 구조 검증:
 
 ```powershell
@@ -138,17 +149,25 @@ Reviewer A는 `reviewer-a.xlsx`, Reviewer B는 `reviewer-b.xlsx`만 사용한다
 비용 계산 예시. 시급과 고정비는 실제 계약 금액으로 바꾼다.
 
 ```powershell
-.\.venv\Scripts\python.exe scripts\recommendation_benchmark.py cost --pack-root tests\fixtures\recommendation_benchmark --reviewer-a C:\Pilot\reviewer-a.xlsx --reviewer-b C:\Pilot\reviewer-b.xlsx --adjudication C:\Pilot\adjudication.xlsx --stage-cases 150 --reviewer-rate 100000 --adjudicator-rate 120000 --setup-cost 0 --data-steward-cost 0 --project-management-cost 0 --output .tmp\recommendation-cost-150.json
+.\.venv\Scripts\python.exe scripts\recommendation_benchmark.py cost --pack-root tests\fixtures\recommendation_benchmark --reviewer-a C:\Pilot\reviewer-a.xlsx --reviewer-b C:\Pilot\reviewer-b.xlsx --adjudication C:\Pilot\adjudication.xlsx --stage-cases 150 --reviewer-rate 100000 --adjudicator-rate 120000 --setup-cost 0 --recruitment-cost 0 --data-steward-cost 0 --project-management-cost 0 --output .tmp\recommendation-cost-150.json
 ```
+
+비용 출력은 두 시급, contingency 비율, setup, recruitment, data steward,
+project management 비용을 각각 보존한다. 합계만 남기지 않는다.
 
 금라벨이 완료된 뒤 점수 계산:
 
 ```powershell
-.\.venv\Scripts\python.exe scripts\recommendation_benchmark.py score --pack-root tests\fixtures\recommendation_benchmark --adjudication C:\Pilot\adjudication.xlsx --predictions tests\fixtures\recommendation_benchmark\public\pilot\baseline-a-predictions.jsonl --scorer-fingerprint sha256:50c0397b580866878795c4a6a2260c13a855137bb55acbffadd1266485c3ce3a --output .tmp\recommendation-score-a.json
+.\.venv\Scripts\python.exe scripts\recommendation_benchmark.py score --pack-root tests\fixtures\recommendation_benchmark --adjudication C:\Pilot\adjudication.xlsx --predictions tests\fixtures\recommendation_benchmark\public\pilot\baseline-a-predictions.jsonl --scorer-fingerprint sha256:fdcc4d70890d0ab588d538fb9b687f692075087be9e7fa4cdc5ce00ccd40b3d3 --output .tmp\recommendation-score-a.json
 ```
 
 출력 파일이 이미 있으면 명령은 실패한다. 의도적으로 교체할 때만 `--force`를
 추가한다.
+
+점수 출력의 `unnecessary_question_count`는 금라벨의 decision-changing fact에
+없는 질문 수이며 출시 게이트에서 0이어야 한다. `strong_precision_by_family`는
+family별 strong 근거를 분리하며, strong 출력이 없는 family는
+`insufficient_evidence`로 남는다.
 
 ## 9. 결과 판정
 

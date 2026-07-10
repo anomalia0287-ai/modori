@@ -12,6 +12,7 @@ AUDITED_FILE_OPERATION_FILES = {
     "scripts/package_launch_smoke.py",
     "scripts/package_public_data_smoke.py",
     "scripts/package_windows.py",
+    "scripts/recommendation_benchmark.py",
     "scripts/stress_matrix.py",
     "src/modori/app.py",
     "src/modori/cache.py",

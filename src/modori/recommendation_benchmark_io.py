@@ -99,6 +99,35 @@ _ROLE_COLUMNS = (
     "covariates",
     "measures",
 )
+_INSTRUCTION_CONTRACT = {
+    "A1": (
+        "각 사례를 다른 검토자와 상의하지 말고 독립적으로 판정하십시오. "
+        "통계 용어가 아니라 연구 질문과 설계 사실을 기준으로 기록합니다."
+    ),
+    "A2": "검토자/판정자 ID",
+    "A4": "판정 행동(action_class)",
+    "B4": "recommendation_eligible / clarification_required / abstention_required",
+    "A5": "목록 입력",
+    "B5": "여러 변수는 세미콜론(;)으로 구분합니다.",
+    "A6": "시간",
+    "B6": "검토자는 사례별 실제 작업 분을 숫자로 입력합니다.",
+    "A7": "보조 시트 슬롯",
+    "B7": (
+        "case_id, evidence_stage, 추천 rank는 미리 채워져 있습니다. "
+        "답안 열만 입력하고 식별 열은 수정하지 않습니다."
+    ),
+    "A8": "빈 슬롯",
+    "B8": "해당하지 않는 슬롯은 비워 두고 새 행을 추가하지 않습니다.",
+}
+_IMMUTABLE_FINGERPRINT_COLUMNS = {
+    "Study Cards": tuple(range(1, 15)),
+    "Case Reviews": (1, 2, 7, 8, 9),
+    "Recommendations": (1, 2, 3),
+    "Clarifications": (1, 2),
+    "Abstentions": (1, 2),
+    "Adjudication": (1, 2),
+    "Resolution Minutes": (1, 2),
+}
 _FIXED_WORKBOOK_DATETIME = datetime(2026, 7, 10, 0, 0, 0)
 _FIXED_ZIP_DATETIME = (2026, 7, 10, 0, 0, 0)
 _CORE_NAMESPACES = {
@@ -135,7 +164,10 @@ def _display_mapping(value: object) -> str:
 def _display_sequence(value: object) -> str:
     if isinstance(value, str) or not isinstance(value, Sequence) or not value:
         return "없음"
-    return "\n".join(f"• {str(item).strip()}" for item in value if str(item).strip()) or "없음"
+    return (
+        "\n".join(f"• {str(item).strip()}" for item in value if str(item).strip())
+        or "없음"
+    )
 
 
 @dataclass(frozen=True)
@@ -200,17 +232,13 @@ class PilotCaseSummary:
                 "research_question_ko",
             ),
             data_file=_nonempty_text(mapping.get("data_file"), "data_file"),
-            unit_of_observation=_display_text(
-                study_card.get("unit_of_observation")
-            ),
+            unit_of_observation=_display_text(study_card.get("unit_of_observation")),
             sampling=_display_text(study_card.get("sampling")),
             grouping=_display_text(study_card.get("grouping")),
             time_structure=_display_text(study_card.get("time_structure")),
             weights_clusters=_display_text(study_card.get("weights_clusters")),
             variable_meanings=_display_mapping(study_card.get("variable_meanings")),
-            known_missing_codes=_display_mapping(
-                study_card.get("known_missing_codes")
-            ),
+            known_missing_codes=_display_mapping(study_card.get("known_missing_codes")),
             facts_visible=_display_sequence(study_card.get("facts_visible")),
             facts_clarification_only=_display_sequence(
                 study_card.get("facts_clarification_only")
@@ -238,7 +266,9 @@ def _reject_json_constant(value: str) -> object:
     raise BenchmarkContractError(f"non-standard JSON constant: {value}")
 
 
-def read_jsonl(path: Path, record_loader: Callable[[Mapping[str, object]], T]) -> tuple[T, ...]:
+def read_jsonl(
+    path: Path, record_loader: Callable[[Mapping[str, object]], T]
+) -> tuple[T, ...]:
     if not path.is_file():
         raise BenchmarkContractError(f"JSONL file does not exist: {path}")
     try:
@@ -342,7 +372,9 @@ def _style_header(worksheet: object, column_count: int) -> None:
         cell.fill = header_fill
         cell.alignment = Alignment(vertical="center", wrap_text=True)
     worksheet.freeze_panes = "A2"
-    worksheet.auto_filter.ref = f"A1:{worksheet.cell(row=1, column=column_count).coordinate}"
+    worksheet.auto_filter.ref = (
+        f"A1:{worksheet.cell(row=1, column=column_count).coordinate}"
+    )
 
 
 def _set_widths(worksheet: object, widths: Mapping[str, float]) -> None:
@@ -366,23 +398,15 @@ def _build_workbook(
 
     instructions = workbook.create_sheet("Instructions")
     instructions.merge_cells("A1:B1")
-    instructions["A1"] = (
-        "각 사례를 다른 검토자와 상의하지 말고 독립적으로 판정하십시오. "
-        "통계 용어가 아니라 연구 질문과 설계 사실을 기준으로 기록합니다."
-    )
-    instructions["A2"] = "검토자/판정자 ID"
+    for coordinate, value in _INSTRUCTION_CONTRACT.items():
+        instructions[coordinate] = value
     instructions["B2"] = None
-    instructions["A4"] = "판정 행동(action_class)"
-    instructions["B4"] = (
-        "recommendation_eligible / clarification_required / abstention_required"
-    )
-    instructions["A5"] = "목록 입력"
-    instructions["B5"] = "여러 변수는 세미콜론(;)으로 구분합니다."
-    instructions["A6"] = "시간"
-    instructions["B6"] = "검토자는 사례별 실제 작업 분을 숫자로 입력합니다."
     instructions["A1"].font = Font(bold=True, size=12)
     instructions["A1"].alignment = Alignment(wrap_text=True, vertical="top")
+    instructions["B7"].alignment = Alignment(wrap_text=True, vertical="top")
+    instructions["B8"].alignment = Alignment(wrap_text=True, vertical="top")
     instructions.row_dimensions[1].height = 64
+    instructions.row_dimensions[7].height = 34
     _set_widths(instructions, {"A": 28, "B": 78})
 
     study_cards = workbook.create_sheet("Study Cards")
@@ -477,6 +501,17 @@ def _build_workbook(
     for sheet_name in ("Recommendations", "Clarifications", "Abstentions"):
         worksheet = workbook.create_sheet(sheet_name)
         worksheet.append(_HEADERS[sheet_name])
+        slots_per_case = 3 if sheet_name != "Abstentions" else 1
+        for case in cases:
+            for slot in range(1, slots_per_case + 1):
+                row = worksheet.max_row + 1
+                _set_literal_text(worksheet.cell(row=row, column=1), case.case_id)
+                _set_literal_text(
+                    worksheet.cell(row=row, column=2),
+                    case.evidence_stage,
+                )
+                if sheet_name == "Recommendations":
+                    worksheet.cell(row=row, column=3).value = slot
         _style_header(worksheet, len(_HEADERS[sheet_name]))
     _set_widths(
         workbook["Recommendations"],
@@ -536,11 +571,16 @@ def _save_reproducible_workbook(workbook: Workbook, path: Path) -> None:
     normalized_path = Path(normalized_name)
     try:
         workbook.save(raw_path)
-        with zipfile.ZipFile(raw_path, "r") as source, zipfile.ZipFile(
-            normalized_path,
-            "w",
-        ) as target:
-            for source_info in sorted(source.infolist(), key=lambda item: item.filename):
+        with (
+            zipfile.ZipFile(raw_path, "r") as source,
+            zipfile.ZipFile(
+                normalized_path,
+                "w",
+            ) as target,
+        ):
+            for source_info in sorted(
+                source.infolist(), key=lambda item: item.filename
+            ):
                 target_info = zipfile.ZipInfo(
                     filename=source_info.filename,
                     date_time=_FIXED_ZIP_DATETIME,
@@ -597,7 +637,9 @@ def build_blank_pilot_workbooks(
 
 
 def _worksheet_headers(worksheet: object) -> tuple[str, ...]:
-    return tuple(str(cell.value) if cell.value is not None else "" for cell in worksheet[1])
+    return tuple(
+        str(cell.value) if cell.value is not None else "" for cell in worksheet[1]
+    )
 
 
 def _validate_workbook_structure(workbook: object, *, adjudication: bool) -> None:
@@ -621,6 +663,90 @@ def _validate_workbook_structure(workbook: object, *, adjudication: bool) -> Non
                     )
 
 
+_PREFILLED_SLOT_COLUMNS = {
+    sheet_name: columns
+    for sheet_name, columns in _IMMUTABLE_FINGERPRINT_COLUMNS.items()
+    if sheet_name
+    in {
+        "Recommendations",
+        "Clarifications",
+        "Abstentions",
+        "Adjudication",
+        "Resolution Minutes",
+    }
+}
+
+
+def _prefilled_slot_rows(worksheet: object) -> tuple[tuple[object, ...], ...]:
+    columns = _PREFILLED_SLOT_COLUMNS.get(worksheet.title)
+    if columns is None:
+        return ()
+    return tuple(
+        tuple(worksheet.cell(row=row, column=column).value for column in columns)
+        for row in range(2, worksheet.max_row + 1)
+    )
+
+
+def _validate_prefilled_slots(
+    workbook: object,
+    expected: Mapping[tuple[str, str], PilotCaseSummary],
+) -> None:
+    case_keys = tuple(expected)
+    expected_rows = {
+        "Recommendations": tuple(
+            (case_id, evidence_stage, rank)
+            for case_id, evidence_stage in case_keys
+            for rank in range(1, 4)
+        ),
+        "Clarifications": tuple(
+            (case_id, evidence_stage)
+            for case_id, evidence_stage in case_keys
+            for _slot in range(3)
+        ),
+        "Abstentions": case_keys,
+        "Adjudication": case_keys,
+        "Resolution Minutes": case_keys,
+    }
+    for sheet_name, rows in expected_rows.items():
+        if sheet_name not in workbook.sheetnames:
+            continue
+        if _prefilled_slot_rows(workbook[sheet_name]) != rows:
+            raise BenchmarkContractError(f"{sheet_name} prefilled slot contract drift")
+
+
+def _validate_instruction_contract(workbook: object) -> None:
+    worksheet = workbook["Instructions"]
+    if worksheet.max_row != 8 or worksheet.max_column != 2:
+        raise BenchmarkContractError("instruction contract drift")
+    for row in range(1, 9):
+        for column in range(1, 3):
+            cell = worksheet.cell(row=row, column=column)
+            if cell.coordinate == "B2":
+                continue
+            if cell.value != _INSTRUCTION_CONTRACT.get(cell.coordinate):
+                raise BenchmarkContractError("instruction contract drift")
+
+
+def _immutable_contract_rows(worksheet: object) -> tuple[tuple[object, ...], ...]:
+    if worksheet.title == "Instructions":
+        return tuple(
+            (
+                worksheet.cell(row=row, column=column).coordinate,
+                worksheet.cell(row=row, column=column).value,
+            )
+            for row in range(1, worksheet.max_row + 1)
+            for column in range(1, worksheet.max_column + 1)
+            if worksheet.cell(row=row, column=column).coordinate != "B2"
+        )
+    columns = _IMMUTABLE_FINGERPRINT_COLUMNS.get(worksheet.title)
+    if columns is None:
+        return ()
+    return tuple(
+        tuple(worksheet.cell(row=row, column=column).value for column in columns)
+        for row in range(2, worksheet.max_row + 1)
+    )
+
+
 def workbook_schema_fingerprint(path: Path) -> str:
     workbook = load_workbook(path, data_only=False, read_only=False)
     try:
@@ -638,6 +764,19 @@ def workbook_schema_fingerprint(path: Path) -> str:
                 {
                     "name": worksheet.title,
                     "headers": list(_worksheet_headers(worksheet)),
+                    "max_row": worksheet.max_row,
+                    "max_column": worksheet.max_column,
+                    "freeze_panes": (
+                        str(worksheet.freeze_panes)
+                        if worksheet.freeze_panes is not None
+                        else None
+                    ),
+                    "merged_ranges": sorted(
+                        str(cell_range) for cell_range in worksheet.merged_cells.ranges
+                    ),
+                    "immutable_contract": [
+                        list(row) for row in _immutable_contract_rows(worksheet)
+                    ],
                     "validations": validations,
                 }
             )
@@ -682,15 +821,23 @@ def _review_rows(
         raw_minutes = row[4]
         minutes: float | None = None
         if require_minutes:
-            if isinstance(raw_minutes, bool) or not isinstance(raw_minutes, (int, float)):
+            if isinstance(raw_minutes, bool) or not isinstance(
+                raw_minutes, (int, float)
+            ):
                 raise BenchmarkContractError("active_minutes must be numeric")
             minutes = float(raw_minutes)
         case = expected[key]
-        if tuple(row[6:9]) != (case.title_ko, case.research_question_ko, case.data_file):
+        if tuple(row[6:9]) != (
+            case.title_ko,
+            case.research_question_ko,
+            case.data_file,
+        ):
             raise BenchmarkContractError(f"case reference drift in Case Reviews: {key}")
         rows[key] = (action_class, severity, minutes)
     if set(rows) != set(expected):
-        raise BenchmarkContractError("Case Reviews must cover every expected case-stage")
+        raise BenchmarkContractError(
+            "Case Reviews must cover every expected case-stage"
+        )
     return rows
 
 
@@ -744,12 +891,16 @@ def _recommendation_rows(
 ) -> dict[tuple[str, str], tuple[RecommendationIdentity, ...]]:
     ranked: dict[tuple[str, str], list[tuple[int, RecommendationIdentity]]] = {}
     for row in _nonempty_rows(workbook["Recommendations"]):
+        if not any(value is not None and str(value).strip() for value in row[3:12]):
+            continue
         key = _case_key_from_row(row, "Recommendations")
         if key not in expected:
             raise BenchmarkContractError(f"unexpected Recommendations row: {key}")
         rank = row[2]
         if isinstance(rank, bool) or not isinstance(rank, int) or not 1 <= rank <= 3:
-            raise BenchmarkContractError("recommendation rank must be an integer from 1 to 3")
+            raise BenchmarkContractError(
+                "recommendation rank must be an integer from 1 to 3"
+            )
         roles = tuple(
             (name, values)
             for name, raw in zip(_ROLE_COLUMNS, row[5:12], strict=True)
@@ -778,6 +929,8 @@ def _single_value_rows(
 ) -> dict[tuple[str, str], tuple[str, ...]]:
     result: dict[tuple[str, str], list[str]] = {}
     for row in _nonempty_rows(workbook[sheet_name]):
+        if len(row) < 3 or row[2] is None or not str(row[2]).strip():
+            continue
         key = _case_key_from_row(row, sheet_name)
         if key not in expected:
             raise BenchmarkContractError(f"unexpected {sheet_name} row: {key}")
@@ -799,8 +952,12 @@ def load_reviewer_workbook(
     workbook = load_workbook(path, data_only=False, read_only=False)
     try:
         _validate_workbook_structure(workbook, adjudication=False)
+        _validate_instruction_contract(workbook)
         _validate_study_cards(workbook, expected)
-        reviewer_id = _nonempty_text(workbook["Instructions"]["B2"].value, "reviewer ID")
+        _validate_prefilled_slots(workbook, expected)
+        reviewer_id = _nonempty_text(
+            workbook["Instructions"]["B2"].value, "reviewer ID"
+        )
         review_rows = _review_rows(workbook, expected, require_minutes=True)
         recommendations = _recommendation_rows(workbook, expected)
         clarifications = _single_value_rows(workbook, "Clarifications", expected)
@@ -831,7 +988,9 @@ def load_adjudication_workbook(
     workbook = load_workbook(path, data_only=False, read_only=False)
     try:
         _validate_workbook_structure(workbook, adjudication=True)
+        _validate_instruction_contract(workbook)
         _validate_study_cards(workbook, expected)
+        _validate_prefilled_slots(workbook, expected)
         adjudicator_id = _nonempty_text(
             workbook["Instructions"]["B2"].value,
             "adjudicator ID",
@@ -856,11 +1015,15 @@ def load_adjudication_workbook(
         for row in _nonempty_rows(workbook["Resolution Minutes"]):
             key = _case_key_from_row(row, "Resolution Minutes")
             if key not in expected:
-                raise BenchmarkContractError(f"unexpected Resolution Minutes row: {key}")
+                raise BenchmarkContractError(
+                    f"unexpected Resolution Minutes row: {key}"
+                )
             if key in resolution_rows:
                 raise BenchmarkContractError(f"duplicate Resolution Minutes row: {key}")
             raw_minutes = row[2]
-            if isinstance(raw_minutes, bool) or not isinstance(raw_minutes, (int, float)):
+            if isinstance(raw_minutes, bool) or not isinstance(
+                raw_minutes, (int, float)
+            ):
                 raise BenchmarkContractError("resolution_minutes must be numeric")
             resolution_rows[key] = AdjudicationRecord(
                 case_id=key[0],

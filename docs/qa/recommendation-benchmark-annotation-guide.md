@@ -52,11 +52,15 @@ family만 맞고 결과·집단·예측 변수 또는 독립/대응 모드가 �
 - `friedman`
 - `mediation`
 - `moderated_mediation`
+- `logistic_regression`
 
-`logistic_regression`과 `anova_factorial`은 WS3 예약 코드다. 구현과 reference
-validation이 완료되기 전에는 이번 파일럿에서 허용 추천으로 기록하지 않는다.
-그 분석만이 타당하면 현재 단계에서는 `abstention_required / unsupported_design`으로
-기록한다.
+`logistic_regression`은 계산·reference·제품 경로 검증이 완료된 현재 V1 범위의
+비가중 독립행 main-effects 이항 모형만 허용한다. 분리 자료, 가중치, 군집,
+반복관측, 상호작용, penalized/Firth 모형은 이 family로 기록하지 않는다.
+
+`anova_factorial`은 WS3 예약 코드다. 구현과 reference validation이 완료되기
+전에는 이번 파일럿에서 허용 추천으로 기록하지 않는다. 그 분석만이 타당하면
+현재 단계에서는 `abstention_required / unsupported_design`으로 기록한다.
 
 ### role 열
 
@@ -94,6 +98,7 @@ validation이 완료되기 전에는 이번 파일럿에서 허용 추천으로 
 | `friedman` | `repeated_rank_wide` |
 | `mediation` | `simple` |
 | `moderated_mediation` | `conditional_process` |
+| `logistic_regression` | `main_effects` |
 
 허용 추천이 여러 개면 각각 한 행으로 쓰고 `rank`를 1부터 연속으로 부여한다.
 진짜 동률은 family 코드 알파벳 순으로 행을 배치하고 `notes`에 `true_tie`를 쓴다.

@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import platform
 import sys
 from collections.abc import Mapping, Sequence
 from dataclasses import asdict
+from importlib import metadata
 from pathlib import Path
 
 from modori.recommendation_baseline import load_case_dataset, predict_current_baseline
@@ -13,6 +16,7 @@ from modori.recommendation_benchmark import (
     LabelingRates,
     PredictionRecord,
     ScorerConfig,
+    canonical_json,
     project_labeling_cost,
     reviewer_agreement,
     score_predictions,
@@ -33,6 +37,60 @@ else:
     from build_recommendation_pilot import validate_pilot_pack
 
 
+_REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+_SCORER_IMPLEMENTATION_PATHS = (
+    (
+        "src/modori/recommendation_benchmark.py",
+        _REPOSITORY_ROOT / "src" / "modori" / "recommendation_benchmark.py",
+    ),
+    (
+        "src/modori/recommendation_benchmark_io.py",
+        _REPOSITORY_ROOT / "src" / "modori" / "recommendation_benchmark_io.py",
+    ),
+    (
+        "scripts/recommendation_benchmark.py",
+        _REPOSITORY_ROOT / "scripts" / "recommendation_benchmark.py",
+    ),
+)
+
+
+def scorer_runtime_identity() -> dict[str, str]:
+    return {
+        "defusedxml_version": metadata.version("defusedxml"),
+        "machine": platform.machine(),
+        "openpyxl_version": metadata.version("openpyxl"),
+        "os_release": platform.release(),
+        "os_system": platform.system(),
+        "os_version": platform.version(),
+        "python_compiler": platform.python_compiler(),
+        "python_implementation": platform.python_implementation(),
+        "python_version": platform.python_version(),
+    }
+
+
+def scorer_implementation_digest() -> str:
+    manifest: list[dict[str, str]] = []
+    for logical_path, source_path in _SCORER_IMPLEMENTATION_PATHS:
+        if not source_path.is_file():
+            raise BenchmarkContractError(
+                f"scorer implementation source is missing: {logical_path}"
+            )
+        source = source_path.read_text(encoding="utf-8")
+        manifest.append(
+            {
+                "path": logical_path,
+                "sha256": hashlib.sha256(source.encode("utf-8")).hexdigest(),
+            }
+        )
+    payload = canonical_json(
+        {
+            "runtime": scorer_runtime_identity(),
+            "sources": manifest,
+        }
+    ).encode("utf-8")
+    return f"sha256:{hashlib.sha256(payload).hexdigest()}"
+
+
 def _as_mapping(value: Mapping[str, object]) -> dict[str, object]:
     return dict(value)
 
@@ -44,10 +102,7 @@ def _load_cases(
         pack_root / "public" / "pilot" / "cases.jsonl",
         _as_mapping,
     )
-    summaries = tuple(
-        PilotCaseSummary.from_case_mapping(case)
-        for case in cases
-    )
+    summaries = tuple(PilotCaseSummary.from_case_mapping(case) for case in cases)
     return cases, summaries
 
 
@@ -68,12 +123,18 @@ def _load_reviewers(args: argparse.Namespace, summaries: tuple[PilotCaseSummary,
 
 def _run_validate_pack(args: argparse.Namespace) -> dict[str, object]:
     report = validate_pilot_pack(args.pack_root)
+    scorer_config = ScorerConfig()
+    runtime_identity = scorer_runtime_identity()
+    implementation_digest = scorer_implementation_digest()
     return {
         "ok": True,
         "case_count": report.case_count,
         "manifest_count": report.manifest_count,
         "unique_data_file_count": report.unique_data_file_count,
-        "scorer_fingerprint": scorer_fingerprint(ScorerConfig()),
+        "scorer_config": asdict(scorer_config),
+        "scorer_runtime_identity": runtime_identity,
+        "scorer_implementation_digest": implementation_digest,
+        "scorer_fingerprint": scorer_fingerprint(scorer_config, implementation_digest),
     }
 
 
@@ -124,6 +185,7 @@ def _run_cost(args: argparse.Namespace) -> dict[str, object]:
             reviewer_hourly=args.reviewer_rate,
             adjudicator_hourly=args.adjudicator_rate,
             setup_cost=args.setup_cost,
+            recruitment_cost=args.recruitment_cost,
             data_steward_cost=args.data_steward_cost,
             project_management_cost=args.project_management_cost,
         ),
@@ -133,7 +195,8 @@ def _run_cost(args: argparse.Namespace) -> dict[str, object]:
 
 def _run_score(args: argparse.Namespace) -> dict[str, object]:
     config = ScorerConfig()
-    expected_fingerprint = scorer_fingerprint(config)
+    implementation_digest = scorer_implementation_digest()
+    expected_fingerprint = scorer_fingerprint(config, implementation_digest)
     if args.scorer_fingerprint != expected_fingerprint:
         raise BenchmarkContractError(
             "scorer fingerprint mismatch: "
@@ -142,7 +205,14 @@ def _run_score(args: argparse.Namespace) -> dict[str, object]:
     _cases, summaries = _load_cases(args.pack_root)
     adjudicated = load_adjudication_workbook(args.adjudication, summaries)
     predictions = read_jsonl(args.predictions, PredictionRecord.from_mapping)
-    return asdict(score_predictions(adjudicated.gold_records, predictions, config))
+    return asdict(
+        score_predictions(
+            adjudicated.gold_records,
+            predictions,
+            config,
+            implementation_digest=implementation_digest,
+        )
+    )
 
 
 def _add_output_arguments(parser: argparse.ArgumentParser) -> None:
@@ -192,6 +262,7 @@ def _parser() -> argparse.ArgumentParser:
     cost.add_argument("--reviewer-rate", type=float, required=True)
     cost.add_argument("--adjudicator-rate", type=float, required=True)
     cost.add_argument("--setup-cost", type=float, default=0.0)
+    cost.add_argument("--recruitment-cost", type=float, default=0.0)
     cost.add_argument("--data-steward-cost", type=float, default=0.0)
     cost.add_argument("--project-management-cost", type=float, default=0.0)
     _add_output_arguments(cost)

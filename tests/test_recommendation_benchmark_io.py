@@ -49,7 +49,7 @@ def test_jsonl_round_trip_is_canonical_and_accepts_utf8_bom(tmp_path: Path) -> N
     [
         ('{"a":1,"a":2}\n', "duplicate JSON key"),
         ('{"a":1}\n\n', "blank line"),
-        ('[1,2,3]\n', "must be an object"),
+        ("[1,2,3]\n", "must be an object"),
         ('{"a":NaN}\n', "non-standard JSON constant"),
     ],
 )
@@ -132,9 +132,12 @@ def test_blank_workbooks_have_korean_instructions_stable_schema_and_no_answers(
     ]
     assert "독립적으로" in str(workbook["Instructions"]["A1"].value)
     assert "검토자" in str(workbook["Instructions"]["A2"].value)
-    assert "A1:B1" in {str(cell_range) for cell_range in workbook["Instructions"].merged_cells.ranges}
+    assert "A1:B1" in {
+        str(cell_range) for cell_range in workbook["Instructions"].merged_cells.ranges
+    }
     assert workbook["Instructions"].row_dimensions[1].height >= 60
     assert workbook["Instructions"]["B2"].value is None
+    assert "미리 채워" in str(workbook["Instructions"]["B7"].value)
     assert workbook["Study Cards"]["E2"].value == "한 행은 참여자 한 명이다."
     assert "score: 결과 점수" in workbook["Study Cards"]["J2"].value
     assert workbook["Study Cards"].freeze_panes == "C2"
@@ -149,6 +152,37 @@ def test_blank_workbooks_have_korean_instructions_stable_schema_and_no_answers(
         None,
         None,
     ]
+    recommendations = workbook["Recommendations"]
+    assert recommendations.max_row == 7
+    assert [recommendations.cell(row=row, column=1).value for row in range(2, 8)] == [
+        "case-1",
+        "case-1",
+        "case-1",
+        "case-2",
+        "case-2",
+        "case-2",
+    ]
+    assert [recommendations.cell(row=row, column=3).value for row in range(2, 8)] == [
+        1,
+        2,
+        3,
+        1,
+        2,
+        3,
+    ]
+    assert all(
+        recommendations.cell(row=row, column=column).value is None
+        for row in range(2, 8)
+        for column in range(4, 13)
+    )
+    clarifications = workbook["Clarifications"]
+    assert clarifications.max_row == 7
+    assert all(
+        clarifications.cell(row=row, column=3).value is None for row in range(2, 8)
+    )
+    abstentions = workbook["Abstentions"]
+    assert abstentions.max_row == 3
+    assert all(abstentions.cell(row=row, column=3).value is None for row in range(2, 4))
     assert len(reviews.data_validations.dataValidation) == 2
     assert workbook_schema_fingerprint(reviewer_a) == workbook_schema_fingerprint(
         reviewer_b
@@ -175,25 +209,12 @@ def test_completed_reviewer_workbook_loads_strict_annotation_contract(
     reviews["D3"] = "E4"
     reviews["E3"] = 10.0
     recommendations = workbook["Recommendations"]
-    recommendations.append(
-        [
-            "case-1",
-            "cold_start",
-            1,
-            "compare_groups",
-            "independent",
-            "score",
-            "arm",
-            None,
-            None,
-            None,
-            None,
-            None,
-        ]
-    )
-    workbook["Abstentions"].append(
-        ["case-2", "cold_start", "unsupported_design"]
-    )
+    for column, value in enumerate(
+        ["compare_groups", "independent", "score", "arm"],
+        start=4,
+    ):
+        recommendations.cell(row=2, column=column).value = value
+    workbook["Abstentions"].cell(row=3, column=3).value = "unsupported_design"
     workbook.save(reviewer_a)
 
     submission = load_reviewer_workbook(reviewer_a, pilot_cases())
@@ -210,6 +231,111 @@ def test_completed_reviewer_workbook_loads_strict_annotation_contract(
     assert submission.annotations[1].acceptable_abstention_reasons == (
         "unsupported_design",
     )
+
+
+def test_workbook_schema_fingerprint_tracks_slot_shape_not_answer_content(
+    tmp_path: Path,
+) -> None:
+    reviewer_a, _reviewer_b, _adjudication = build_blank_pilot_workbooks(
+        pilot_cases(),
+        tmp_path,
+    )
+    original = workbook_schema_fingerprint(reviewer_a)
+    workbook = load_workbook(reviewer_a)
+    workbook["Instructions"]["B2"] = "reviewer-a"
+    workbook["Recommendations"]["D2"] = "compare_groups"
+    workbook.save(reviewer_a)
+
+    assert workbook_schema_fingerprint(reviewer_a) == original
+
+    workbook = load_workbook(reviewer_a)
+    workbook["Recommendations"].append(
+        ["case-1", "cold_start", 1, "compare_groups", "independent", "score"]
+    )
+    workbook.save(reviewer_a)
+
+    assert workbook_schema_fingerprint(reviewer_a) != original
+
+
+@pytest.mark.parametrize(
+    ("sheet_name", "cell", "value"),
+    [
+        ("Instructions", "A1", "변경된 판정 지침"),
+        ("Study Cards", "C2", "변경된 사례 제목"),
+        ("Case Reviews", "G2", "변경된 사례 제목"),
+    ],
+)
+def test_workbook_schema_fingerprint_tracks_immutable_labeling_contract(
+    tmp_path: Path,
+    sheet_name: str,
+    cell: str,
+    value: object,
+) -> None:
+    reviewer_a, _reviewer_b, _adjudication = build_blank_pilot_workbooks(
+        pilot_cases(),
+        tmp_path,
+    )
+    original = workbook_schema_fingerprint(reviewer_a)
+    workbook = load_workbook(reviewer_a)
+    workbook[sheet_name][cell] = value
+    workbook.save(reviewer_a)
+
+    assert workbook_schema_fingerprint(reviewer_a) != original
+
+
+def test_workbook_loader_rejects_instruction_contract_drift(tmp_path: Path) -> None:
+    reviewer_a, _reviewer_b, _adjudication = build_blank_pilot_workbooks(
+        pilot_cases(),
+        tmp_path,
+    )
+    workbook = load_workbook(reviewer_a)
+    workbook["Instructions"]["A1"] = "변경된 판정 지침"
+    workbook.save(reviewer_a)
+
+    with pytest.raises(BenchmarkContractError, match="instruction contract drift"):
+        load_reviewer_workbook(reviewer_a, pilot_cases())
+
+
+def test_adjudication_loader_rejects_prefilled_case_key_drift(tmp_path: Path) -> None:
+    _reviewer_a, _reviewer_b, adjudication = build_blank_pilot_workbooks(
+        pilot_cases(),
+        tmp_path,
+    )
+    workbook = load_workbook(adjudication)
+    workbook["Adjudication"]["A2"] = "tampered-case"
+    workbook.save(adjudication)
+
+    with pytest.raises(BenchmarkContractError, match="prefilled slot contract"):
+        load_adjudication_workbook(adjudication, pilot_cases())
+
+
+@pytest.mark.parametrize(
+    ("sheet_name", "cell", "value"),
+    [
+        ("Recommendations", "A2", "tampered-case"),
+        ("Recommendations", "C2", 3),
+        ("Clarifications", "B2", "tampered-stage"),
+        ("Abstentions", "A2", "tampered-case"),
+    ],
+)
+def test_workbook_loader_and_schema_fingerprint_reject_prefilled_slot_drift(
+    tmp_path: Path,
+    sheet_name: str,
+    cell: str,
+    value: object,
+) -> None:
+    reviewer_a, _reviewer_b, _adjudication = build_blank_pilot_workbooks(
+        pilot_cases(),
+        tmp_path,
+    )
+    original = workbook_schema_fingerprint(reviewer_a)
+    workbook = load_workbook(reviewer_a)
+    workbook[sheet_name][cell] = value
+    workbook.save(reviewer_a)
+
+    assert workbook_schema_fingerprint(reviewer_a) != original
+    with pytest.raises(BenchmarkContractError, match="prefilled slot contract"):
+        load_reviewer_workbook(reviewer_a, pilot_cases())
 
 
 def test_workbook_loader_rejects_formula_cells_and_schema_drift(tmp_path: Path) -> None:
@@ -270,9 +396,7 @@ def test_reviewer_workbook_rejects_missing_time_and_incomplete_case_coverage(
     for row in (2, 3):
         reviews.cell(row=row, column=3).value = "abstention_required"
         reviews.cell(row=row, column=4).value = "E4"
-        workbook["Abstentions"].append(
-            [reviews.cell(row=row, column=1).value, "cold_start", "unsupported_design"]
-        )
+        workbook["Abstentions"].cell(row=row, column=3).value = "unsupported_design"
     reviews["E2"] = 5.0
     workbook.save(reviewer_a)
 
@@ -290,9 +414,7 @@ def test_reviewer_workbook_rejects_missing_time_and_incomplete_case_coverage(
     workbook["Case Reviews"]["C2"] = "abstention_required"
     workbook["Case Reviews"]["D2"] = "E4"
     workbook["Case Reviews"]["E2"] = 5.0
-    workbook["Abstentions"].append(
-        ["case-1", "cold_start", "unsupported_design"]
-    )
+    workbook["Abstentions"]["C2"] = "unsupported_design"
     workbook.save(reviewer_a)
 
     with pytest.raises(BenchmarkContractError, match="cover every expected case-stage"):
@@ -313,25 +435,13 @@ def test_completed_adjudication_workbook_yields_gold_and_resolution_minutes(
     reviews["D2"] = "E3"
     reviews["C3"] = "abstention_required"
     reviews["D3"] = "E4"
-    workbook["Recommendations"].append(
-        [
-            "case-1",
-            "cold_start",
-            1,
-            "compare_groups",
-            "independent",
-            "score",
-            "arm",
-            None,
-            None,
-            None,
-            None,
-            None,
-        ]
-    )
-    workbook["Abstentions"].append(
-        ["case-2", "cold_start", "unsupported_design"]
-    )
+    recommendations = workbook["Recommendations"]
+    for column, value in enumerate(
+        ["compare_groups", "independent", "score", "arm"],
+        start=4,
+    ):
+        recommendations.cell(row=2, column=column).value = value
+    workbook["Abstentions"]["C3"] = "unsupported_design"
     resolution = workbook["Resolution Minutes"]
     resolution["C2"] = 3.0
     resolution["C3"] = 1.0

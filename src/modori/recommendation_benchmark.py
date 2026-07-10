@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import re
 from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass, field
 from statistics import NormalDist, median
@@ -16,6 +17,8 @@ ActionClass = Literal[
 ]
 ActionKind = Literal["recommend", "clarify", "abstain"]
 RecommendationLevel = Literal["strong", "candidate", "caution", "none"]
+MAX_QUESTIONS_PER_CASE = 3
+_SHA256_DIGEST_PATTERN = re.compile(r"sha256:[0-9a-f]{64}\Z")
 
 
 class BenchmarkContractError(ValueError):
@@ -50,7 +53,9 @@ class RecommendationIdentity:
     design_mode: str
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "family", _require_nonempty_string(self.family, "family"))
+        object.__setattr__(
+            self, "family", _require_nonempty_string(self.family, "family")
+        )
         object.__setattr__(
             self,
             "design_mode",
@@ -103,6 +108,9 @@ class PrimaryAction:
     kind: ActionKind | str
     value: RecommendationIdentity | str
 
+    def __post_init__(self) -> None:
+        self.validate()
+
     def validate(self) -> None:
         if self.kind == "recommend":
             if not isinstance(self.value, RecommendationIdentity):
@@ -153,7 +161,9 @@ class GoldRecord:
     failure_severity: str = "E3"
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "case_id", _require_nonempty_string(self.case_id, "case ID"))
+        object.__setattr__(
+            self, "case_id", _require_nonempty_string(self.case_id, "case ID")
+        )
         object.__setattr__(
             self,
             "evidence_stage",
@@ -165,15 +175,24 @@ class GoldRecord:
             "abstention_required",
         }:
             raise BenchmarkContractError(f"unknown action class: {self.action_class}")
-        if self.action_class == "recommendation_eligible" and not self.acceptable_recommendations:
+        if (
+            self.action_class == "recommendation_eligible"
+            and not self.acceptable_recommendations
+        ):
             raise BenchmarkContractError(
                 "recommendation-eligible gold requires an acceptable recommendation"
             )
-        if self.action_class == "clarification_required" and not self.required_clarification_facts:
+        if (
+            self.action_class == "clarification_required"
+            and not self.required_clarification_facts
+        ):
             raise BenchmarkContractError(
                 "clarification-required gold requires a clarification fact"
             )
-        if self.action_class == "abstention_required" and not self.acceptable_abstention_reasons:
+        if (
+            self.action_class == "abstention_required"
+            and not self.acceptable_abstention_reasons
+        ):
             raise BenchmarkContractError(
                 "abstention-required gold requires an abstention reason"
             )
@@ -191,7 +210,10 @@ class GoldRecord:
             raise BenchmarkContractError(
                 "recommendation-eligible gold must not include abstention reasons"
             )
-        if self.action_class == "clarification_required" and self.acceptable_recommendations:
+        if (
+            self.action_class == "clarification_required"
+            and self.acceptable_recommendations
+        ):
             raise BenchmarkContractError(
                 "clarification-required gold must not include recommendations"
             )
@@ -202,16 +224,29 @@ class GoldRecord:
             raise BenchmarkContractError(
                 "clarification-required gold must not include abstention reasons"
             )
-        if self.action_class == "abstention_required" and self.acceptable_recommendations:
+        if (
+            self.action_class == "abstention_required"
+            and self.acceptable_recommendations
+        ):
             raise BenchmarkContractError(
                 "abstention-required gold must not include recommendations"
             )
-        if self.action_class == "abstention_required" and self.required_clarification_facts:
+        if (
+            self.action_class == "abstention_required"
+            and self.required_clarification_facts
+        ):
             raise BenchmarkContractError(
                 "abstention-required gold must not include clarification facts"
             )
         if self.failure_severity not in {"E1", "E2", "E3", "E4", "E5"}:
             raise BenchmarkContractError("failure severity must be E1 through E5")
+        if any(
+            not isinstance(item, RecommendationIdentity)
+            for item in self.acceptable_recommendations
+        ):
+            raise BenchmarkContractError(
+                "each acceptable recommendation must be a recommendation identity"
+            )
         object.__setattr__(
             self,
             "required_clarification_facts",
@@ -225,7 +260,9 @@ class GoldRecord:
         if len(set(self.acceptable_recommendations)) != len(
             self.acceptable_recommendations
         ):
-            raise BenchmarkContractError("acceptable recommendations contain duplicates")
+            raise BenchmarkContractError(
+                "acceptable recommendations contain duplicates"
+            )
 
     @classmethod
     def from_mapping(cls, mapping: Mapping[str, object]) -> GoldRecord:
@@ -289,9 +326,7 @@ class GoldRecord:
                 for recommendation in self.acceptable_recommendations
             ],
             "required_clarification_facts": list(self.required_clarification_facts),
-            "acceptable_abstention_reasons": list(
-                self.acceptable_abstention_reasons
-            ),
+            "acceptable_abstention_reasons": list(self.acceptable_abstention_reasons),
             "failure_severity": self.failure_severity,
         }
 
@@ -306,15 +341,25 @@ class PredictionRecord:
     questions: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "case_id", _require_nonempty_string(self.case_id, "case ID"))
+        object.__setattr__(
+            self, "case_id", _require_nonempty_string(self.case_id, "case ID")
+        )
         object.__setattr__(
             self,
             "evidence_stage",
             _require_nonempty_string(self.evidence_stage, "evidence stage"),
         )
         self.primary_action.validate()
+        if any(
+            not isinstance(item, RecommendationIdentity) for item in self.candidates
+        ):
+            raise BenchmarkContractError(
+                "each prediction candidate must be a recommendation identity"
+            )
         if len(self.candidates) > 3:
-            raise BenchmarkContractError("prediction may contain at most three candidates")
+            raise BenchmarkContractError(
+                "prediction may contain at most three candidates"
+            )
         if len(set(self.candidates)) != len(self.candidates):
             raise BenchmarkContractError("prediction contains duplicate candidates")
         if self.level not in {"strong", "candidate", "caution", "none"}:
@@ -332,7 +377,21 @@ class PredictionRecord:
                 raise BenchmarkContractError("recommend action requires a level")
         elif self.level != "none":
             raise BenchmarkContractError("non-recommend action level must be none")
-        object.__setattr__(self, "questions", _string_tuple(self.questions, "questions"))
+        questions = _string_tuple(self.questions, "questions")
+        if len(questions) > MAX_QUESTIONS_PER_CASE:
+            raise BenchmarkContractError(
+                "prediction may contain at most three questions"
+            )
+        if self.primary_action.kind == "clarify":
+            if not questions or self.primary_action.value != questions[0]:
+                raise BenchmarkContractError(
+                    "clarification action must equal the first emitted question"
+                )
+        elif questions:
+            raise BenchmarkContractError(
+                "recommendation and abstention actions must not emit questions"
+            )
+        object.__setattr__(self, "questions", questions)
 
     @classmethod
     def from_mapping(cls, mapping: Mapping[str, object]) -> PredictionRecord:
@@ -384,9 +443,9 @@ class PredictionRecord:
 @dataclass(frozen=True)
 class ScorerConfig:
     schema_version: int = 1
-    scorer_version: str = "recommendation-scorer-v1"
+    scorer_version: str = "recommendation-scorer-v2"
     confidence_level: float = 0.95
-    metric_contract: str = field(default="recommendation-action-stratified-v1")
+    metric_contract: str = field(default="recommendation-action-stratified-v2")
 
     def __post_init__(self) -> None:
         if self.schema_version != 1:
@@ -407,8 +466,19 @@ def canonical_json(value: object) -> str:
     )
 
 
-def scorer_fingerprint(config: ScorerConfig) -> str:
-    payload = canonical_json(asdict(config)).encode("utf-8")
+def scorer_fingerprint(config: ScorerConfig, implementation_digest: str) -> str:
+    if not isinstance(
+        implementation_digest, str
+    ) or not _SHA256_DIGEST_PATTERN.fullmatch(implementation_digest):
+        raise BenchmarkContractError(
+            "scorer implementation digest must be sha256 followed by 64 lowercase hex digits"
+        )
+    payload = canonical_json(
+        {
+            "config": asdict(config),
+            "implementation_digest": implementation_digest,
+        }
+    ).encode("utf-8")
     return f"sha256:{hashlib.sha256(payload).hexdigest()}"
 
 
@@ -431,7 +501,9 @@ class BenchmarkScore:
     abstention_accuracy: RateMetric
     primary_action_accuracy: RateMetric
     strong_precision: RateMetric
+    strong_precision_by_family: tuple[tuple[str, RateMetric], ...]
     question_efficiency: RateMetric
+    unnecessary_question_count: int
     errors_by_severity: tuple[tuple[str, int], ...]
 
 
@@ -455,8 +527,7 @@ def wilson_lower_bound(
     half_width = (
         z
         * math.sqrt(
-            proportion * (1.0 - proportion) / total
-            + z * z / (4.0 * total * total)
+            proportion * (1.0 - proportion) / total + z * z / (4.0 * total * total)
         )
         / denominator
     )
@@ -509,12 +580,17 @@ def _index_unique(
 def _primary_action_correct(gold: GoldRecord, prediction: PredictionRecord) -> bool:
     action = prediction.primary_action
     if gold.action_class == "recommendation_eligible":
-        return action.kind == "recommend" and action.value in gold.acceptable_recommendations
+        return (
+            action.kind == "recommend"
+            and action.value in gold.acceptable_recommendations
+        )
     if gold.action_class == "clarification_required":
-        return action.kind == "clarify" and action.value in gold.required_clarification_facts
+        return (
+            action.kind == "clarify"
+            and action.value in gold.required_clarification_facts
+        )
     return (
-        action.kind == "abstain"
-        and action.value in gold.acceptable_abstention_reasons
+        action.kind == "abstain" and action.value in gold.acceptable_abstention_reasons
     )
 
 
@@ -522,7 +598,10 @@ def score_predictions(
     gold_records: Sequence[GoldRecord],
     predictions: Sequence[PredictionRecord],
     config: ScorerConfig,
+    *,
+    implementation_digest: str,
 ) -> BenchmarkScore:
+    fingerprint = scorer_fingerprint(config, implementation_digest)
     if not gold_records:
         raise BenchmarkContractError("gold records must not be empty")
     gold_by_key = _index_unique(gold_records, "gold")
@@ -549,6 +628,14 @@ def score_predictions(
     strong_correct = 0
     question_total = 0
     question_correct = 0
+    strong_families = {
+        recommendation.family
+        for gold in gold_records
+        for recommendation in gold.acceptable_recommendations
+    }
+    strong_by_family: dict[str, list[int]] = {
+        family: [0, 0] for family in strong_families
+    }
     errors = {severity: 0 for severity in ("E1", "E2", "E3", "E4", "E5")}
 
     for key in sorted(gold_by_key):
@@ -585,9 +672,16 @@ def score_predictions(
 
         if prediction.level == "strong":
             strong_total += 1
-            strong_correct += int(
+            correct_strong = int(
                 gold.action_class == "recommendation_eligible" and action_correct
             )
+            strong_correct += correct_strong
+            if not isinstance(prediction.primary_action.value, RecommendationIdentity):
+                raise AssertionError("strong recommendation identity is missing")
+            family = prediction.primary_action.value.family
+            family_counts = strong_by_family.setdefault(family, [0, 0])
+            family_counts[0] += correct_strong
+            family_counts[1] += 1
 
         for question in prediction.questions:
             question_total += 1
@@ -595,7 +689,7 @@ def score_predictions(
 
     confidence_level = config.confidence_level
     return BenchmarkScore(
-        scorer_fingerprint=scorer_fingerprint(config),
+        scorer_fingerprint=fingerprint,
         recommendation_top1=_rate_metric(
             recommendation_correct,
             recommendation_total,
@@ -631,12 +725,24 @@ def score_predictions(
             strong_total,
             confidence_level,
         ),
+        strong_precision_by_family=tuple(
+            (
+                family,
+                _rate_metric(
+                    counts[0],
+                    counts[1],
+                    confidence_level,
+                ),
+            )
+            for family, counts in sorted(strong_by_family.items())
+        ),
         question_efficiency=_rate_metric(
             question_correct,
             question_total,
             confidence_level,
             zero_status="not_applicable",
         ),
+        unnecessary_question_count=question_total - question_correct,
         errors_by_severity=tuple(errors.items()),
     )
 
@@ -653,8 +759,7 @@ def _wilson_interval(
     half_width = (
         z
         * math.sqrt(
-            proportion * (1.0 - proportion) / total
-            + z * z / (4.0 * total * total)
+            proportion * (1.0 - proportion) / total + z * z / (4.0 * total * total)
         )
         / denominator
     )
@@ -669,7 +774,9 @@ def newcombe_paired_difference_interval(
     if len(baseline_correct) != len(candidate_correct):
         raise BenchmarkContractError("paired correctness inputs must have equal length")
     if not baseline_correct:
-        raise BenchmarkContractError("paired correctness inputs require at least one case")
+        raise BenchmarkContractError(
+            "paired correctness inputs require at least one case"
+        )
     if not 0.5 < confidence_level < 1.0:
         raise BenchmarkContractError("confidence level must be between 0.5 and 1")
     if any(type(value) is not bool for value in baseline_correct) or any(
@@ -716,9 +823,7 @@ def newcombe_paired_difference_interval(
         confidence_level,
     )
 
-    phi_denominator = math.sqrt(
-        (e + f) * (g + h) * (e + g) * (f + h)
-    )
+    phi_denominator = math.sqrt((e + f) * (g + h) * (e + g) * (f + h))
     raw_phi_numerator = e * h - f * g
     if phi_denominator == 0:
         phi = 0.0
@@ -798,7 +903,9 @@ class ReviewerSubmission:
             raise BenchmarkContractError("reviewer annotations must not be empty")
         keys = [_record_key(annotation) for annotation in self.annotations]
         if len(set(keys)) != len(keys):
-            raise BenchmarkContractError("reviewer submission contains duplicate case-stages")
+            raise BenchmarkContractError(
+                "reviewer submission contains duplicate case-stages"
+            )
 
 
 @dataclass(frozen=True)
@@ -808,7 +915,9 @@ class AdjudicationRecord:
     resolution_minutes: float
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "case_id", _require_nonempty_string(self.case_id, "case ID"))
+        object.__setattr__(
+            self, "case_id", _require_nonempty_string(self.case_id, "case ID")
+        )
         object.__setattr__(
             self,
             "evidence_stage",
@@ -836,6 +945,7 @@ class LabelingRates:
     reviewer_hourly: float
     adjudicator_hourly: float
     setup_cost: float = 0.0
+    recruitment_cost: float = 0.0
     data_steward_cost: float = 0.0
     project_management_cost: float = 0.0
 
@@ -844,7 +954,12 @@ class LabelingRates:
             value = getattr(self, name)
             if not math.isfinite(value) or value <= 0.0:
                 raise BenchmarkContractError(f"{name} must be finite and positive")
-        for name in ("setup_cost", "data_steward_cost", "project_management_cost"):
+        for name in (
+            "setup_cost",
+            "recruitment_cost",
+            "data_steward_cost",
+            "project_management_cost",
+        ):
             value = getattr(self, name)
             if not math.isfinite(value) or value < 0.0:
                 raise BenchmarkContractError(f"{name} must be finite and non-negative")
@@ -859,8 +974,15 @@ class CostProjection:
     projected_reviewer_hours: float
     projected_adjudication_hours: float
     projected_expert_hours_with_contingency: float
+    reviewer_hourly_rate: float
+    adjudicator_hourly_rate: float
+    contingency_rate: float
     base_labor_cost: float
     contingency_cost: float
+    setup_cost: float
+    recruitment_cost: float
+    data_steward_cost: float
+    project_management_cost: float
     fixed_cost: float
     total_cost: float
 
@@ -868,7 +990,9 @@ class CostProjection:
 def _submission_index(
     submission: ReviewerSubmission,
 ) -> dict[tuple[str, str], ReviewerAnnotation]:
-    return {_record_key(annotation): annotation for annotation in submission.annotations}
+    return {
+        _record_key(annotation): annotation for annotation in submission.annotations
+    }
 
 
 def _paired_submission_indices(
@@ -883,7 +1007,9 @@ def _paired_submission_indices(
     index_a = _submission_index(reviewer_a)
     index_b = _submission_index(reviewer_b)
     if set(index_a) != set(index_b):
-        raise BenchmarkContractError("reviewer submissions must cover identical case-stages")
+        raise BenchmarkContractError(
+            "reviewer submissions must cover identical case-stages"
+        )
     return index_a, index_b
 
 
@@ -989,23 +1115,25 @@ def project_labeling_cost(
         for annotation in submission.annotations
     ]
     adjudication_minutes = [
-        adjudication_by_key[key].resolution_minutes for key in sorted(adjudication_by_key)
+        adjudication_by_key[key].resolution_minutes
+        for key in sorted(adjudication_by_key)
     ]
     median_reviewer_minutes = float(median(reviewer_minutes))
     median_adjudication_minutes = float(median(adjudication_minutes))
-    projected_reviewer_hours = (
-        stage_case_count * 2.0 * median_reviewer_minutes / 60.0
-    )
-    projected_adjudication_hours = (
-        stage_case_count * median_adjudication_minutes / 60.0
-    )
+    projected_reviewer_hours = stage_case_count * 2.0 * median_reviewer_minutes / 60.0
+    projected_adjudication_hours = stage_case_count * median_adjudication_minutes / 60.0
     base_expert_hours = projected_reviewer_hours + projected_adjudication_hours
     base_labor_cost = (
         projected_reviewer_hours * rates.reviewer_hourly
         + projected_adjudication_hours * rates.adjudicator_hourly
     )
     contingency_cost = base_labor_cost * contingency
-    fixed_cost = rates.setup_cost + rates.data_steward_cost + rates.project_management_cost
+    fixed_cost = (
+        rates.setup_cost
+        + rates.recruitment_cost
+        + rates.data_steward_cost
+        + rates.project_management_cost
+    )
     return CostProjection(
         pilot_case_count=len(index_a),
         stage_case_count=stage_case_count,
@@ -1013,10 +1141,16 @@ def project_labeling_cost(
         median_adjudication_minutes=median_adjudication_minutes,
         projected_reviewer_hours=projected_reviewer_hours,
         projected_adjudication_hours=projected_adjudication_hours,
-        projected_expert_hours_with_contingency=base_expert_hours
-        * (1.0 + contingency),
+        projected_expert_hours_with_contingency=base_expert_hours * (1.0 + contingency),
+        reviewer_hourly_rate=rates.reviewer_hourly,
+        adjudicator_hourly_rate=rates.adjudicator_hourly,
+        contingency_rate=contingency,
         base_labor_cost=base_labor_cost,
         contingency_cost=contingency_cost,
+        setup_cost=rates.setup_cost,
+        recruitment_cost=rates.recruitment_cost,
+        data_steward_cost=rates.data_steward_cost,
+        project_management_cost=rates.project_management_cost,
         fixed_cost=fixed_cost,
         total_cost=base_labor_cost + contingency_cost + fixed_cost,
     )

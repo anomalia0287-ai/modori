@@ -4,14 +4,19 @@ import json
 import os
 import subprocess
 import sys
+from dataclasses import asdict
 from pathlib import Path
 
 import pytest
 from openpyxl import load_workbook
 
-from modori.recommendation_benchmark import ScorerConfig, scorer_fingerprint
+import scripts.recommendation_benchmark as benchmark_cli_module
+from modori.recommendation_benchmark import (
+    ScorerConfig,
+    scorer_fingerprint,
+)
 from scripts.build_recommendation_pilot import build_pilot_pack
-from scripts.recommendation_benchmark import main
+from scripts.recommendation_benchmark import main, scorer_implementation_digest
 
 
 @pytest.fixture
@@ -32,13 +37,7 @@ def completed_pack(tmp_path: Path) -> Path:
             reviews.cell(row=row, column=3).value = "abstention_required"
             reviews.cell(row=row, column=4).value = "E4"
             reviews.cell(row=row, column=5).value = minutes
-            abstentions.append(
-                [
-                    reviews.cell(row=row, column=1).value,
-                    reviews.cell(row=row, column=2).value,
-                    "unsupported_design",
-                ]
-            )
+            abstentions.cell(row=row, column=3).value = "unsupported_design"
         workbook.save(path)
     path = pilot / "adjudication.xlsx"
     workbook = load_workbook(path)
@@ -49,13 +48,7 @@ def completed_pack(tmp_path: Path) -> Path:
     for row in range(2, 22):
         reviews.cell(row=row, column=3).value = "abstention_required"
         reviews.cell(row=row, column=4).value = "E4"
-        abstentions.append(
-            [
-                reviews.cell(row=row, column=1).value,
-                reviews.cell(row=row, column=2).value,
-                "unsupported_design",
-            ]
-        )
+        abstentions.cell(row=row, column=3).value = "unsupported_design"
         resolution.cell(row=row, column=3).value = 4.0
     workbook.save(path)
     return root
@@ -91,36 +84,57 @@ def test_validate_pack_and_predict_a_write_explicit_outputs(tmp_path: Path) -> N
     validation_output = tmp_path / "validation.json"
     prediction_output = tmp_path / "predictions.jsonl"
 
-    assert main(
-        [
-            "validate-pack",
-            "--pack-root",
-            str(pack),
-            "--output",
-            str(validation_output),
-        ]
-    ) == 0
-    assert json.loads(validation_output.read_text(encoding="utf-8"))["case_count"] == 20
+    assert (
+        main(
+            [
+                "validate-pack",
+                "--pack-root",
+                str(pack),
+                "--output",
+                str(validation_output),
+            ]
+        )
+        == 0
+    )
+    validation = json.loads(validation_output.read_text(encoding="utf-8"))
+    config = ScorerConfig()
+    assert validation["case_count"] == 20
+    assert validation["scorer_config"] == asdict(config)
+    assert (
+        validation["scorer_runtime_identity"]
+        == benchmark_cli_module.scorer_runtime_identity()
+    )
+    implementation_digest = scorer_implementation_digest()
+    assert validation["scorer_implementation_digest"] == implementation_digest
+    assert validation["scorer_fingerprint"] == scorer_fingerprint(
+        config, implementation_digest
+    )
 
-    assert main(
-        [
-            "predict-a",
-            "--pack-root",
-            str(pack),
-            "--output",
-            str(prediction_output),
-        ]
-    ) == 0
+    assert (
+        main(
+            [
+                "predict-a",
+                "--pack-root",
+                str(pack),
+                "--output",
+                str(prediction_output),
+            ]
+        )
+        == 0
+    )
     assert len(prediction_output.read_text(encoding="utf-8").splitlines()) == 20
-    assert main(
-        [
-            "predict-a",
-            "--pack-root",
-            str(pack),
-            "--output",
-            str(prediction_output),
-        ]
-    ) == 1
+    assert (
+        main(
+            [
+                "predict-a",
+                "--pack-root",
+                str(pack),
+                "--output",
+                str(prediction_output),
+            ]
+        )
+        == 1
+    )
 
 
 def test_validate_submissions_agreement_and_cost_commands(
@@ -140,41 +154,52 @@ def test_validate_submissions_agreement_and_cost_commands(
     agreement_output = tmp_path / "agreement.json"
     cost_output = tmp_path / "cost.json"
 
-    assert main(
-        [
-            "validate-submissions",
-            *common,
-            "--adjudication",
-            str(pilot / "adjudication.xlsx"),
-            "--output",
-            str(validation_output),
-        ]
-    ) == 0
+    assert (
+        main(
+            [
+                "validate-submissions",
+                *common,
+                "--adjudication",
+                str(pilot / "adjudication.xlsx"),
+                "--output",
+                str(validation_output),
+            ]
+        )
+        == 0
+    )
     assert json.loads(validation_output.read_text(encoding="utf-8"))["case_count"] == 20
 
     assert main(["agreement", *common, "--output", str(agreement_output)]) == 0
     agreement = json.loads(agreement_output.read_text(encoding="utf-8"))
     assert agreement["primary_action_status"] == "not_estimable"
 
-    assert main(
-        [
-            "cost",
-            *common,
-            "--adjudication",
-            str(pilot / "adjudication.xlsx"),
-            "--stage-cases",
-            "150",
-            "--reviewer-rate",
-            "100",
-            "--adjudicator-rate",
-            "150",
-            "--output",
-            str(cost_output),
-        ]
-    ) == 0
+    assert (
+        main(
+            [
+                "cost",
+                *common,
+                "--adjudication",
+                str(pilot / "adjudication.xlsx"),
+                "--stage-cases",
+                "150",
+                "--reviewer-rate",
+                "100",
+                "--adjudicator-rate",
+                "150",
+                "--recruitment-cost",
+                "321",
+                "--output",
+                str(cost_output),
+            ]
+        )
+        == 0
+    )
     cost = json.loads(cost_output.read_text(encoding="utf-8"))
     assert cost["stage_case_count"] == 150
     assert cost["median_reviewer_minutes"] == 11.0
+    assert cost["recruitment_cost"] == 321.0
+    assert cost["contingency_rate"] == 0.25
+    assert cost["fixed_cost"] == 321.0
 
 
 def test_score_refuses_wrong_fingerprint_and_scores_completed_gold(
@@ -200,16 +225,25 @@ def test_score_refuses_wrong_fingerprint_and_scores_completed_gold(
     assert "fingerprint mismatch" in capsys.readouterr().err
     assert not output.exists()
 
-    assert main(
-        [
-            *base_args,
-            "--scorer-fingerprint",
-            scorer_fingerprint(ScorerConfig()),
-        ]
-    ) == 0
+    assert (
+        main(
+            [
+                *base_args,
+                "--scorer-fingerprint",
+                scorer_fingerprint(ScorerConfig(), scorer_implementation_digest()),
+            ]
+        )
+        == 0
+    )
     score = json.loads(output.read_text(encoding="utf-8"))
     assert score["abstention_accuracy"]["successes"] == 0
-    assert score["errors_by_severity"] == [["E1", 0], ["E2", 0], ["E3", 0], ["E4", 20], ["E5", 0]]
+    assert score["errors_by_severity"] == [
+        ["E1", 0],
+        ["E2", 0],
+        ["E3", 0],
+        ["E4", 20],
+        ["E5", 0],
+    ]
 
 
 def test_blank_submission_is_rejected_with_nonzero_exit(
@@ -220,20 +254,23 @@ def test_blank_submission_is_rejected_with_nonzero_exit(
     pilot = pack / "public" / "pilot"
     output = tmp_path / "invalid.json"
 
-    assert main(
-        [
-            "validate-submissions",
-            "--pack-root",
-            str(pack),
-            "--reviewer-a",
-            str(pilot / "reviewer-a.xlsx"),
-            "--reviewer-b",
-            str(pilot / "reviewer-b.xlsx"),
-            "--adjudication",
-            str(pilot / "adjudication.xlsx"),
-            "--output",
-            str(output),
-        ]
-    ) == 1
+    assert (
+        main(
+            [
+                "validate-submissions",
+                "--pack-root",
+                str(pack),
+                "--reviewer-a",
+                str(pilot / "reviewer-a.xlsx"),
+                "--reviewer-b",
+                str(pilot / "reviewer-b.xlsx"),
+                "--adjudication",
+                str(pilot / "adjudication.xlsx"),
+                "--output",
+                str(output),
+            ]
+        )
+        == 1
+    )
     assert "reviewer ID" in capsys.readouterr().err
     assert not output.exists()
