@@ -10,6 +10,7 @@ PRODUCTION_TAIL_MODULES = (
     Path("src/modori/steps/anova_oneway.py"),
     Path("src/modori/steps/repeated_measures_anova.py"),
     Path("src/modori/steps/logistic_regression.py"),
+    Path("src/modori/factorial_anova_numerics.py"),
 )
 
 
@@ -38,3 +39,11 @@ def test_logistic_source_uses_survival_tail_without_direct_matrix_inverse() -> N
 
     assert "stats.chi2.sf(" in source
     assert "linalg.inv(" not in source
+
+
+def test_factorial_anova_source_uses_survival_tail_without_direct_inverse() -> None:
+    source = Path("src/modori/factorial_anova_numerics.py").read_text(encoding="utf-8")
+
+    assert "stats.f.sf(" in source
+    assert "linalg.inv(" not in source
+    assert ".I" not in source
