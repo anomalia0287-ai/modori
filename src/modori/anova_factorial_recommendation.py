@@ -18,7 +18,6 @@ from modori.value_tokens import (
 )
 
 
-_MAX_CANDIDATES = 3
 _FACTOR_MEASURES = {"nominal", "ordinal"}
 _NORMAL_KEY_TRANSLATION = str.maketrans({"-": "_", " ": "_"})
 _UNSUPPORTED_STRUCTURE_ATTRIBUTES = (
@@ -83,7 +82,7 @@ class FactorialAnovaEligibilityProvider:
         if len(factors) != 2:
             return []
         factor_a, factor_b = factors
-        candidates: list[RecommendationCandidate] = []
+        eligible_outcomes: list[str] = []
         for raw_column in frame.columns:
             outcome = str(raw_column)
             if outcome in factors or not self._is_scale_outcome(
@@ -101,31 +100,32 @@ class FactorialAnovaEligibilityProvider:
                 factor_b,
             ):
                 continue
-            candidates.append(
-                RecommendationCandidate(
-                    candidate_id=(
-                        f"anova_factorial:{outcome}:{factor_a}:{factor_b}"
-                    ),
-                    kind="anova_factorial",
-                    title_ko=(
-                        f"이원 Type III 분산분석 후보: {outcome} by "
-                        f"{factor_a} x {factor_b}"
-                    ),
-                    level="가능한 후보",
-                    reason_ko=(
-                        f"{outcome}은 척도형 결과이고 {factor_a}, {factor_b}의 "
-                        "모든 조합 셀에 최소 3개의 완전 관측값이 있습니다. "
-                        "결과와 두 요인의 역할을 직접 확인해야 합니다."
-                    ),
-                    outcome_key=outcome,
-                    factor_a_key=factor_a,
-                    factor_b_key=factor_b,
-                    requires_configuration=True,
-                )
+            eligible_outcomes.append(outcome)
+            if len(eligible_outcomes) > 1:
+                return []
+        if len(eligible_outcomes) != 1:
+            return []
+        outcome = eligible_outcomes[0]
+        return [
+            RecommendationCandidate(
+                candidate_id=f"anova_factorial:{outcome}:{factor_a}:{factor_b}",
+                kind="anova_factorial",
+                title_ko=(
+                    f"이원 Type III 분산분석 후보: {outcome} by "
+                    f"{factor_a} x {factor_b}"
+                ),
+                level="가능한 후보",
+                reason_ko=(
+                    f"{outcome}은 척도형 결과이고 {factor_a}, {factor_b}의 "
+                    "모든 조합 셀에 최소 3개의 완전 관측값이 있습니다. "
+                    "결과와 두 요인의 역할을 직접 확인해야 합니다."
+                ),
+                outcome_key=outcome,
+                factor_a_key=factor_a,
+                factor_b_key=factor_b,
+                requires_configuration=True,
             )
-            if len(candidates) == _MAX_CANDIDATES:
-                break
-        return candidates
+        ]
 
     def _plausible_factors(
         self,

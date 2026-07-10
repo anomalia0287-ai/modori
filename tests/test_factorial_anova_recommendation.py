@@ -126,16 +126,12 @@ def test_factorial_provider_requires_exactly_two_plausible_factors() -> None:
     ) == []
 
 
-def test_factorial_provider_caps_candidates_at_three_scale_outcomes() -> None:
+def test_factorial_provider_abstains_when_multiple_scale_outcomes_are_plausible() -> None:
     candidates = _provider().candidates(
-        _dataset(outcome_keys=("score_a", "score_b", "score_c", "score_d"))
+        _dataset(outcome_keys=("score_a", "score_b"))
     )
 
-    assert [candidate.outcome_key for candidate in candidates] == [
-        "score_a",
-        "score_b",
-        "score_c",
-    ]
+    assert candidates == []
 
 
 def test_factorial_provider_rejects_one_or_seven_level_factors() -> None:

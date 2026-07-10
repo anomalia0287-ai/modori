@@ -582,7 +582,7 @@ git commit -m "feat: add factorial ANOVA selectors"
 
 - [ ] **Step 1: Write failing eligibility tests**
 
-Cover one valid 2-by-2 candidate, suppression when fewer or more than exactly two plausible factors exist, a three-outcome candidate cap, 1/7-level rejection, incomplete/low-n cells, administrative IDs, non-scale outcome, weights/clusters/repeated-ID evidence, active-analysis suppression, and row-order stability. Every candidate is `가능한 후보`, `requires_configuration=True`, and never default.
+Cover one valid 2-by-2 candidate, suppression when fewer or more than exactly two plausible factors exist, suppression when more than one scale outcome is eligible, 1/7-level rejection, incomplete/low-n cells, administrative IDs, non-scale outcome, weights/clusters/repeated-ID evidence, active-analysis suppression, and row-order stability. Every candidate is `가능한 후보`, `requires_configuration=True`, and never default.
 
 - [ ] **Step 2: Implement the provider and recommendation state**
 
