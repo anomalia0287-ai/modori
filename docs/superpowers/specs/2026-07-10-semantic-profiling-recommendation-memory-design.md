@@ -2,7 +2,8 @@
 
 Date: 2026-07-10
 
-Status: Approved in design review; written specification awaiting owner review
+Status: External-review amendments incorporated and approved for staged execution;
+implementation not started
 
 ## 1. Purpose
 
@@ -17,9 +18,11 @@ This design adds a semantic evidence layer between `Dataset` and
 weakening calculation correctness, silently curating data, or requiring a novice user
 to make statistical decisions.
 
-The feature is valuable only if a locked benchmark demonstrates material improvement.
-If the semantic layer or an optional local SLM does not improve the pre-registered
-metrics, that layer is not shipped.
+The feature is valuable only if staged evidence demonstrates material improvement.
+Deterministic layers may replace the current heuristic after a frozen deterministic
+validation gate. A public 80 percent claim, an optional local SLM, and expansion of
+strong recommendation require the larger locked claim corpus. A layer that does not
+meet its pre-registered gate is not shipped.
 
 ## 2. Current Product Baseline
 
@@ -43,6 +46,12 @@ Verified current behavior:
 The current recommendation layer can propose executable candidates. It does not prove
 research-design validity, infer intent reliably from data alone, or achieve a measured
 80 percent recommendation-accuracy claim.
+
+The current catalog marks `reliability`, `compare_groups`, and
+`descriptives_table1` as `STRONG`, and their providers can emit the user-facing label
+`강한 추천` without recommendation-validity benchmark evidence. This is recorded as
+`legacy_unvalidated` behavior. The catalog value is a policy ceiling, not empirical
+evidence, and does not automatically survive the new recommendation policy.
 
 ## 3. Product Decision
 
@@ -97,6 +106,10 @@ These rules are release-blocking:
 10. A damaged semantic context cannot prevent the calculation pipeline from opening.
 11. Every active claim has a source, version, scope, and invalidation rule.
 12. A novice user confirms domain facts and research intent, not statistical jargon.
+13. A catalog `STRONG` value is only a ceiling; evidence must separately authorize the
+    user-facing strong level.
+14. Benchmark development, deterministic release validation, and public-claim
+    validation use separate data roles and cannot reuse a tuned set as a holdout.
 
 ## 5. Architecture
 
@@ -491,17 +504,25 @@ candidate set. Ask only when an answer changes at least one of:
 - data-exclusion decision requiring confirmation;
 - causal-language permission.
 
-Rank qualifying questions by risk reduction, then user burden. Ask at most three.
-Every question supports `yes`, `no`, and `not sure`; `not sure` never triggers a guessed
+Rank qualifying questions by risk reduction, then user burden. Consider at most 16
+unresolved facts, simulate at most three answer branches per fact, ask at most three
+questions, and perform at most 144 candidate reevaluations in one planning pass. Joint
+exponential branch search is forbidden. The planner has a 500 ms worker-time budget;
+on budget exhaustion it uses the highest-priority hard dependency or abstains. Every
+question supports `yes`, `no`, and `not sure`; `not sure` never triggers a guessed
 answer.
+
+Every question contract requires a reviewed `template_ko`. `template_en` is optional.
+The Korean template is the canonical source, Korean is the default UI language, and an
+SLM cannot generate final user-facing question wording.
 
 Examples:
 
-- "Does each row describe one person or one observation?"
-- "Were the before and after values measured from the same people?"
-- "Is 99 a real response, or does it mean no answer?"
-- "Are these columns answers to different items from the same questionnaire scale?"
-- "Is your main goal to compare groups, describe the data, or examine a relationship?"
+- "각 행은 한 사람 또는 한 번의 관측을 나타냅니까?"
+- "사전 값과 사후 값은 같은 사람에게서 측정했습니까?"
+- "99는 실제 응답입니까, 아니면 무응답을 뜻합니까?"
+- "이 열들은 같은 설문 척도의 서로 다른 문항입니까?"
+- "주된 목적은 집단 비교, 데이터 요약, 변수 관계 확인 중 무엇입니까?"
 
 Do not ask users to judge normality, homoscedasticity, rank deficiency, numeric
 stability, or other conditions the engine can evaluate.
@@ -518,7 +539,7 @@ plain language, and abstain until resolved.
 3. Required study facts must be observed or confirmed.
 4. No blocking conflict or stale dependency may remain.
 5. The catalog policy ceiling must permit the proposed level.
-6. The analysis family's locked benchmark evidence must permit that level.
+6. The analysis family's applicable evidence tier must permit that level.
 
 A weighted score cannot compensate for a failed earlier condition.
 
@@ -527,6 +548,14 @@ A weighted score cannot compensate for a failed earlier condition.
 `Strong recommendation` requires all mandatory role/design facts, no blocking
 conflicts, a successful run-validator dry check, catalog permission, and a lower 95
 percent confidence bound of at least 90 percent precision for that strong family.
+
+The three legacy strong families are reevaluated when the deterministic V2 policy is
+activated. A family retains strong only if the frozen 200-case validation contains
+enough family decisions for its one-sided 95 percent Wilson precision lower bound to
+reach 0.90 with zero E4/E5 failures. Otherwise it is displayed as `가능한 후보`.
+There is no automatic grandfathering. A candidate can remain the default without being
+labeled strong. Promotion of any additional family to strong requires the 800-case
+locked claim gate.
 
 `Possible candidate` means the configuration is executable but intent or one important
 fact remains uncertain.
@@ -543,10 +572,37 @@ produces a meaningful ordering; arbitrary tie-breaking cannot create apparent To
 accuracy.
 
 Internal model probabilities are not shown to users. If a future model emits scores,
-they are calibrated per version on the calibration set and used only as one input to
-abstention policy.
+they are calibrated per version using the post-deterministic 200-case calibration role
+described below and used only as one input to abstention policy. The separate 800-case
+claim corpus remains untouched until final C2 evaluation.
 
 ## 13. Benchmark and Gold Standard
+
+### Benchmark program ownership and economics
+
+The benchmark is a separate data-governance project, not an incidental test-fixture
+task. It has four roles:
+
+- benchmark owner: scope, budget, split freeze, and release decision;
+- data steward: source license, checksum, sensitivity, PII review, and storage;
+- two independent statistically qualified reviewers: initial gold labels;
+- adjudicator: documented resolution of reviewer disagreements.
+
+Before committing to the 150-, 200-, or 800-case stages, run a 20-case economics
+pilot. Both reviewers independently label every case and record active review minutes;
+the adjudicator records resolution minutes. Projected expert hours are:
+
+```text
+case_count * ((2 * median_reviewer_minutes) + median_adjudication_minutes) / 60
+```
+
+Apply a 25 percent planning contingency to the measured total and multiply by the
+actual reviewer/adjudicator rates to produce the monetary estimate. Record setup,
+recruitment, data-steward, and project-management costs separately. The owner must
+approve the resulting stage budget before corpus expansion. If qualified reviewers or
+budget are unavailable, deterministic engineering may continue against non-claim
+fixtures, but public accuracy claims, C2 adoption, and new strong promotion remain
+blocked.
 
 ### Case contract
 
@@ -563,14 +619,80 @@ Every benchmark case contains:
 - required clarification questions;
 - expected abstention when the available information is insufficient.
 
+Each case is evaluated at one or more explicit evidence stages, such as `cold_start`
+and `clarified`. At each stage the gold record declares exactly one action class:
+
+- `recommendation_eligible`: at least one recommendation identity is safe to emit;
+- `clarification_required`: no recommendation is yet safe and at least one specified
+  fact can change the decision;
+- `abstention_required`: clarification cannot make a supported recommendation from the
+  available product scope.
+
+The engine emits one primary action: `recommend:<identity>`, `clarify:<fact_id>`, or
+`abstain:<reason_code>`. This action-class contract prevents a safe question or
+abstention from being mislabeled as a recommendation while also preventing those
+actions from inflating recommendation accuracy.
+
+An acceptable recommendation identity contains the analysis family, normalized role
+assignments, and design mode. For example, the right family with the wrong outcome,
+group, predictor, or paired/independent mode is not an exact match.
+
 Multiple valid analyses remain multiple gold labels. R and jamovi validate numerical
 outputs after selection; they do not define the recommendation gold label.
 
+### Scorer contract
+
+The scorer executable, schema version, metric definitions, confidence-interval method,
+and configuration are hashed and frozen before a frozen split is evaluated. Changing
+any of them invalidates that split's reported result.
+
+- Recommendation Top-1 accuracy is evaluated only on `recommendation_eligible`
+  case-stage records. It is 1 only when the primary action is `recommend` and its
+  complete identity exactly matches any acceptable gold identity; a clarification,
+  abstention, missing default, or wrong identity is 0.
+- Clarification accuracy is evaluated only on `clarification_required` records. It is
+  1 only when the primary action is `clarify` and the fact is in the gold
+  decision-changing clarification set.
+- Abstention accuracy is evaluated only on `abstention_required` records. It is 1 only
+  when the primary action is `abstain` and the reason belongs to the frozen acceptable
+  reason class. A recommendation on such a record is never counted as coverage.
+- Primary-action exact accuracy across all three action classes is reported as a safety
+  diagnostic, never as the public recommendation-accuracy claim.
+- A true recommendation tie produces no Top-1 default and lowers recommendation
+  coverage. The alternatives may still satisfy the Top-3 case-hit metric.
+- Top-3 case hit is evaluated only on `recommendation_eligible` records and is 1 when at
+  least one of the first three emitted candidate identities exactly matches an
+  acceptable gold identity; otherwise it is 0.
+- Recommendation coverage is the number of `recommendation_eligible` records receiving
+  a `recommend` primary action divided by all `recommendation_eligible` records.
+- Strong precision is the number of emitted strong defaults with an exact acceptable
+  identity divided by all emitted strong defaults. A zero denominator is
+  `insufficient_evidence`, never a pass. Per-family strong precision uses the same
+  definition.
+- Partial family/role matches are diagnostic only and never count toward release
+  accuracy, precision, or hit-rate gates.
+- Question efficiency pools all emitted questions: gold decision-changing questions
+  divided by all questions. A zero denominator is reported as `not_applicable`; the
+  separate unnecessary-question count must still be zero.
+- E1-E5 severity assignment is part of the frozen gold record, not inferred after
+  seeing model failures.
+
 ### Corpus stages
 
-- 150-case pilot corpus: discover taxonomy, ambiguity, and question wording.
-- 200-case calibration corpus: set evidence, abstention, and confidence policies.
-- At least 800 locked release cases: final evaluation only.
+- 20-case economics pilot: measure review, disagreement, adjudication, and data-steward
+  cost. It is not an accuracy set.
+- 150-case development corpus: discover taxonomy, ambiguity, question wording, and
+  deterministic rule changes.
+- 200-case frozen deterministic validation corpus: evaluate A/B/C1/D after all
+  deterministic rules and thresholds are frozen. It is not used to tune those layers.
+  After deterministic evaluation is complete, it may be used to calibrate C2 because
+  C2 has a separate 800-case holdout. If a deterministic rule, threshold, case label,
+  or scorer changes after results are exposed, this split is retired to development
+  evidence and a new independent frozen validation split is required.
+- At least 800 locked claim corpus: public 80 percent claims, C2 adoption, and promotion
+  of new strong families only. If outputs or labels are exposed and C2, policy, or the
+  scorer is then changed, that corpus cannot validate the changed system; a new locked
+  holdout is required.
 
 The locked corpus includes clean and messy CSV/XLSX/SAV, Korean/English/mixed labels,
 Likert ties, missing codes, wide/long repeated measures, IDs, weights, clusters,
@@ -581,8 +703,37 @@ injection, PII-like text, schema drift, and same-data/different-question pairs.
 Gold labels require two independent statistically qualified reviews followed by
 documented adjudication. Published methods and documented public-study designs anchor
 the review. Model reviewers may criticize cases but cannot be the sole gold authority.
-Until this review exists, Modori may run internal experiments but cannot publish the
-80 percent recommendation claim.
+
+Before labeling a frozen validation or claim corpus, the annotation guide must achieve
+nominal Krippendorff alpha >= 0.80 for the primary action on the preceding pilot,
+mean Jaccard agreement >= 0.80 separately for acceptable recommendation sets and
+required-clarification sets, and exact-set agreement >= 0.70 for each. Failure requires
+guide revision and independent relabeling before expansion. All disagreements remain
+visible in the adjudication ledger.
+
+Until the applicable review tier exists, Modori may run internal experiments but
+cannot make the claim or enable the level governed by that tier.
+
+### Corpus storage, license, and privacy
+
+- Synthetic and redistribution-permitted public fixtures live under
+  `tests/fixtures/recommendation_benchmark/public/` with deterministic generators where
+  practical.
+- `tests/fixtures/recommendation_benchmark/manifest.jsonl` records case ID, split role,
+  source, source version, license/SPDX identifier or explicit terms, checksum,
+  language, sensitivity class, generation seed, and analysis-family coverage.
+- Checked-in benchmark data has a 100 MiB total cap. Larger or restricted data is not
+  committed or placed in Git LFS by default.
+- Restricted cases and all locked labels live outside git under the path supplied by
+  `MODORI_RECOMMENDATION_BENCHMARK_ROOT`. The repository stores only non-sensitive
+  manifests and hashes for those cases.
+- Locked labels are held by the benchmark owner/evaluator. Development agents receive
+  cases without labels and submit predictions for scoring.
+- Real Korean survey data requires redistribution authority, de-identification, PII
+  scan, and manual data-steward approval. Raw free text and direct identifiers are
+  removed or replaced with reviewed synthetic equivalents before benchmark use.
+- Every derived fixture records the transformation and license compatibility. A case
+  without clear rights is excluded rather than copied into the corpus.
 
 ### Evaluation tracks
 
@@ -600,13 +751,37 @@ Until this review exists, Modori may run internal experiments but cannot publish
 - C2: C1 plus optional local SLM hypotheses.
 - D: the best validated semantic configuration plus confirmed project memory.
 
-All variants run against the same cases and scorer.
+Within each applicable corpus stage, compared variants run against the same cases and
+the same frozen scorer. C2 is not evaluated for adoption on the 200-case corpus that
+calibrated it.
 
-### Absolute release gates
+### Deterministic replacement gate
 
-- Top-1 accuracy one-sided 95 percent Wilson lower bound >= 0.80.
+B, C1, and D may replace A after the 200-case frozen deterministic validation when:
+
+- the complete deterministic configuration improves Top-1 point accuracy over A by at
+  least five percentage points and the two-sided 95 percent Newcombe method-10 interval
+  for the paired difference in correctness excludes zero, or reduces E3/E4 errors by
+  at least 30 percent without reducing recommendation Top-1 point accuracy or coverage;
+- any strong label emitted by the deterministic configuration independently passes the
+  applicable family evidence gate; disabling an unsupported strong label does not block
+  candidate-only replacement;
+- E4 and E5 failures are zero;
+- D reproduces unchanged projects exactly, reduces repeated clarification questions by
+  at least 70 percent, and applies stale memory zero times;
+- all normal calculation, privacy, package, and clean-VM gates pass.
+
+This gate authorizes a deterministic product improvement under the existing safe
+"analysis candidate" claim. It does not authorize a public 80 percent claim, C2, or
+new-family strong promotion.
+
+### Locked claim and C2 gates
+
+- Recommendation Top-1 accuracy one-sided 95 percent Wilson lower bound >= 0.80.
+- Clarification and abstention accuracy are reported separately by evidence stage and
+  cannot substitute for recommendation Top-1 accuracy.
 - Strong-recommendation precision one-sided 95 percent Wilson lower bound >= 0.90.
-- Top-3 recall one-sided 95 percent Wilson lower bound >= 0.90.
+- Top-3 case-hit rate one-sided 95 percent Wilson lower bound >= 0.90.
 - Coverage on answerable, supported cases >= 0.70.
 - Wrong strong recommendation for a high-risk analysis: zero.
 - Unauthorized data mutation, raw-text persistence, stale-memory auto-application, or
@@ -615,38 +790,34 @@ All variants run against the same cases and scorer.
 - Questions that cannot change recommendation, safety level, or curation decision:
   zero.
 
-With 400 evaluated recommendation decisions, 334 correct decisions (83.5 percent) are
-needed for a one-sided 95 percent Wilson lower bound just above 80 percent. With 400
-strong decisions, 370 correct decisions (92.5 percent) are needed for the lower bound
-to exceed 90 percent.
+With 400 evaluated `recommendation_eligible` records, 334 exact Top-1 decisions (83.5
+percent) are needed for a one-sided 95 percent Wilson lower bound just above 80 percent.
+With 400 strong decisions, 370 exact decisions (92.5 percent) are needed for the lower
+bound to exceed 90 percent.
 
 ### Material-benefit gates
 
-The complete semantic configuration must improve Top-1 point accuracy over A by at
-least five percentage points with a paired two-sided 95 percent confidence interval
-excluding zero, or reduce severity E3/E4 recommendation errors by at least 30 percent
-while not reducing Top-1 accuracy, strong precision, or coverage. These criteria are
-frozen before the locked set is opened.
+The deterministic material-benefit criterion is evaluated on the frozen 200-case
+validation as defined above. The public claim still requires the absolute 800-case
+locked gates.
 
-C2 is adopted only if it improves C1 by at least three Top-1 percentage points with a
-paired two-sided 95 percent confidence interval excluding zero, or reduces E3/E4 errors
-by at least 30 percent while Top-1 accuracy and strong precision do not decrease and
-coverage decreases by no more than five percentage points. Every absolute release gate
-must still pass. If not, the SLM is omitted.
+C2 is adopted only if it improves C1 by at least three recommendation Top-1 percentage
+points and the two-sided 95 percent Newcombe method-10 interval for the paired
+correctness difference excludes zero, or reduces E3/E4 errors by at least 30 percent
+while recommendation Top-1 accuracy and strong precision do not decrease and coverage
+decreases by no more than five percentage points. Every absolute release gate must
+still pass. If not, the SLM is omitted.
 
-D is adopted only if unchanged-project replay reproduces recommendations exactly,
-reduces repeated clarification questions by at least 70 percent, applies stale memory
-zero times, and does not reduce any accuracy or safety metric.
-
-Per-family strong recommendation remains disabled when that family lacks enough locked
-examples to satisfy its confidence-bound gate, even if the overall system passes.
+D is adopted only under the deterministic replacement gate. Promotion of a new family
+to strong remains disabled when that family lacks enough 800-case locked examples to
+satisfy its confidence-bound gate, even if the overall system passes.
 
 ## 14. Error Cost Policy
 
 | Severity | Example | Release policy |
 | --- | --- | --- |
 | E1 usability | Unnecessary but safe abstention or extra question | Measured and bounded |
-| E2 recoverable | Non-preferred but acceptable candidate shown as possible | Bounded by Top-1/Top-3 metrics |
+| E2 recoverable | Non-preferred but acceptable candidate shown as possible | Bounded by Top-1/Top-3 case-hit metrics |
 | E3 major | Wrong role, paired/independent confusion, or stale fact used | Release-blocking until corrected |
 | E4 severe | Wrong strong recommendation or high-risk automatic promotion | Zero allowed in locked high-risk cases |
 | E5 boundary failure | Silent data mutation, raw-data leak, or cross-project memory | Zero allowed |
@@ -703,6 +874,13 @@ model-runtime review passes.
 - Semantic model inference is asynchronous, cancellable, and bound to the dataset
   fingerprint present when it started.
 - Results arriving after a dataset change are discarded.
+- The full `dataset_fingerprint` is computed once per immutable current-dataset version
+  and cached by project ID plus pipeline version. Recommendation refreshes reuse it.
+- Fingerprinting processes at most 100,000 cells per cancellation chunk and has a
+  10,000 ms worker-time budget for the supported 5,000,000-cell limit.
+- Budget exhaustion produces `fingerprint_pending_or_incomplete`; it never falls back
+  to a weaker schema-only identity. Project memory and strong recommendation remain
+  disabled until a full fingerprint succeeds.
 - Model timeout, resource refusal, missing runtime, or invalid output falls back to the
   deterministic configuration without changing data or memory.
 - No automatic retry loop is permitted.
@@ -802,28 +980,40 @@ reduction.
 
 ### Benchmark and release tests
 
-- A/B/C1/C2/D paired evaluation on pilot, calibration, then locked corpus.
+- A/B/C1/D paired evaluation on development and frozen deterministic validation; after
+  that evaluation is final, the 200 records may calibrate C2, while C2 adoption is
+  evaluated only on the separate locked claim corpus.
 - Per-analysis-family and per-data-slice metrics, not only aggregate scores.
 - Wilson confidence bounds and paired improvement intervals.
 - Risk-coverage curve, abstention correctness, question efficiency, and replay benefit.
+- Frozen scorer hash, primary-action Krippendorff alpha, acceptable-set Jaccard/exact
+  agreement, license manifest, and benchmark cost ledger.
 - Full regular quality gate, slow statistics gate, package checks, packaged launch,
   clean-Windows VM smoke, and external design/code review before release promotion.
 
 ## 20. Delivery Sequence
 
-1. Build the case schema, scorer, pilot corpus, and current A baseline before changing
-   product recommendations.
-2. Implement immutable contracts and B deterministic profiling headlessly.
-3. Add resolver, invalidation, question planner, and project document/memory with no
-   model dependency.
-4. Add C1 deterministic table-context rules and run ablations.
-5. Integrate the best deterministic configuration into an experimental UI path.
-6. Research and select a local SLM runtime only after C1 is measured.
-7. Implement C2 behind a disabled-by-default adapter and security/resource gates.
-8. Keep or delete C2 according to the frozen material-benefit criteria.
-9. Complete the 800-case locked evaluation and independent statistical review.
-10. Run full quality, package, clean-VM, privacy, and threat-model gates.
-11. Promote the feature and its public claim only when every absolute gate passes.
+1. Incorporate the external review into this specification and freeze the staged gate
+   policy.
+2. Build the case schema, frozen scorer contract, 20-case economics pilot pack, and
+   current A baseline protocol.
+3. Run the 20-case reviewer-time pilot before approving larger labeling expenditure.
+4. Design, implement, and reference-validate WS3 `logistic_regression`.
+5. Design, implement, and reference-validate WS3 `anova_factorial`.
+6. Freeze the V1 analysis catalog used by recommendation gold labels.
+7. Build the 150-case development corpus and implement B, C1, and D without an SLM.
+8. Freeze rules and run the 200-case deterministic replacement validation.
+9. Ship the deterministic replacement only if its staged gate passes; otherwise retain
+   A and revise or stop the failing layer.
+10. Decide whether the measured labeling budget and deterministic result justify the
+    800-case claim program.
+11. Research and select a local SLM runtime only after C1 is measured and the 800-case
+    budget is approved.
+12. Implement C2 behind a disabled-by-default adapter and security/resource gates.
+13. Keep or delete C2 according to the frozen locked criteria.
+14. Run full quality, package, clean-VM, privacy, and threat-model gates.
+15. Promote the public 80 percent claim or new strong families only when every locked
+    claim gate passes.
 
 No later phase is authorized merely because the earlier code exists. Each phase must
 produce its required evidence before the next product exposure.
@@ -842,8 +1032,21 @@ The design is implemented only when all of the following are true:
 - Corrupt memory cannot prevent pipeline access.
 - Privacy and prompt-injection controls pass adversarial tests.
 - A/B/C1/C2/D evidence identifies which layers actually add value.
-- Absolute accuracy, precision, recall, coverage, severe-error, and boundary-failure
-  gates pass on the locked corpus.
+- The 20-case economics pilot reports measured review/adjudication minutes and a
+  stage-specific cost projection before corpus expansion.
+- The scorer uses exact candidate identities, explicit clarify/abstain actions, frozen
+  tie handling, and no partial credit in release metrics.
+- The annotation guide meets the predeclared reviewer-agreement thresholds before a
+  frozen corpus is labeled.
+- Every benchmark case has a license, checksum, sensitivity class, and storage owner;
+  restricted data and locked labels stay outside git.
+- B/C1/D can pass or fail the frozen deterministic replacement gate independently of
+  the 800-case public-claim program.
+- C2, new-family strong promotion, and public 80 percent wording remain blocked until
+  the locked accuracy, precision, case-hit, coverage, severe-error, and boundary-failure
+  gates pass.
+- Legacy strong families are not grandfathered automatically and are demoted when
+  their applicable family evidence is absent or insufficient.
 - Any layer without material measured benefit is removed from the product.
 - Public wording remains "analysis candidates based on verified data and study facts"
   until the locked evidence supports a stronger claim.
@@ -872,6 +1075,12 @@ The design is implemented only when all of the following are true:
   https://arxiv.org/abs/1803.09010
 - Pushkarna et al., Data Cards:
   https://arxiv.org/abs/2204.01075
+- Krippendorff, Reliability of Recording Instructions: Multivariate Agreement for
+  Nominal Data:
+  https://doi.org/10.1002/bs.3830160305
+- Newcombe, Improved Confidence Intervals for the Difference Between Binomial
+  Proportions Based on Paired Data:
+  https://doi.org/10.1002/(SICI)1097-0258(19981130)17:22%3C2635::AID-SIM954%3E3.0.CO;2-C
 - NIST, AI Risk Management Framework 1.0:
   https://www.nist.gov/publications/artificial-intelligence-risk-management-framework-ai-rmf-10
 - NIST, Generative AI Profile:
