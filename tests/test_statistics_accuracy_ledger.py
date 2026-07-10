@@ -8,6 +8,7 @@ LITERATURE_MAP = Path("docs/qa/statistics-numerical-accuracy-literature.md")
 LOGISTIC_EVIDENCE = Path("docs/qa/logistic-regression-reference-evidence.md")
 LOGISTIC_REVIEW_BRIEF = Path("docs/qa/logistic-regression-external-review-brief.md")
 FACTORIAL_EVIDENCE = Path("docs/qa/factorial-anova-reference-evidence.md")
+FACTORIAL_REVIEW_BRIEF = Path("docs/qa/factorial-anova-external-review-brief.md")
 
 
 def test_statistics_accuracy_ledger_records_high_risk_module_coverage() -> None:
@@ -125,6 +126,32 @@ def test_factorial_reference_evidence_records_reproducible_claim_boundaries() ->
         "omega squared",
         "empty cells",
         "package-engine-smoke-ok",
+    ]
+    for term in required_terms:
+        assert term in text
+
+
+def test_factorial_external_review_brief_is_adversarial_and_reproducible() -> None:
+    text = FACTORIAL_REVIEW_BRIEF.read_text(encoding="utf-8")
+
+    required_terms = [
+        "ae700b96daab4bc35210f09092117e0d6197a6e0..9cf6bfe6ae8b9780797ff5e8c274d3eff6d05a13",
+        "61c81d79803cec6cb06188dc2c0311b40447d9d964c4825174957fd0c4854f7d",
+        "58172e6a18733be07388df056548daf3bff477fff3fd11399d732a0516f2db11",
+        "74c321240c57bb92f5de47adb014e3b468eb0349ce4679eccaf76046972b1116",
+        "874CE8AAAB203D84C9B3800354CB9B139968648019684C51911E8AD44C4F65AB",
+        "independently reimplement Section 6",
+        "high-offset",
+        "marginal means and SEs",
+        "condition-number gate",
+        "Holm family membership",
+        "interaction gate",
+        "typed-level collisions",
+        "reporting and UI routing",
+        "package evidence",
+        "double-rounding",
+        "required R anchor",
+        "Do not approve",
     ]
     for term in required_terms:
         assert term in text
