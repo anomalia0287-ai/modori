@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Replayable statistical analysis pipeline for Modori."
 requires-python = ">=3.11"
 dependencies = [
+    "defusedxml>=0.7",
     "factor_analyzer>=0.5",
     "matplotlib>=3.8",
     "openpyxl>=3.1",

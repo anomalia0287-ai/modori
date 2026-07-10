@@ -3,11 +3,13 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from defusedxml.common import DefusedXmlException
 from openpyxl import load_workbook
 
 from modori.recommendation_benchmark import BenchmarkContractError
 from modori.recommendation_benchmark_io import (
     PilotCaseSummary,
+    _normalize_core_properties,
     build_blank_pilot_workbooks,
     load_adjudication_workbook,
     load_reviewer_workbook,
@@ -15,6 +17,18 @@ from modori.recommendation_benchmark_io import (
     workbook_schema_fingerprint,
     write_jsonl,
 )
+
+
+def test_core_property_normalization_rejects_xml_entities() -> None:
+    malicious = b"""<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE coreProperties [<!ENTITY injected 'unsafe'>]>
+<coreProperties xmlns:dcterms='http://purl.org/dc/terms/'>
+  <dcterms:created>&injected;</dcterms:created>
+</coreProperties>
+"""
+
+    with pytest.raises(DefusedXmlException):
+        _normalize_core_properties(malicious)
 
 
 def test_jsonl_round_trip_is_canonical_and_accepts_utf8_bom(tmp_path: Path) -> None:

@@ -13,7 +13,6 @@ from modori.recommendation_benchmark import (
     LabelingRates,
     PredictionRecord,
     ScorerConfig,
-    canonical_json,
     project_labeling_cost,
     reviewer_agreement,
     score_predictions,
@@ -58,10 +57,7 @@ def _write_json_output(
     *,
     force: bool,
 ) -> None:
-    if path.exists() and not force:
-        raise BenchmarkContractError(f"output already exists: {path}")
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(canonical_json(payload) + "\n", encoding="utf-8", newline="\n")
+    write_jsonl(path, (payload,), overwrite=force)
 
 
 def _load_reviewers(args: argparse.Namespace, summaries: tuple[PilotCaseSummary, ...]):

@@ -5,13 +5,13 @@ import json
 import os
 import tempfile
 import zipfile
-import xml.etree.ElementTree as ET
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import TypeVar
 
+from defusedxml import ElementTree as ET
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.worksheet.datavalidation import DataValidation
@@ -102,13 +102,8 @@ _ROLE_COLUMNS = (
 _FIXED_WORKBOOK_DATETIME = datetime(2026, 7, 10, 0, 0, 0)
 _FIXED_ZIP_DATETIME = (2026, 7, 10, 0, 0, 0)
 _CORE_NAMESPACES = {
-    "cp": "http://schemas.openxmlformats.org/package/2006/metadata/core-properties",
-    "dc": "http://purl.org/dc/elements/1.1/",
     "dcterms": "http://purl.org/dc/terms/",
-    "xsi": "http://www.w3.org/2001/XMLSchema-instance",
 }
-for _prefix, _uri in _CORE_NAMESPACES.items():
-    ET.register_namespace(_prefix, _uri)
 
 
 def _nonempty_text(value: object, field_name: str) -> str:
@@ -559,20 +554,22 @@ def _save_reproducible_workbook(workbook: Workbook, path: Path) -> None:
                 target_info.create_version = source_info.create_version
                 data = source.read(source_info.filename)
                 if source_info.filename == "docProps/core.xml":
-                    root = ET.fromstring(data)
-                    fixed_timestamp = _FIXED_WORKBOOK_DATETIME.isoformat() + "Z"
-                    for tag_name in ("created", "modified"):
-                        element = root.find(
-                            f"{{{_CORE_NAMESPACES['dcterms']}}}{tag_name}"
-                        )
-                        if element is not None:
-                            element.text = fixed_timestamp
-                    data = ET.tostring(root, encoding="utf-8")
+                    data = _normalize_core_properties(data)
                 target.writestr(target_info, data)
         normalized_path.replace(path)
     finally:
         raw_path.unlink(missing_ok=True)
         normalized_path.unlink(missing_ok=True)
+
+
+def _normalize_core_properties(data: bytes) -> bytes:
+    root = ET.fromstring(data)
+    fixed_timestamp = _FIXED_WORKBOOK_DATETIME.isoformat() + "Z"
+    for tag_name in ("created", "modified"):
+        element = root.find(f"{{{_CORE_NAMESPACES['dcterms']}}}{tag_name}")
+        if element is not None:
+            element.text = fixed_timestamp
+    return ET.tostring(root, encoding="utf-8")
 
 
 def build_blank_pilot_workbooks(

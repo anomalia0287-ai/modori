@@ -5,6 +5,7 @@ from pathlib import Path
 
 
 AUDITED_FILE_OPERATION_FILES = {
+    "scripts/build_recommendation_pilot.py",
     "scripts/quality_gate.py",
     "scripts/package_engine_smoke.py",
     "scripts/package_launch_smoke.py",
@@ -16,6 +17,8 @@ AUDITED_FILE_OPERATION_FILES = {
     "src/modori/knowledge/loader.py",
     "src/modori/path_policy.py",
     "src/modori/public_data_smoke.py",
+    "src/modori/recommendation_baseline.py",
+    "src/modori/recommendation_benchmark_io.py",
     "src/modori/ui/chart_assets.py",
     "src/modori/steps/reporting.py",
     "src/modori/ui/worker.py",
