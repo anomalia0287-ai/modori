@@ -16,6 +16,7 @@ ResultKind = Literal[
     "frequency_crosstab",
     "correlation",
     "anova_oneway",
+    "anova_factorial",
     "kruskal_wallis",
     "ancova",
     "factor_pca",
@@ -86,6 +87,10 @@ def _title_for(kind: ResultKind, language: str) -> str:
         "frequency_crosstab": {"ko": "빈도/교차분석", "en": "Frequencies/crosstabs"},
         "correlation": {"ko": "상관분석", "en": "Correlation"},
         "anova_oneway": {"ko": "일원분산분석", "en": "One-way ANOVA"},
+        "anova_factorial": {
+            "ko": "이원 Type III 분산분석",
+            "en": "Two-factor Type III ANOVA",
+        },
         "kruskal_wallis": {"ko": "Kruskal-Wallis 검정", "en": "Kruskal-Wallis test"},
         "ancova": {"ko": "공분산분석", "en": "ANCOVA"},
         "factor_pca": {"ko": "요인/PCA", "en": "Factor/PCA"},

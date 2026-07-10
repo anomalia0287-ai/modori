@@ -100,6 +100,7 @@ class DisplayResult:
         "frequency_crosstab",
         "correlation",
         "anova_oneway",
+        "anova_factorial",
         "kruskal_wallis",
         "ancova",
         "factor_pca",

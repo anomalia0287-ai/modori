@@ -22,6 +22,7 @@ from modori.steps import (
     ModeratedMediationStep,
     MultipleRegressionStep,
     OneWayAnovaStep,
+    FactorialAnovaStep,
     BinaryLogisticRegressionStep,
     ReliabilityStep,
     ReportStep,
@@ -286,6 +287,8 @@ class PipelineOperations:
             return "correlation"
         if result_id.startswith("anova_oneway"):
             return "anova_oneway"
+        if result_id.startswith("anova_factorial"):
+            return "anova_factorial"
         if result_id.startswith("kruskal_wallis"):
             return "kruskal_wallis"
         if result_id.startswith("ancova"):
@@ -315,6 +318,7 @@ class PipelineOperations:
             "stats.frequency_crosstab",
             "stats.correlation",
             "stats.anova_oneway",
+            "stats.anova_factorial",
             "stats.kruskal_wallis",
             "stats.ancova",
             "stats.factor_pca",
@@ -453,6 +457,12 @@ class PipelineOperations:
                 title="One-way ANOVA",
                 params=dict(params),
             )
+        if step_type == "stats.anova_factorial":
+            return FactorialAnovaStep(
+                id=step_id,
+                title="Two-factor Type III ANOVA",
+                params=dict(params),
+            )
         if step_type == "stats.kruskal_wallis":
             return KruskalWallisStep(
                 id=step_id,
@@ -508,6 +518,7 @@ class PipelineOperations:
             "stats.frequency_crosstab",
             "stats.correlation",
             "stats.anova_oneway",
+            "stats.anova_factorial",
             "stats.kruskal_wallis",
             "stats.ancova",
             "stats.factor_pca",
@@ -611,6 +622,7 @@ class PipelineOperations:
             return bool(options.include_association)
         if (
             key.startswith("anova_oneway")
+            or key.startswith("anova_factorial")
             or key.startswith("kruskal_wallis")
             or key.startswith("ancova")
             or key.startswith("repeated_measures_anova")

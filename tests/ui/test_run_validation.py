@@ -1,20 +1,99 @@
 from __future__ import annotations
 
+import pandas as pd
 import pytest
 
+from modori.core import Dataset, Measure, Variable
 from modori.ui.run_validation import RunConfigurationValidator, RunValidationResult
 
 
 class PipelineOpsWithVariableKeysAttribute:
-    def __init__(self, steps: list[object], variable_keys: set[str]) -> None:
+    def __init__(
+        self,
+        steps: list[object],
+        variable_keys: set[str],
+        current_dataset: object | None = None,
+    ) -> None:
         self.steps = steps
         self.variable_keys = variable_keys
+        self.current_dataset = current_dataset
 
 
-def validate(steps: list[object], variable_keys: set[str]) -> RunValidationResult:
+def validate(
+    steps: list[object],
+    variable_keys: set[str],
+    current_dataset: object | None = None,
+) -> RunValidationResult:
     return RunConfigurationValidator().validate(
-        PipelineOpsWithVariableKeysAttribute(steps, variable_keys)
+        PipelineOpsWithVariableKeysAttribute(steps, variable_keys, current_dataset)
     )
+
+
+def _factorial_dataset(*, bool_factor: bool = False) -> Dataset:
+    rows: list[dict[str, object]] = []
+    levels_a: tuple[object, object] = (
+        (False, True) if bool_factor else ("control", "active")
+    )
+    for factor_a in levels_a:
+        for factor_b in (1, 2):
+            for offset in (-0.2, 0.0, 0.2):
+                rows.append(
+                    {
+                        "score": 1.0 + float(bool(factor_a)) + factor_b + offset,
+                        "factor_a": factor_a,
+                        "factor_b": factor_b,
+                    }
+                )
+    frame = pd.DataFrame(rows)
+    return Dataset(
+        df=frame,
+        variables={
+            "score": Variable(
+                name="score",
+                label="Score",
+                measure=Measure.SCALE,
+                value_labels={},
+                missing_values=[],
+                dtype=str(frame["score"].dtype),
+                origin_step_id="fixture",
+            ),
+            "factor_a": Variable(
+                name="factor_a",
+                label="Factor A",
+                measure=Measure.NOMINAL,
+                value_labels={},
+                missing_values=[1.0] if bool_factor else [],
+                dtype=str(frame["factor_a"].dtype),
+                origin_step_id="fixture",
+            ),
+            "factor_b": Variable(
+                name="factor_b",
+                label="Factor B",
+                measure=Measure.ORDINAL,
+                value_labels={1.0: "First", 2.0: "Second"},
+                missing_values=[],
+                dtype=str(frame["factor_b"].dtype),
+                origin_step_id="fixture",
+            ),
+        },
+    )
+
+
+def _factorial_params(*, levels_a: list[object] | None = None) -> dict[str, object]:
+    return {
+        "schema_version": 1,
+        "dv": "score",
+        "factor_a": "factor_a",
+        "factor_b": "factor_b",
+        "factor_a_levels": ["control", "active"] if levels_a is None else levels_a,
+        "factor_b_levels": [1, 2],
+        "factorial_policy": {
+            "sum_of_squares": "type_iii_equal_cell_weight",
+            "simple_effects": "interaction_gated_holm",
+            "alpha": 0.05,
+        },
+        "language": "ko",
+    }
 
 
 def assert_invalid(result: RunValidationResult, message_fragment: str) -> None:
@@ -194,6 +273,67 @@ def test_validator_rejects_ancova_duplicate_variables() -> None:
     )
 
     assert_invalid(result, "중복")
+
+
+def test_validator_accepts_factorial_schema_with_current_typed_levels() -> None:
+    dataset = _factorial_dataset()
+
+    result = validate(
+        [{"step_type": "stats.anova_factorial", "params": _factorial_params()}],
+        set(dataset.variables),
+        dataset,
+    )
+
+    assert result.ok is True
+
+
+def test_validator_rejects_stale_factorial_levels_before_worker_submission() -> None:
+    dataset = _factorial_dataset()
+
+    result = validate(
+        [
+            {
+                "step_type": "stats.anova_factorial",
+                "params": _factorial_params(levels_a=["control", "stale"]),
+            }
+        ],
+        set(dataset.variables),
+        dataset,
+    )
+
+    assert_invalid(result, "현재 데이터의 수준")
+
+
+def test_validator_uses_factorial_complete_cases_for_current_level_check() -> None:
+    dataset = _factorial_dataset()
+    frame = dataset.df.copy(deep=True)
+    frame.loc[frame["factor_a"] == "active", "score"] = float("nan")
+    changed = Dataset(df=frame, variables=dataset.variables)
+
+    result = validate(
+        [{"step_type": "stats.anova_factorial", "params": _factorial_params()}],
+        set(changed.variables),
+        changed,
+    )
+
+    assert_invalid(result, "현재 데이터의 수준")
+
+
+def test_validator_keeps_boolean_factor_distinct_from_numeric_missing_code() -> None:
+    dataset = _factorial_dataset(bool_factor=True)
+
+    result = validate(
+        [
+            {
+                "step_type": "stats.anova_factorial",
+                "params": _factorial_params(levels_a=[False, True]),
+            }
+        ],
+        set(dataset.variables),
+        dataset,
+    )
+
+    assert result.ok is True
 
 
 def test_validator_rejects_factor_pca_too_few_variables() -> None:

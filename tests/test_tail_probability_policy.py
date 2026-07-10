@@ -43,8 +43,20 @@ def test_logistic_source_uses_survival_tail_without_direct_matrix_inverse() -> N
 
 
 def test_factorial_anova_source_uses_survival_tail_without_direct_inverse() -> None:
-    source = Path("src/modori/factorial_anova_numerics.py").read_text(encoding="utf-8")
+    paths = (
+        Path("src/modori/factorial_anova_numerics.py"),
+        Path("src/modori/steps/anova_factorial.py"),
+    )
+    sources = [path.read_text(encoding="utf-8") for path in paths]
+    source = sources[0]
 
     assert "stats.f.sf(" in source
-    assert "linalg.inv(" not in source
-    assert ".I" not in source
+    for path, product_source in zip(paths, sources, strict=True):
+        lowered = product_source.lower()
+        assert ".cdf(" not in product_source
+        assert "linalg.inv(" not in product_source
+        assert "np.linalg.inv(" not in product_source
+        assert ".I" not in product_source
+        assert "statsmodels" not in lowered, path
+        assert "rpy2" not in lowered, path
+        assert "mpmath" not in lowered, path

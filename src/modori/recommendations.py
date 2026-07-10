@@ -20,6 +20,7 @@ RecommendationKind = Literal[
     "frequency_crosstab",
     "correlation",
     "anova_oneway",
+    "anova_factorial",
     "kruskal_wallis",
     "ancova",
     "factor_pca",
@@ -32,6 +33,9 @@ RecommendationLevel = Literal["강한 추천", "가능한 후보", "주의 필�
 
 _EMPTY_MESSAGE = "안전하게 추천할 분석을 찾지 못했습니다. 직접 변수를 선택해 주세요."
 _CAUTION_ONLY_MESSAGE = "주의가 필요한 후보만 찾았습니다. 직접 확인한 뒤 선택해 주세요."
+_CONFIGURATION_REQUIRED_MESSAGE = (
+    "설정 확인이 필요한 후보를 찾았습니다. 변수 역할을 직접 확인해 주세요."
+)
 
 
 @dataclass(frozen=True)
@@ -46,6 +50,8 @@ class RecommendationCandidate:
     outcome_key: str = ""
     group_key: str = ""
     predictor_keys: list[str] = field(default_factory=list)
+    factor_a_key: str = ""
+    factor_b_key: str = ""
     requires_configuration: bool = False
 
 
@@ -374,13 +380,14 @@ class RecommendationService:
             "frequency_crosstab": 5,
             "correlation": 6,
             "anova_oneway": 7,
-            "kruskal_wallis": 8,
-            "ancova": 9,
-            "factor_pca": 10,
-            "repeated_measures_anova": 11,
-            "friedman": 12,
-            "mediation": 13,
-            "moderated_mediation": 14,
+            "anova_factorial": 8,
+            "kruskal_wallis": 9,
+            "ancova": 10,
+            "factor_pca": 11,
+            "repeated_measures_anova": 12,
+            "friedman": 13,
+            "mediation": 14,
+            "moderated_mediation": 15,
         }
         return sorted(
             candidates,
@@ -408,5 +415,10 @@ class RecommendationService:
         if not candidates:
             return _EMPTY_MESSAGE
         if default is None:
+            if any(
+                candidate.requires_configuration and candidate.level != "주의 필요"
+                for candidate in candidates
+            ):
+                return _CONFIGURATION_REQUIRED_MESSAGE
             return _CAUTION_ONLY_MESSAGE
         return ""

@@ -476,6 +476,68 @@ _MODULE_SPECS["anova_oneway"] = AnalysisModuleSpec(
     ),
 )
 
+_MODULE_SPECS["anova_factorial"] = AnalysisModuleSpec(
+    key="anova_factorial",
+    label="Complete-cell two-factor Type III ANOVA",
+    status=AnalysisStatus.EXECUTABLE,
+    reason=(
+        "Supported by FactorialAnovaStep for two fixed between-subject factors "
+        "with complete cells and direct equal-cell-weight Type III hypotheses."
+    ),
+    step_type="stats.anova_factorial",
+    result_type="modori.factorial_anova_results.FactorialAnovaResult",
+    variable_roles=("dv", "factor_a", "factor_b"),
+    supported_measures={
+        "dv": ("scale",),
+        "factor_a": ("nominal", "ordinal"),
+        "factor_b": ("nominal", "ordinal"),
+    },
+    required_preprocessing=(
+        "explicit_outcome_and_factor_confirmation",
+        "listwise_deletion",
+        "complete_cell_check",
+    ),
+    unsupported_cases=(
+        "empty_cells",
+        "fewer_than_three_complete_rows_per_cell",
+        "more_than_six_levels_per_factor",
+        "weights",
+        "clusters_or_repeated_observations",
+        "covariates",
+        "random_or_mixed_effects",
+        "robust_covariance",
+        "non_scale_or_nonfinite_outcome",
+        "user_contrasts_or_alternative_sums_of_squares",
+        "pairwise_posthoc",
+    ),
+    reference_sources=(
+        "balanced corrected-sum formula oracle",
+        "base R lm contr.sum coefficient-block Wald anchors",
+        "statsmodels Sum-contrast Type III comparators",
+        "80-digit mpmath extreme-offset oracle",
+    ),
+    recommendation_policy=RecommendationPolicy.CANDIDATE,
+    release_evidence_required=True,
+    contract_tests=(
+        "tests/test_analysis_module_contract.py",
+        "tests/test_factorial_anova_numerics.py",
+        "tests/test_factorial_anova_results.py",
+        "tests/test_factorial_anova_step.py",
+        "tests/test_factorial_anova_references.py",
+        "tests/test_factorial_anova_reporting.py",
+        "tests/test_factorial_anova_recommendation.py",
+        "tests/test_knowledge_library.py",
+        "tests/ui/test_pipeline_ops.py",
+        "tests/ui/test_run_validation.py",
+        "tests/ui/test_result_binding.py",
+    ),
+    help_keys=(
+        "analysis.anova_factorial",
+        "type_iii_equal_cell_weight",
+        "interaction_gated_simple_effects",
+    ),
+)
+
 _MODULE_SPECS["kruskal_wallis"] = AnalysisModuleSpec(
     key="kruskal_wallis",
     label="Kruskal-Wallis test",

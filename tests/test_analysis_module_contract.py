@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 import importlib
+from pathlib import Path
 
 import pytest
 
@@ -59,6 +60,7 @@ def test_executable_module_specs_have_required_contract_fields(spec):
     assert spec.unsupported_cases
     assert spec.reference_sources
     assert spec.contract_tests
+    assert all(Path(path).is_file() for path in spec.contract_tests)
     assert spec.help_keys
     assert spec.step_type in core_model.registered_step_types()
 

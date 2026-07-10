@@ -2,9 +2,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pandas as pd
 import pytest
 
+from modori.core import Dataset, Measure, Pipeline, Variable
 from modori.results import ChartSpec, ReliabilityResult
+from modori.steps.anova_factorial import FactorialAnovaStep
 from modori.ui.chart_assets import ChartAssetResult
 from modori.ui.contracts import DisplayResult, ReportExportOptions
 from modori.ui.pipeline_ops import PipelineOperations
@@ -58,6 +61,74 @@ class FakePipeline:
 
     def recompute(self, dirty_from):
         self.recomputed = True
+
+
+def _factorial_dataset() -> Dataset:
+    rows: list[dict[str, object]] = []
+    for (condition, site), mean in (
+        (("control", 1), 1.0),
+        (("control", 2), 2.0),
+        (("active", 1), 3.0),
+        (("active", 2), 8.0),
+    ):
+        for offset in (-0.3, -0.1, 0.1, 0.3):
+            rows.append(
+                {
+                    "score": mean + offset,
+                    "condition": condition,
+                    "site": site,
+                }
+            )
+    frame = pd.DataFrame(rows)
+    return Dataset(
+        df=frame,
+        variables={
+            "score": Variable(
+                name="score",
+                label="Score",
+                measure=Measure.SCALE,
+                value_labels={},
+                missing_values=[],
+                dtype=str(frame["score"].dtype),
+                origin_step_id="fixture",
+            ),
+            "condition": Variable(
+                name="condition",
+                label="Condition",
+                measure=Measure.NOMINAL,
+                value_labels={},
+                missing_values=[],
+                dtype=str(frame["condition"].dtype),
+                origin_step_id="fixture",
+            ),
+            "site": Variable(
+                name="site",
+                label="Site",
+                measure=Measure.ORDINAL,
+                value_labels={1.0: "North", 2.0: "South"},
+                missing_values=[],
+                dtype=str(frame["site"].dtype),
+                origin_step_id="fixture",
+            ),
+        },
+    )
+
+
+def _factorial_params() -> dict[str, object]:
+    return {
+        "schema_version": 1,
+        "dv": "score",
+        "factor_a": "condition",
+        "factor_b": "site",
+        "factor_a_levels": ["control", "active"],
+        "factor_b_levels": [1, 2],
+        "factorial_policy": {
+            "sum_of_squares": "type_iii_equal_cell_weight",
+            "simple_effects": "interaction_gated_holm",
+            "alpha": 0.05,
+        },
+        "language": "ko",
+    }
 
 
 def _write_reference_slice_csv(path: Path) -> None:
@@ -153,6 +224,7 @@ def test_pipeline_operations_returns_display_results_by_known_analysis_kind(monk
     pipeline = FakePipeline()
     pipeline.analysis_objects = {
         "reliability:scale": object(),
+        "anova_factorial": object(),
         "anova_oneway": object(),
         "kruskal_wallis": object(),
         "ancova": object(),
@@ -183,11 +255,12 @@ def test_pipeline_operations_returns_display_results_by_known_analysis_kind(monk
 
     displays = PipelineOperations(pipeline).display_results()
 
-    assert len(displays) == 9
+    assert len(displays) == 10
     assert isinstance(displays[0], DisplayResult)
     assert displays[0].kind == "reliability"
     assert calls == [
         ("reliability:scale", "reliability"),
+        ("anova_factorial", "anova_factorial"),
         ("anova_oneway", "anova_oneway"),
         ("kruskal_wallis", "kruskal_wallis"),
         ("ancova", "ancova"),
@@ -339,6 +412,74 @@ def test_pipeline_operations_renders_all_logistic_chart_specs_for_display() -> N
     )
 
 
+def test_pipeline_operations_create_serialize_and_restore_factorial_analysis() -> None:
+    pipeline = Pipeline(_factorial_dataset())
+    ops = PipelineOperations(pipeline)
+
+    ops.replace_managed_analysis_steps(
+        step_id="anova_factorial",
+        step_type="stats.anova_factorial",
+        params=_factorial_params(),
+    )
+
+    assert [step.step_type for step in pipeline.steps] == [
+        "stats.anova_factorial",
+        "report.apa",
+    ]
+    assert isinstance(pipeline.steps[0], FactorialAnovaStep)
+    assert pipeline.steps[1].params["include"] == ["anova_factorial"]
+    restored = Pipeline.from_json(pipeline.to_json(), trust_project_file=True)
+    assert isinstance(restored.steps[0], FactorialAnovaStep)
+    assert restored.steps[0].params == _factorial_params()
+
+
+def test_pipeline_operations_factorial_result_key_is_public_step_id() -> None:
+    pipeline = Pipeline(_factorial_dataset())
+    pipeline.add(
+        FactorialAnovaStep(
+            id="anova_factorial",
+            title="Factorial ANOVA",
+            params=_factorial_params(),
+        )
+    )
+
+    pipeline.recompute(dirty_from=None)
+
+    assert pipeline.analysis_objects["anova_factorial"].analysis_key == (
+        "anova_factorial"
+    )
+    assert pipeline.analysis_objects["analysis:anova_factorial"] is (
+        pipeline.analysis_objects["anova_factorial"]
+    )
+
+
+def test_pipeline_operations_rolls_back_factorial_replacement_when_report_add_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pipeline = Pipeline(_factorial_dataset())
+    before_json = pipeline.to_json()
+    before_dataset = pipeline.current_dataset
+    original_add = pipeline.add
+
+    def fail_report_add(step: object) -> None:
+        if getattr(step, "step_type", "") == "report.apa":
+            raise RuntimeError("report add failed")
+        original_add(step)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(pipeline, "add", fail_report_add)
+
+    with pytest.raises(RuntimeError, match="report add failed"):
+        PipelineOperations(pipeline).replace_managed_analysis_steps(
+            step_id="anova_factorial",
+            step_type="stats.anova_factorial",
+            params=_factorial_params(),
+        )
+
+    assert pipeline.to_json() == before_json
+    assert pipeline.current_dataset is before_dataset
+    assert pipeline.analysis_objects == {}
+
+
 def test_pipeline_operations_export_report_requires_docx_path(tmp_path) -> None:
     pipeline = FakePipeline()
     pipeline.analysis_objects = {"report": object()}
@@ -438,6 +579,7 @@ def test_pipeline_operations_export_report_filters_all_analysis_families(tmp_pat
         "frequency_crosstab",
         "correlation",
         "anova_oneway",
+        "anova_factorial",
         "kruskal_wallis",
         "ancova",
         "factor_pca",
@@ -478,11 +620,23 @@ def test_pipeline_operations_export_report_filters_all_analysis_families(tmp_pat
     assert pipeline.edits[-1][1]["include"] == [
         "reliability:scale",
         "anova_oneway",
+        "anova_factorial",
         "kruskal_wallis",
         "ancova",
         "repeated_measures_anova",
         "friedman",
     ]
+
+
+def test_factorial_report_inclusion_follows_group_model_toggle() -> None:
+    assert PipelineOperations._include_key_enabled(
+        "anova_factorial",
+        ReportExportOptions(include_group_models=True),
+    )
+    assert not PipelineOperations._include_key_enabled(
+        "anova_factorial",
+        ReportExportOptions(include_group_models=False),
+    )
 
 
 def test_pipeline_operations_report_export_options_can_be_toggled_back_on(tmp_path) -> None:
