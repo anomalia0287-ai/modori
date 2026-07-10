@@ -249,7 +249,10 @@ np.max(np.abs(z.T @ (y - probabilities))) / max(1, n_obs) <= 1e-10
 
 - [ ] **Step 4: Restore original-scale inference**
 
-Transform parameters and covariance, then calculate normal-tail Wald inference with `stats.norm.sf`. Guard exponentiation with `np.log(np.finfo(float).max)`.
+Transform parameters and covariance, then calculate normal-tail Wald inference
+with `stats.norm.sf`. Guard exponentiation with
+`np.log(np.finfo(float).max)`. A nonrepresentable intercept OR becomes explicit
+`None` plus a warning; the same condition on any non-intercept term fails closed.
 
 - [ ] **Step 5: Assemble deterministic classification and calibration output**
 

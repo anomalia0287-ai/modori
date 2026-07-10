@@ -241,8 +241,11 @@ After fitting:
 2. Form the Fisher information `Z.T @ diag(p * (1-p)) @ Z`.
 3. Require full rank and a finite condition number no greater than `1e10`.
 4. Add a numerical-stability warning above `1e8`.
-5. Require all odds ratios and confidence limits to remain finite after safe
-   exponentiation.
+5. Require every non-intercept odds ratio and confidence limit to remain finite
+   after safe exponentiation. If only the restored intercept cannot be
+   exponentiated because the predictor origin is remote, retain its finite
+   log-odds coefficient/SE/CI, set its OR fields to undefined, and warn. An
+   unrepresentable non-intercept OR remains a hard failure.
 
 The `1e8` warning and `1e10` rejection limits are product safety policies, not
 mathematical existence theorems. Their values are pinned by near-separation and

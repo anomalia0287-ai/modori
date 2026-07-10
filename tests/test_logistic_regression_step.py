@@ -4,7 +4,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from modori.core import Dataset, Measure, Variable
+from modori.core import Dataset, Measure, Step, Variable
+from modori.core.model import step_class_for_type
 from modori.logistic_regression_results import (
     BinaryClassificationTable,
     CalibrationBin,
@@ -86,6 +87,23 @@ def test_logistic_schema_migrates_legacy_and_rejects_newer_or_unknown() -> None:
         BinaryLogisticRegressionStep.validate_params(
             {**_params(), "extra": "bad"}
         )
+
+
+def test_completed_logistic_step_is_registered_and_serializable() -> None:
+    assert step_class_for_type("stats.logistic_regression") is BinaryLogisticRegressionStep
+    restored = Step.from_dict(
+        {
+            "type": "stats.logistic_regression",
+            "id": "logit",
+            "title": "Binary logistic regression",
+            "params": _params(),
+            "input_step_ids": [],
+        }
+    )
+
+    assert isinstance(restored, BinaryLogisticRegressionStep)
+    assert restored.reads() == {"event", "x"}
+    assert restored.writes() == {"analysis:logit"}
 
 
 @pytest.mark.parametrize(

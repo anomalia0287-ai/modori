@@ -54,9 +54,9 @@ class LogisticCoefficientRow:
     wald_z: float
     wald_chi_square: float
     p_value: float
-    odds_ratio: float
+    odds_ratio: float | None
     ci: tuple[float, float]
-    odds_ratio_ci: tuple[float, float]
+    odds_ratio_ci: tuple[float, float] | None
     term_type: str = "term"
     source_variable: str | None = None
     level: str | None = None
@@ -71,25 +71,36 @@ class LogisticCoefficientRow:
         z_value = _finite(self.wald_z, "Logistic Wald z")
         chi_square = _finite(self.wald_chi_square, "Logistic Wald chi-square")
         p_value = _probability(self.p_value, "Logistic coefficient p-value")
-        odds_ratio = _finite(self.odds_ratio, "Logistic odds ratio")
         ci = _ordered_pair(self.ci, "Logistic coefficient CI")
-        odds_ratio_ci = _ordered_pair(
-            self.odds_ratio_ci,
-            "Logistic odds-ratio CI",
-            positive=True,
-        )
-        if se <= 0 or chi_square < 0 or odds_ratio <= 0:
-            raise ValueError("Logistic coefficient SE and odds ratio must be positive")
+        odds_ratio: float | None
+        odds_ratio_ci: tuple[float, float] | None
+        if self.odds_ratio is None or self.odds_ratio_ci is None:
+            if self.odds_ratio is not None or self.odds_ratio_ci is not None:
+                raise ValueError("Logistic odds ratio and CI must both be defined or undefined")
+            if self.term_type != "intercept":
+                raise ValueError("Only the logistic intercept may have an undefined odds ratio")
+            odds_ratio = None
+            odds_ratio_ci = None
+        else:
+            odds_ratio = _finite(self.odds_ratio, "Logistic odds ratio")
+            odds_ratio_ci = _ordered_pair(
+                self.odds_ratio_ci,
+                "Logistic odds-ratio CI",
+                positive=True,
+            )
+        if se <= 0 or chi_square < 0 or (odds_ratio is not None and odds_ratio <= 0):
+            raise ValueError("Logistic coefficient SE and defined odds ratio must be positive")
         if not math.isclose(chi_square, z_value * z_value, rel_tol=1e-10, abs_tol=1e-12):
             raise ValueError("Logistic Wald chi-square must equal z squared")
-        if not math.isclose(odds_ratio, math.exp(b), rel_tol=1e-10, abs_tol=1e-12):
-            raise ValueError("Logistic odds ratio must equal exp(b)")
-        expected_odds_ci = (math.exp(ci[0]), math.exp(ci[1]))
-        if not all(
-            math.isclose(actual, expected, rel_tol=1e-10, abs_tol=1e-12)
-            for actual, expected in zip(odds_ratio_ci, expected_odds_ci, strict=True)
-        ):
-            raise ValueError("Logistic odds-ratio CI must equal exp(coefficient CI)")
+        if odds_ratio is not None and odds_ratio_ci is not None:
+            if not math.isclose(odds_ratio, math.exp(b), rel_tol=1e-10, abs_tol=1e-12):
+                raise ValueError("Logistic odds ratio must equal exp(b)")
+            expected_odds_ci = (math.exp(ci[0]), math.exp(ci[1]))
+            if not all(
+                math.isclose(actual, expected, rel_tol=1e-10, abs_tol=1e-12)
+                for actual, expected in zip(odds_ratio_ci, expected_odds_ci, strict=True)
+            ):
+                raise ValueError("Logistic odds-ratio CI must equal exp(coefficient CI)")
         object.__setattr__(self, "b", b)
         object.__setattr__(self, "se", se)
         object.__setattr__(self, "wald_z", z_value)

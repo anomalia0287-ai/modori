@@ -14,6 +14,7 @@ from modori.steps.correlation import CorrelationStep
 from modori.steps.anova_oneway import OneWayAnovaStep
 from modori.steps.friedman import FriedmanStep
 from modori.steps.kruskal_wallis import KruskalWallisStep
+from modori.steps.logistic_regression import BinaryLogisticRegressionStep
 from modori.steps.mediation import MediationStep
 from modori.steps.moderated_mediation import ModeratedMediationStep
 from modori.steps.repeated_measures_anova import RepeatedMeasuresAnovaStep
@@ -38,6 +39,7 @@ __all__ = [
     "FactorPcaStep",
     "ImportStep",
     "KruskalWallisStep",
+    "BinaryLogisticRegressionStep",
     "MapValuesStep",
     "MediationStep",
     "ModeratedMediationStep",
