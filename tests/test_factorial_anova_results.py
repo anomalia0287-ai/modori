@@ -182,6 +182,7 @@ def _valid_result():
         x_label="Treatment",
         y_label="Score",
         data={
+            "factor_b_label": "Site",
             "factor_a": [
                 {"token": level.token, "label": level.label} for level in levels_a
             ],
@@ -527,6 +528,7 @@ def _offset_result(offset: float):
     chart = replace(
         result.chart_specs[0],
         data={
+            "factor_b_label": result.factor_b_label,
             "factor_a": [
                 {"token": level.token, "label": level.label}
                 for level in result.levels_a

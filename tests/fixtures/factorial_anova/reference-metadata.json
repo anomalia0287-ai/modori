@@ -36,11 +36,11 @@
     "mpmath_extreme_offset": "80-digit explicit rational A/B/interaction contrasts over exact str(float) product inputs"
   },
   "sources": {
-    "anova_factorial.py": "sha256:73e659b6746dee8ad8b65d39be1ae6bd7a91ca40c2bac70774ca9b89c44384c9",
+    "anova_factorial.py": "sha256:ab4a46f9131c1e69f3e8ee9fc7b5e31904166ed1b7a508b34f251b1769369861",
     "balanced-2x3.csv": "sha256:c57f6f690c433e5d4fb6d5eeb273ac51a5629b57024d579d4ddc8348fa2df9b1",
     "factorial_anova_numerics.py": "sha256:80974770a5501975688d27befc6feebf43f5ef77023ac0dcfd3e3e62245b92a9",
     "factorial_anova_reference.R": "sha256:54dba4ef06281f1fdcc1c076826dc7fac62f313de75caf4fb1230cf5a6d411db",
-    "factorial_anova_results.py": "sha256:4be232cacb09bb4d23e0d649dde1e433c5588677d9ad3bf769161e669a167081",
+    "factorial_anova_results.py": "sha256:3accfa13cca4cfe842169082f7a7ec7c1468f65ff3da93f5c40181fdd1e63dde",
     "moderate-offset-2x3.csv": "sha256:67f07b3eec3666ef76ac9e1647340fd95c9b1d29e34d70c936fd463b6096c950",
     "test_factorial_anova_references.py": "sha256:6549c406a770d7ba0ce23a45f784aa093c6881fffaa097eb718a14560db06c34",
     "unbalanced-2x3.csv": "sha256:fdd048aa5c08839a68c7b703f5306393b978239c1063bc81f10444fb7e4e755d"

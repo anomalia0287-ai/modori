@@ -1,0 +1,28 @@
+slug: type-iii-equal-cell-weight
+kind: concept
+title_ko: "동일 셀 가중 Type III 추정대상"
+title_en: "Equal-cell-weight Type III estimand"
+summary_ko: "다른 요인의 각 수준을 실제 셀 표본 수와 무관하게 동일 가중한 주변평균의 차이로 주효과를 정의하는 추정대상입니다."
+summary_en: "An estimand that defines a main effect through differences among marginal means formed with equal cell weights, regardless of observed cell sizes."
+interpretation_ko: "불균형 자료에서도 표본이 큰 셀이 주효과의 질문을 더 많이 지배하지 않도록, 완전 셀 구조에서 승인된 동일 가중 대비를 직접 검정합니다."
+interpretation_en: "In an unbalanced complete-cell design, it directly tests approved equal-weight contrasts so larger cells do not redefine the main-effect question."
+when_to_use_ko: null
+when_to_use_en: null
+how_to_report_ko: "실제 표본 수 가중 주변평균이 아니라 동일 셀 가중 주변평균을 검정했다는 점과 partial eta squared를 명시합니다."
+how_to_report_en: "State that the tests concern equal-cell-weight rather than sample-size-weighted marginal means, and report partial eta squared."
+pitfalls_ko: "세 Type III 제곱합은 전체 변동의 가산 분할이 아니므로 합을 전체의 비율처럼 해석하면 안 됩니다. 불균형 Type III에서 정의가 하나로 확정되지 않은 오메가 제곱은 보고하지 않습니다. 주변평균과 셀 평균의 95% 구간은 점별 구간이며 동시 구간이 아닙니다."
+pitfalls_en: "The three Type III sums of squares are not an additive partition of total variation. Omega squared is omitted because its unbalanced Type III estimand is not uniquely settled. Marginal and cell 95% intervals are pointwise, not simultaneous."
+assumptions: []
+alternatives: []
+related:
+  - anova-factorial
+  - partial-eta-squared
+  - confidence-interval
+references:
+  - citation: "SAS Institute. PROC GLM for Unbalanced ANOVA. SAS/STAT User's Guide."
+    locator: "PROC GLM: Unbalanced ANOVA"
+    verified: true
+  - citation: "R Core Team. Contrast Matrices. R stats documentation for contr.sum."
+    locator: "stats::contr.sum"
+    verified: true
+verification_status: needs_review

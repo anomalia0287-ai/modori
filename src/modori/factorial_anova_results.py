@@ -813,6 +813,7 @@ class FactorialAnovaResult:
             raise ValueError("Factorial chart metadata is inconsistent")
         b = len(levels_b)
         expected_data = {
+            "factor_b_label": self.factor_b_label,
             "factor_a": [
                 {"token": level.token, "label": level.label} for level in levels_a
             ],

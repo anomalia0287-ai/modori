@@ -278,6 +278,7 @@ class FactorialAnovaStep(Step):
             levels_a,
             levels_b,
             factor_a_label=factor_a_label,
+            factor_b_label=factor_b_label,
             dv_label=dv_label,
         )
         return FactorialAnovaResult(
@@ -730,6 +731,7 @@ def _interaction_chart(
     levels_b: tuple[FactorialLevel, ...],
     *,
     factor_a_label: str,
+    factor_b_label: str,
     dv_label: str,
 ) -> ChartSpec:
     b = len(levels_b)
@@ -739,6 +741,7 @@ def _interaction_chart(
         x_label=factor_a_label,
         y_label=dv_label,
         data={
+            "factor_b_label": factor_b_label,
             "factor_a": [
                 {"token": level.token, "label": level.label} for level in levels_a
             ],

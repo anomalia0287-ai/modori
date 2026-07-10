@@ -671,3 +671,98 @@ def test_logistic_help_entries_state_meaning_direction_and_limits() -> None:
     assert "동일 자료" in brier_ko
     assert "calibration" in brier_en.lower()
     assert "in-sample" in brier_en.lower()
+
+
+def test_factorial_help_entries_freeze_estimand_and_claim_limits() -> None:
+    library = load_library()
+
+    assert library.resolve_help_key("analysis.anova_factorial") == "anova-factorial"
+    assert (
+        library.resolve_help_key("type_iii_equal_cell_weight")
+        == "type-iii-equal-cell-weight"
+    )
+    assert (
+        library.resolve_help_key("interaction_gated_simple_effects")
+        == "interaction-gated-simple-effects"
+    )
+
+    method = library.get("anova-factorial")
+    method_ko = " ".join(
+        text
+        for text in (
+            method.summary_ko,
+            method.when_to_use_ko,
+            method.how_to_report_ko,
+            method.pitfalls_ko,
+        )
+        if text
+    )
+    method_en = " ".join(
+        text
+        for text in (
+            method.summary_en,
+            method.when_to_use_en,
+            method.how_to_report_en,
+            method.pitfalls_en,
+        )
+        if text
+    )
+    assert "완전 셀" in method_ko
+    assert "동일 가중" in method_ko
+    assert "빈 셀" in method_ko
+    assert "complete-cell" in method_en.lower()
+    assert "equal weight" in method_en.lower()
+    assert "empty cell" in method_en.lower()
+
+    estimand = library.get("type-iii-equal-cell-weight")
+    estimand_ko = " ".join(
+        text
+        for text in (
+            estimand.summary_ko,
+            estimand.interpretation_ko,
+            estimand.pitfalls_ko,
+        )
+        if text
+    )
+    estimand_en = " ".join(
+        text
+        for text in (
+            estimand.summary_en,
+            estimand.interpretation_en,
+            estimand.pitfalls_en,
+        )
+        if text
+    )
+    assert "가산" in estimand_ko
+    assert "오메가" in estimand_ko
+    assert "점별" in estimand_ko
+    assert "additive" in estimand_en.lower()
+    assert "omega" in estimand_en.lower()
+    assert "pointwise" in estimand_en.lower()
+    assert "simultaneous" in estimand_en.lower()
+
+    followups = library.get("interaction-gated-simple-effects")
+    followups_ko = " ".join(
+        text
+        for text in (
+            followups.summary_ko,
+            followups.interpretation_ko,
+            followups.pitfalls_ko,
+        )
+        if text
+    )
+    followups_en = " ".join(
+        text
+        for text in (
+            followups.summary_en,
+            followups.interpretation_en,
+            followups.pitfalls_en,
+        )
+        if text
+    )
+    assert "하나의 Holm 가족" in followups_ko
+    assert "검정력" in followups_ko
+    assert "전체" in followups_ko and "가족오류율" in followups_ko
+    assert "one Holm family" in followups_en
+    assert "power" in followups_en.lower()
+    assert "familywise" in followups_en.lower()

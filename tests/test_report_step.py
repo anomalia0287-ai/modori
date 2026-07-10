@@ -21,6 +21,7 @@ from modori.steps import (
     ReliabilityStep,
     ReportStep,
 )
+from modori.steps.anova_factorial import FactorialAnovaStep
 
 
 def report_dataset() -> Dataset:
@@ -101,6 +102,123 @@ def reliability_result_with_chart(chart_type: str) -> ReliabilityResult:
             y_label="y",
         ),
     )
+
+
+def factorial_report_dataset() -> Dataset:
+    rows: list[dict[str, object]] = []
+    for (treatment, site), mean in (
+        (("control", 1), 1.0),
+        (("control", 2), 2.0),
+        (("active", 1), 3.0),
+        (("active", 2), 8.0),
+    ):
+        for offset in (-0.3, -0.1, 0.1, 0.3):
+            rows.append(
+                {
+                    "score": mean + offset,
+                    "treatment": treatment,
+                    "site": site,
+                }
+            )
+    frame = pd.DataFrame(rows)
+    return Dataset(
+        df=frame,
+        variables={
+            "score": Variable(
+                name="score",
+                label="Score",
+                measure=Measure.SCALE,
+                value_labels={},
+                missing_values=[],
+                dtype=str(frame["score"].dtype),
+                origin_step_id="fixture",
+            ),
+            "treatment": Variable(
+                name="treatment",
+                label="Treatment",
+                measure=Measure.NOMINAL,
+                value_labels={},
+                missing_values=[],
+                dtype=str(frame["treatment"].dtype),
+                origin_step_id="fixture",
+            ),
+            "site": Variable(
+                name="site",
+                label="Site",
+                measure=Measure.ORDINAL,
+                value_labels={1.0: "North", 2.0: "South"},
+                missing_values=[],
+                dtype=str(frame["site"].dtype),
+                origin_step_id="fixture",
+            ),
+        },
+    )
+
+
+def test_report_step_exports_factorial_type_iii_table_plot_and_docx(
+    tmp_path: Path,
+) -> None:
+    pipeline = Pipeline(factorial_report_dataset())
+    pipeline.add(
+        FactorialAnovaStep(
+            id="factorial",
+            title="Factorial ANOVA",
+            params={
+                "schema_version": 1,
+                "dv": "score",
+                "factor_a": "treatment",
+                "factor_b": "site",
+                "factor_a_levels": ["control", "active"],
+                "factor_b_levels": [1, 2],
+                "factorial_policy": {
+                    "sum_of_squares": "type_iii_equal_cell_weight",
+                    "simple_effects": "interaction_gated_holm",
+                    "alpha": 0.05,
+                },
+                "language": "ko",
+            },
+        )
+    )
+    pipeline.add(
+        ReportStep(
+            id="factorial-report",
+            title="Factorial report",
+            params={
+                "include": ["factorial"],
+                "output_dir": str(tmp_path),
+                "filename": "factorial-report.docx",
+                "language": "ko",
+            },
+        )
+    )
+
+    pipeline.recompute(dirty_from=None)
+
+    report = pipeline.analysis_objects["factorial-report"]
+    assert isinstance(report, ReportResult)
+    assert "동일 셀 가중 Type III" in report.prose[0]
+    assert [row["section"] for row in report.tables["factorial"]][0] == "interaction"
+    assert "marginal_mean" in {
+        row["section"] for row in report.tables["factorial"]
+    }
+    figure_paths = [Path(path) for path in report.figure_paths["factorial"]]
+    assert sorted(path.suffix for path in figure_paths) == [".eps", ".png", ".svg"]
+    assert all(path.stat().st_size > 0 for path in figure_paths)
+
+    document = Document(report.docx_path)
+    assert len(document.inline_shapes) == 1
+    assert any(
+        "동일 셀 가중 Type III" in paragraph.text
+        for paragraph in document.paragraphs
+    )
+    table_cells = [
+        cell.text
+        for table in document.tables
+        for row in table.rows
+        for cell in row.cells
+    ]
+    assert "interaction" in table_cells
+    assert "marginal_mean" in table_cells
 
 
 def paired_report_dataset() -> Dataset:

@@ -4,7 +4,7 @@ import math
 import os
 import re
 import uuid
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -67,6 +67,11 @@ from modori.factor_pca_reporting import (
     prose_for_factor_pca,
 )
 from modori.factor_pca_results import FactorPcaResult
+from modori.factorial_anova_reporting import (
+    prose_for_factorial_anova,
+    table_for_factorial_anova,
+)
+from modori.factorial_anova_results import FactorialAnovaResult
 from modori.logistic_regression_reporting import (
     prose_for_logistic,
     table_for_logistic,
@@ -499,6 +504,8 @@ def prose_for(result: object, language: str = "ko") -> str:
         return prose_for_ancova(result, language=language)
     if isinstance(result, FactorPcaResult):
         return prose_for_factor_pca(result, language=language)
+    if isinstance(result, FactorialAnovaResult):
+        return prose_for_factorial_anova(result, language=language)
     if isinstance(result, LogisticRegressionResult):
         return prose_for_logistic(result, language=language)
     if isinstance(result, RegressionResult):
@@ -546,6 +553,9 @@ def table_for(result: object) -> list[dict[str, str]]:
             *component_table_for_factor_pca(result),
             *loading_table_for_factor_pca(result),
         ]
+
+    if isinstance(result, FactorialAnovaResult):
+        return table_for_factorial_anova(result)
 
     if isinstance(result, LogisticRegressionResult):
         return table_for_logistic(result)
@@ -829,6 +839,120 @@ def _render_paired_line_chart(spec: ChartSpec, output_path: str | Path) -> None:
     plt.close(fig)
 
 
+def _factorial_chart_sequence(value: object, label: str) -> list[object]:
+    if not isinstance(value, Iterable) or isinstance(value, (str, bytes, Mapping)):
+        raise ValueError(f"factorial_interaction {label} must be a sequence")
+    return list(value)
+
+
+def _factorial_chart_values(value: object, label: str) -> list[float]:
+    raw = _factorial_chart_sequence(value, label)
+    values: list[float] = []
+    for item in raw:
+        if isinstance(item, bool):
+            raise ValueError(f"factorial_interaction {label} must be finite numeric data")
+        try:
+            numeric = float(item)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                f"factorial_interaction {label} must be finite numeric data"
+            ) from exc
+        if not math.isfinite(numeric):
+            raise ValueError(f"factorial_interaction {label} must be finite numeric data")
+        values.append(numeric)
+    return values
+
+
+def _render_factorial_interaction(spec: ChartSpec, output_path: str | Path) -> None:
+    _configure_fonts()
+    if not isinstance(spec.data, Mapping):
+        raise ValueError("factorial_interaction data must be a mapping")
+    factor_a = _factorial_chart_sequence(spec.data.get("factor_a"), "factor_a")
+    series = _factorial_chart_sequence(spec.data.get("series"), "series")
+    factor_b_label = str(spec.data.get("factor_b_label", "")).strip()
+    if not factor_b_label:
+        raise ValueError("factorial_interaction requires a factor B label")
+    if not 2 <= len(factor_a) <= 6 or not 2 <= len(series) <= 6:
+        raise ValueError(
+            "factorial_interaction requires 2 through 6 levels for both factors"
+        )
+
+    x_labels: list[str] = []
+    x_tokens: list[str] = []
+    for level in factor_a:
+        if not isinstance(level, Mapping):
+            raise ValueError("factorial_interaction factor_a levels must be mappings")
+        token = str(level.get("token", "")).strip()
+        label = str(level.get("label", "")).strip()
+        if not token or not label:
+            raise ValueError(
+                "factorial_interaction factor_a levels require token and label"
+            )
+        x_tokens.append(token)
+        x_labels.append(label)
+    if len(set(x_tokens)) != len(x_tokens) or len(set(x_labels)) != len(x_labels):
+        raise ValueError("factorial_interaction factor_a levels must be unique")
+
+    validated: list[tuple[str, list[float], list[float], list[float]]] = []
+    series_tokens: list[str] = []
+    series_labels: list[str] = []
+    expected_length = len(factor_a)
+    for item in series:
+        if not isinstance(item, Mapping):
+            raise ValueError("factorial_interaction series entries must be mappings")
+        token = str(item.get("factor_b_token", "")).strip()
+        label = str(item.get("factor_b_label", "")).strip()
+        if not token or not label:
+            raise ValueError(
+                "factorial_interaction series require factor B token and label"
+            )
+        means = _factorial_chart_values(item.get("means"), "means")
+        lower = _factorial_chart_values(item.get("ci_low"), "ci_low")
+        upper = _factorial_chart_values(item.get("ci_high"), "ci_high")
+        if not (
+            len(means) == len(lower) == len(upper) == expected_length
+        ):
+            raise ValueError(
+                "factorial_interaction means and intervals must be aligned with factor A"
+            )
+        for index in range(expected_length):
+            if not lower[index] <= means[index] <= upper[index]:
+                raise ValueError(
+                    "factorial_interaction interval must contain its cell mean"
+                )
+        series_tokens.append(token)
+        series_labels.append(label)
+        validated.append((label, means, lower, upper))
+    if len(set(series_tokens)) != len(series_tokens) or len(set(series_labels)) != len(
+        series_labels
+    ):
+        raise ValueError("factorial_interaction factor B series must be unique")
+
+    fig, ax = plt.subplots(figsize=(7.2, 4.8), constrained_layout=True)
+    x_positions = list(range(expected_length))
+    for label, means, lower, upper in validated:
+        lower_error = [means[index] - lower[index] for index in x_positions]
+        upper_error = [upper[index] - means[index] for index in x_positions]
+        ax.errorbar(
+            x_positions,
+            means,
+            yerr=[lower_error, upper_error],
+            marker="o",
+            linewidth=2,
+            capsize=4,
+            label=label,
+        )
+    ax.set_xticks(x_positions)
+    ax.set_xticklabels(x_labels)
+    ax.set_xlim(-0.2, expected_length - 0.8)
+    ax.set_xlabel(spec.x_label)
+    ax.set_ylabel(spec.y_label)
+    ax.set_title(spec.title)
+    ax.legend(title=factor_b_label, frameon=False)
+    fig.savefig(output_path, dpi=300)
+    plt.close(fig)
+
+
 def _odds_ratio_ticks(lower: float, upper: float) -> tuple[list[float], list[str]]:
     if not 0.0 < lower < upper:
         raise ValueError("Odds-ratio tick bounds must be positive and ordered")
@@ -990,6 +1114,10 @@ def render_chart(
     if spec.type == "calibration_plot":
         return _render_single_or_bundle(
             spec, output_path, key, _render_calibration_plot
+        )
+    if spec.type == "factorial_interaction":
+        return _render_single_or_bundle(
+            spec, output_path, key, _render_factorial_interaction
         )
     raise ValueError(f"Unsupported chart type: {spec.type}")
 
