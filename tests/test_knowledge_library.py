@@ -585,3 +585,89 @@ def test_engine_vocabulary_fully_covered() -> None:
     library = load_library()
 
     assert validate_coverage(ENGINE_VOCABULARY, HELP_KEYS, library).ok
+
+
+def test_logistic_help_entries_state_meaning_direction_and_limits() -> None:
+    library = load_library()
+
+    assert library.resolve_help_key("odds_ratio") == "odds-ratio"
+    assert (
+        library.resolve_help_key("model_likelihood_ratio")
+        == "model-likelihood-ratio"
+    )
+    assert library.resolve_help_key("brier_score") == "brier-score"
+
+    odds_ratio = library.get("odds-ratio")
+    odds_ko = " ".join(
+        text
+        for text in (
+            odds_ratio.summary_ko,
+            odds_ratio.interpretation_ko,
+            odds_ratio.pitfalls_ko,
+        )
+        if text
+    )
+    odds_en = " ".join(
+        text
+        for text in (
+            odds_ratio.summary_en,
+            odds_ratio.interpretation_en,
+            odds_ratio.pitfalls_en,
+        )
+        if text
+    )
+    assert "사건" in odds_ko
+    assert "기준범주" in odds_ko
+    assert "인과" in odds_ko
+    assert "event" in odds_en.lower()
+    assert "reference" in odds_en.lower()
+    assert "caus" in odds_en.lower()
+
+    likelihood_ratio = library.get("model-likelihood-ratio")
+    likelihood_ko = " ".join(
+        text
+        for text in (
+            likelihood_ratio.summary_ko,
+            likelihood_ratio.interpretation_ko,
+            likelihood_ratio.pitfalls_ko,
+        )
+        if text
+    )
+    likelihood_en = " ".join(
+        text
+        for text in (
+            likelihood_ratio.summary_en,
+            likelihood_ratio.interpretation_en,
+            likelihood_ratio.pitfalls_en,
+        )
+        if text
+    )
+    assert "절편만" in likelihood_ko
+    assert "적합" in likelihood_ko
+    assert "intercept-only" in likelihood_en.lower()
+    assert "fit" in likelihood_en.lower()
+
+    brier = library.get("brier-score")
+    brier_ko = " ".join(
+        text
+        for text in (
+            brier.summary_ko,
+            brier.interpretation_ko,
+            brier.pitfalls_ko,
+        )
+        if text
+    )
+    brier_en = " ".join(
+        text
+        for text in (
+            brier.summary_en,
+            brier.interpretation_en,
+            brier.pitfalls_en,
+        )
+        if text
+    )
+    assert "0" in brier_ko
+    assert "보정" in brier_ko
+    assert "동일 자료" in brier_ko
+    assert "calibration" in brier_en.lower()
+    assert "in-sample" in brier_en.lower()

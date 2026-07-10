@@ -2,7 +2,7 @@
 
 Status: working closure map for `release/readiness-1-9`.
 
-Last updated: 2026-07-09 KST.
+Last updated: 2026-07-10 KST.
 
 This matrix defines what Modori must prove before calculation reliability can
 be described as product-ready. A passing smoke test is not enough. A module is
@@ -29,6 +29,7 @@ rejected by fail-closed policy, or documented as outside product scope.
 | Tail probability underflow | Extreme F, t, chi-square, studentized range p-values. | Survival-function policy locks and extreme-tail fixtures. |
 | Resampling adequacy | Mediation and moderated-mediation bootstrap CIs. | Coverage simulation or controlled-index independent references; iteration floors are policy gates, not adequacy proof. |
 | Dependency convergence | FactorAnalyzer, KMO/Bartlett, robust covariance helpers. | Runtime/user warnings promoted to fail-closed errors where estimates are unsafe. |
+| Finite logistic MLE existence | Complete or quasi-complete separation, sparse categorical cells. | Independent LP existence gate, ambiguous-solver fail-closed behavior, and overlapping controls. |
 | Presentation drift | Tables, prose, report export, UI bindings. | Report/prose tests that compare rendered meaning to raw result objects. |
 
 ## Current Closure State
@@ -39,6 +40,7 @@ rejected by fail-closed policy, or documented as outside product scope.
 | ANOVA family | One-way ANOVA, RM-ANOVA, and ANCOVA have centered SS/OLS paths and large-offset audits; NIST `AtmWtAg` is covered through the compare-groups Student `t^2 = F` identity; Tukey/Games-Howell posthoc tails have direct studentized-range fixtures; unbalanced one-way ANOVA has a large-offset 50-digit Decimal oracle fixture. | Decide two-treatment ANOVA policy for `anova_oneway`; add broader posthoc edge fixtures only if product scope expands. |
 | Compare groups t-family | Welch and Student t paths use centered common-offset inputs for test statistics; NIST `AtmWtAg` anchors Student t against certified `F = t^2`; Welch has a large-offset formula-oracle fixture. | Add broader two-group fixtures only if product scope expands. |
 | Regression OLS | NIST Longley/Wampler fixtures, condition-number gates, perfect-fit fail-closed, outcome-offset audit, complete-case parity, and HC3 robust-covariance parity are in place. | Add broader regression diagnostics only if product scope expands. |
+| Binary logistic regression | Ordinary continuous, complete-case, and categorical fits are anchored to R base `glm`; coefficients, final-probability Fisher SEs, fitted values, likelihood/deviance/AIC, and LR tests meet the recorded `1e-10` ceiling. An 80-digit mpmath Newton/Fisher oracle independently anchors coefficients, SEs, probabilities, and log likelihood at `1e-11`. LP separation, rank, condition, final-score, large-offset, event/reference coding, OR range, calibration ties, warning translation, and report-chart paths are tested. | Same-sample classification, AUC, Brier, and calibration remain descriptive rather than adequacy evidence. External validation, Firth/penalized estimation, weights, clusters, repeated observations, and interactions require separate scope and validation before any claim expansion. |
 | Mediation/moderated mediation | SVD-backed OLS covariance, condition gates, bootstrap iteration policy, deterministic CI reproduction for Model 7/14, complete-case/no-covariate parity fixtures, slow known-effect coverage smoke for simple mediation and the Model 7/14 moderated-mediation indexes, and R `lm()` controlled-index percentile-CI anchors are in place. | Add broader coverage designs only if scope expands. |
 | Rank-based nonparametric tests | Method details, tie policies, exact/asymptotic selection, small-sample warnings, and R base anchors for Mann-Whitney, Wilcoxon p-values, Kruskal-Wallis, and Friedman are recorded in tests. Mann-Whitney uses exact p-values for untied `min(n) <= 25`; untied `26-49` can intentionally differ from R's wider exact default. | Add SPSS/JASP anchors only if external review requires those specific engines; public claims must say R/NIST/formula anchored, not SPSS-equivalent. |
 | Factor/PCA | Singular, near-singular, non-convergent, and invalid Heywood-like factor estimates now fail closed; parallel analysis defaults to 1000 iterations and warns below 1000; R `psych` KMO/Bartlett and base-R PCA eigen/loadings anchors are in place. | Add EFA cross-engine anchors only if EFA claim scope expands beyond current factor-analyzer parity plus fail-closed policy. |

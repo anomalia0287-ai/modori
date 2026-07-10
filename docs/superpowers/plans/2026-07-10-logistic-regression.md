@@ -345,7 +345,7 @@ git commit -m "test: anchor logistic regression to R"
 - Create: `library/entries/brier-score.yaml`
 - Modify: `src/modori/knowledge/registry.py`
 - Modify: `docs/qa/statistics-accuracy-ledger.md`
-- Modify: `docs/qa/statistics-closure-matrix.md`
+- Modify: `docs/qa/statistics-accuracy-closure-matrix.md`
 
 **Interfaces:**
 - Produces Korean-first report prose and tables with English parity.
@@ -370,7 +370,7 @@ Record library parity, R anchored parity, high-precision oracle, separation fixt
 - [ ] **Step 5: Run report and knowledge gates and commit**
 
 ```powershell
-git add src/modori/logistic_regression_reporting.py src/modori/steps/reporting.py tests/test_logistic_regression_reporting.py library/entries src/modori/knowledge/registry.py docs/qa/statistics-accuracy-ledger.md docs/qa/statistics-closure-matrix.md
+git add src/modori/logistic_regression_reporting.py src/modori/steps/reporting.py tests/test_logistic_regression_reporting.py library/entries src/modori/knowledge/registry.py docs/qa/statistics-accuracy-ledger.md docs/qa/statistics-accuracy-closure-matrix.md
 git commit -m "feat: report logistic regression evidence"
 ```
 
@@ -519,7 +519,7 @@ git commit -m "feat: add logistic regression product flow"
 - Modify: `tests/test_v1_statistics_smoke.py`
 - Modify: `scripts/package_engine_smoke.py`
 - Modify: `docs/qa/statistics-accuracy-ledger.md`
-- Modify: `docs/qa/statistics-closure-matrix.md`
+- Modify: `docs/qa/statistics-accuracy-closure-matrix.md`
 - Create: `docs/qa/logistic-regression-reference-evidence.md`
 
 **Interfaces:**

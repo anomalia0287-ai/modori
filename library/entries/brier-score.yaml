@@ -1,0 +1,25 @@
+slug: brier-score
+kind: statistic
+title_ko: "Brier 점수"
+title_en: "Brier score"
+summary_ko: "각 사건의 예측확률과 실제 0/1 결과 차이를 제곱해 평균한 확률예측의 전체 오차 지표예요."
+summary_en: "An overall probability-error measure: the mean squared difference between predicted event probabilities and observed 0/1 outcomes."
+interpretation_ko: "이진 결과에서는 0이 완벽한 값이며 낮을수록 예측확률의 전체 오차가 작습니다. 값은 사건 비율과 평가 표본에도 의존하므로 비교 기준을 함께 봐야 합니다."
+interpretation_en: "For a binary outcome, 0 is perfect and lower values indicate less overall probability error. The value also depends on event prevalence and the evaluation sample, so it needs a comparison benchmark."
+when_to_use_ko: null
+when_to_use_en: null
+how_to_report_ko: "Brier 점수와 함께 동일 자료 산출인지 외부 검증 자료 산출인지, 사건 코딩, 비교 기준을 밝힙니다."
+how_to_report_en: "Report the Brier score with the event coding, comparison benchmark, and whether it was computed in-sample or on external validation data."
+pitfalls_ko: "Brier 점수는 보정과 판별을 함께 반영하는 전체 지표이지 순수 보정 지표가 아닙니다. 동일 자료의 낮은 값만으로 외부 예측 성능이나 타당성을 입증할 수 없습니다."
+pitfalls_en: "The Brier score combines calibration and discrimination; it is not a pure calibration measure. A low in-sample value alone does not establish external predictive performance or validity."
+assumptions: []
+alternatives: []
+related: []
+references:
+  - citation: "Brier, G. W. (1950). Verification of forecasts expressed in terms of probability. Monthly Weather Review, 78(1), 1-3."
+    locator: "https://doi.org/10.1175/1520-0493(1950)078%3C0001:VOFEIT%3E2.0.CO;2"
+    verified: true
+  - citation: "Riley, R. D., et al. (2024). Developing clinical prediction models: a step-by-step guide. BMJ, 386, e078276."
+    locator: "https://doi.org/10.1136/bmj-2023-078276"
+    verified: true
+verification_status: verified

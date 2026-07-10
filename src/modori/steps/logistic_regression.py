@@ -23,10 +23,12 @@ from modori.logistic_numerics import (
     restore_logistic_parameters,
 )
 from modori.logistic_regression_results import (
+    LOGISTIC_CLASSIFICATION_METRIC_LABELS,
     BinaryClassificationTable,
     CalibrationBin,
     LogisticCoefficientRow,
     LogisticRegressionResult,
+    render_logistic_warning,
 )
 from modori.regression_design import (
     CategoricalEncoding,
@@ -337,7 +339,7 @@ class BinaryLogisticRegressionStep(Step):
             np.min(probabilities * (1.0 - probabilities)),
             "minimum fitted weight",
         )
-        result_warnings = _result_warnings(
+        result_warning_codes, result_warnings = _result_warnings(
             prepared,
             classification=classification,
             coefficients=coefficients,
@@ -350,6 +352,7 @@ class BinaryLogisticRegressionStep(Step):
             probabilities,
             coefficients,
             calibration,
+            language=prepared.language,
         )
         iterations = int(getattr(fitted, "fit_history", {}).get("iteration", -1))
         if iterations < 0:
@@ -401,6 +404,7 @@ class BinaryLogisticRegressionStep(Step):
                     for name, encoding in prepared.categorical_encodings.items()
                 },
             },
+            warning_codes=result_warning_codes,
             warnings=result_warnings,
             apa_template_id="logistic_regression.v1",
             chart_specs=chart_specs,
@@ -818,22 +822,28 @@ def _result_warnings(
     information_condition: float,
     minimum_weight: float,
     effective_calibration_bins: int,
-) -> tuple[str, ...]:
-    if prepared.language == "en":
-        messages = [
-            "Classification and calibration are in-sample descriptive summaries; they do not establish validated predictive accuracy."
-        ]
-    else:
-        messages = [
-            "분류와 보정 지표는 동일 자료에서 계산된 기술적 요약이며 외부 예측 정확도를 입증하지 않습니다."
-        ]
+) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    codes: list[str] = []
+    messages: list[str] = []
+
+    def add(code: str, *, detail: str | None = None) -> None:
+        codes.append(code)
+        messages.append(
+            render_logistic_warning(
+                code,
+                prepared.language,
+                detail=detail,
+            )
+        )
+
+    add("same_sample_metrics")
     if min(prepared.event_count, prepared.non_event_count) < 20:
-        messages.append("사건 또는 비사건이 20건 미만이므로 점근 추론이 불안정할 수 있습니다.")
+        add("small_outcome_class")
     parameter_count = len(prepared.term_names) - 1
     if min(prepared.event_count, prepared.non_event_count) / parameter_count < 10:
-        messages.append("더 작은 결과 범주의 비절편 모수당 관측 수가 10 미만입니다.")
+        add("low_events_per_parameter")
     if prepared.n_total and prepared.n_dropped / prepared.n_total > 0.05:
-        messages.append("결측값의 목록별 제거로 전체 행의 5%를 초과해 제외했습니다.")
+        add("high_missing_fraction")
     undefined_metrics = [
         name
         for name in (
@@ -845,27 +855,24 @@ def _result_warnings(
         if getattr(classification, name) is None
     ]
     if undefined_metrics:
-        messages.append(
-            "선택한 분류 임계값에서 일부 분류 지표의 분모가 0이므로 정의되지 않습니다: "
-            + ", ".join(undefined_metrics)
+        labels = LOGISTIC_CLASSIFICATION_METRIC_LABELS[prepared.language]
+        add(
+            "undefined_classification_metrics",
+            detail=", ".join(labels[name] for name in undefined_metrics),
         )
     if information_condition > LOGISTIC_INFORMATION_WARNING_CONDITION_NUMBER:
-        messages.append("로지스틱 정보행렬의 조건수가 높아 추론이 수치적으로 민감합니다.")
+        add("high_information_condition")
     if minimum_weight < 1e-8:
-        messages.append("일부 적합확률이 0 또는 1에 매우 가까워 추론이 민감할 수 있습니다.")
+        add("extreme_fitted_probabilities")
     if prepared.preconditioned.offset_ratio > 1e8:
-        messages.append(
-            "예측변수의 큰 오프셋 때문에 원척도 절편은 소거에 민감한 외삽값입니다; 확률 계산은 안정화된 경로를 사용했습니다."
-        )
+        add("large_predictor_offset")
     if any(row.term_type == "intercept" and row.odds_ratio is None for row in coefficients):
-        messages.append(
-            "원척도 절편의 승산비는 부동소수점 범위를 벗어나 정의하지 않았습니다."
-        )
+        add("intercept_odds_ratio_undefined")
     if effective_calibration_bins < 3:
-        messages.append("서로 다른 적합확률이 부족해 보정 구간 표와 그림을 생략했습니다.")
+        add("calibration_suppressed")
     elif effective_calibration_bins < 5:
-        messages.append("유효 보정 구간이 5개 미만이므로 보정 요약이 거칩니다.")
-    return tuple(messages)
+        add("calibration_sparse")
+    return tuple(codes), tuple(messages)
 
 
 def _chart_specs(
@@ -873,11 +880,14 @@ def _chart_specs(
     probabilities: np.ndarray,
     coefficients: tuple[LogisticCoefficientRow, ...],
     calibration: tuple[CalibrationBin, ...],
+    *,
+    language: str,
 ) -> tuple[ChartSpec, ...]:
+    korean = language != "en"
     charts = [
         ChartSpec(
             type="odds_ratio_forest",
-            title="Odds ratios",
+            title="승산비" if korean else "Odds ratios",
             data={
                 "rows": [
                     {
@@ -890,15 +900,15 @@ def _chart_specs(
                     if row.term_type != "intercept"
                 ]
             },
-            x_label="Odds ratio",
-            y_label="Predictor",
+            x_label="승산비" if korean else "Odds ratio",
+            y_label="예측변수" if korean else "Predictor",
         )
     ]
     false_positive_rate, true_positive_rate, _ = roc_curve(y, probabilities)
     charts.append(
         ChartSpec(
             type="roc_curve",
-            title="In-sample ROC curve",
+            title="표본 내 ROC 곡선" if korean else "In-sample ROC curve",
             data={
                 "rows": [
                     {"false_positive_rate": float(fpr), "true_positive_rate": float(tpr)}
@@ -909,18 +919,22 @@ def _chart_specs(
                     )
                 ]
             },
-            x_label="False positive rate",
-            y_label="True positive rate",
+            x_label="위양성률" if korean else "False positive rate",
+            y_label="진양성률" if korean else "True positive rate",
         )
     )
     if calibration:
         charts.append(
             ChartSpec(
                 type="calibration_plot",
-                title="In-sample descriptive calibration",
+                title=(
+                    "표본 내 기술적 보정"
+                    if korean
+                    else "In-sample descriptive calibration"
+                ),
                 data={"rows": [asdict(row) for row in calibration]},
-                x_label="Mean fitted probability",
-                y_label="Observed event rate",
+                x_label="평균 적합확률" if korean else "Mean fitted probability",
+                y_label="관측 사건 비율" if korean else "Observed event rate",
             )
         )
     return tuple(charts)

@@ -7,6 +7,84 @@ from typing import Any
 from modori.results import ChartSpec
 
 
+LOGISTIC_WARNING_TEXTS: dict[str, dict[str, str]] = {
+    "same_sample_metrics": {
+        "ko": "분류와 보정 지표는 동일 자료에서 계산한 기술적 요약이며 외부 예측 성능을 입증하지 않습니다.",
+        "en": "Classification and calibration are in-sample descriptive summaries and do not establish out-of-sample predictive performance.",
+    },
+    "small_outcome_class": {
+        "ko": "사건 또는 비사건이 20건 미만이므로 점근 추론이 불안정할 수 있습니다.",
+        "en": "The event or non-event class has fewer than 20 observations, so asymptotic inference may be unstable.",
+    },
+    "low_events_per_parameter": {
+        "ko": "더 작은 결과 범주의 비절편 모수당 관측 수가 10 미만입니다.",
+        "en": "The smaller outcome class has fewer than 10 observations per non-intercept parameter.",
+    },
+    "high_missing_fraction": {
+        "ko": "결측값의 목록별 제거로 전체 행의 5%를 초과해 제외했습니다.",
+        "en": "Listwise deletion excluded more than 5% of all rows.",
+    },
+    "undefined_classification_metrics": {
+        "ko": "선택한 분류 임계값에서 일부 분류 지표의 분모가 0이므로 정의되지 않습니다.",
+        "en": "One or more classification metrics are undefined at the selected threshold because their denominator is zero.",
+    },
+    "high_information_condition": {
+        "ko": "로지스틱 정보행렬의 조건수가 높아 추론이 수치적으로 민감합니다.",
+        "en": "The logistic information matrix has a high condition number, so inference is numerically sensitive.",
+    },
+    "extreme_fitted_probabilities": {
+        "ko": "일부 적합확률이 0 또는 1에 매우 가까워 추론이 민감할 수 있습니다.",
+        "en": "Some fitted probabilities are very close to zero or one, so inference may be sensitive.",
+    },
+    "large_predictor_offset": {
+        "ko": "예측변수의 큰 오프셋 때문에 원척도 절편은 소거에 민감한 외삽값입니다. 확률 계산은 안정화된 경로를 사용했습니다.",
+        "en": "A large predictor offset makes the original-scale intercept a cancellation-sensitive extrapolation. Probability calculations used the stabilized path.",
+    },
+    "intercept_odds_ratio_undefined": {
+        "ko": "원척도 절편의 승산비는 부동소수점 범위를 벗어나 정의하지 않았습니다.",
+        "en": "The original-scale intercept odds ratio is undefined because it exceeds the floating-point range.",
+    },
+    "calibration_suppressed": {
+        "ko": "서로 다른 적합확률이 부족해 보정 구간 표와 그림을 생략했습니다.",
+        "en": "The calibration table and plot were omitted because there were too few distinct fitted probabilities.",
+    },
+    "calibration_sparse": {
+        "ko": "유효 보정 구간이 5개 미만이므로 보정 요약이 거칩니다.",
+        "en": "The calibration summary is coarse because fewer than five effective bins were available.",
+    },
+}
+LOGISTIC_WARNING_CODES = frozenset(LOGISTIC_WARNING_TEXTS)
+LOGISTIC_CLASSIFICATION_METRIC_LABELS: dict[str, dict[str, str]] = {
+    "ko": {
+        "sensitivity": "민감도",
+        "specificity": "특이도",
+        "positive_predictive_value": "양성예측도",
+        "negative_predictive_value": "음성예측도",
+    },
+    "en": {
+        "sensitivity": "sensitivity",
+        "specificity": "specificity",
+        "positive_predictive_value": "positive predictive value",
+        "negative_predictive_value": "negative predictive value",
+    },
+}
+
+
+def render_logistic_warning(
+    code: str,
+    language: str,
+    *,
+    detail: str | None = None,
+) -> str:
+    if code not in LOGISTIC_WARNING_TEXTS:
+        raise ValueError(f"Unknown logistic warning code: {code}")
+    language_base = str(language).lower().split("-")[0]
+    if language_base not in {"ko", "en"}:
+        raise ValueError("Logistic warning language must be Korean or English")
+    message = LOGISTIC_WARNING_TEXTS[code][language_base]
+    return f"{message.rstrip('.')}: {detail}" if detail else message
+
+
 def _finite(value: float, label: str) -> float:
     result = float(value)
     if not math.isfinite(result):
@@ -240,6 +318,7 @@ class LogisticRegressionResult:
     brier_score: float
     calibration_bins: tuple[CalibrationBin, ...]
     diagnostics: dict[str, Any]
+    warning_codes: tuple[str, ...]
     warnings: tuple[str, ...]
     apa_template_id: str
     chart_specs: tuple[ChartSpec, ...] = field(default_factory=tuple)
@@ -265,6 +344,17 @@ class LogisticRegressionResult:
             raise ValueError("Logistic classification event counts are inconsistent")
         if not self.coefficients:
             raise ValueError("Logistic result requires coefficient rows")
+        if len(self.warning_codes) != len(self.warnings):
+            raise ValueError("Logistic warning codes and rendered warnings must align")
+        if len(set(self.warning_codes)) != len(self.warning_codes):
+            raise ValueError("Logistic warning codes must be unique")
+        unknown_warning_codes = set(self.warning_codes) - LOGISTIC_WARNING_CODES
+        if unknown_warning_codes:
+            raise ValueError(
+                f"Unknown logistic warning codes: {sorted(unknown_warning_codes)}"
+            )
+        if not all(isinstance(message, str) and message for message in self.warnings):
+            raise ValueError("Logistic rendered warnings must be non-empty strings")
         for field_name in (
             "log_likelihood",
             "null_log_likelihood",

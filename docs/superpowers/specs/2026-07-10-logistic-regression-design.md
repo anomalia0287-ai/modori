@@ -127,7 +127,8 @@ Create a dedicated `logistic_regression_results.py` module with immutable DTOs:
   - row counts and class counts
   - model fit statistics and coefficient rows
   - classification and calibration values
-  - diagnostics, warnings, chart specs, and report template ID
+  - diagnostics, stable warning codes plus rendered warning text, chart specs,
+    and report template ID
 
 Metrics with a zero denominator are `None`, never zero. Their undefined status is
 also disclosed in warnings and reporting.
@@ -324,6 +325,12 @@ Required report sections:
 4. Threshold and classification table.
 5. Brier score, ROC AUC, and descriptive calibration table/plot when available.
 6. Every warning and unsupported-design boundary.
+
+Warning codes are language-neutral result data. Korean and English report text is
+rendered from the same complete warning registry; user-supplied value labels are
+preserved rather than translated. The report path renders every logistic chart
+spec (odds-ratio forest, ROC, and calibration when available), not only a legacy
+single `chart_spec` field.
 
 The prose uses association language. It may say that an odds ratio is above or
 below one for the selected event, but not that a predictor causes the event.
