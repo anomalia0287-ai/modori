@@ -67,6 +67,27 @@ Use in Modori:
   scaled operational path. Direct large-offset R fitting is not treated as an
   accuracy oracle because its original-scale design is cancellation-sensitive.
 
+## `factorial_anova/*.csv`
+
+Deterministic synthetic complete-cell 2-by-3 factorial ANOVA fixtures.
+
+Use in Modori:
+
+- `balanced-2x3.csv` has six rows per cell and is checked against independent
+  corrected two-way sums, base R, and statsmodels Sum-contrast Type III.
+- `unbalanced-2x3.csv` fixes A-major/B-fast cell counts at
+  `(5, 11, 7, 13, 4, 9)` and anchors the equal-cell-weight estimand.
+- `moderate-offset-2x3.csv` is the same unbalanced data plus `100`; its
+  location-to-pooled-SD ratio remains at or below the frozen comparator limit.
+- Every outcome and residual is a multiple of `0.125`, so adding `1e12` does
+  not change the float-delivered within-cell distinctions. The derived extreme
+  fixture is compared only with an explicit-rational 80-digit mpmath oracle.
+- R uses base `lm`, `contr.sum`, and coefficient-block Wald forms. It does not
+  call a Type III convenience package.
+- `reference-metadata.json` pins source hashes, runtime versions, achieved
+  differences, tolerance ceilings, and the boundary that R/statsmodels are
+  implementation comparators rather than extreme-offset truth sources.
+
 ## `nist/*.csv`
 
 Source: NIST/ITL Statistical Reference Datasets, linear least-squares

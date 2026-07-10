@@ -1,0 +1,87 @@
+{
+  "schema_version": 1,
+  "levels": {
+    "factor_a": [
+      "control",
+      "active"
+    ],
+    "factor_b": [
+      "north",
+      "central",
+      "south"
+    ]
+  },
+  "fixtures": {
+    "balanced-2x3.csv": {
+      "rows": 36,
+      "cell_counts_a_major_b_fast": [6, 6, 6, 6, 6, 6],
+      "purpose": "balanced corrected-sum, base-R, and statsmodels anchor"
+    },
+    "unbalanced-2x3.csv": {
+      "rows": 49,
+      "cell_counts_a_major_b_fast": [5, 11, 7, 13, 4, 9],
+      "purpose": "complete-cell unbalanced base-R and statsmodels anchor"
+    },
+    "moderate-offset-2x3.csv": {
+      "rows": 49,
+      "cell_counts_a_major_b_fast": [5, 11, 7, 13, 4, 9],
+      "outcome_offset": 100.0,
+      "purpose": "moderate-offset base-R and statsmodels implementation comparator"
+    }
+  },
+  "methods": {
+    "balanced_formula": "50-digit Decimal corrected two-way sums computed independently in the test",
+    "base_r": "lm with contr.sum and coefficient-block Wald forms; no Type III convenience package",
+    "statsmodels": "ols with explicit Sum contrasts and anova_lm typ=3",
+    "mpmath_extreme_offset": "80-digit explicit rational A/B/interaction contrasts over exact str(float) product inputs"
+  },
+  "sources": {
+    "anova_factorial.py": "sha256:73e659b6746dee8ad8b65d39be1ae6bd7a91ca40c2bac70774ca9b89c44384c9",
+    "balanced-2x3.csv": "sha256:c57f6f690c433e5d4fb6d5eeb273ac51a5629b57024d579d4ddc8348fa2df9b1",
+    "factorial_anova_numerics.py": "sha256:80974770a5501975688d27befc6feebf43f5ef77023ac0dcfd3e3e62245b92a9",
+    "factorial_anova_reference.R": "sha256:54dba4ef06281f1fdcc1c076826dc7fac62f313de75caf4fb1230cf5a6d411db",
+    "factorial_anova_results.py": "sha256:4be232cacb09bb4d23e0d649dde1e433c5588677d9ad3bf769161e669a167081",
+    "moderate-offset-2x3.csv": "sha256:67f07b3eec3666ef76ac9e1647340fd95c9b1d29e34d70c936fd463b6096c950",
+    "test_factorial_anova_references.py": "sha256:6549c406a770d7ba0ce23a45f784aa093c6881fffaa097eb718a14560db06c34",
+    "unbalanced-2x3.csv": "sha256:fdd048aa5c08839a68c7b703f5306393b978239c1063bc81f10444fb7e4e755d"
+  },
+  "versions": {
+    "python": "3.12.10",
+    "numpy": "2.5.0",
+    "pandas": "3.0.3",
+    "scipy": "1.18.0",
+    "statsmodels": "0.14.6",
+    "mpmath": "1.4.1",
+    "r": "R version 4.5.3 (2026-03-11 ucrt)"
+  },
+  "tolerances": {
+    "r_and_statsmodels": 1e-10,
+    "mpmath_extreme_offset": 1e-11
+  },
+  "achieved_differences": {
+    "balanced_formula": {
+      "max_absolute": 8.526512829121202e-14,
+      "max_relative": 6.2719297316714655e-15
+    },
+    "base_r": {
+      "max_absolute": 7.389644451905042e-13,
+      "max_relative": 5.4500555398515164e-14
+    },
+    "mpmath_extreme_offset": {
+      "max_absolute": 2.1563983074442204e-14,
+      "max_relative": 1.7732481641199713e-15
+    },
+    "statsmodels": {
+      "max_absolute": 4.320099833421409e-12,
+      "max_relative": 2.8313077911565584e-13
+    }
+  },
+  "claims": {
+    "extreme_offset_truth_source": "mpmath_80_digit_only",
+    "r_statsmodels_offset_ratio_max": 1000,
+    "skipped_reference_tests_are_evidence": false,
+    "type_iii_estimand": "equal_cell_weight_complete_cells",
+    "extreme_offset_input_rule": "exact_str_of_float_delivered_to_product",
+    "parser_precision_proven": false
+  }
+}
