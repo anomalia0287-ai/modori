@@ -570,7 +570,7 @@ git commit -m "test: close logistic regression reliability"
 **Files:**
 - Modify only files required by actionable review findings.
 
-- [ ] **Step 1: Prepare a critical external-review brief**
+- [x] **Step 1: Prepare a critical external-review brief**
 
 Ask the reviewer to attack separation detection, coefficient/covariance restoration,
 event coding, pseudo-R2 formulas, calibration wording, R parity tolerances, and
@@ -581,7 +581,7 @@ catalog/UI promotion gates. Include the exact commit range and test commands.
 Do not accept or reject findings by authority. Reproduce each issue, add a failing
 test first, implement one correction, and rerun focused plus full gates.
 
-- [ ] **Step 3: Audit the design exit criteria requirement by requirement**
+- [x] **Step 3: Audit the design exit criteria requirement by requirement**
 
 Record direct evidence for every item in section 15 of the design. Missing or
 indirect evidence means the module remains open.
