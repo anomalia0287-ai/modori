@@ -110,7 +110,7 @@ git commit -m "refactor: extract regression design matrix"
 
 ```python
 def test_preconditioning_restores_original_logits_and_covariance():
-    x = np.column_stack([np.ones(8), 1e12 + np.arange(8), [0, 1] * 4])
+    x = np.column_stack([np.ones(8), 10.0 + np.arange(8), [0, 1] * 4])
     prepared = precondition_logistic_design(x)
     gamma = np.array([0.2, -0.7, 0.4])
     covariance = np.diag([0.03, 0.02, 0.01])
@@ -118,6 +118,10 @@ def test_preconditioning_restores_original_logits_and_covariance():
     assert prepared.scaled @ gamma == pytest.approx(x @ beta, abs=1e-12)
     assert restored == pytest.approx(prepared.transform @ covariance @ prepared.transform.T)
 ```
+
+Add a separate `1e12` offset test that compares the scaled-path fitted logits and
+probabilities before and after the shift. Do not demand an impossible absolute
+`1e-12` recombination through the restored, cancellation-sensitive intercept.
 
 - [ ] **Step 2: Write failing separation fixtures**
 

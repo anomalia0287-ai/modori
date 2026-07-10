@@ -169,7 +169,17 @@ V_beta = A V_gamma A^T
 
 where `A[0,0]=1`, `A[0,j]=-mean_j/scale_j`, and `A[j,j]=1/scale_j`.
 Predicted logits from `X beta` and `Z gamma` must agree within absolute `1e-12` on
-reference fixtures.
+ordinary-scale reference fixtures. Operational fitted logits, probabilities,
+classification, likelihood, and calibration are always computed from `Z gamma`,
+not by recombining restored coefficients with `X`.
+
+For large offsets such as `1e12` with unit-scale variation, the restored intercept
+and a subsequent `X beta` calculation are representation-limited by cancellation.
+That fixture instead requires shift-invariant slopes, odds ratios, fitted
+probabilities, likelihood, and covariance under a scale-aware tolerance. The result
+warns when `max(abs(mean_j / scale_j)) > 1e8` that the reported intercept is an
+origin extrapolation with limited floating-point resolution. This warning does not
+weaken slope or fitted-probability evidence computed on `Z`.
 
 ## 6. Separation Detection
 
@@ -264,6 +274,9 @@ Warnings:
 - more than 5% listwise deletion;
 - any class probability metric undefined at the selected threshold;
 - extreme fitted weights or information condition number above `1e8`.
+- `max(abs(mean_j / scale_j)) > 1e8`, because the restored original-scale
+  intercept is cancellation-sensitive even though scaled-path predictions remain
+  stable.
 
 The observations-per-parameter warnings are disclosed heuristics, not a statement
 that crossing a single threshold proves adequate sample size.
