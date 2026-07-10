@@ -95,6 +95,9 @@ class RecommendationService:
         from modori.anova_oneway_recommendation import (
             eligibility_provider as anova_oneway_provider,
         )
+        from modori.anova_factorial_recommendation import (
+            eligibility_provider as anova_factorial_provider,
+        )
         from modori.kruskal_wallis_recommendation import (
             eligibility_provider as kruskal_wallis_provider,
         )
@@ -126,6 +129,7 @@ class RecommendationService:
             frequency_crosstab_provider(),
             correlation_provider(),
             anova_oneway_provider(),
+            anova_factorial_provider(),
             kruskal_wallis_provider(),
             ancova_provider(),
             factor_pca_provider(),

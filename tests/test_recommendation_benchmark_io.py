@@ -153,6 +153,22 @@ def test_blank_workbooks_have_korean_instructions_stable_schema_and_no_answers(
         None,
     ]
     recommendations = workbook["Recommendations"]
+    assert [cell.value for cell in recommendations[1]] == [
+        "case_id",
+        "evidence_stage",
+        "rank",
+        "family",
+        "design_mode",
+        "outcome",
+        "group",
+        "factor_a",
+        "factor_b",
+        "predictors",
+        "items",
+        "variables",
+        "covariates",
+        "measures",
+    ]
     assert recommendations.max_row == 7
     assert [recommendations.cell(row=row, column=1).value for row in range(2, 8)] == [
         "case-1",
@@ -173,7 +189,7 @@ def test_blank_workbooks_have_korean_instructions_stable_schema_and_no_answers(
     assert all(
         recommendations.cell(row=row, column=column).value is None
         for row in range(2, 8)
-        for column in range(4, 13)
+        for column in range(4, 15)
     )
     clarifications = workbook["Clarifications"]
     assert clarifications.max_row == 7
@@ -214,6 +230,14 @@ def test_completed_reviewer_workbook_loads_strict_annotation_contract(
         start=4,
     ):
         recommendations.cell(row=2, column=column).value = value
+    for column, value in {
+        4: "anova_factorial",
+        5: "complete_cell_type_iii",
+        6: "score",
+        8: "condition",
+        9: "site",
+    }.items():
+        recommendations.cell(row=3, column=column).value = value
     workbook["Abstentions"].cell(row=3, column=3).value = "unsupported_design"
     workbook.save(reviewer_a)
 
@@ -226,6 +250,14 @@ def test_completed_reviewer_workbook_loads_strict_annotation_contract(
     assert recommendation.family == "compare_groups"
     assert dict(recommendation.roles) == {
         "group": ("arm",),
+        "outcome": ("score",),
+    }
+    factorial = submission.annotations[0].acceptable_recommendations[1]
+    assert factorial.family == "anova_factorial"
+    assert factorial.design_mode == "complete_cell_type_iii"
+    assert dict(factorial.roles) == {
+        "factor_a": ("condition",),
+        "factor_b": ("site",),
         "outcome": ("score",),
     }
     assert submission.annotations[1].acceptable_abstention_reasons == (

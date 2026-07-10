@@ -32,8 +32,11 @@ def test_annotation_guide_freezes_actions_vocabularies_and_error_costs() -> None
         assert term in text
     assert "리뷰어에게 제공하지 않는다" in text
     assert "`logistic_regression`과 `anova_factorial`은 WS3 예약 코드다" not in text
-    assert "`anova_factorial`은 WS3 예약 코드" in text
+    assert "`anova_factorial`은 WS3 예약 코드" not in text
     assert "`logistic_regression` | `main_effects`" in text
+    assert "`anova_factorial` | `complete_cell_type_iii`" in text
+    assert "`factor_a`" in text
+    assert "`factor_b`" in text
 
 
 def test_pilot_runbook_is_korean_first_and_documents_human_handoff() -> None:

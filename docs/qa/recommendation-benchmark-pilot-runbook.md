@@ -158,7 +158,7 @@ project management 비용을 각각 보존한다. 합계만 남기지 않는다.
 금라벨이 완료된 뒤 점수 계산:
 
 ```powershell
-.\.venv\Scripts\python.exe scripts\recommendation_benchmark.py score --pack-root tests\fixtures\recommendation_benchmark --adjudication C:\Pilot\adjudication.xlsx --predictions tests\fixtures\recommendation_benchmark\public\pilot\baseline-a-predictions.jsonl --scorer-fingerprint sha256:fdcc4d70890d0ab588d538fb9b687f692075087be9e7fa4cdc5ce00ccd40b3d3 --output .tmp\recommendation-score-a.json
+.\.venv\Scripts\python.exe scripts\recommendation_benchmark.py score --pack-root tests\fixtures\recommendation_benchmark --adjudication C:\Pilot\adjudication.xlsx --predictions tests\fixtures\recommendation_benchmark\public\pilot\baseline-a-predictions.jsonl --scorer-fingerprint sha256:1d232ac88bc705b8c31735aa6e997d253a388a478c9337d146f6798d50f33aac --output .tmp\recommendation-score-a.json
 ```
 
 출력 파일이 이미 있으면 명령은 실패한다. 의도적으로 교체할 때만 `--force`를
@@ -192,3 +192,12 @@ family별 strong 근거를 분리하며, strong 출력이 없는 family는
 `baseline-a-metadata.json`은 새 제공자와 변경된 카탈로그·정렬 소스를 포함하도록
 source fingerprint만 갱신됐다. 이 무변동 기록은 회귀 방지 증거이지 추천 정확도
 증거가 아니다. 금라벨 20건이 아직 없으므로 정확도 점수는 계속 산출할 수 없다.
+
+같은 날 complete-cell 이원 Type III 분산분석 후보를 기본 추천 서비스에
+설정 확인 전용으로 등록하고, 워크북 `Recommendations` 시트에 순서 있는
+`factor_a`, `factor_b` 답안 열을 추가했다. 재생성 전후 20건의 primary action과
+저장된 Top-3는 바이트 단위로 동일했으며 prediction checksum은 계속
+`sha256:fc5d3e9032d086225b0c7c62f4e3145217ba44f8fddf73cb10e4f5eadd485650`이다.
+세 워크북은 두 빈 답안 열만 추가됐고 구조 식별 열과 순위는 유지됐다.
+갱신된 baseline source fingerprint는
+`sha256:6b3cfeca40aee592cfc8005fa28a85256d3392145e368de06d489dcfc758f6de`다.

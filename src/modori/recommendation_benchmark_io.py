@@ -74,6 +74,8 @@ _HEADERS = {
         "design_mode",
         "outcome",
         "group",
+        "factor_a",
+        "factor_b",
         "predictors",
         "items",
         "variables",
@@ -93,6 +95,8 @@ _HEADERS = {
 _ROLE_COLUMNS = (
     "outcome",
     "group",
+    "factor_a",
+    "factor_b",
     "predictors",
     "items",
     "variables",
@@ -528,6 +532,8 @@ def _build_workbook(
             "J": 30,
             "K": 30,
             "L": 30,
+            "M": 30,
+            "N": 30,
         },
     )
     _set_widths(workbook["Clarifications"], {"A": 24, "B": 18, "C": 36})
@@ -890,8 +896,13 @@ def _recommendation_rows(
     expected: Mapping[tuple[str, str], PilotCaseSummary],
 ) -> dict[tuple[str, str], tuple[RecommendationIdentity, ...]]:
     ranked: dict[tuple[str, str], list[tuple[int, RecommendationIdentity]]] = {}
+    role_start = 5
+    role_end = role_start + len(_ROLE_COLUMNS)
     for row in _nonempty_rows(workbook["Recommendations"]):
-        if not any(value is not None and str(value).strip() for value in row[3:12]):
+        if not any(
+            value is not None and str(value).strip()
+            for value in row[3:role_end]
+        ):
             continue
         key = _case_key_from_row(row, "Recommendations")
         if key not in expected:
@@ -903,7 +914,11 @@ def _recommendation_rows(
             )
         roles = tuple(
             (name, values)
-            for name, raw in zip(_ROLE_COLUMNS, row[5:12], strict=True)
+            for name, raw in zip(
+                _ROLE_COLUMNS,
+                row[role_start:role_end],
+                strict=True,
+            )
             if (values := _split_values(raw))
         )
         recommendation = RecommendationIdentity(

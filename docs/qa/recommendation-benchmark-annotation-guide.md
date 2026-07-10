@@ -45,6 +45,7 @@ family만 맞고 결과·집단·예측 변수 또는 독립/대응 모드가 �
 - `frequency_crosstab`
 - `correlation`
 - `anova_oneway`
+- `anova_factorial`
 - `kruskal_wallis`
 - `ancova`
 - `factor_pca`
@@ -58,9 +59,11 @@ family만 맞고 결과·집단·예측 변수 또는 독립/대응 모드가 �
 비가중 독립행 main-effects 이항 모형만 허용한다. 분리 자료, 가중치, 군집,
 반복관측, 상호작용, penalized/Firth 모형은 이 family로 기록하지 않는다.
 
-`anova_factorial`은 WS3 예약 코드다. 구현과 reference validation이 완료되기
-전에는 이번 파일럿에서 허용 추천으로 기록하지 않는다. 그 분석만이 타당하면
-현재 단계에서는 `abstention_required / unsupported_design`으로 기록한다.
+`anova_factorial`은 두 개의 고정된 집단간 요인, 요인별 2~6수준, 모든 조합
+셀이 존재하고 셀당 완전사례가 3개 이상인 현재 V1 범위만 허용한다. 동일 셀
+가중 Type III 추정대상을 사용하며 가중치, 군집, 반복관측, 공변량, 빈 셀,
+대체 제곱합은 이 family로 기록하지 않는다. 제품 추천은 항상 설정 확인이
+필요한 후보이며 기본 추천이나 자동 실행으로 기록하지 않는다.
 
 ### role 열
 
@@ -70,6 +73,8 @@ family만 맞고 결과·집단·예측 변수 또는 독립/대응 모드가 �
 | --- | --- | --- |
 | `outcome` | 결과 변수 | 보통 1개 |
 | `group` | 집단 변수 | 보통 1개 |
+| `factor_a` | 첫 번째 고정 요인 | 정확히 1개 |
+| `factor_b` | 두 번째 고정 요인 | 정확히 1개 |
 | `predictors` | 예측 변수 | 세미콜론으로 구분 |
 | `items` | 하나의 척도를 이루는 문항 | 세미콜론으로 구분 |
 | `variables` | 기술·상관·요인 분석 대상 | 세미콜론으로 구분 |
@@ -91,6 +96,7 @@ family만 맞고 결과·집단·예측 변수 또는 독립/대응 모드가 �
 | `frequency_crosstab` | `frequency`, `crosstab` |
 | `correlation` | `bivariate` |
 | `anova_oneway` | `independent_oneway` |
+| `anova_factorial` | `complete_cell_type_iii` |
 | `kruskal_wallis` | `independent_rank` |
 | `ancova` | `main_effects` |
 | `factor_pca` | `exploratory` |

@@ -23,6 +23,7 @@ _FAMILY_BY_KIND = {
     "frequency_crosstab": "frequency_crosstab",
     "correlation": "correlation",
     "anova_oneway": "anova_oneway",
+    "anova_factorial": "anova_factorial",
     "kruskal_wallis": "kruskal_wallis",
     "ancova": "ancova",
     "factor_pca": "factor_pca",
@@ -40,6 +41,7 @@ _DESIGN_MODE_BY_KIND = {
     "frequency_crosstab": "categorical",
     "correlation": "bivariate",
     "anova_oneway": "independent_oneway",
+    "anova_factorial": "complete_cell_type_iii",
     "kruskal_wallis": "independent_rank",
     "ancova": "main_effects",
     "factor_pca": "exploratory",
@@ -90,6 +92,10 @@ def candidate_identity(candidate: RecommendationCandidate) -> RecommendationIden
         roles.append(("outcome", (candidate.outcome_key,)))
     if candidate.group_key:
         roles.append(("group", (candidate.group_key,)))
+    if candidate.factor_a_key:
+        roles.append(("factor_a", (candidate.factor_a_key,)))
+    if candidate.factor_b_key:
+        roles.append(("factor_b", (candidate.factor_b_key,)))
     if candidate.predictor_keys:
         roles.append(("predictors", tuple(candidate.predictor_keys)))
     if candidate.item_keys:

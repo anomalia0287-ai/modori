@@ -244,6 +244,28 @@ def test_controller_configures_factorial_without_running_it() -> None:
     assert controller.stale is True
 
 
+def test_factorial_recommendation_prepares_roles_but_cannot_apply_directly() -> None:
+    pipeline = Pipeline(_factorial_dataset())
+    controller = UiController(pipeline=pipeline)
+    controller._refresh_recommendations()
+    index = next(
+        index
+        for index, candidate in enumerate(controller._recommendation_state.candidates)
+        if candidate.kind == "anova_factorial"
+    )
+
+    assert controller.selectRecommendationAt(index) is True
+    result = controller.applySelectedRecommendation()
+
+    assert controller.preparedOutcomeKey == "score"
+    assert controller.preparedFactorAKey == "condition"
+    assert controller.preparedFactorBKey == "site"
+    assert result.ok is False
+    assert result.error_code == "recommendation_configuration_required"
+    assert pipeline.steps == []
+    assert controller.pipeline_version == 0
+
+
 def test_factorial_qml_paths_use_three_value_backed_selectors() -> None:
     guide = Path("src/modori/ui/qml/components/GuideRail.qml").read_text(
         encoding="utf-8"

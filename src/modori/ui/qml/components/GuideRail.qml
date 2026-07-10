@@ -70,6 +70,15 @@ Rectangle {
         return labels.join(", ")
     }
 
+    function factorialIndexForKey(rows, key) {
+        for (var index = 0; index < rows.length; index += 1) {
+            if (String(rows[index].key) === String(key)) {
+                return index
+            }
+        }
+        return -1
+    }
+
     function refreshFactorialVariableRows() {
         root.factorialOutcomeRows = uiController.factorialVariableOptions("outcome")
         root.factorialFactorRows = uiController.factorialVariableOptions("factor")
@@ -279,14 +288,34 @@ Rectangle {
                     enabled: root.canEditSelection
                     Layout.fillWidth: true
                     onClicked: {
-                        if (uiController.selectRecommendationAt(index)
-                                && uiController.recommendationCandidateRequiresConfigurationAt(index)
-                                && uiController.recommendationCandidateKindAt(index) === "logistic_regression") {
+                        if (!uiController.selectRecommendationAt(index)
+                                || !uiController.recommendationCandidateRequiresConfigurationAt(index)) {
+                            return
+                        }
+                        var candidateKind = uiController.recommendationCandidateKindAt(index)
+                        if (candidateKind === "logistic_regression") {
                             root.manualSelectionMode = true
                             root.selectedIntent = "logistic_regression"
                             outcomeKeyField.text = uiController.preparedOutcomeKey
                             predictorKeysField.text = uiController.preparedPredictorKeys
                             logisticEventCombo.currentIndex = -1
+                            root.showOtherRecommendations = false
+                            return
+                        }
+                        if (candidateKind === "anova_factorial") {
+                            root.beginFactorialSelection()
+                            factorialOutcomeCombo.currentIndex = root.factorialIndexForKey(
+                                root.factorialOutcomeRows,
+                                uiController.preparedOutcomeKey
+                            )
+                            factorialFactorACombo.currentIndex = root.factorialIndexForKey(
+                                root.factorialFactorRows,
+                                uiController.preparedFactorAKey
+                            )
+                            factorialFactorBCombo.currentIndex = root.factorialIndexForKey(
+                                root.factorialFactorRows,
+                                uiController.preparedFactorBKey
+                            )
                             root.showOtherRecommendations = false
                         }
                     }

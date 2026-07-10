@@ -254,3 +254,17 @@ def test_factorial_candidate_is_never_default_and_has_configuration_message() ->
     assert state.default_candidate is None
     assert state.selected_candidate is None
     assert "설정 확인" in state.message_ko
+
+
+def test_default_recommendation_service_registers_factorial_after_oneway() -> None:
+    service = RecommendationService()
+
+    module_keys = [provider.module_key for provider in service._providers]
+    state = service.recommend(_dataset())
+
+    assert module_keys.index("anova_factorial") == module_keys.index("anova_oneway") + 1
+    candidate = next(
+        candidate for candidate in state.candidates if candidate.kind == "anova_factorial"
+    )
+    assert candidate.requires_configuration is True
+    assert state.default_candidate != candidate

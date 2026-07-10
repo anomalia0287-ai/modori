@@ -374,3 +374,56 @@ def test_factorial_selectors_require_distinct_roles_and_only_configure_step(
         root.deleteLater()
         app.processEvents()
         del engine
+
+
+def test_factorial_recommendation_opens_preselected_configuration_without_step(
+    tmp_path,
+) -> None:
+    data_path = tmp_path / "factorial-recommendation.csv"
+    rows = ["score,condition,site"]
+    for condition in ("control", "treatment"):
+        for site in ("north", "south"):
+            for replicate in range(3):
+                score = 10.0 + replicate * 0.25 + (condition == "treatment") * 2
+                rows.append(f"{score:.2f},{condition},{site}")
+    data_path.write_text("\n".join(rows) + "\n", encoding="utf-8")
+    controller = UiController(reduce_effects=True)
+    assert controller.openDataFilePath(str(data_path)) is True
+    candidate_index = next(
+        index
+        for index, candidate in enumerate(controller._recommendation_state.candidates)
+        if candidate.kind == "anova_factorial"
+    )
+    before_version = controller.pipeline_version
+    before_steps = list(controller.pipeline.steps)
+    engine, root, messages = _load_main_with_warnings(controller)
+    app = _app()
+
+    try:
+        guide = root.findChild(QObject, "guideRail")
+        other_button = root.findChild(QObject, "guideOtherRecommendationsButton")
+        assert guide is not None
+        assert other_button is not None
+        other_button.clicked.emit()
+        app.processEvents()
+        candidate_button = guide.recommendationItemAt(candidate_index)
+        assert candidate_button is not None
+
+        candidate_button.clicked.emit()
+        app.processEvents()
+
+        outcome = root.findChild(QObject, "guideFactorialOutcomeCombo")
+        factor_a = root.findChild(QObject, "guideFactorialFactorACombo")
+        factor_b = root.findChild(QObject, "guideFactorialFactorBCombo")
+        assert guide.property("manualSelectionMode") is True
+        assert guide.property("selectedIntent") == "anova_factorial"
+        assert outcome.property("currentValue") == "score"
+        assert factor_a.property("currentValue") == "condition"
+        assert factor_b.property("currentValue") == "site"
+        assert controller.pipeline.steps == before_steps
+        assert controller.pipeline_version == before_version
+        assert _significant_warnings(messages) == []
+    finally:
+        root.deleteLater()
+        app.processEvents()
+        del engine

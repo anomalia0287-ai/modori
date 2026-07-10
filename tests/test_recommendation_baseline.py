@@ -72,6 +72,30 @@ def test_candidate_identity_normalizes_current_comparison_roles() -> None:
     }
 
 
+def test_candidate_identity_preserves_ordered_factorial_roles() -> None:
+    candidate = RecommendationCandidate(
+        candidate_id="anova_factorial:score:condition:site",
+        kind="anova_factorial",
+        title_ko="이원 Type III 분산분석 후보",
+        level="가능한 후보",
+        reason_ko="역할 확인 필요",
+        outcome_key="score",
+        factor_a_key="condition",
+        factor_b_key="site",
+        requires_configuration=True,
+    )
+
+    normalized = candidate_identity(candidate)
+
+    assert normalized.family == "anova_factorial"
+    assert normalized.design_mode == "complete_cell_type_iii"
+    assert dict(normalized.roles) == {
+        "factor_a": ("condition",),
+        "factor_b": ("site",),
+        "outcome": ("score",),
+    }
+
+
 def test_baseline_prediction_preserves_product_ranking_and_default() -> None:
     pilot_root = Path("tests/fixtures/recommendation_benchmark/public/pilot")
     case = {
