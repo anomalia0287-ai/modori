@@ -257,13 +257,14 @@ def _build_workbook(
     workbook.remove(default)
 
     instructions = workbook.create_sheet("Instructions")
+    instructions.merge_cells("A1:B1")
     instructions["A1"] = (
         "각 사례를 다른 검토자와 상의하지 말고 독립적으로 판정하십시오. "
         "통계 용어가 아니라 연구 질문과 설계 사실을 기준으로 기록합니다."
     )
-    instructions["A2"] = "Reviewer/Adjudicator ID"
+    instructions["A2"] = "검토자/판정자 ID"
     instructions["B2"] = None
-    instructions["A4"] = "action_class"
+    instructions["A4"] = "판정 행동(action_class)"
     instructions["B4"] = (
         "recommendation_eligible / clarification_required / abstention_required"
     )
@@ -273,7 +274,7 @@ def _build_workbook(
     instructions["B6"] = "검토자는 사례별 실제 작업 분을 숫자로 입력합니다."
     instructions["A1"].font = Font(bold=True, size=12)
     instructions["A1"].alignment = Alignment(wrap_text=True, vertical="top")
-    instructions.row_dimensions[1].height = 48
+    instructions.row_dimensions[1].height = 64
     _set_widths(instructions, {"A": 28, "B": 78})
 
     reviews = workbook.create_sheet("Case Reviews")

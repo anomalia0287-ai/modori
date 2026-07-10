@@ -98,6 +98,9 @@ def test_blank_workbooks_have_korean_instructions_stable_schema_and_no_answers(
         "Abstentions",
     ]
     assert "독립적으로" in str(workbook["Instructions"]["A1"].value)
+    assert "검토자" in str(workbook["Instructions"]["A2"].value)
+    assert "A1:B1" in {str(cell_range) for cell_range in workbook["Instructions"].merged_cells.ranges}
+    assert workbook["Instructions"].row_dimensions[1].height >= 60
     assert workbook["Instructions"]["B2"].value is None
     reviews = workbook["Case Reviews"]
     assert [reviews.cell(row=row, column=1).value for row in (2, 3)] == [
