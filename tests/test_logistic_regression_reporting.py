@@ -61,23 +61,27 @@ def _fit(
     language: str = "ko",
 ) -> LogisticRegressionResult:
     data = _frame() if frame is None else frame
-    result = BinaryLogisticRegressionStep(
-        id="logistic",
-        title="Binary logistic regression",
-        params={
-            "schema_version": 1,
-            "outcome": "event",
-            "event_value": 1,
-            "predictors": predictors or ["x1", "x2"],
-            "logistic_policy": {
-                "preset": "conservative",
-                "classification_threshold": threshold,
-                "calibration_bins": calibration_bins,
-                "categorical_predictors": {},
+    result = (
+        BinaryLogisticRegressionStep(
+            id="logistic",
+            title="Binary logistic regression",
+            params={
+                "schema_version": 1,
+                "outcome": "event",
+                "event_value": 1,
+                "predictors": predictors or ["x1", "x2"],
+                "logistic_policy": {
+                    "preset": "conservative",
+                    "classification_threshold": threshold,
+                    "calibration_bins": calibration_bins,
+                    "categorical_predictors": {},
+                },
+                "language": language,
             },
-            "language": language,
-        },
-    ).compute_context_free(_dataset(data)).analysis
+        )
+        .compute_context_free(_dataset(data))
+        .analysis
+    )
     assert isinstance(result, LogisticRegressionResult)
     return result
 
@@ -97,11 +101,14 @@ def test_engine_warning_codes_render_without_mixed_language() -> None:
     assert "same_sample_metrics" in result.warning_codes
     assert "high_missing_fraction" in result.warning_codes
     assert result.warnings == warnings_for_logistic(result, language="en")
-    assert all(message == LOGISTIC_WARNING_TEXTS[code]["en"] for code, message in zip(
-        result.warning_codes,
-        result.warnings,
-        strict=True,
-    ))
+    assert all(
+        message == LOGISTIC_WARNING_TEXTS[code]["en"]
+        for code, message in zip(
+            result.warning_codes,
+            result.warnings,
+            strict=True,
+        )
+    )
 
 
 def test_logistic_chart_titles_and_axes_follow_result_language() -> None:
@@ -122,14 +129,17 @@ def test_logistic_chart_titles_and_axes_follow_result_language() -> None:
     ]
 
 
-def test_logistic_prose_reports_event_direction_and_association_without_overclaim() -> None:
+def test_logistic_prose_reports_event_direction_and_association_without_overclaim() -> (
+    None
+):
     result = _fit()
 
     korean = prose_for_logistic(result, language="ko")
     english = prose_for_logistic(result, language="en")
 
-    assert "사건(event) = 사건(1)" in korean
-    assert "비사건 = 비사건(0)" in korean
+    assert "사건(event) = 사건 (1)" in korean
+    assert "비사건 = 비사건 (0)" in korean
+    assert "(1)(1)" not in korean
     assert "LR χ²(2)" in korean
     assert "OR =" in korean
     assert "분류 임계값 = .50" in korean
@@ -144,6 +154,7 @@ def test_logistic_prose_reports_event_direction_and_association_without_overclai
 
     assert "the event was coded as 사건 (1)" in english
     assert "the non-event as 비사건 (0)" in english
+    assert "(1) (1)" not in english
     assert "LR χ²(2)" in english
     assert "OR =" in english
     assert "classification threshold = .50" in english
@@ -160,7 +171,9 @@ def test_logistic_prose_reports_event_direction_and_association_without_overclai
         assert warning in english
 
 
-def test_logistic_reporting_dispatch_and_coefficient_table_preserve_or_intervals() -> None:
+def test_logistic_reporting_dispatch_and_coefficient_table_preserve_or_intervals() -> (
+    None
+):
     result = _fit()
 
     rows = table_for_logistic(result)
@@ -175,7 +188,9 @@ def test_logistic_reporting_dispatch_and_coefficient_table_preserve_or_intervals
     assert rows[1]["p"]
 
 
-def test_logistic_prose_discloses_undefined_metrics_and_suppressed_calibration() -> None:
+def test_logistic_prose_discloses_undefined_metrics_and_suppressed_calibration() -> (
+    None
+):
     undefined = _fit(threshold=0.999999)
     assert undefined.classification.positive_predictive_value is None
     assert all(".:" not in warning for warning in undefined.warnings)
@@ -251,9 +266,7 @@ def test_odds_ratio_forest_renders_without_missing_log_tick_glyphs(
         render_chart(odds_ratio_chart, tmp_path / "odds-ratio.png")
 
     assert not [
-        warning
-        for warning in caught
-        if "does not have a glyph" in str(warning.message)
+        warning for warning in caught if "does not have a glyph" in str(warning.message)
     ]
 
 

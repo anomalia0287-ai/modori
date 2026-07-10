@@ -2,9 +2,10 @@
 
 Date: 2026-07-10 KST
 
-Status: calculation and product-path closure candidate for the explicitly bounded
-V1 scope. Independent review remains before integration or any broader public
-claim.
+Status: post-review calculation and product-path closure candidate for the
+explicitly bounded V1 scope. Both actionable external-review findings were
+reproduced before correction. Native packaged visual inspection remains a
+separate non-calculation gate; no broader prediction or causal claim follows.
 
 ## Claim Boundary
 
@@ -55,6 +56,10 @@ evidence instead uses preconditioned-path and shift-invariance fixtures.
 - Event coding is mandatory and checked against the two current complete-case
   outcome levels. The engine never infers the event by order, sorting, or truthy
   conversion.
+- Outcome values must remain distinguishable to a user, not only to typed tokens.
+  Engine and selector reject blank or colliding labels after NFKC, control,
+  whitespace, and case normalization. Integral float labels use the same display
+  convention as other categorical levels.
 - Categorical levels and references are declared and checked against observed
   data. Numeric categorical labels are normalized before design-matrix creation.
 - A linear-programming existence gate rejects complete and quasi-complete
@@ -68,8 +73,11 @@ evidence instead uses preconditioned-path and shift-invariance fixtures.
   to errors; non-converged result objects are rejected independently.
 - Likelihood-ratio tails use `stats.chi2.sf`; a source-policy test now includes
   the logistic engine and rejects CDF complements and direct `linalg.inv` use.
-- Overflowing odds-ratio displays become explicit undefined values with warning
-  codes; they are not silently emitted as finite numbers.
+- If a finite coefficient or log-odds CI cannot be exponentiated, coefficient,
+  SE, z, p, likelihood, and fitted probabilities remain available. The OR and
+  OR-CI become explicit undefined values, the term is named in a warning, and
+  only that term is omitted from the OR forest. Scale-grid tests cover both
+  coefficient directions at `1e-9`, `1e-6`, `1`, and `1e6`.
 
 ## Product-Path Evidence
 
@@ -77,6 +85,9 @@ evidence instead uses preconditioned-path and shift-invariance fixtures.
   `Dataset` through canonical typed tokens. Tokens preserve `bool`, `int`,
   finite `float`, and `str` identity and reject stale, forged, noncanonical, and
   nonfinite values.
+- The event selector and engine share the same user-visible collision boundary;
+  mixed typed levels such as string `"1"` and integer `1` cannot produce two
+  indistinguishable choices or two identical report labels.
 - QML uses `ComboBox` selectors for event and every categorical reference. There
   is no free-text event or reference entry. Apply remains disabled until every
   required choice is explicit.
@@ -98,27 +109,31 @@ All commands ran from the isolated
 `codex/recommendation-benchmark-pilot` worktree with `PYTHONPATH=src`, offscreen
 Qt, and the explicit workspace-local R executable.
 
-1. Focused logistic/R/product closure:
+1. Post-review focused logistic/R/product gate:
 
    ```text
-   pytest ... logistic engine, references, reporting, recommendation,
-   R cross-engine, V1/app/package smoke, and UI product-flow tests
-   112 passed in 12.67s
+   Exact 16-file command recorded in
+   `docs/qa/logistic-regression-external-review-brief.md`.
+   197 passed in 13.94s
    ```
 
    R tests executed; there were no logistic-specific skips.
 
-2. Complete local quality gate:
+2. Final complete quality, package, and slow-statistics gate:
 
    ```text
-   python scripts/quality_gate.py --with-slow-stats
+   python scripts/quality_gate.py --with-package-check --with-packaged-launch --with-slow-stats
    compileall: pass
    ruff: pass
    bandit: pass
    launch-smoke-ok
-   1201 passed, 4 skipped in 92.45s
+   1242 passed, 4 skipped in 79.63s
    pip check: no broken requirements
-   3 passed, 1202 deselected in 28.92s
+   package-tool-ok
+   package-launch-smoke-ok
+   package-engine-smoke-ok
+   package-public-data-smoke-ok
+   3 passed, 1243 deselected in 23.87s
    ```
 
    The four full-suite skips are optional environment cases outside the focused
@@ -136,9 +151,15 @@ Qt, and the explicit workspace-local R executable.
    `status: ready`, and 21 successful V1 statistical checks. The added check is
    `logistic_regression` with analysis type `LogisticRegressionResult`.
 
+   The rebuild was deliberately launched from a parent environment whose PATH
+   began with the workspace R runtime. The package environment removed that
+   reference runtime before PyInstaller analysis; `Analysis-00.toc` contained
+   zero R-runtime entries. This prevents R's ICU/UCRT/OpenSSL DLLs from being
+   collected beside PySide6.
+
    Packaged executable:
-   `dist/Modori/Modori.exe`, 30,897,933 bytes, SHA-256
-   `B9DAFA2F51933A2569770BAAD8B3A4CF35AF8D9C72C9A9785EEF094E216A8876`.
+   `dist/Modori/Modori.exe`, 30,899,420 bytes, SHA-256
+   `23315F94BB82EAC76E7F575E1B7DB2D3B4C9602A275C48DCAB4A46D48B59BFCA`.
 
    Native visual inspection is not counted as evidence in this pass. The Windows
    automation launch approval timed out and no Modori window was created. QML
@@ -153,17 +174,27 @@ Qt, and the explicit workspace-local R executable.
 | Direct matrix inverse | No `linalg.inv` match in `src/modori`. The logistic covariance and condition calculations use SVD-backed helpers. |
 | Uncaught statsmodels warnings | Logistic fitting wraps perfect-separation, convergence, and runtime warnings as errors; dedicated monkeypatch tests exercise each failure path. |
 | Implicit event mapping | No order-based event selection. `event_value` is required, type-normalized, matched to observed levels, and disclosed with the non-event in reports. |
+| Ambiguous outcome display | Exact, case-only, whitespace, full-width Unicode, and blank-label fixtures fail closed in both engine and UI. Typed identity cannot override an indistinguishable display. |
 | Free-text event/reference entry | No matching QML `TextField`; event and references are model-backed `ComboBox` controls and canonical tokens are revalidated at commit and rerun. |
 | Hosmer-Lemeshow | No implementation or claim. It is intentionally absent rather than presenting an unstable grouped calibration p-value as model validation. |
 | Unsupported public claims | Report, catalog, knowledge, ledger, and matrix searches found only explicit prohibitions or limitation wording for causal, screening, diagnostic, and validated-prediction claims. |
 | PyInstaller warnings | Build warned about an absent optional Qt asset-downloader plugin and SciPy `_cdflib` hidden import. Packaged launch smoke, all 21 engine checks including logistic `chi2.sf`, and public-data smoke all executed successfully, so neither warning affected an exercised V1 path. |
+| Package DLL provenance | A verification build exposed that the global R-reference PATH could make PyInstaller collect R ICU/UCRT/OpenSSL DLLs and break packaged QtCore loading. R paths are now scoped to pytest/slow reference commands and defensively stripped by package build/run environments. A contaminated-parent rebuild collected zero R DLLs and passed both executable command smokes. |
+| Stale smoke evidence | Engine and public-data smoke scripts delete only their owned previous `result.json` before launch and reject a zero-exit process that does not produce a fresh result. |
 
-## Remaining Decision
+## External Review Disposition
 
-The calculation and product-path evidence is sufficient to present this module
-for adversarial review inside its bounded V1 scope. Independent review remains:
-separation detection, preconditioning/covariance restoration, event/reference
-coding, pseudo-R2 formulas, calibration wording, reference tolerances, and
-catalog/UI promotion gates must be attacked before integration. Any finding is
-reproduced with a failing test before correction. No wider prediction or causal
-claim follows from this closure candidate.
+The external reviewer reproduced the broad numerical evidence and reported two
+actionable findings. F1 showed that string `"1"` and integer `1` could be
+computationally distinct but visually identical; it was a V1 blocker and now
+fails closed across engine and UI. F2 showed that a harmless predictor unit
+change could make a one-unit OR unrepresentable and discard otherwise valid
+inference; the product now preserves finite log-odds inference and discloses the
+unavailable OR instead of narrowing the invariance claim incorrectly.
+
+The review's remaining approximate-separation risk is retained honestly: the LP,
+score, convergence, weight, and Fisher-condition gates provide executable
+defense, but they are not an analytic proof that every finite-MLE boundary case
+has a prescribed number of accurate digits. Native packaged visual walkthrough
+also remains open. Neither residual item permits a wider prediction, diagnosis,
+screening, causal, separated-data, or SPSS-equivalence claim.

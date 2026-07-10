@@ -41,7 +41,9 @@ def _dataset(frame: pd.DataFrame, measures: dict[str, Measure]) -> Dataset:
             column: _variable(
                 column,
                 measure=measures.get(column, Measure.SCALE),
-                value_labels={0.0: "미발생", 1.0: "발생"} if column == "event" else None,
+                value_labels={0.0: "미발생", 1.0: "발생"}
+                if column == "event"
+                else None,
             )
             for column in frame.columns
         },
@@ -80,17 +82,15 @@ def test_logistic_schema_migrates_legacy_and_rejects_newer_or_unknown() -> None:
     assert BinaryLogisticRegressionStep.migrate_params(legacy)["schema_version"] == 1
 
     with pytest.raises(ValueError, match="newer schema_version"):
-        BinaryLogisticRegressionStep.migrate_params(
-            _params(schema_version=999)
-        )
+        BinaryLogisticRegressionStep.migrate_params(_params(schema_version=999))
     with pytest.raises(ValueError, match="unknown logistic_regression params"):
-        BinaryLogisticRegressionStep.validate_params(
-            {**_params(), "extra": "bad"}
-        )
+        BinaryLogisticRegressionStep.validate_params({**_params(), "extra": "bad"})
 
 
 def test_completed_logistic_step_is_registered_and_serializable() -> None:
-    assert step_class_for_type("stats.logistic_regression") is BinaryLogisticRegressionStep
+    assert (
+        step_class_for_type("stats.logistic_regression") is BinaryLogisticRegressionStep
+    )
     restored = Step.from_dict(
         {
             "type": "stats.logistic_regression",
@@ -129,7 +129,9 @@ def test_completed_logistic_step_is_registered_and_serializable() -> None:
         ),
     ],
 )
-def test_logistic_schema_rejects_invalid_structural_contracts(mutate, message: str) -> None:
+def test_logistic_schema_rejects_invalid_structural_contracts(
+    mutate, message: str
+) -> None:
     params = _params()
     mutate(params)
 
@@ -137,7 +139,9 @@ def test_logistic_schema_rejects_invalid_structural_contracts(mutate, message: s
         BinaryLogisticRegressionStep.validate_params(params)
 
 
-def test_prepare_logistic_inputs_maps_explicit_event_and_declared_category_order() -> None:
+def test_prepare_logistic_inputs_maps_explicit_event_and_declared_category_order() -> (
+    None
+):
     frame = _overlap_frame()
     dataset = _dataset(frame, {"event": Measure.ORDINAL, "group": Measure.NOMINAL})
     params = _params(
@@ -159,8 +163,8 @@ def test_prepare_logistic_inputs_maps_explicit_event_and_declared_category_order
 
     assert prepared.event_value == 1
     assert prepared.non_event_value == 0
-    assert prepared.event_label == "발생"
-    assert prepared.non_event_label == "미발생"
+    assert prepared.event_label == "발생 (1)"
+    assert prepared.non_event_label == "미발생 (0)"
     assert prepared.n_total == prepared.n_obs == 24
     assert prepared.event_count == prepared.non_event_count == 12
     assert prepared.threshold == 0.4
@@ -208,7 +212,9 @@ def test_prepare_logistic_inputs_applies_metadata_missing_values_listwise() -> N
             "event_value is not an observed outcome level",
         ),
         (
-            lambda frame: frame.assign(group=np.where(np.arange(len(frame)) == 0, "other", frame["group"])),
+            lambda frame: frame.assign(
+                group=np.where(np.arange(len(frame)) == 0, "other", frame["group"])
+            ),
             lambda params: params.update(
                 predictors=["x", "group"],
                 logistic_policy={
@@ -239,6 +245,90 @@ def test_prepare_logistic_inputs_rejects_outcome_and_level_ambiguity(
 
     with pytest.raises(ValueError, match=message):
         prepare_logistic_inputs(dataset, params)
+
+
+def test_prepare_logistic_inputs_rejects_outcome_levels_with_ambiguous_display() -> (
+    None
+):
+    frame = _overlap_frame()
+    frame["event"] = np.asarray(["1", 1] * 12, dtype=object)
+    dataset = _dataset(frame, {"event": Measure.ORDINAL, "group": Measure.NOMINAL})
+    dataset.variables["event"].value_labels.clear()
+
+    with pytest.raises(ValueError, match="display labels are ambiguous"):
+        prepare_logistic_inputs(dataset, _params(event_value="1"))
+
+
+def test_prepare_logistic_inputs_disambiguates_duplicate_outcome_value_labels() -> None:
+    frame = _overlap_frame()
+    dataset = _dataset(frame, {"event": Measure.ORDINAL, "group": Measure.NOMINAL})
+    dataset.variables["event"].value_labels.clear()
+    dataset.variables["event"].value_labels.update({0.0: "same", 1.0: "same"})
+
+    prepared = prepare_logistic_inputs(dataset, _params())
+
+    assert prepared.event_label == "same (1)"
+    assert prepared.non_event_label == "same (0)"
+
+
+@pytest.mark.parametrize(
+    ("text_value", "typed_value"),
+    [
+        ("true", True),
+        ("１", 1),
+        ("1 ", 1),
+    ],
+)
+def test_prepare_logistic_inputs_rejects_visually_confusable_outcome_labels(
+    text_value: str,
+    typed_value: bool | int,
+) -> None:
+    frame = _overlap_frame()
+    frame["event"] = np.asarray([text_value, typed_value] * 12, dtype=object)
+    dataset = _dataset(frame, {"event": Measure.ORDINAL, "group": Measure.NOMINAL})
+    dataset.variables["event"].value_labels.clear()
+
+    with pytest.raises(ValueError, match="display labels are ambiguous"):
+        prepare_logistic_inputs(dataset, _params(event_value=text_value))
+
+
+def test_prepare_logistic_inputs_rejects_blank_outcome_display_labels() -> None:
+    frame = _overlap_frame()
+    frame["event"] = np.asarray(["", 1] * 12, dtype=object)
+    dataset = _dataset(frame, {"event": Measure.ORDINAL, "group": Measure.NOMINAL})
+    dataset.variables["event"].value_labels.clear()
+
+    with pytest.raises(ValueError, match="display labels are blank"):
+        prepare_logistic_inputs(dataset, _params(event_value=""))
+
+
+def test_prepare_logistic_inputs_formats_integral_float_outcome_labels_consistently() -> (
+    None
+):
+    frame = _overlap_frame()
+    frame["event"] = frame["event"].astype(float)
+    dataset = _dataset(frame, {"event": Measure.ORDINAL, "group": Measure.NOMINAL})
+    dataset.variables["event"].value_labels.clear()
+
+    prepared = prepare_logistic_inputs(dataset, _params(event_value=1.0))
+
+    assert prepared.event_label == "1"
+    assert prepared.non_event_label == "0"
+
+
+def test_prepare_logistic_inputs_preserves_distinct_large_integer_levels() -> None:
+    lower = 2**53
+    upper = lower + 1
+    frame = _overlap_frame()
+    frame["event"] = np.asarray([lower, upper] * 12, dtype=object)
+    dataset = _dataset(frame, {"event": Measure.ORDINAL, "group": Measure.NOMINAL})
+    dataset.variables["event"].value_labels.clear()
+
+    prepared = prepare_logistic_inputs(dataset, _params(event_value=upper))
+
+    assert prepared.event_value == upper
+    assert prepared.non_event_value == lower
+    assert prepared.event_label != prepared.non_event_label
 
 
 def test_prepare_logistic_inputs_rejects_small_classes_and_separation() -> None:

@@ -37,10 +37,6 @@ def _p_value(value: float) -> str:
     return f"p = {_number(value, 3)}"
 
 
-def _coded_value(label: str, value: object) -> str:
-    return f"{label}({value})"
-
-
 def _undefined_metric_names(
     result: LogisticRegressionResult,
     language: str,
@@ -62,6 +58,12 @@ def warnings_for_logistic(
         detail = None
         if code == "undefined_classification_metrics":
             detail = ", ".join(_undefined_metric_names(result, language_base))
+        elif code == "predictor_odds_ratio_unrepresentable":
+            detail = ", ".join(
+                row.name
+                for row in result.coefficients
+                if row.term_type != "intercept" and row.odds_ratio is None
+            )
         rendered.append(
             render_logistic_warning(
                 code,
@@ -177,8 +179,7 @@ def prose_for_logistic(
     if language_base == "ko":
         coding = (
             f"결과변수 {result.outcome}의 코딩은 사건(event) = "
-            f"{_coded_value(result.event_label, result.event_value)}, "
-            f"비사건 = {_coded_value(result.non_event_label, result.non_event_value)}이다. "
+            f"{result.event_label}, 비사건 = {result.non_event_label}이다. "
             f"전체 {result.n_total}행 중 {result.n_obs}행을 사용했고 "
             f"{result.n_dropped}행을 결측으로 제외했다."
         )
@@ -203,14 +204,20 @@ def prose_for_logistic(
         )
         return " ".join(
             part
-            for part in (coding, model, coefficients + ".", classification, calibration, warning_text)
+            for part in (
+                coding,
+                model,
+                coefficients + ".",
+                classification,
+                calibration,
+                warning_text,
+            )
             if part
         )
 
     coding = (
         f"For {result.outcome}, the event was coded as "
-        f"{result.event_label} ({result.event_value}) and the non-event as "
-        f"{result.non_event_label} ({result.non_event_value}). "
+        f"{result.event_label} and the non-event as {result.non_event_label}. "
         f"The model used {result.n_obs} of {result.n_total} rows and excluded "
         f"{result.n_dropped} rows for missing values."
     )
@@ -224,9 +231,7 @@ def prose_for_logistic(
         f"AIC = {_number(result.aic)}, and "
         f"McFadden R² = {_number(result.mcfadden_r_squared)}."
     )
-    coefficients = "; ".join(
-        _coefficient_sentence_en(row) for row in predictor_rows
-    )
+    coefficients = "; ".join(_coefficient_sentence_en(row) for row in predictor_rows)
     classification = _classification_sentence(result, language_base)
     calibration = (
         f"The calibration summary contains {len(result.calibration_bins)} "
@@ -236,7 +241,14 @@ def prose_for_logistic(
     )
     return " ".join(
         part
-        for part in (coding, model, coefficients + ".", classification, calibration, warning_text)
+        for part in (
+            coding,
+            model,
+            coefficients + ".",
+            classification,
+            calibration,
+            warning_text,
+        )
         if part
     )
 
@@ -265,8 +277,7 @@ def table_for_logistic(result: LogisticRegressionResult) -> list[dict[str, str]]
                 "p": _p_value(coefficient.p_value),
                 "odds ratio": odds_ratio,
                 "95% CI (b)": (
-                    f"[{_number(coefficient.ci[0])}, "
-                    f"{_number(coefficient.ci[1])}]"
+                    f"[{_number(coefficient.ci[0])}, {_number(coefficient.ci[1])}]"
                 ),
                 "95% CI (OR)": odds_ratio_ci,
             }

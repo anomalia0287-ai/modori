@@ -4,12 +4,32 @@ from collections.abc import Mapping, Sequence
 import json
 import math
 from typing import TypeAlias
+import unicodedata
 
 import numpy as np
 import pandas as pd
 
 
 ScalarValue: TypeAlias = bool | int | float | str
+
+
+def display_label_key(label: str) -> str:
+    normalized = unicodedata.normalize("NFKC", str(label))
+    visible = "".join(
+        character
+        for character in normalized
+        if not unicodedata.category(character).startswith("C")
+    )
+    return " ".join(visible.split()).casefold()
+
+
+def normalized_value_key(value: object) -> tuple[str, object]:
+    scalar = _python_scalar(value)
+    if isinstance(scalar, bool):
+        return "boolean", scalar
+    if isinstance(scalar, int | float):
+        return "numeric", scalar
+    return "string", scalar
 
 
 def _python_scalar(value: object) -> ScalarValue:
@@ -92,6 +112,7 @@ def observed_value_options(dataset: object, variable_key: str) -> list[dict[str,
 
     options: list[dict[str, str]] = []
     seen: set[str] = set()
+    seen_labels: set[str] = set()
     for raw_value in frame[key].tolist():
         if _is_missing(raw_value, missing_values):
             continue
@@ -99,13 +120,20 @@ def observed_value_options(dataset: object, variable_key: str) -> list[dict[str,
         if token in seen:
             continue
         scalar = decode_value_token(token)
+        label = display_value_label(variable, scalar)
+        label_key = display_label_key(label)
+        if not label_key:
+            raise ValueError("Observed values have blank display labels")
+        if label_key in seen_labels:
+            raise ValueError("Observed values have ambiguous display labels")
         options.append(
             {
                 "token": token,
-                "label": _display_label(variable, scalar),
+                "label": label,
             }
         )
         seen.add(token)
+        seen_labels.add(label_key)
     return options
 
 
@@ -150,7 +178,7 @@ def _is_missing(value: object, declared: Sequence[object]) -> bool:
     return False
 
 
-def _display_label(variable: object, value: ScalarValue) -> str:
+def display_value_label(variable: object, value: ScalarValue) -> str:
     raw_label = _display_scalar(value)
     value_labels = getattr(variable, "value_labels", {})
     if (
@@ -167,4 +195,6 @@ def _display_label(variable: object, value: ScalarValue) -> str:
 def _display_scalar(value: ScalarValue) -> str:
     if isinstance(value, bool):
         return "true" if value else "false"
+    if isinstance(value, float) and value.is_integer():
+        return str(int(value))
     return str(value)

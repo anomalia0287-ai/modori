@@ -42,6 +42,11 @@ from modori.statistics_numerics import (
     DEFAULT_LOGISTIC_MAX_INFORMATION_CONDITION_NUMBER,
     LOGISTIC_INFORMATION_WARNING_CONDITION_NUMBER,
 )
+from modori.value_tokens import (
+    display_label_key,
+    display_value_label,
+    normalized_value_key,
+)
 
 
 _TOP_LEVEL_KEYS = {
@@ -76,25 +81,6 @@ def _python_scalar(value: object) -> bool | int | float | str:
     if isinstance(value, str):
         return value
     raise ValueError("Logistic scalar values must be bool, int, float, or string")
-
-
-def _scalar_key(value: object) -> tuple[str, object]:
-    scalar = _python_scalar(value)
-    if isinstance(scalar, bool):
-        return "bool", scalar
-    if isinstance(scalar, int | float):
-        return "number", float(scalar)
-    return "string", scalar
-
-
-def _display_label(dataset: Dataset, variable: str, value: object) -> str:
-    scalar = _python_scalar(value)
-    labels = dataset.variables[variable].value_labels
-    if not isinstance(scalar, bool) and isinstance(scalar, int | float):
-        label = labels.get(float(scalar))
-        if label is not None:
-            return str(label)
-    return str(scalar)
 
 
 @dataclass(frozen=True)
@@ -168,7 +154,9 @@ class BinaryLogisticRegressionStep(Step):
         if version > cls.CURRENT_SCHEMA_VERSION:
             raise ValueError("logistic_regression params use a newer schema_version")
         if version < cls.CURRENT_SCHEMA_VERSION:
-            raise ValueError(f"unsupported logistic_regression schema_version: {version}")
+            raise ValueError(
+                f"unsupported logistic_regression schema_version: {version}"
+            )
         return migrated
 
     @classmethod
@@ -184,10 +172,14 @@ class BinaryLogisticRegressionStep(Step):
         if not isinstance(outcome, str) or not outcome.strip():
             raise ValueError("logistic_regression outcome must be a non-empty string")
         predictors = params.get("predictors")
-        if not isinstance(predictors, list) or not predictors or not all(
-            isinstance(item, str) and item.strip() for item in predictors
+        if (
+            not isinstance(predictors, list)
+            or not predictors
+            or not all(isinstance(item, str) and item.strip() for item in predictors)
         ):
-            raise ValueError("logistic_regression predictors must be a non-empty list of strings")
+            raise ValueError(
+                "logistic_regression predictors must be a non-empty list of strings"
+            )
         clean_predictors = [str(item).strip() for item in predictors]
         if len(set(clean_predictors)) != len(clean_predictors):
             raise ValueError("logistic_regression predictors must be unique")
@@ -244,7 +236,9 @@ class BinaryLogisticRegressionStep(Step):
             ndim=1,
         )
         if np.any(probabilities <= 0.0) or np.any(probabilities >= 1.0):
-            raise ValueError("Logistic fitted probabilities must remain strictly between 0 and 1.")
+            raise ValueError(
+                "Logistic fitted probabilities must remain strictly between 0 and 1."
+            )
 
         score_residual = _score_infinity_per_observation(
             prepared.preconditioned.scaled,
@@ -289,7 +283,9 @@ class BinaryLogisticRegressionStep(Step):
         null_log_likelihood = _finite_float(null_fitted.llf, "null log likelihood")
         likelihood_ratio = 2.0 * (log_likelihood - null_log_likelihood)
         if likelihood_ratio < -1e-10:
-            raise ValueError("Logistic full model likelihood is worse than the null optimum.")
+            raise ValueError(
+                "Logistic full model likelihood is worse than the null optimum."
+            )
         likelihood_ratio = max(0.0, likelihood_ratio)
         likelihood_ratio_df = len(prepared.term_names) - 1
         likelihood_ratio_p = _finite_float(
@@ -302,10 +298,7 @@ class BinaryLogisticRegressionStep(Step):
         )
         cox_snell = _finite_float(
             1.0
-            - np.exp(
-                (2.0 / prepared.n_obs)
-                * (null_log_likelihood - log_likelihood)
-            ),
+            - np.exp((2.0 / prepared.n_obs) * (null_log_likelihood - log_likelihood)),
             "Cox-Snell R-squared",
         )
         nagelkerke_denominator = 1.0 - np.exp(
@@ -462,13 +455,17 @@ def _validate_policy(policy: Mapping[str, object]) -> dict[str, object]:
             )
         levels_raw = raw_spec.get("levels")
         if not isinstance(levels_raw, list) or len(levels_raw) < 2:
-            raise ValueError(f"categorical predictor {variable} levels must contain at least two")
+            raise ValueError(
+                f"categorical predictor {variable} levels must contain at least two"
+            )
         levels = [str(level) for level in levels_raw]
         if len(set(levels)) != len(levels):
             raise ValueError(f"categorical predictor {variable} levels must be unique")
         reference = str(raw_spec.get("reference"))
         if reference not in levels:
-            raise ValueError(f"categorical predictor {variable} reference must appear in levels")
+            raise ValueError(
+                f"categorical predictor {variable} reference must appear in levels"
+            )
         categorical[variable] = {"reference": reference, "levels": levels}
     return {
         "preset": "conservative",
@@ -513,7 +510,9 @@ def prepare_logistic_inputs(
     requested = [outcome, *predictors]
     missing = set(requested) - set(dataset.variables)
     if missing:
-        raise ValueError(f"Logistic variables are not present: {', '.join(sorted(missing))}")
+        raise ValueError(
+            f"Logistic variables are not present: {', '.join(sorted(missing))}"
+        )
     policy = params["logistic_policy"]
     if not isinstance(policy, Mapping):
         raise ValueError("Logistic policy must be an object after validation")
@@ -540,26 +539,46 @@ def prepare_logistic_inputs(
 
     raw_levels = [_python_scalar(value) for value in pd.unique(frame[outcome])]
     level_by_key: dict[tuple[str, object], bool | int | float | str] = {}
+    display_labels: set[str] = set()
     for level in raw_levels:
-        key = _scalar_key(level)
+        key = normalized_value_key(level)
         if key in level_by_key:
-            raise ValueError("Logistic outcome levels are ambiguous after numeric normalization")
+            raise ValueError(
+                "Logistic outcome levels are ambiguous after numeric normalization"
+            )
+        display_label = display_label_key(
+            display_value_label(dataset.variables[outcome], level)
+        )
+        if not display_label:
+            raise ValueError("Logistic outcome display labels are blank")
+        if display_label in display_labels:
+            raise ValueError("Logistic outcome display labels are ambiguous")
         level_by_key[key] = level
+        display_labels.add(display_label)
     if len(level_by_key) != 2:
-        raise ValueError("Logistic outcome must contain exactly two complete-case levels")
-    event_key = _scalar_key(params["event_value"])
+        raise ValueError(
+            "Logistic outcome must contain exactly two complete-case levels"
+        )
+    event_key = normalized_value_key(params["event_value"])
     if event_key not in level_by_key:
         raise ValueError("Logistic event_value is not an observed outcome level")
     event_value = level_by_key[event_key]
-    non_event_value = next(value for key, value in level_by_key.items() if key != event_key)
+    non_event_value = next(
+        value for key, value in level_by_key.items() if key != event_key
+    )
     y = np.asarray(
-        [1.0 if _scalar_key(value) == event_key else 0.0 for value in frame[outcome]],
+        [
+            1.0 if normalized_value_key(value) == event_key else 0.0
+            for value in frame[outcome]
+        ],
         dtype=float,
     )
     event_count = int(np.sum(y))
     non_event_count = n_obs - event_count
     if event_count < 10 or non_event_count < 10:
-        raise ValueError("Logistic regression requires at least 10 events and 10 non-events")
+        raise ValueError(
+            "Logistic regression requires at least 10 events and 10 non-events"
+        )
 
     for predictor, encoding in categorical.items():
         observed_raw = [_python_scalar(value) for value in pd.unique(frame[predictor])]
@@ -588,23 +607,33 @@ def prepare_logistic_inputs(
     if not np.all(np.isfinite(x)):
         raise ValueError("Logistic design matrix must contain finite values")
     if n_obs <= x.shape[1]:
-        raise ValueError("Logistic regression requires more observations than parameters")
+        raise ValueError(
+            "Logistic regression requires more observations than parameters"
+        )
     preconditioned = precondition_logistic_design(x)
     if np.linalg.matrix_rank(preconditioned.scaled) < preconditioned.scaled.shape[1]:
-        raise ValueError("Logistic design matrix is rank deficient after preconditioning")
+        raise ValueError(
+            "Logistic design matrix is rank deficient after preconditioning"
+        )
     separation = detect_logistic_separation(preconditioned.scaled, y)
     if separation == "complete":
-        raise ValueError("Logistic regression has complete separation; finite MLE is undefined")
+        raise ValueError(
+            "Logistic regression has complete separation; finite MLE is undefined"
+        )
     if separation == "quasi_complete":
-        raise ValueError("Logistic regression has quasi-complete separation; finite MLE is undefined")
+        raise ValueError(
+            "Logistic regression has quasi-complete separation; finite MLE is undefined"
+        )
 
     return PreparedLogisticInputs(
         outcome=outcome,
         predictors=predictors,
         event_value=event_value,
         non_event_value=non_event_value,
-        event_label=_display_label(dataset, outcome, event_value),
-        non_event_label=_display_label(dataset, outcome, non_event_value),
+        event_label=display_value_label(dataset.variables[outcome], event_value),
+        non_event_label=display_value_label(
+            dataset.variables[outcome], non_event_value
+        ),
         frame=frame,
         y=y,
         design=design,
@@ -658,7 +687,9 @@ def _score_infinity_per_observation(
 
 def _safe_exp(value: float, label: str) -> float:
     if not _MIN_LOG <= value <= _MAX_LOG:
-        raise ValueError(f"Logistic {label} cannot be represented as a finite odds ratio.")
+        raise ValueError(
+            f"Logistic {label} cannot be represented as a finite odds ratio."
+        )
     result = float(np.exp(value))
     if not np.isfinite(result) or result <= 0:
         raise ValueError(f"Logistic {label} produced a non-finite odds ratio.")
@@ -670,10 +701,9 @@ def _odds_values(
     ci: tuple[float, float],
     *,
     name: str,
-    intercept: bool,
 ) -> tuple[float | None, tuple[float, float] | None]:
     representable = _MIN_LOG <= min(b_value, *ci) and max(b_value, *ci) <= _MAX_LOG
-    if intercept and not representable:
+    if not representable:
         return None, None
     return (
         _safe_exp(b_value, f"odds ratio for {name}"),
@@ -721,7 +751,6 @@ def _coefficient_rows(
             b_value,
             ci,
             name=name,
-            intercept=metadata.term_type == "intercept",
         )
         rows.append(
             LogisticCoefficientRow(
@@ -868,8 +897,20 @@ def _result_warnings(
         add("extreme_fitted_probabilities")
     if prepared.preconditioned.offset_ratio > 1e8:
         add("large_predictor_offset")
-    if any(row.term_type == "intercept" and row.odds_ratio is None for row in coefficients):
+    if any(
+        row.term_type == "intercept" and row.odds_ratio is None for row in coefficients
+    ):
         add("intercept_odds_ratio_undefined")
+    unrepresentable_predictors = [
+        row.name
+        for row in coefficients
+        if row.term_type != "intercept" and row.odds_ratio is None
+    ]
+    if unrepresentable_predictors:
+        add(
+            "predictor_odds_ratio_unrepresentable",
+            detail=", ".join(unrepresentable_predictors),
+        )
     if effective_calibration_bins < 3:
         add("calibration_suppressed")
     elif effective_calibration_bins < 5:
@@ -886,26 +927,29 @@ def _chart_specs(
     language: str,
 ) -> tuple[ChartSpec, ...]:
     korean = language != "en"
-    charts = [
-        ChartSpec(
-            type="odds_ratio_forest",
-            title="승산비" if korean else "Odds ratios",
-            data={
-                "rows": [
-                    {
-                        "name": row.name,
-                        "odds_ratio": row.odds_ratio,
-                        "ci": row.odds_ratio_ci,
-                        "p_value": row.p_value,
-                    }
-                    for row in coefficients
-                    if row.term_type != "intercept"
-                ]
-            },
-            x_label="승산비" if korean else "Odds ratio",
-            y_label="예측변수" if korean else "Predictor",
-        )
+    forest_rows = [
+        {
+            "name": row.name,
+            "odds_ratio": row.odds_ratio,
+            "ci": row.odds_ratio_ci,
+            "p_value": row.p_value,
+        }
+        for row in coefficients
+        if row.term_type != "intercept"
+        and row.odds_ratio is not None
+        and row.odds_ratio_ci is not None
     ]
+    charts: list[ChartSpec] = []
+    if forest_rows:
+        charts.append(
+            ChartSpec(
+                type="odds_ratio_forest",
+                title="승산비" if korean else "Odds ratios",
+                data={"rows": forest_rows},
+                x_label="승산비" if korean else "Odds ratio",
+                y_label="예측변수" if korean else "Predictor",
+            )
+        )
     false_positive_rate, true_positive_rate, _ = roc_curve(y, probabilities)
     charts.append(
         ChartSpec(
@@ -913,7 +957,10 @@ def _chart_specs(
             title="표본 내 ROC 곡선" if korean else "In-sample ROC curve",
             data={
                 "rows": [
-                    {"false_positive_rate": float(fpr), "true_positive_rate": float(tpr)}
+                    {
+                        "false_positive_rate": float(fpr),
+                        "true_positive_rate": float(tpr),
+                    }
                     for fpr, tpr in zip(
                         false_positive_rate,
                         true_positive_rate,

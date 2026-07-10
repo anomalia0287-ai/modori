@@ -251,8 +251,11 @@ np.max(np.abs(z.T @ (y - probabilities))) / max(1, n_obs) <= 1e-10
 
 Transform parameters and covariance, then calculate normal-tail Wald inference
 with `stats.norm.sf`. Guard exponentiation with
-`np.log(np.finfo(float).max)`. A nonrepresentable intercept OR becomes explicit
-`None` plus a warning; the same condition on any non-intercept term fails closed.
+`np.log(np.finfo(float).max)`. When a finite log-odds coefficient or CI cannot be
+exponentiated, preserve fit and inference, set that term's OR and OR-CI to
+`None`, disclose the term through a warning code, and omit only that term from
+the OR forest. Lock likelihood/z/p invariance across predictor scales
+`1e-9`, `1e-6`, `1`, and `1e6` in both coefficient directions.
 
 - [ ] **Step 5: Assemble deterministic classification and calibration output**
 
@@ -576,7 +579,7 @@ Ask the reviewer to attack separation detection, coefficient/covariance restorat
 event coding, pseudo-R2 formulas, calibration wording, R parity tolerances, and
 catalog/UI promotion gates. Include the exact commit range and test commands.
 
-- [ ] **Step 2: Verify every finding against code and references**
+- [x] **Step 2: Verify every finding against code and references**
 
 Do not accept or reject findings by authority. Reproduce each issue, add a failing
 test first, implement one correction, and rerun focused plus full gates.
@@ -586,6 +589,6 @@ test first, implement one correction, and rerun focused plus full gates.
 Record direct evidence for every item in section 15 of the design. Missing or
 indirect evidence means the module remains open.
 
-- [ ] **Step 4: Mark the logistic plan complete and start the separate factorial-ANOVA design cycle**
+- [x] **Step 4: Mark the logistic plan complete and start the separate factorial-ANOVA design cycle**
 
 Do not combine factorial-ANOVA design decisions or implementation into this plan.

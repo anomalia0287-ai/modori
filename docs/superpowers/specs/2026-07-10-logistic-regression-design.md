@@ -102,7 +102,11 @@ Current parameters:
 There is no implicit event selection. The observed non-event value is the one
 other complete-case outcome level. `event_value` must match exactly one observed
 level after the normal table importer and metadata missing-value policy are
-applied.
+applied. The two outcome values must also remain distinguishable after the exact
+user-facing display normalization used by the selector. Blank labels and labels
+that collide after NFKC normalization, whitespace folding, and case folding fail
+closed; typed tokens alone are not sufficient if a user cannot tell the classes
+apart.
 
 Unknown parameters, duplicate predictors, outcome/predictor overlap, undeclared
 categorical levels, unobserved declared levels, nonnumeric scale predictors, and
@@ -242,11 +246,13 @@ After fitting:
 2. Form the Fisher information `Z.T @ diag(p * (1-p)) @ Z`.
 3. Require full rank and a finite condition number no greater than `1e10`.
 4. Add a numerical-stability warning above `1e8`.
-5. Require every non-intercept odds ratio and confidence limit to remain finite
-   after safe exponentiation. If only the restored intercept cannot be
-   exponentiated because the predictor origin is remote, retain its finite
-   log-odds coefficient/SE/CI, set its OR fields to undefined, and warn. An
-   unrepresentable non-intercept OR remains a hard failure.
+5. Guard every odds-ratio exponentiation against overflow and underflow. If a
+   coefficient and its log-odds CI remain finite but their OR representation does
+   not, retain the coefficient, SE, z, p-value, fitted probabilities, and
+   likelihood results; set both OR fields for that term to undefined and emit a
+   term-specific warning. Omit only the unavailable term from the OR forest. A
+   result DTO containing an undefined predictor OR without the matching warning,
+   or the warning without an undefined predictor OR, is invalid.
 
 Inference covariance is recomputed from the final fitted probabilities as
 `(Z.T W Z)^-1` through an SVD factorization. The product does not reuse
@@ -321,7 +327,9 @@ Required report sections:
 
 1. Outcome coding and complete-case counts.
 2. Omnibus model test and fit indices.
-3. Coefficients with odds ratios and 95% CIs.
+3. Coefficients with log-odds 95% CIs and, when representable, odds ratios with
+   95% CIs. Unrepresentable OR fields stay blank and are disclosed by warning;
+   the reporting layer must not reconstruct them.
 4. Threshold and classification table.
 5. Brier score, ROC AUC, and descriptive calibration table/plot when available.
 6. Every warning and unsupported-design boundary.
@@ -370,7 +378,11 @@ R anchor, and fail-closed fixtures are all green.
 - sparse categorical separation;
 - near-separation warning/rejection boundary;
 - rank deficiency and information condition limits;
-- predictor offset and positive-rescaling invariance;
+- predictor-offset invariance and positive-rescaling invariance of likelihood,
+  fitted probabilities, z statistics, and p-values; coefficients and SEs must
+  transform inversely with the unit scale, while one-unit ORs are explicitly
+  unit-dependent and may be unavailable outside the floating-point exponent
+  range;
 - row-order invariance;
 - extreme-tail finite p-value fixture.
 

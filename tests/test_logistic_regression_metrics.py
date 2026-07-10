@@ -12,7 +12,9 @@ from modori.logistic_regression_results import LogisticRegressionResult
 from modori.steps.logistic_regression import BinaryLogisticRegressionStep
 
 
-def _dataset(frame: pd.DataFrame, measures: dict[str, Measure] | None = None) -> Dataset:
+def _dataset(
+    frame: pd.DataFrame, measures: dict[str, Measure] | None = None
+) -> Dataset:
     measures = measures or {}
     return Dataset(
         df=frame,
@@ -23,7 +25,9 @@ def _dataset(frame: pd.DataFrame, measures: dict[str, Measure] | None = None) ->
                 measure=measures.get(column, Measure.SCALE),
                 value_labels={0.0: "no", 1.0: "yes"} if column == "event" else {},
                 missing_values=[],
-                dtype="float" if pd.api.types.is_numeric_dtype(frame[column]) else "string",
+                dtype="float"
+                if pd.api.types.is_numeric_dtype(frame[column])
+                else "string",
                 origin_step_id="fixture",
             )
             for column in frame.columns
@@ -56,12 +60,18 @@ def _params(*, threshold: float = 0.5, bins: int = 10) -> dict[str, object]:
     }
 
 
-def _fit(frame: pd.DataFrame, params: dict[str, object] | None = None) -> LogisticRegressionResult:
-    result = BinaryLogisticRegressionStep(
-        id="logit",
-        title="Binary logistic regression",
-        params=params or _params(),
-    ).compute_context_free(_dataset(frame)).analysis
+def _fit(
+    frame: pd.DataFrame, params: dict[str, object] | None = None
+) -> LogisticRegressionResult:
+    result = (
+        BinaryLogisticRegressionStep(
+            id="logit",
+            title="Binary logistic regression",
+            params=params or _params(),
+        )
+        .compute_context_free(_dataset(frame))
+        .analysis
+    )
     assert isinstance(result, LogisticRegressionResult)
     return result
 
@@ -100,7 +110,9 @@ def test_logistic_fit_matches_direct_glm_and_reconstructed_metrics() -> None:
     assert returned_se == pytest.approx(fisher_se, abs=1e-10, rel=1e-10)
     assert result.log_likelihood == pytest.approx(reference.llf, abs=1e-10)
     assert result.null_log_likelihood == pytest.approx(null.llf, abs=1e-10)
-    assert result.minus_two_log_likelihood == pytest.approx(-2.0 * reference.llf, abs=1e-10)
+    assert result.minus_two_log_likelihood == pytest.approx(
+        -2.0 * reference.llf, abs=1e-10
+    )
     assert result.aic == pytest.approx(reference.aic, abs=1e-10)
     assert result.likelihood_ratio_chi_square == pytest.approx(lr, abs=1e-10)
     assert result.likelihood_ratio_df == 2
@@ -114,9 +126,11 @@ def test_logistic_fit_matches_direct_glm_and_reconstructed_metrics() -> None:
         result.classification.fn,
         result.classification.tp,
     ) == (tn, fp, fn, tp)
-    assert result.brier_score == pytest.approx(np.mean((probability - y) ** 2), abs=1e-12)
-    assert result.event_label == "yes"
-    assert result.non_event_label == "no"
+    assert result.brier_score == pytest.approx(
+        np.mean((probability - y) ** 2), abs=1e-12
+    )
+    assert result.event_label == "yes (1)"
+    assert result.non_event_label == "no (0)"
     assert result.diagnostics["score_infinity_per_observation"] <= 1e-10
     assert result.diagnostics["separation_status"] == "overlap"
     assert any("동일 자료" in warning for warning in result.warnings)
@@ -149,13 +163,15 @@ def test_logistic_categorical_reference_order_matches_explicit_glm_matrix() -> N
             }
         },
     }
-    result = BinaryLogisticRegressionStep(
-        id="logit-categorical",
-        title="Categorical logistic regression",
-        params=params,
-    ).compute_context_free(
-        _dataset(frame, {"group": Measure.NOMINAL})
-    ).analysis
+    result = (
+        BinaryLogisticRegressionStep(
+            id="logit-categorical",
+            title="Categorical logistic regression",
+            params=params,
+        )
+        .compute_context_free(_dataset(frame, {"group": Measure.NOMINAL}))
+        .analysis
+    )
     x = np.column_stack(
         [
             np.ones(len(frame)),

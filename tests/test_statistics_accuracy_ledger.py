@@ -53,14 +53,15 @@ def test_logistic_reference_evidence_records_reproducible_closure_facts() -> Non
         "80-digit",
         "1e-10",
         "1e-11",
-        "112 passed",
-        "1201 passed, 4 skipped",
-        "3 passed, 1202 deselected",
-        "B9DAFA2F51933A2569770BAAD8B3A4CF35AF8D9C72C9A9785EEF094E216A8876",
+        "197 passed",
+        "1242 passed, 4 skipped",
+        "3 passed, 1243 deselected",
+        "23315F94BB82EAC76E7F575E1B7DB2D3B4C9602A275C48DCAB4A46D48B59BFCA",
         "package-engine-smoke-ok",
         "LogisticRegressionResult",
         "not adequacy evidence",
-        "Independent review remains",
+        "External Review Disposition",
+        "Both actionable external-review findings",
     ]
     for term in required_terms:
         assert term in text
@@ -71,10 +72,11 @@ def test_logistic_external_review_brief_is_adversarial_and_reproducible() -> Non
 
     required_terms = [
         "d47133c..2e11027",
-        "112 passed",
-        "1201 passed, 4 skipped",
+        "22ad2a4",
+        "197 passed",
+        "1242 passed, 4 skipped",
         "56 passed",
-        "B9DAFA2F51933A2569770BAAD8B3A4CF35AF8D9C72C9A9785EEF094E216A8876",
+        "23315F94BB82EAC76E7F575E1B7DB2D3B4C9602A275C48DCAB4A46D48B59BFCA",
         "separation",
         "preconditioning",
         "event coding",
@@ -83,7 +85,9 @@ def test_logistic_external_review_brief_is_adversarial_and_reproducible() -> Non
         "recommendation promotion",
         "Native visual",
         "Do not approve",
-        "Independent review | OPEN",
+        "F1",
+        "F2",
+        "Independent review | FINDINGS RECEIVED AND ADDRESSED",
     ]
     for term in required_terms:
         assert term in text
@@ -102,7 +106,9 @@ def test_closure_matrix_keeps_adequacy_as_statistical_performance_evidence() -> 
     assert "fail-closed limits" not in adequacy_row
 
 
-def test_statistics_literature_map_records_certified_and_product_specific_risks() -> None:
+def test_statistics_literature_map_records_certified_and_product_specific_risks() -> (
+    None
+):
     text = LITERATURE_MAP.read_text(encoding="utf-8")
 
     required_terms = [

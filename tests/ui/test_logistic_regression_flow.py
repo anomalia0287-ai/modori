@@ -69,13 +69,16 @@ def test_value_tokens_are_canonical_and_round_trip_exact_scalar_types(
 ) -> None:
     token = canonical_value_token(value)
 
-    assert json.dumps(
-        json.loads(token),
-        ensure_ascii=False,
-        allow_nan=False,
-        sort_keys=True,
-        separators=(",", ":"),
-    ) == token
+    assert (
+        json.dumps(
+            json.loads(token),
+            ensure_ascii=False,
+            allow_nan=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        == token
+    )
     decoded = decode_value_token(token)
     assert type(decoded) is type(value)
     assert decoded == value
@@ -105,7 +108,9 @@ def test_value_token_decoder_rejects_noncanonical_or_forged_tokens(token: str) -
         decode_value_token(token)
 
 
-def test_controller_returns_two_nonmissing_outcome_values_with_labels_and_raw_tokens() -> None:
+def test_controller_returns_two_nonmissing_outcome_values_with_labels_and_raw_tokens() -> (
+    None
+):
     controller = UiController(pipeline=Pipeline(_dataset()))
 
     rows = controller.logisticOutcomeOptions("event")
@@ -117,7 +122,96 @@ def test_controller_returns_two_nonmissing_outcome_values_with_labels_and_raw_to
     assert [type(decode_value_token(row["token"])) for row in rows] == [int, int]
 
 
-def test_controller_returns_reference_options_only_for_selected_categorical_predictors() -> None:
+def test_controller_rejects_outcome_values_with_identical_display_labels() -> None:
+    dataset = _dataset()
+    frame = dataset.df.copy()
+    frame["event"] = np.asarray(["1", 1, "1", 1, "1", 1], dtype=object)
+    dataset = Dataset(
+        df=frame,
+        variables={
+            **dataset.variables,
+            "event": _variable("event", Measure.ORDINAL),
+        },
+    )
+
+    assert (
+        UiController(pipeline=Pipeline(dataset)).logisticOutcomeOptions("event") == []
+    )
+
+
+@pytest.mark.parametrize(
+    ("text_value", "typed_value"),
+    [
+        ("True", True),
+        ("１", 1),
+        ("1 ", 1),
+    ],
+)
+def test_controller_rejects_visually_confusable_outcome_labels(
+    text_value: str,
+    typed_value: bool | int,
+) -> None:
+    dataset = _dataset()
+    frame = dataset.df.copy()
+    frame["event"] = np.asarray(
+        [text_value, typed_value, text_value, typed_value, text_value, typed_value],
+        dtype=object,
+    )
+    dataset = Dataset(
+        df=frame,
+        variables={
+            **dataset.variables,
+            "event": _variable("event", Measure.ORDINAL),
+        },
+    )
+
+    assert (
+        UiController(pipeline=Pipeline(dataset)).logisticOutcomeOptions("event") == []
+    )
+
+
+def test_controller_rejects_blank_outcome_display_labels() -> None:
+    dataset = _dataset()
+    frame = dataset.df.copy()
+    frame["event"] = np.asarray(["", 1, "", 1, "", 1], dtype=object)
+    dataset = Dataset(
+        df=frame,
+        variables={
+            **dataset.variables,
+            "event": _variable("event", Measure.ORDINAL),
+        },
+    )
+
+    assert (
+        UiController(pipeline=Pipeline(dataset)).logisticOutcomeOptions("event") == []
+    )
+
+
+def test_controller_formats_integral_float_outcomes_like_other_categorical_levels() -> (
+    None
+):
+    dataset = _dataset()
+    frame = dataset.df.copy()
+    frame["event"] = np.asarray([0.0, 1.0, 0.0, 1.0, 0.0, 1.0])
+    dataset = Dataset(
+        df=frame,
+        variables={
+            **dataset.variables,
+            "event": _variable("event", Measure.ORDINAL),
+        },
+    )
+
+    rows = UiController(pipeline=Pipeline(dataset)).logisticOutcomeOptions("event")
+
+    assert rows == [
+        {"token": canonical_value_token(0.0), "label": "0"},
+        {"token": canonical_value_token(1.0), "label": "1"},
+    ]
+
+
+def test_controller_returns_reference_options_only_for_selected_categorical_predictors() -> (
+    None
+):
     controller = UiController(pipeline=Pipeline(_dataset()))
 
     rows = controller.logisticCategoricalReferenceOptions("x, condition")
