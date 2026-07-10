@@ -19,6 +19,7 @@ class RunConfigurationValidator:
         "stats.compare_groups",
         "stats.paired_comparison",
         "stats.regression_ols",
+        "stats.logistic_regression",
         "stats.frequency_crosstab",
         "stats.correlation",
         "stats.anova_oneway",
@@ -51,6 +52,12 @@ class RunConfigurationValidator:
                 result = self._validate_paired_comparison(params, variable_keys)
             elif step_type == "stats.regression_ols":
                 result = self._validate_regression(params, variable_keys)
+            elif step_type == "stats.logistic_regression":
+                result = self._validate_logistic_regression(
+                    params,
+                    variable_keys,
+                    self._current_dataset(pipeline_ops),
+                )
             elif step_type == "stats.frequency_crosstab":
                 result = self._validate_frequency_crosstab(params, variable_keys)
             elif step_type == "stats.correlation":
@@ -161,6 +168,37 @@ class RunConfigurationValidator:
         if outcome in predictors:
             return self._invalid("종속 변수는 예측 변수에 포함될 수 없습니다.")
         return self._require_known_variables([outcome, *predictors], variable_keys)
+
+    def _validate_logistic_regression(
+        self,
+        params: Mapping[str, Any],
+        variable_keys: set[str] | None,
+        dataset: object | None,
+    ) -> RunValidationResult:
+        from modori.steps.logistic_regression import BinaryLogisticRegressionStep
+        from modori.ui.value_tokens import canonical_value_token, observed_value_options
+
+        try:
+            clean = BinaryLogisticRegressionStep.validate_params(
+                BinaryLogisticRegressionStep.migrate_params(dict(params))
+            )
+        except (TypeError, ValueError):
+            return self._invalid("이항 로지스틱 회귀 설정이 올바르지 않습니다.")
+        outcome = str(clean["outcome"])
+        predictors = [str(value) for value in clean["predictors"]]
+        known = self._require_known_variables([outcome, *predictors], variable_keys)
+        if not known.ok:
+            return known
+        if dataset is None:
+            return self._invalid("현재 데이터에서 이항 결과값을 확인할 수 없습니다.")
+        try:
+            options = observed_value_options(dataset, outcome)
+            event_token = canonical_value_token(clean["event_value"])
+        except ValueError:
+            return self._invalid("현재 데이터의 이항 결과값을 안전하게 확인할 수 없습니다.")
+        if len(options) != 2 or event_token not in {row["token"] for row in options}:
+            return self._invalid("선택한 사건값이 현재 데이터의 두 결과값과 일치하지 않습니다.")
+        return RunValidationResult(ok=True)
 
     def _validate_frequency_crosstab(
         self,
@@ -379,6 +417,11 @@ class RunConfigurationValidator:
         if steps is None:
             return []
         return list(steps)
+
+    @staticmethod
+    def _current_dataset(pipeline_ops: object) -> object | None:
+        current_dataset = getattr(pipeline_ops, "current_dataset", None)
+        return current_dataset() if callable(current_dataset) else current_dataset
 
     @staticmethod
     def _step_type(step: object) -> str:

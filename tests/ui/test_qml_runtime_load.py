@@ -5,7 +5,7 @@ from pathlib import Path
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6.QtCore import QUrl, qInstallMessageHandler
+from PySide6.QtCore import QObject, QUrl, qInstallMessageHandler
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine, QQmlComponent, QQmlEngine
 
@@ -63,6 +63,7 @@ def _load_main_with_warnings(
     app = _app()
     engine = QQmlApplicationEngine()
     bootstrap = AppBootstrap()
+    engine._bootstrap = bootstrap
     messages: list[str] = []
 
     def message_handler(msg_type, context, message) -> None:
@@ -145,4 +146,113 @@ def test_main_qml_loads_work_screen_with_imported_data_models(tmp_path) -> None:
     finally:
         root.deleteLater()
         _app().processEvents()
+        del engine
+
+
+def test_logistic_value_selectors_instantiate_and_require_explicit_choices(
+    tmp_path,
+) -> None:
+    data_path = tmp_path / "logistic.csv"
+    rows = ["event,x,condition"]
+    rows.extend(
+        f"{index % 2},{index + 1},{'control' if index % 3 else 'treatment'}"
+        for index in range(30)
+    )
+    data_path.write_text("\n".join(rows) + "\n", encoding="utf-8")
+    controller = UiController(reduce_effects=True)
+    assert controller.openDataFilePath(str(data_path)) is True
+    engine, root, messages = _load_main_with_warnings(controller)
+    app = _app()
+
+    try:
+        outcome = root.findChild(QObject, "pipelineLogisticOutcomeField")
+        predictors = root.findChild(QObject, "pipelineLogisticPredictorsField")
+        event_combo = root.findChild(QObject, "pipelineLogisticEventCombo")
+        apply_button = root.findChild(QObject, "pipelineApplyLogisticButton")
+        pipeline_rail = root.findChild(QObject, "pipelineRail")
+        assert outcome is not None
+        assert predictors is not None
+        assert event_combo is not None
+        assert apply_button is not None
+        assert pipeline_rail is not None
+
+        outcome.setProperty("text", "event")
+        predictors.setProperty("text", "x, condition")
+        app.processEvents()
+
+        assert event_combo.property("count") == 2
+        assert event_combo.property("currentIndex") == -1
+        reference_delegate = pipeline_rail.logisticReferenceItemAt(0)
+        assert reference_delegate is not None
+        assert reference_delegate.property("variableKey") == "condition"
+        reference_combo = reference_delegate.findChild(
+            QObject,
+            "pipelineLogisticReferenceCombo",
+        )
+        assert reference_combo is not None
+        assert reference_combo.property("count") == 2
+        assert reference_combo.property("currentIndex") == -1
+        assert apply_button.property("enabled") is False
+
+        event_combo.setProperty("currentIndex", 1)
+        app.processEvents()
+        assert apply_button.property("enabled") is False
+
+        reference_combo.setProperty("currentIndex", 0)
+        app.processEvents()
+        assert apply_button.property("enabled") is True
+        assert _significant_warnings(messages) == []
+    finally:
+        root.deleteLater()
+        app.processEvents()
+        del engine
+
+
+def test_logistic_recommendation_click_opens_unconfirmed_manual_configuration(
+    tmp_path,
+) -> None:
+    data_path = tmp_path / "logistic-recommendation.csv"
+    rows = ["event,x"]
+    rows.extend(f"{index % 2},{(index % 7) + (index / 10):.1f}" for index in range(40))
+    data_path.write_text("\n".join(rows) + "\n", encoding="utf-8")
+    controller = UiController(reduce_effects=True)
+    assert controller.openDataFilePath(str(data_path)) is True
+    before_step_types = [step.step_type for step in controller.pipeline.steps]
+    before_version = controller.pipeline_version
+    logistic_index = next(
+        index
+        for index, candidate in enumerate(controller._recommendation_state.candidates)
+        if candidate.kind == "logistic_regression"
+    )
+    engine, root, messages = _load_main_with_warnings(controller)
+    app = _app()
+
+    try:
+        guide = root.findChild(QObject, "guideRail")
+        other_button = root.findChild(QObject, "guideOtherRecommendationsButton")
+        assert guide is not None
+        assert other_button is not None
+
+        other_button.clicked.emit()
+        app.processEvents()
+        candidate_button = guide.recommendationItemAt(logistic_index)
+        assert candidate_button is not None
+        candidate_button.clicked.emit()
+        app.processEvents()
+
+        outcome = root.findChild(QObject, "guideOutcomeKeyField")
+        predictors = root.findChild(QObject, "guidePredictorKeysField")
+        event_combo = root.findChild(QObject, "guideLogisticEventCombo")
+        assert guide.property("manualSelectionMode") is True
+        assert guide.property("selectedIntent") == "logistic_regression"
+        assert outcome.property("text") == "event"
+        assert predictors.property("text") == "x"
+        assert event_combo.property("count") == 2
+        assert event_combo.property("currentIndex") == -1
+        assert [step.step_type for step in controller.pipeline.steps] == before_step_types
+        assert controller.pipeline_version == before_version
+        assert _significant_warnings(messages) == []
+    finally:
+        root.deleteLater()
+        app.processEvents()
         del engine

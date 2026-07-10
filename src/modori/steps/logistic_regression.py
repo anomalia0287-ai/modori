@@ -35,6 +35,7 @@ from modori.regression_design import (
     RegressionDesignMatrix,
     TermMetadata,
     build_regression_design_matrix,
+    categorical_level_label,
 )
 from modori.results import ChartSpec
 from modori.statistics_numerics import (
@@ -562,7 +563,7 @@ def prepare_logistic_inputs(
 
     for predictor, encoding in categorical.items():
         observed_raw = [_python_scalar(value) for value in pd.unique(frame[predictor])]
-        observed_labels = [str(value) for value in observed_raw]
+        observed_labels = [categorical_level_label(value) for value in observed_raw]
         if len(set(observed_labels)) != len(observed_raw):
             raise ValueError(
                 f"Logistic categorical predictor {predictor} has ambiguous display levels"
@@ -571,6 +572,7 @@ def prepare_logistic_inputs(
             raise ValueError(
                 f"Logistic categorical predictor {predictor} observed levels do not match declared levels"
             )
+        frame[predictor] = frame[predictor].map(categorical_level_label)
 
     design = build_regression_design_matrix(
         frame=frame,

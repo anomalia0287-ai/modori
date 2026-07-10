@@ -51,6 +51,22 @@ class RegressionDesignMatrix:
     centers: dict[str, float]
 
 
+def categorical_level_label(value: object) -> str:
+    if isinstance(value, np.generic):
+        value = value.item()
+    if isinstance(value, bool):
+        return str(value)
+    if isinstance(value, int):
+        return str(value)
+    if isinstance(value, float):
+        if not np.isfinite(value):
+            raise ValueError("Categorical levels must be finite")
+        if value.is_integer():
+            return str(int(value))
+        return str(value)
+    return str(value)
+
+
 def _level_label(value: object) -> str:
     return str(value)
 

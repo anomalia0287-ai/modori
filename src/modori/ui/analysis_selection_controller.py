@@ -1,11 +1,45 @@
 from __future__ import annotations
 
+import re
+
 from PySide6.QtCore import Slot
 
 from modori.ui.contracts import CommandResult
+from modori.ui.value_tokens import (
+    categorical_reference_options,
+    observed_value_options,
+)
 
 
 class AnalysisSelectionControllerMixin:
+    @Slot(str, result="QVariantList")
+    def logisticOutcomeOptions(self, outcome_key: str) -> list[dict[str, str]]:
+        try:
+            return observed_value_options(
+                self._services.pipeline_ops.current_dataset(),
+                outcome_key,
+            )
+        except ValueError:
+            return []
+
+    @Slot(str, result="QVariantList")
+    def logisticCategoricalReferenceOptions(
+        self,
+        predictor_keys_text: str,
+    ) -> list[dict[str, object]]:
+        predictor_keys = [
+            part
+            for part in re.split(r"[\s,;]+", str(predictor_keys_text).strip())
+            if part
+        ]
+        try:
+            return categorical_reference_options(
+                self._services.pipeline_ops.current_dataset(),
+                predictor_keys,
+            )
+        except ValueError:
+            return []
+
     def configureReliabilitySelection(self, item_keys_text: str) -> CommandResult:
         result = self._services.analysis_editor.reliability(
             item_keys_text,
@@ -68,6 +102,37 @@ class AnalysisSelectionControllerMixin:
     @Slot(str, str, result=bool)
     def configureRegressionFromText(self, outcome_key: str, predictor_keys_text: str) -> bool:
         return self.configureRegressionSelection(outcome_key, predictor_keys_text).ok
+
+    def configureLogisticRegression(
+        self,
+        outcome_key: str,
+        event_token: str,
+        predictor_keys_text: str,
+        categorical_reference_tokens: dict[str, str] | None = None,
+    ) -> CommandResult:
+        result = self._services.analysis_editor.logistic_regression(
+            outcome_key,
+            event_token,
+            predictor_keys_text,
+            categorical_reference_tokens,
+            pipeline_version=self._pipeline_state.pipeline_version,
+        )
+        return self._apply_step_edit_result(result)
+
+    @Slot(str, str, str, "QVariantMap", result=bool)
+    def configureLogisticRegressionFromTokens(
+        self,
+        outcome_key: str,
+        event_token: str,
+        predictor_keys_text: str,
+        categorical_reference_tokens: dict[str, str],
+    ) -> bool:
+        return self.configureLogisticRegression(
+            outcome_key,
+            event_token,
+            predictor_keys_text,
+            categorical_reference_tokens,
+        ).ok
 
     def configureFrequencyCrosstabSelection(self, variable_keys_text: str) -> CommandResult:
         result = self._services.analysis_editor.frequency_crosstab(

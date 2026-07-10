@@ -281,6 +281,64 @@ def test_pipeline_operations_preserves_results_when_chart_rendering_fails() -> N
     ]
 
 
+def test_pipeline_operations_renders_all_logistic_chart_specs_for_display() -> None:
+    specs = tuple(
+        ChartSpec(
+            type=chart_type,
+            title=chart_type,
+            data={},
+            x_label="x",
+            y_label="y",
+        )
+        for chart_type in ("odds_ratio_forest", "roc_curve", "calibration_plot")
+    )
+
+    class LogisticResult:
+        chart_specs = specs
+
+    class FakeChartRenderer:
+        def __init__(self) -> None:
+            self.calls: list[tuple[str, ChartSpec]] = []
+
+        def render_for_display(
+            self,
+            *,
+            result_id: str,
+            chart_spec: ChartSpec,
+        ) -> ChartAssetResult:
+            self.calls.append((result_id, chart_spec))
+            return ChartAssetResult(paths=[f"{result_id}.png"])
+
+    renderer = FakeChartRenderer()
+    display = DisplayResult(
+        result_id="logistic_regression",
+        kind="logistic_regression",
+        title_ko="이항 로지스틱 회귀",
+        title_en="Binary logistic regression",
+        prose_ko="",
+        prose_en="",
+    )
+
+    updated = PipelineOperations(
+        FakePipeline(),
+        chart_renderer=renderer,
+    )._with_display_chart(display, "logistic_regression", LogisticResult())
+
+    assert [call[0] for call in renderer.calls] == [
+        "logistic_regression:1",
+        "logistic_regression:2",
+        "logistic_regression:3",
+    ]
+    assert updated.chart_paths == [
+        "logistic_regression:1.png",
+        "logistic_regression:2.png",
+        "logistic_regression:3.png",
+    ]
+    assert PipelineOperations._kind_for_result("logistic_regression") == (
+        "logistic_regression"
+    )
+
+
 def test_pipeline_operations_export_report_requires_docx_path(tmp_path) -> None:
     pipeline = FakePipeline()
     pipeline.analysis_objects = {"report": object()}

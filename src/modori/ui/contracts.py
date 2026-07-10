@@ -96,6 +96,7 @@ class DisplayResult:
         "reliability",
         "comparison",
         "regression",
+        "logistic_regression",
         "frequency_crosstab",
         "correlation",
         "anova_oneway",

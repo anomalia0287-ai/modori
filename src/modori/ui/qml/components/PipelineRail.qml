@@ -5,6 +5,7 @@ import "../theme"
 
 Rectangle {
     id: root
+    objectName: "pipelineRail"
     color: theme.paperSurface
     border.color: theme.lineRail
 
@@ -12,6 +13,8 @@ Rectangle {
 
     property bool canRunPipeline: uiController.status !== "empty" && uiController.status !== "running"
     property bool canEditSelection: uiController.status !== "empty" && uiController.status !== "running"
+    property var logisticOutcomeRows: []
+    property var logisticReferenceRows: []
 
     Theme {
         id: theme
@@ -19,6 +22,53 @@ Rectangle {
 
     function hasText(value) {
         return String(value).trim().length > 0
+    }
+
+    function logisticReferenceTokens() {
+        var tokens = {}
+        for (var index = 0; index < logisticReferenceRepeater.count; index += 1) {
+            var item = logisticReferenceRepeater.itemAt(index)
+            if (!item || !item.referenceSelected) {
+                return null
+            }
+            tokens[item.variableKey] = item.referenceToken
+        }
+        return tokens
+    }
+
+    function logisticReferenceItemAt(index) {
+        return logisticReferenceRepeater.itemAt(index)
+    }
+
+    function refreshLogisticOutcomeRows() {
+        root.logisticOutcomeRows = uiController.logisticOutcomeOptions(logisticOutcomeField.text)
+        logisticEventCombo.currentIndex = -1
+    }
+
+    function refreshLogisticReferenceRows() {
+        root.logisticReferenceRows = uiController.logisticCategoricalReferenceOptions(logisticPredictorsField.text)
+    }
+
+    function canApplyLogistic() {
+        return root.canEditSelection
+            && root.hasText(logisticOutcomeField.text)
+            && root.hasText(logisticPredictorsField.text)
+            && root.logisticOutcomeRows.length === 2
+            && logisticEventCombo.currentIndex >= 0
+            && root.logisticReferenceTokens() !== null
+    }
+
+    function applyLogistic() {
+        var references = root.logisticReferenceTokens()
+        if (references === null) {
+            return false
+        }
+        return uiController.configureLogisticRegressionFromTokens(
+            logisticOutcomeField.text,
+            logisticEventCombo.currentValue,
+            logisticPredictorsField.text,
+            references
+        )
     }
 
     ScrollView {
@@ -272,6 +322,92 @@ Rectangle {
                     regressionOutcomeField.text,
                     regressionPredictorsField.text
                 )
+            }
+
+            TextField {
+                id: logisticOutcomeField
+                objectName: "pipelineLogisticOutcomeField"
+                placeholderText: appBootstrap.text("pipeline.outcome_placeholder")
+                Accessible.name: appBootstrap.text("pipeline.outcome_accessible")
+                width: theme.fieldWidthTiny
+                selectByMouse: true
+                onTextChanged: root.refreshLogisticOutcomeRows()
+            }
+
+            TextField {
+                id: logisticPredictorsField
+                objectName: "pipelineLogisticPredictorsField"
+                placeholderText: appBootstrap.text("pipeline.predictors_placeholder")
+                Accessible.name: appBootstrap.text("pipeline.predictors_accessible")
+                width: theme.fieldWidthSmall
+                selectByMouse: true
+                onTextChanged: root.refreshLogisticReferenceRows()
+            }
+
+            ComboBox {
+                id: logisticEventCombo
+                objectName: "pipelineLogisticEventCombo"
+                width: theme.fieldWidthSmall
+                enabled: root.logisticOutcomeRows.length === 2
+                model: root.logisticOutcomeRows
+                textRole: "label"
+                valueRole: "token"
+                currentIndex: -1
+                Accessible.name: appBootstrap.text("pipeline.logistic_event_accessible")
+                onModelChanged: currentIndex = -1
+            }
+
+            Label {
+                text: logisticEventCombo.currentIndex >= 0
+                    ? appBootstrap.text("pipeline.logistic_event") + ": " + logisticEventCombo.currentText
+                    : appBootstrap.text("pipeline.logistic_event")
+                color: logisticEventCombo.currentIndex >= 0 ? theme.deepTeal : theme.textControl
+                width: theme.fieldWidthSmall
+                wrapMode: Text.WordWrap
+            }
+
+            Repeater {
+                id: logisticReferenceRepeater
+                objectName: "pipelineLogisticReferenceRepeater"
+                model: root.logisticReferenceRows
+
+                delegate: Column {
+                    id: referenceDelegate
+                    objectName: "pipelineLogisticReferenceDelegate"
+                    required property var modelData
+                    property string variableKey: String(modelData.variable)
+                    property string referenceToken: referenceCombo.currentIndex >= 0 ? String(referenceCombo.currentValue) : ""
+                    property bool referenceSelected: referenceCombo.currentIndex >= 0 && modelData.levels.length >= 2
+                    width: theme.fieldWidthSmall
+                    spacing: theme.spaceXs
+
+                    Label {
+                        text: referenceDelegate.variableKey + " · " + appBootstrap.text("pipeline.logistic_reference")
+                        color: theme.textControl
+                        width: referenceDelegate.width
+                        wrapMode: Text.WordWrap
+                    }
+
+                    ComboBox {
+                        id: referenceCombo
+                        objectName: "pipelineLogisticReferenceCombo"
+                        width: referenceDelegate.width
+                        model: referenceDelegate.modelData.levels
+                        textRole: "label"
+                        valueRole: "token"
+                        currentIndex: -1
+                        Accessible.name: referenceDelegate.variableKey + " " + appBootstrap.text("pipeline.logistic_reference_accessible")
+                        onModelChanged: currentIndex = -1
+                    }
+                }
+            }
+
+            Button {
+                objectName: "pipelineApplyLogisticButton"
+                text: appBootstrap.text("pipeline.apply_logistic_regression")
+                Accessible.name: appBootstrap.text("pipeline.apply_logistic_regression")
+                enabled: root.canApplyLogistic()
+                onClicked: root.applyLogistic()
             }
         }
     }

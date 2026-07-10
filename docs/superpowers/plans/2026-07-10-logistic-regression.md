@@ -441,7 +441,7 @@ git commit -m "feat: recommend logistic regression cautiously"
 - Produces QML `ComboBox` controls for the event and categorical references; no
   free-text value or reference fields.
 
-- [ ] **Step 1: Locate the single current dataset owner and write query tests**
+- [x] **Step 1: Locate the single current dataset owner and write query tests**
 
 The API returns JSON-safe rows:
 
@@ -478,26 +478,28 @@ Extend `AnalysisSelectionCommandBuilder.__init__` with
 `PipelineOperations.current_dataset()`. Existing direct unit tests remain valid
 through the default, while logistic commands require a real dataset.
 
-- [ ] **Step 2: Write command and pipeline tests**
+- [x] **Step 2: Write command and pipeline tests**
 
 Assert event token validation, predictor validation, categorical reference token
-validation, exact schema-v1 params, report result key, rerun, undo/redo,
-serialization, and stale-pipeline rejection.
+validation, exact schema-v1 params, report result key, rerun, transactional rollback,
+serialization, and stale-token rejection. The V1 `Pipeline` has no public undo/redo
+API; global edit history is a separate product feature and is not invented inside
+this module.
 
-- [ ] **Step 3: Implement controller/editor/pipeline wiring**
+- [x] **Step 3: Implement controller/editor/pipeline wiring**
 
 Add `BinaryLogisticRegressionStep` branches to analysis creation and result-key
 dispatch. Keep the run button disabled until a valid event option and every
 required categorical reference are selected. Selecting a configuration-required
 logistic recommendation opens this manual configuration state instead of running.
 
-- [ ] **Step 4: Implement QML controls and Korean strings**
+- [x] **Step 4: Implement QML controls and Korean strings**
 
 Use `ComboBox` for the event level and one repeated `ComboBox` per categorical
 predictor reference, with existing text fields for variable keys. The interface
 must visibly name the selected event because every OR is conditional on it.
 
-- [ ] **Step 5: Run offscreen QML and UI tests**
+- [x] **Step 5: Run offscreen QML and UI tests**
 
 ```powershell
 $env:QT_QPA_PLATFORM='offscreen'
@@ -505,7 +507,7 @@ $env:PYTHONPATH=(Resolve-Path 'src').Path
 & 'C:\Users\V\Desktop\TongTong\.venv\Scripts\python.exe' -m pytest -q -p no:cacheprovider tests/ui/test_logistic_regression_flow.py tests/ui/test_commands.py tests/ui/test_controller.py tests/test_launch_smoke_script.py
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```powershell
 git add src/modori/ui tests/ui

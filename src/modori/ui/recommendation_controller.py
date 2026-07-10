@@ -47,6 +47,16 @@ class RecommendationControllerMixin:
         return len(self._recommendation_state.candidates)
 
     @Property(str, notify=recommendationStateChanged)
+    def recommendationKind(self) -> str:
+        candidate = self._recommendation_state.selected_candidate
+        return "" if candidate is None else candidate.kind
+
+    @Property(bool, notify=recommendationStateChanged)
+    def recommendationRequiresConfiguration(self) -> bool:
+        candidate = self._recommendation_state.selected_candidate
+        return bool(candidate is not None and candidate.requires_configuration)
+
+    @Property(str, notify=recommendationStateChanged)
     def preparedReliabilityItems(self) -> str:
         candidate = self._recommendation_state.selected_candidate
         if candidate is None or candidate.kind != "reliability":
@@ -108,6 +118,18 @@ class RecommendationControllerMixin:
         if index < 0 or index >= len(self._recommendation_state.candidates):
             return ""
         return self._recommendation_state.candidates[index].level
+
+    @Slot(int, result=str)
+    def recommendationCandidateKindAt(self, index: int) -> str:
+        if index < 0 or index >= len(self._recommendation_state.candidates):
+            return ""
+        return self._recommendation_state.candidates[index].kind
+
+    @Slot(int, result=bool)
+    def recommendationCandidateRequiresConfigurationAt(self, index: int) -> bool:
+        if index < 0 or index >= len(self._recommendation_state.candidates):
+            return False
+        return self._recommendation_state.candidates[index].requires_configuration
 
     def applySelectedRecommendation(self) -> CommandResult:
         candidate: RecommendationCandidate | None = self._recommendation_state.selected_candidate

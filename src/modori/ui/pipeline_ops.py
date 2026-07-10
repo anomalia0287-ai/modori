@@ -22,6 +22,7 @@ from modori.steps import (
     ModeratedMediationStep,
     MultipleRegressionStep,
     OneWayAnovaStep,
+    BinaryLogisticRegressionStep,
     ReliabilityStep,
     ReportStep,
 )
@@ -224,20 +225,28 @@ class PipelineOperations:
         result_id: str,
         result: object,
     ) -> DisplayResult:
-        chart_spec = getattr(result, "chart_spec", None)
-        if chart_spec is None:
+        chart_specs = getattr(result, "chart_specs", ())
+        if isinstance(chart_specs, (list, tuple)) and chart_specs:
+            render_jobs = [
+                (f"{result_id}:{index}", chart_spec)
+                for index, chart_spec in enumerate(chart_specs, start=1)
+            ]
+        else:
+            chart_spec = getattr(result, "chart_spec", None)
+            render_jobs = [] if chart_spec is None else [(result_id, chart_spec)]
+        if not render_jobs:
             return display
-        assets = self.chart_renderer.render_for_display(
-            result_id=result_id,
-            chart_spec=chart_spec,
-        )
-        paths = list(getattr(assets, "paths", []))
-        error = getattr(assets, "error", None)
-        if not paths and not error:
-            return display
+        paths: list[str] = []
         notes = list(display.notes)
-        if error:
-            notes.append(DisplayNote(title="그림", body=str(error)))
+        for chart_result_id, chart_spec in render_jobs:
+            assets = self.chart_renderer.render_for_display(
+                result_id=chart_result_id,
+                chart_spec=chart_spec,
+            )
+            paths.extend(getattr(assets, "paths", []))
+            error = getattr(assets, "error", None)
+            if error:
+                notes.append(DisplayNote(title="그림", body=str(error)))
         return replace(
             display,
             chart_paths=[*display.chart_paths, *paths],
@@ -269,6 +278,8 @@ class PipelineOperations:
             return "comparison"
         if result_id.startswith("regression"):
             return "regression"
+        if result_id.startswith("logistic_regression"):
+            return "logistic_regression"
         if result_id.startswith("frequency_crosstab"):
             return "frequency_crosstab"
         if result_id.startswith("correlation"):
@@ -300,6 +311,7 @@ class PipelineOperations:
             "stats.reliability",
             "stats.compare_groups",
             "stats.regression_ols",
+            "stats.logistic_regression",
             "stats.frequency_crosstab",
             "stats.correlation",
             "stats.anova_oneway",
@@ -421,6 +433,12 @@ class PipelineOperations:
                 title="Multiple linear regression",
                 params=dict(params),
             )
+        if step_type == "stats.logistic_regression":
+            return BinaryLogisticRegressionStep(
+                id=step_id,
+                title="Binary logistic regression",
+                params=dict(params),
+            )
         if step_type == "stats.frequency_crosstab":
             return FrequencyCrosstabStep(
                 id=step_id,
@@ -484,7 +502,7 @@ class PipelineOperations:
             return f"reliability:{params.get('scale_name', 'scale')}"
         if step_type == "stats.compare_groups":
             return f"comparison:{params['dv']}:{params['group']}"
-        if step_type == "stats.regression_ols":
+        if step_type in {"stats.regression_ols", "stats.logistic_regression"}:
             return self._step_id(analysis_step)
         if step_type in {
             "stats.frequency_crosstab",
@@ -603,6 +621,7 @@ class PipelineOperations:
             return bool(options.include_dimension_reduction)
         if (
             key.startswith("regression")
+            or key.startswith("logistic_regression")
             or key.startswith("mediation")
             or key.startswith("moderated_mediation")
         ):

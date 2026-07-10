@@ -5,6 +5,7 @@ import "../theme"
 
 Rectangle {
     id: root
+    objectName: "guideRail"
     color: theme.guideSurface
     property string guideNote: ""
     property string selectedIntent: ""
@@ -13,6 +14,8 @@ Rectangle {
     property bool recommendationAvailable: uiController.recommendationCount > 0
     property bool canEditSelection: uiController.status !== "empty" && uiController.status !== "running"
     property bool canCommitSelection: root.canCommitManualSelection()
+    property var logisticOutcomeRows: []
+    property var logisticReferenceRows: []
 
     Theme {
         id: theme
@@ -30,6 +33,35 @@ Rectangle {
         return value === "comparison" || value === "anova_oneway" || value === "kruskal_wallis" || value === "ancova"
     }
 
+    function logisticReferenceTokens() {
+        var tokens = {}
+        for (var index = 0; index < logisticReferenceRepeater.count; index += 1) {
+            var item = logisticReferenceRepeater.itemAt(index)
+            if (!item || !item.referenceSelected) {
+                return null
+            }
+            tokens[item.variableKey] = item.referenceToken
+        }
+        return tokens
+    }
+
+    function refreshLogisticOutcomeRows() {
+        root.logisticOutcomeRows = root.selectedIntent === "logistic_regression"
+            ? uiController.logisticOutcomeOptions(outcomeKeyField.text)
+            : []
+        logisticEventCombo.currentIndex = -1
+    }
+
+    function refreshLogisticReferenceRows() {
+        root.logisticReferenceRows = root.selectedIntent === "logistic_regression"
+            ? uiController.logisticCategoricalReferenceOptions(predictorKeysField.text)
+            : []
+    }
+
+    function recommendationItemAt(index) {
+        return recommendationRepeater.itemAt(index)
+    }
+
     function canCommitManualSelection() {
         if (!root.canEditSelection) {
             return false
@@ -42,6 +74,13 @@ Rectangle {
         }
         if (root.selectedIntent === "regression") {
             return root.hasText(outcomeKeyField.text) && root.hasText(predictorKeysField.text)
+        }
+        if (root.selectedIntent === "logistic_regression") {
+            return root.hasText(outcomeKeyField.text)
+                && root.hasText(predictorKeysField.text)
+                && root.logisticOutcomeRows.length === 2
+                && logisticEventCombo.currentIndex >= 0
+                && root.logisticReferenceTokens() !== null
         }
         if (root.selectedIntent === "ancova") {
             return root.hasText(outcomeKeyField.text) && root.hasText(groupKeyField.text) && root.hasText(covariateKeysField.text)
@@ -82,6 +121,18 @@ Rectangle {
         }
         if (root.selectedIntent === "regression") {
             return uiController.configureRegressionFromText(outcomeKeyField.text, predictorKeysField.text)
+        }
+        if (root.selectedIntent === "logistic_regression") {
+            var references = root.logisticReferenceTokens()
+            if (references === null) {
+                return false
+            }
+            return uiController.configureLogisticRegressionFromTokens(
+                outcomeKeyField.text,
+                logisticEventCombo.currentValue,
+                predictorKeysField.text,
+                references
+            )
         }
         return false
     }
@@ -141,6 +192,7 @@ Rectangle {
             }
 
             Button {
+                objectName: "guideOtherRecommendationsButton"
                 text: appBootstrap.text("guide.other_recommendations")
                 Accessible.name: appBootstrap.text("guide.other_recommendations")
                 enabled: root.canEditSelection && uiController.recommendationCount > 1
@@ -152,6 +204,7 @@ Rectangle {
             }
 
             Repeater {
+                id: recommendationRepeater
                 model: root.showOtherRecommendations ? uiController.recommendationCount : 0
 
                 delegate: Button {
@@ -161,7 +214,16 @@ Rectangle {
                     enabled: root.canEditSelection
                     Layout.fillWidth: true
                     onClicked: {
-                        uiController.selectRecommendationAt(index)
+                        if (uiController.selectRecommendationAt(index)
+                                && uiController.recommendationCandidateRequiresConfigurationAt(index)
+                                && uiController.recommendationCandidateKindAt(index) === "logistic_regression") {
+                            root.manualSelectionMode = true
+                            root.selectedIntent = "logistic_regression"
+                            outcomeKeyField.text = uiController.preparedOutcomeKey
+                            predictorKeysField.text = uiController.preparedPredictorKeys
+                            logisticEventCombo.currentIndex = -1
+                            root.showOtherRecommendations = false
+                        }
                     }
                 }
             }
@@ -298,6 +360,19 @@ Rectangle {
             }
 
             Button {
+                text: appBootstrap.text("guide.logistic_regression")
+                Accessible.name: appBootstrap.text("guide.logistic_regression")
+                visible: root.manualSelectionMode
+                Layout.fillWidth: true
+                onClicked: {
+                    root.manualSelectionMode = true
+                    root.selectedIntent = "logistic_regression"
+                    root.guideNote = ""
+                    logisticEventCombo.currentIndex = -1
+                }
+            }
+
+            Button {
                 text: root.manualSelectionMode ? appBootstrap.text("guide.run_manual") : appBootstrap.text("guide.run_recommended")
                 Accessible.name: text
                 enabled: root.manualSelectionMode ? root.canCommitSelection : root.canEditSelection && root.recommendationAvailable
@@ -333,11 +408,13 @@ Rectangle {
 
             TextField {
                 id: outcomeKeyField
-                visible: root.manualSelectionMode && (root.isOutcomeGroupIntent(root.selectedIntent) || root.selectedIntent === "regression")
+                objectName: "guideOutcomeKeyField"
+                visible: root.manualSelectionMode && (root.isOutcomeGroupIntent(root.selectedIntent) || root.selectedIntent === "regression" || root.selectedIntent === "logistic_regression")
                 Layout.fillWidth: true
                 placeholderText: root.selectedIntent === "regression" ? appBootstrap.text("guide.dependent_placeholder") : appBootstrap.text("guide.outcome_placeholder")
                 Accessible.name: appBootstrap.text("guide.outcome_accessible")
                 selectByMouse: true
+                onTextChanged: root.refreshLogisticOutcomeRows()
             }
 
             TextField {
@@ -360,11 +437,76 @@ Rectangle {
 
             TextField {
                 id: predictorKeysField
-                visible: root.manualSelectionMode && root.selectedIntent === "regression"
+                objectName: "guidePredictorKeysField"
+                visible: root.manualSelectionMode && (root.selectedIntent === "regression" || root.selectedIntent === "logistic_regression")
                 Layout.fillWidth: true
                 placeholderText: appBootstrap.text("guide.predictors_placeholder")
                 Accessible.name: appBootstrap.text("guide.predictors_accessible")
                 selectByMouse: true
+                onTextChanged: root.refreshLogisticReferenceRows()
+            }
+
+            Label {
+                text: appBootstrap.text("guide.logistic_event")
+                visible: root.manualSelectionMode && root.selectedIntent === "logistic_regression"
+                color: theme.textControl
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+
+            ComboBox {
+                id: logisticEventCombo
+                objectName: "guideLogisticEventCombo"
+                visible: root.manualSelectionMode && root.selectedIntent === "logistic_regression"
+                enabled: root.logisticOutcomeRows.length === 2
+                model: root.logisticOutcomeRows
+                textRole: "label"
+                valueRole: "token"
+                currentIndex: -1
+                Accessible.name: appBootstrap.text("guide.logistic_event_accessible")
+                Layout.fillWidth: true
+                onModelChanged: currentIndex = -1
+            }
+
+            Label {
+                text: logisticEventCombo.currentIndex >= 0
+                    ? appBootstrap.text("guide.logistic_event") + ": " + logisticEventCombo.currentText
+                    : ""
+                visible: root.manualSelectionMode && root.selectedIntent === "logistic_regression" && logisticEventCombo.currentIndex >= 0
+                color: theme.deepTeal
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+
+            Repeater {
+                id: logisticReferenceRepeater
+                model: root.logisticReferenceRows
+
+                delegate: ColumnLayout {
+                    id: referenceDelegate
+                    required property var modelData
+                    property string variableKey: String(modelData.variable)
+                    property string referenceToken: referenceCombo.currentIndex >= 0 ? String(referenceCombo.currentValue) : ""
+                    property bool referenceSelected: referenceCombo.currentIndex >= 0 && modelData.levels.length >= 2
+                    Layout.fillWidth: true
+
+                    Label {
+                        text: referenceDelegate.variableKey + " · " + appBootstrap.text("guide.logistic_reference")
+                        color: theme.textControl
+                        Layout.fillWidth: true
+                    }
+
+                    ComboBox {
+                        id: referenceCombo
+                        model: referenceDelegate.modelData.levels
+                        textRole: "label"
+                        valueRole: "token"
+                        currentIndex: -1
+                        Accessible.name: referenceDelegate.variableKey + " " + appBootstrap.text("guide.logistic_reference_accessible")
+                        Layout.fillWidth: true
+                        onModelChanged: currentIndex = -1
+                    }
+                }
             }
 
             Button {

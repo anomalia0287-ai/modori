@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import pandas as pd
 import pytest
 
+from modori.core import Dataset, Measure, Variable
 from modori.ui.commands import AnalysisSelectionCommandBuilder, normalize_variable_metadata_patch
 from modori.ui.patches import PatchValidationError
+from modori.ui.value_tokens import canonical_value_token
 
 
 class FakeStep:
@@ -143,6 +146,48 @@ class FakePipeline:
         ]
 
 
+def _logistic_dataset() -> Dataset:
+    frame = pd.DataFrame(
+        {
+            "event": [0, 1, 0, 1],
+            "x": [1.0, 2.0, 3.0, 4.0],
+            "condition": ["control", "treatment", "control", "treatment"],
+        }
+    )
+    return Dataset(
+        df=frame,
+        variables={
+            "event": Variable(
+                name="event",
+                label="event",
+                measure=Measure.ORDINAL,
+                value_labels={0.0: "미완료", 1.0: "완료"},
+                missing_values=[],
+                dtype="int64",
+                origin_step_id="fixture",
+            ),
+            "x": Variable(
+                name="x",
+                label="x",
+                measure=Measure.SCALE,
+                value_labels={},
+                missing_values=[],
+                dtype="float64",
+                origin_step_id="fixture",
+            ),
+            "condition": Variable(
+                name="condition",
+                label="condition",
+                measure=Measure.NOMINAL,
+                value_labels={},
+                missing_values=[],
+                dtype="object",
+                origin_step_id="fixture",
+            ),
+        },
+    )
+
+
 def test_analysis_command_builder_builds_reliability_step_edit() -> None:
     command = AnalysisSelectionCommandBuilder(
         pipeline=FakePipeline(),
@@ -164,6 +209,116 @@ def test_analysis_command_builder_rejects_regression_outcome_in_predictors() -> 
 
     assert error.value.error_code == "invalid_selection"
     assert "종속 변수" in error.value.message_ko
+
+
+def test_analysis_command_builder_builds_exact_logistic_schema_from_value_tokens() -> None:
+    dataset = _logistic_dataset()
+    command = AnalysisSelectionCommandBuilder(
+        pipeline=None,
+        variable_keys=set(dataset.variables),
+        dataset=dataset,
+    ).logistic_regression(
+        "event",
+        canonical_value_token(1),
+        "x, condition",
+        {"condition": canonical_value_token("control")},
+    )
+
+    assert command.step_id == "logistic_regression"
+    assert command.step_type == "stats.logistic_regression"
+    assert command.params == {
+        "schema_version": 1,
+        "outcome": "event",
+        "event_value": 1,
+        "predictors": ["x", "condition"],
+        "logistic_policy": {
+            "preset": "conservative",
+            "classification_threshold": 0.5,
+            "calibration_bins": 10,
+            "categorical_predictors": {
+                "condition": {
+                    "reference": "control",
+                    "levels": ["control", "treatment"],
+                }
+            },
+        },
+        "language": "ko",
+    }
+
+
+@pytest.mark.parametrize(
+    ("event_token", "references"),
+    [
+        (canonical_value_token(9), {"condition": canonical_value_token("control")}),
+        ('{"type":"int","value":1} ', {"condition": canonical_value_token("control")}),
+        (canonical_value_token(1), {}),
+        (canonical_value_token(1), {"condition": canonical_value_token("forged")}),
+        (
+            canonical_value_token(1),
+            {
+                "condition": canonical_value_token("control"),
+                "x": canonical_value_token(1.0),
+            },
+        ),
+    ],
+)
+def test_analysis_command_builder_rejects_stale_or_incomplete_logistic_tokens(
+    event_token: str,
+    references: dict[str, str],
+) -> None:
+    dataset = _logistic_dataset()
+    with pytest.raises(PatchValidationError) as error:
+        AnalysisSelectionCommandBuilder(
+            pipeline=None,
+            variable_keys=set(dataset.variables),
+            dataset=dataset,
+        ).logistic_regression(
+            "event",
+            event_token,
+            "x, condition",
+            references,
+        )
+
+    assert error.value.error_code == "invalid_selection"
+
+
+def test_analysis_command_builder_requires_binary_outcome_and_real_dataset() -> None:
+    dataset = _logistic_dataset()
+    nonbinary = Dataset(
+        df=dataset.df.assign(event=[0, 1, 2, 1]),
+        variables=dict(dataset.variables),
+    )
+
+    for current in (None, nonbinary):
+        with pytest.raises(PatchValidationError) as error:
+            AnalysisSelectionCommandBuilder(
+                pipeline=None,
+                variable_keys=set(dataset.variables),
+                dataset=current,
+            ).logistic_regression(
+                "event",
+                canonical_value_token(1),
+                "x",
+            )
+
+        assert error.value.error_code == "invalid_selection"
+
+
+def test_analysis_command_builder_rejects_non_mapping_logistic_references() -> None:
+    dataset = _logistic_dataset()
+    with pytest.raises(PatchValidationError) as error:
+        AnalysisSelectionCommandBuilder(
+            pipeline=None,
+            variable_keys=set(dataset.variables),
+            dataset=dataset,
+        ).logistic_regression(
+            "event",
+            canonical_value_token(1),
+            "x, condition",
+            [("condition", canonical_value_token("control"))],  # type: ignore[arg-type]
+        )
+
+    assert error.value.error_code == "invalid_selection"
 
 
 def test_analysis_command_builder_builds_frequency_crosstab_step_edit() -> None:

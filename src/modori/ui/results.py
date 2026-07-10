@@ -12,6 +12,7 @@ ResultKind = Literal[
     "reliability",
     "comparison",
     "regression",
+    "logistic_regression",
     "frequency_crosstab",
     "correlation",
     "anova_oneway",
@@ -78,6 +79,10 @@ def _title_for(kind: ResultKind, language: str) -> str:
         "reliability": {"ko": "신뢰도", "en": "Reliability"},
         "comparison": {"ko": "집단비교", "en": "Group comparison"},
         "regression": {"ko": "회귀분석", "en": "Regression"},
+        "logistic_regression": {
+            "ko": "이항 로지스틱 회귀",
+            "en": "Binary logistic regression",
+        },
         "frequency_crosstab": {"ko": "빈도/교차분석", "en": "Frequencies/crosstabs"},
         "correlation": {"ko": "상관분석", "en": "Correlation"},
         "anova_oneway": {"ko": "일원분산분석", "en": "One-way ANOVA"},
