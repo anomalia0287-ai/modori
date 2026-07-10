@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from scripts import quality_gate
 from scripts.quality_gate import quality_commands, reference_environment
 
 
@@ -43,7 +44,9 @@ def test_quality_gate_can_opt_into_slow_statistics_gate() -> None:
 
 
 def test_quality_gate_can_opt_into_package_build_and_launch() -> None:
-    commands = quality_commands(include_package_build=True, include_packaged_launch=True)
+    commands = quality_commands(
+        include_package_build=True, include_packaged_launch=True
+    )
 
     assert ["scripts/package_windows.py"] in commands
     assert ["scripts/package_launch_smoke.py"] in commands
@@ -64,7 +67,9 @@ def test_quality_gate_auto_detects_workspace_r_runtime(tmp_path, monkeypatch) ->
     assert str(tmp_path / ".tools" / "r-env" / "Library" / "bin") in env["PATH"]
 
 
-def test_quality_gate_normalizes_relative_rscript_override(tmp_path, monkeypatch) -> None:
+def test_quality_gate_normalizes_relative_rscript_override(
+    tmp_path, monkeypatch
+) -> None:
     local_rscript = tmp_path / ".tools" / "r-env" / "Scripts" / "Rscript.exe"
     local_rscript.parent.mkdir(parents=True)
     local_rscript.write_text("", encoding="utf-8")
@@ -77,10 +82,49 @@ def test_quality_gate_normalizes_relative_rscript_override(tmp_path, monkeypatch
     assert str(tmp_path / ".tools" / "r-env" / "Library" / "bin") in env["PATH"]
 
 
-def test_release_checklist_documents_dependency_release_gate() -> None:
-    text = Path("docs/specs/release-readiness-checklist.md").read_text(
-        encoding="utf-8"
+def test_quality_gate_limits_r_runtime_path_to_reference_commands() -> None:
+    base = {"PATH": "C:\\Windows"}
+    reference = {
+        "PATH": "C:\\repo\\.tools\\r-env\\Library\\bin;C:\\Windows",
+        "MODORI_RSCRIPT": "C:\\repo\\.tools\\r-env\\Scripts\\Rscript.exe",
+    }
+
+    assert (
+        quality_gate.environment_for_command(
+            ["-m", "pytest", "-q"],
+            base_environment=base,
+            reference_environment=reference,
+        )
+        == reference
     )
+    assert (
+        quality_gate.environment_for_command(
+            ["scripts/slow_stats_gate.py"],
+            base_environment=base,
+            reference_environment=reference,
+        )
+        == reference
+    )
+    assert (
+        quality_gate.environment_for_command(
+            ["scripts/package_windows.py"],
+            base_environment=base,
+            reference_environment=reference,
+        )
+        == base
+    )
+    assert (
+        quality_gate.environment_for_command(
+            ["scripts/package_engine_smoke.py"],
+            base_environment=base,
+            reference_environment=reference,
+        )
+        == base
+    )
+
+
+def test_release_checklist_documents_dependency_release_gate() -> None:
+    text = Path("docs/specs/release-readiness-checklist.md").read_text(encoding="utf-8")
 
     assert "scripts\\quality_gate.py" in text
     assert "--with-pip-audit" in text

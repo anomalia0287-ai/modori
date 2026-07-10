@@ -8,6 +8,7 @@ AUDITED_FILE_OPERATION_FILES = {
     "scripts/build_recommendation_pilot.py",
     "scripts/quality_gate.py",
     "scripts/package_engine_smoke.py",
+    "scripts/package_environment.py",
     "scripts/package_launch_smoke.py",
     "scripts/package_public_data_smoke.py",
     "scripts/package_windows.py",

@@ -8,6 +8,11 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
+if __package__:
+    from scripts.package_environment import without_workspace_reference_runtime
+else:
+    from package_environment import without_workspace_reference_runtime
+
 
 def pyinstaller_available() -> bool:
     return importlib.util.find_spec("PyInstaller") is not None
@@ -25,9 +30,7 @@ def build_pyinstaller_command() -> list[str]:
         "PySide6.QtQuickControls2",
     ]
     hidden_import_args = [
-        item
-        for module in hidden_imports
-        for item in ("--hidden-import", module)
+        item for module in hidden_imports for item in ("--hidden-import", module)
     ]
     return [
         sys.executable,
@@ -46,7 +49,7 @@ def build_pyinstaller_command() -> list[str]:
 
 
 def build_package_environment() -> dict[str, str]:
-    env = dict(os.environ)
+    env = without_workspace_reference_runtime(os.environ)
     env["MPLCONFIGDIR"] = str(Path(".tmp") / "pyinstaller-matplotlib")
     env["MODORI_CACHE_DIR"] = str(Path(".tmp") / "pyinstaller-modori-cache")
     Path(env["MPLCONFIGDIR"]).mkdir(parents=True, exist_ok=True)
@@ -55,7 +58,9 @@ def build_package_environment() -> dict[str, str]:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Build the Windows Modori desktop package.")
+    parser = argparse.ArgumentParser(
+        description="Build the Windows Modori desktop package."
+    )
     parser.add_argument(
         "--check",
         action="store_true",
@@ -81,7 +86,9 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     exe_path = Path("dist") / "Modori" / "Modori.exe"
     if not exe_path.is_file():
-        print(f"Expected packaged executable was not created: {exe_path}", file=sys.stderr)
+        print(
+            f"Expected packaged executable was not created: {exe_path}", file=sys.stderr
+        )
         return 1
     print(exe_path)
     return 0

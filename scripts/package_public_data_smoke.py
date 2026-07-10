@@ -7,6 +7,11 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
+if __package__:
+    from scripts.package_environment import packaged_subprocess_environment
+else:
+    from package_environment import packaged_subprocess_environment
+
 
 _REQUIRED_HARDENED_CASE_NAMES = frozenset(
     {
@@ -30,12 +35,16 @@ def run_public_data_smoke(
         return 2
     fixture_path = Path(fixture_dir).resolve()
     if not fixture_path.is_dir():
-        print(f"Public data smoke fixture directory does not exist: {fixture_path}", file=sys.stderr)
+        print(
+            f"Public data smoke fixture directory does not exist: {fixture_path}",
+            file=sys.stderr,
+        )
         return 2
 
     smoke_dir = Path(".tmp") / "packaged-public-data-smoke"
     output_path = smoke_dir / "result.json"
     smoke_dir.mkdir(parents=True, exist_ok=True)
+    output_path.unlink(missing_ok=True)
     completed = subprocess.run(
         [
             str(exe_path),
@@ -45,9 +54,15 @@ def run_public_data_smoke(
         ],
         check=False,
         timeout=timeout_seconds,
+        env=packaged_subprocess_environment("packaged-public-data-runtime"),
     )
     if completed.returncode != 0:
         return completed.returncode
+    if not output_path.is_file():
+        print(
+            "Packaged public-data smoke did not produce a fresh result", file=sys.stderr
+        )
+        return 1
 
     payload = json.loads(output_path.read_text(encoding="utf-8"))
     cases = payload.get("cases")
@@ -74,9 +89,13 @@ def _payload_has_hardened_contracts(
     if not _REQUIRED_HARDENED_CASE_NAMES.issubset(names):
         return False
     by_name = {str(case.get("name")): case for case in cases}
-    if not _has_warning(by_name["kosis-two-row-csv"], "집계/합계 행 1개를 감지했습니다."):
+    if not _has_warning(
+        by_name["kosis-two-row-csv"], "집계/합계 행 1개를 감지했습니다."
+    ):
         return False
-    if _full_import_sample_contains(by_name["kosis-two-row-drop"], "행정구역별(1)", "전국"):
+    if _full_import_sample_contains(
+        by_name["kosis-two-row-drop"], "행정구역별(1)", "전국"
+    ):
         return False
     if not _has_full_import_warning(by_name["cp949-public-csv"], "CSV 인코딩: cp949"):
         return False
@@ -107,7 +126,9 @@ def _has_full_import_warning(case: dict[str, object], expected: str) -> bool:
     return any(expected in str(warning) for warning in warnings)
 
 
-def _full_import_sample_contains(case: dict[str, object], column: str, value: object) -> bool:
+def _full_import_sample_contains(
+    case: dict[str, object], column: str, value: object
+) -> bool:
     full_import = case.get("full_import")
     if not isinstance(full_import, dict):
         return False
@@ -115,8 +136,7 @@ def _full_import_sample_contains(case: dict[str, object], column: str, value: ob
     if not isinstance(sample_rows, list):
         return False
     return any(
-        isinstance(row, dict) and row.get(column) == value
-        for row in sample_rows
+        isinstance(row, dict) and row.get(column) == value for row in sample_rows
     )
 
 
