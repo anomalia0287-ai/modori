@@ -16,6 +16,7 @@ RecommendationKind = Literal[
     "reliability",
     "comparison",
     "regression",
+    "logistic_regression",
     "frequency_crosstab",
     "correlation",
     "anova_oneway",
@@ -45,6 +46,7 @@ class RecommendationCandidate:
     outcome_key: str = ""
     group_key: str = ""
     predictor_keys: list[str] = field(default_factory=list)
+    requires_configuration: bool = False
 
 
 @dataclass(frozen=True)
@@ -74,6 +76,9 @@ class RecommendationService:
         )
         from modori.regression_ols_recommendation import (
             eligibility_provider as regression_ols_provider,
+        )
+        from modori.logistic_regression_recommendation import (
+            eligibility_provider as logistic_regression_provider,
         )
         from modori.reliability_recommendation import (
             eligibility_provider as reliability_provider,
@@ -111,6 +116,7 @@ class RecommendationService:
             reliability_provider(),
             compare_groups_provider(),
             regression_ols_provider(),
+            logistic_regression_provider(),
             frequency_crosstab_provider(),
             correlation_provider(),
             anova_oneway_provider(),
@@ -364,16 +370,17 @@ class RecommendationService:
             "reliability": 1,
             "comparison": 2,
             "regression": 3,
-            "frequency_crosstab": 4,
-            "correlation": 5,
-            "anova_oneway": 6,
-            "kruskal_wallis": 7,
-            "ancova": 8,
-            "factor_pca": 9,
-            "repeated_measures_anova": 10,
-            "friedman": 11,
-            "mediation": 12,
-            "moderated_mediation": 13,
+            "logistic_regression": 4,
+            "frequency_crosstab": 5,
+            "correlation": 6,
+            "anova_oneway": 7,
+            "kruskal_wallis": 8,
+            "ancova": 9,
+            "factor_pca": 10,
+            "repeated_measures_anova": 11,
+            "friedman": 12,
+            "mediation": 13,
+            "moderated_mediation": 14,
         }
         return sorted(
             candidates,
@@ -389,7 +396,7 @@ class RecommendationService:
         candidates: list[RecommendationCandidate],
     ) -> RecommendationCandidate | None:
         for candidate in candidates:
-            if candidate.level != "주의 필요":
+            if candidate.level != "주의 필요" and not candidate.requires_configuration:
                 return candidate
         return None
 

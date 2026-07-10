@@ -6,6 +6,48 @@ from modori.core import Dataset, Measure, Variable
 from modori.recommendations import RecommendationService
 
 
+def test_configuration_required_recommendation_cannot_mutate_or_run_pipeline() -> None:
+    from modori.core import Pipeline
+    from modori.recommendations import RecommendationCandidate, RecommendationState
+    from modori.ui.controller import UiController
+
+    dataset = _dataset(
+        pd.DataFrame(
+            {
+                "event": [0, 1] * 15,
+                "x": [float(index) for index in range(30)],
+            }
+        )
+    )
+    pipeline = Pipeline(dataset)
+    controller = UiController(pipeline=pipeline)
+    candidate = RecommendationCandidate(
+        candidate_id="logistic-caution:event:x",
+        kind="logistic_regression",
+        title_ko="이항 로지스틱 회귀 후보",
+        level="주의 필요",
+        reason_ko="사건값 확인이 필요합니다.",
+        outcome_key="event",
+        predictor_keys=["x"],
+        requires_configuration=True,
+    )
+    controller._recommendation_state = RecommendationState(
+        candidates=[candidate],
+        default_candidate=None,
+        selected_candidate=candidate,
+        message_ko="",
+    )
+    pipeline_version = controller.pipeline_version
+
+    result = controller.runPreparedRecommendation()
+
+    assert result.ok is False
+    assert result.error_code == "recommendation_configuration_required"
+    assert result.changed_step_ids == []
+    assert pipeline.steps == []
+    assert controller.pipeline_version == pipeline_version
+
+
 def _variable(
     name: str,
     measure: Measure,

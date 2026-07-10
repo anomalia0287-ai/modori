@@ -113,6 +113,11 @@ class RecommendationControllerMixin:
         candidate: RecommendationCandidate | None = self._recommendation_state.selected_candidate
         if candidate is None:
             return self._command_error("실행할 추천 분석이 없습니다.", "no_recommendation")
+        if candidate.requires_configuration:
+            return self._command_error(
+                "이 추천은 사건값과 범주 기준값을 확인한 뒤 실행할 수 있습니다.",
+                "recommendation_configuration_required",
+            )
         if candidate.kind == "descriptives":
             return self.configureDescriptivesSelection(
                 ", ".join(candidate.variable_keys),

@@ -159,3 +159,17 @@ Reviewer A는 `reviewer-a.xlsx`, Reviewer B는 `reviewer-b.xlsx`만 사용한다
 
 이 파일럿이 끝나도 150건 development, 200건 frozen deterministic validation,
 800건 locked claim corpus는 서로 다른 역할과 게이트를 유지한다.
+
+## 10. 기준선 변경 감사 기록
+
+2026-07-10에 설정 확인이 필요한 이항 로지스틱 회귀 후보를 추천 서비스에
+추가한 뒤 `scripts/build_recommendation_pilot.py --write --force`와 `--check`를
+실행했다. 20건의 `baseline-a-predictions.jsonl`은 이전 HEAD와 바이트 단위로
+동일했고 예측 checksum도
+`sha256:fc5d3e9032d086225b0c7c62f4e3145217ba44f8fddf73cb10e4f5eadd485650`으로
+유지됐다. 따라서 20건 모두에서 primary action과 저장된 Top-3 순위가 변하지
+않았고, 새 로지스틱 후보가 강한 기본 추천을 대체하지 않았다.
+
+`baseline-a-metadata.json`은 새 제공자와 변경된 카탈로그·정렬 소스를 포함하도록
+source fingerprint만 갱신됐다. 이 무변동 기록은 회귀 방지 증거이지 추천 정확도
+증거가 아니다. 금라벨 20건이 아직 없으므로 정확도 점수는 계속 산출할 수 없다.

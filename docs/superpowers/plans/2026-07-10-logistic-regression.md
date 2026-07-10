@@ -394,23 +394,23 @@ git commit -m "feat: report logistic regression evidence"
 - Extends `RecommendationCandidate` with `requires_configuration: bool = False`;
   logistic candidates set it to `True`.
 
-- [ ] **Step 1: Write catalog and recommendation policy tests**
+- [x] **Step 1: Write catalog and recommendation policy tests**
 
 Cover one binary candidate, multiple binary outcomes, nonbinary exclusion, no scale predictor, known unsupported weighted/clustered facts where available, candidate cap, and default-candidate prohibition.
 
-- [ ] **Step 2: Add the executable module spec only now**
+- [x] **Step 2: Add the executable module spec only now**
 
 The spec lists exact unsupported cases, R reference, module tests, help keys, and release evidence requirement.
 
-- [ ] **Step 3: Implement the eligibility provider**
+- [x] **Step 3: Implement the eligibility provider**
 
 Emit only caution-level candidates. Candidate parameters omit `event_value`; selection cannot run until the manual event-selection command completes it. Add controller tests proving `runPreparedRecommendation()` refuses a configuration-required candidate without mutating the pipeline.
 
-- [ ] **Step 4: Regenerate and inspect the A baseline**
+- [x] **Step 4: Regenerate and inspect the A baseline**
 
 Run `scripts/build_recommendation_pilot.py --write --force`, compare all 20 actions and rankings, and document any drift. A caution-only logistic candidate must not replace a strong default.
 
-- [ ] **Step 5: Run recommendation and benchmark gates and commit**
+- [x] **Step 5: Run recommendation and benchmark gates and commit**
 
 ```powershell
 git add src/modori/analysis_catalog.py src/modori/logistic_regression_recommendation.py src/modori/recommendations.py src/modori/recommendation_baseline.py src/modori/ui/recommendation_controller.py tests/test_logistic_regression_recommendation.py tests/test_analysis_module_contract.py tests/ui/test_recommendations.py tests/fixtures/recommendation_benchmark

@@ -254,6 +254,67 @@ _MODULE_SPECS["regression_ols"] = AnalysisModuleSpec(
     ),
 )
 
+_MODULE_SPECS["logistic_regression"] = AnalysisModuleSpec(
+    key="logistic_regression",
+    label="Binary logistic regression",
+    status=AnalysisStatus.EXECUTABLE,
+    reason=(
+        "Supported by BinaryLogisticRegressionStep for explicit-event, "
+        "unweighted independent-row main-effects models."
+    ),
+    step_type="stats.logistic_regression",
+    result_type="modori.logistic_regression_results.LogisticRegressionResult",
+    variable_roles=("outcome", "predictors"),
+    supported_measures={
+        "outcome": ("nominal", "ordinal", "scale"),
+        "predictors": ("nominal", "ordinal", "scale"),
+    },
+    required_preprocessing=(
+        "explicit_event_value",
+        "explicit_categorical_levels_and_references",
+        "listwise_deletion",
+    ),
+    unsupported_cases=(
+        "nonbinary_outcome",
+        "interactions_or_nonlinear_terms",
+        "weights",
+        "clusters_or_repeated_observations",
+        "survey_designs",
+        "multiple_imputation",
+        "complete_or_quasi_complete_separation",
+        "rank_deficient_or_ill_conditioned_information",
+        "penalized_firth_exact_bayesian_or_mixed_models",
+        "causal_or_validated_prediction_claims",
+    ),
+    reference_sources=(
+        "statsmodels GLM formula reconstruction",
+        "R base glm anchored fixtures",
+        "80-digit mpmath Newton and Fisher oracle",
+        "linear-programming separation theorem fixtures",
+    ),
+    recommendation_policy=RecommendationPolicy.CAUTION_ONLY,
+    release_evidence_required=True,
+    contract_tests=(
+        "tests/test_analysis_module_contract.py",
+        "tests/test_logistic_numerics.py",
+        "tests/test_logistic_regression_step.py",
+        "tests/test_logistic_regression_metrics.py",
+        "tests/test_logistic_regression_hard_conditions.py",
+        "tests/test_logistic_regression_references.py",
+        "tests/test_logistic_regression_reporting.py",
+        "tests/test_logistic_regression_recommendation.py",
+        "tests/test_knowledge_library.py",
+        "tests/ui/test_recommendations.py",
+    ),
+    help_keys=(
+        "odds_ratio",
+        "model_likelihood_ratio",
+        "brier_score",
+        "p_value",
+        "confidence_interval",
+    ),
+)
+
 _MODULE_SPECS["descriptives_table1"] = AnalysisModuleSpec(
     key="descriptives_table1",
     label="기술통계 표 1",
