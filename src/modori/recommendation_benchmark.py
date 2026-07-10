@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass, field
+from statistics import NormalDist
 from typing import Literal
 
 
@@ -175,6 +177,39 @@ class GoldRecord:
             raise BenchmarkContractError(
                 "abstention-required gold requires an abstention reason"
             )
+        if (
+            self.action_class == "recommendation_eligible"
+            and self.required_clarification_facts
+        ):
+            raise BenchmarkContractError(
+                "recommendation-eligible gold must not include clarification facts"
+            )
+        if (
+            self.action_class == "recommendation_eligible"
+            and self.acceptable_abstention_reasons
+        ):
+            raise BenchmarkContractError(
+                "recommendation-eligible gold must not include abstention reasons"
+            )
+        if self.action_class == "clarification_required" and self.acceptable_recommendations:
+            raise BenchmarkContractError(
+                "clarification-required gold must not include recommendations"
+            )
+        if (
+            self.action_class == "clarification_required"
+            and self.acceptable_abstention_reasons
+        ):
+            raise BenchmarkContractError(
+                "clarification-required gold must not include abstention reasons"
+            )
+        if self.action_class == "abstention_required" and self.acceptable_recommendations:
+            raise BenchmarkContractError(
+                "abstention-required gold must not include recommendations"
+            )
+        if self.action_class == "abstention_required" and self.required_clarification_facts:
+            raise BenchmarkContractError(
+                "abstention-required gold must not include clarification facts"
+            )
         if self.failure_severity not in {"E1", "E2", "E3", "E4", "E5"}:
             raise BenchmarkContractError("failure severity must be E1 through E5")
         object.__setattr__(
@@ -289,6 +324,10 @@ class PredictionRecord:
                 raise BenchmarkContractError(
                     "recommended default must appear in candidates"
                 )
+            if self.primary_action.value != self.candidates[0]:
+                raise BenchmarkContractError(
+                    "recommended default must be the first candidate"
+                )
             if self.level == "none":
                 raise BenchmarkContractError("recommend action requires a level")
         elif self.level != "none":
@@ -371,3 +410,345 @@ def canonical_json(value: object) -> str:
 def scorer_fingerprint(config: ScorerConfig) -> str:
     payload = canonical_json(asdict(config)).encode("utf-8")
     return f"sha256:{hashlib.sha256(payload).hexdigest()}"
+
+
+@dataclass(frozen=True)
+class RateMetric:
+    successes: int
+    total: int
+    rate: float | None
+    status: str
+    lower_bound: float | None = None
+
+
+@dataclass(frozen=True)
+class BenchmarkScore:
+    scorer_fingerprint: str
+    recommendation_top1: RateMetric
+    top3_case_hit: RateMetric
+    recommendation_coverage: RateMetric
+    clarification_accuracy: RateMetric
+    abstention_accuracy: RateMetric
+    primary_action_accuracy: RateMetric
+    strong_precision: RateMetric
+    question_efficiency: RateMetric
+    errors_by_severity: tuple[tuple[str, int], ...]
+
+
+def wilson_lower_bound(
+    successes: int,
+    total: int,
+    confidence_level: float,
+) -> float | None:
+    if not isinstance(successes, int) or not isinstance(total, int):
+        raise BenchmarkContractError("successes and total must be integers")
+    if total < 0 or successes < 0 or successes > total:
+        raise BenchmarkContractError("successes must be between zero and total")
+    if not 0.5 < confidence_level < 1.0:
+        raise BenchmarkContractError("confidence level must be between 0.5 and 1")
+    if total == 0:
+        return None
+    z = NormalDist().inv_cdf(confidence_level)
+    proportion = successes / total
+    denominator = 1.0 + (z * z / total)
+    center = (proportion + z * z / (2.0 * total)) / denominator
+    half_width = (
+        z
+        * math.sqrt(
+            proportion * (1.0 - proportion) / total
+            + z * z / (4.0 * total * total)
+        )
+        / denominator
+    )
+    return max(0.0, center - half_width)
+
+
+def _rate_metric(
+    successes: int,
+    total: int,
+    confidence_level: float,
+    *,
+    zero_status: str = "insufficient_evidence",
+) -> RateMetric:
+    if total == 0:
+        return RateMetric(
+            successes=0,
+            total=0,
+            rate=None,
+            status=zero_status,
+            lower_bound=None,
+        )
+    return RateMetric(
+        successes=successes,
+        total=total,
+        rate=successes / total,
+        status="ok",
+        lower_bound=wilson_lower_bound(successes, total, confidence_level),
+    )
+
+
+def _record_key(record: GoldRecord | PredictionRecord) -> tuple[str, str]:
+    return record.case_id, record.evidence_stage
+
+
+def _index_unique(
+    records: Sequence[GoldRecord] | Sequence[PredictionRecord],
+    record_name: str,
+) -> dict[tuple[str, str], GoldRecord | PredictionRecord]:
+    indexed: dict[tuple[str, str], GoldRecord | PredictionRecord] = {}
+    for record in records:
+        key = _record_key(record)
+        if key in indexed:
+            raise BenchmarkContractError(
+                f"duplicate {record_name} case-stage: {key[0]} / {key[1]}"
+            )
+        indexed[key] = record
+    return indexed
+
+
+def _primary_action_correct(gold: GoldRecord, prediction: PredictionRecord) -> bool:
+    action = prediction.primary_action
+    if gold.action_class == "recommendation_eligible":
+        return action.kind == "recommend" and action.value in gold.acceptable_recommendations
+    if gold.action_class == "clarification_required":
+        return action.kind == "clarify" and action.value in gold.required_clarification_facts
+    return (
+        action.kind == "abstain"
+        and action.value in gold.acceptable_abstention_reasons
+    )
+
+
+def score_predictions(
+    gold_records: Sequence[GoldRecord],
+    predictions: Sequence[PredictionRecord],
+    config: ScorerConfig,
+) -> BenchmarkScore:
+    if not gold_records:
+        raise BenchmarkContractError("gold records must not be empty")
+    gold_by_key = _index_unique(gold_records, "gold")
+    prediction_by_key = _index_unique(predictions, "prediction")
+    gold_keys = set(gold_by_key)
+    prediction_keys = set(prediction_by_key)
+    missing = sorted(gold_keys - prediction_keys)
+    if missing:
+        raise BenchmarkContractError(f"missing predictions: {missing}")
+    unexpected = sorted(prediction_keys - gold_keys)
+    if unexpected:
+        raise BenchmarkContractError(f"unexpected predictions: {unexpected}")
+
+    recommendation_total = 0
+    recommendation_correct = 0
+    top3_correct = 0
+    recommendation_covered = 0
+    clarification_total = 0
+    clarification_correct = 0
+    abstention_total = 0
+    abstention_correct = 0
+    primary_correct = 0
+    strong_total = 0
+    strong_correct = 0
+    question_total = 0
+    question_correct = 0
+    errors = {severity: 0 for severity in ("E1", "E2", "E3", "E4", "E5")}
+
+    for key in sorted(gold_by_key):
+        raw_gold = gold_by_key[key]
+        raw_prediction = prediction_by_key[key]
+        if not isinstance(raw_gold, GoldRecord) or not isinstance(
+            raw_prediction,
+            PredictionRecord,
+        ):
+            raise AssertionError("benchmark index type mismatch")
+        gold = raw_gold
+        prediction = raw_prediction
+        action_correct = _primary_action_correct(gold, prediction)
+        primary_correct += int(action_correct)
+        if not action_correct:
+            errors[gold.failure_severity] += 1
+
+        if gold.action_class == "recommendation_eligible":
+            recommendation_total += 1
+            recommendation_correct += int(action_correct)
+            top3_correct += int(
+                any(
+                    candidate in gold.acceptable_recommendations
+                    for candidate in prediction.candidates[:3]
+                )
+            )
+            recommendation_covered += int(prediction.primary_action.kind == "recommend")
+        elif gold.action_class == "clarification_required":
+            clarification_total += 1
+            clarification_correct += int(action_correct)
+        else:
+            abstention_total += 1
+            abstention_correct += int(action_correct)
+
+        if prediction.level == "strong":
+            strong_total += 1
+            strong_correct += int(
+                gold.action_class == "recommendation_eligible" and action_correct
+            )
+
+        for question in prediction.questions:
+            question_total += 1
+            question_correct += int(question in gold.required_clarification_facts)
+
+    confidence_level = config.confidence_level
+    return BenchmarkScore(
+        scorer_fingerprint=scorer_fingerprint(config),
+        recommendation_top1=_rate_metric(
+            recommendation_correct,
+            recommendation_total,
+            confidence_level,
+        ),
+        top3_case_hit=_rate_metric(
+            top3_correct,
+            recommendation_total,
+            confidence_level,
+        ),
+        recommendation_coverage=_rate_metric(
+            recommendation_covered,
+            recommendation_total,
+            confidence_level,
+        ),
+        clarification_accuracy=_rate_metric(
+            clarification_correct,
+            clarification_total,
+            confidence_level,
+        ),
+        abstention_accuracy=_rate_metric(
+            abstention_correct,
+            abstention_total,
+            confidence_level,
+        ),
+        primary_action_accuracy=_rate_metric(
+            primary_correct,
+            len(gold_by_key),
+            confidence_level,
+        ),
+        strong_precision=_rate_metric(
+            strong_correct,
+            strong_total,
+            confidence_level,
+        ),
+        question_efficiency=_rate_metric(
+            question_correct,
+            question_total,
+            confidence_level,
+            zero_status="not_applicable",
+        ),
+        errors_by_severity=tuple(errors.items()),
+    )
+
+
+def _wilson_interval(
+    successes: int,
+    total: int,
+    confidence_level: float,
+) -> tuple[float, float]:
+    z = NormalDist().inv_cdf((1.0 + confidence_level) / 2.0)
+    proportion = successes / total
+    denominator = 1.0 + z * z / total
+    center = (proportion + z * z / (2.0 * total)) / denominator
+    half_width = (
+        z
+        * math.sqrt(
+            proportion * (1.0 - proportion) / total
+            + z * z / (4.0 * total * total)
+        )
+        / denominator
+    )
+    return max(0.0, center - half_width), min(1.0, center + half_width)
+
+
+def newcombe_paired_difference_interval(
+    baseline_correct: Sequence[bool],
+    candidate_correct: Sequence[bool],
+    confidence_level: float,
+) -> tuple[float, float]:
+    if len(baseline_correct) != len(candidate_correct):
+        raise BenchmarkContractError("paired correctness inputs must have equal length")
+    if not baseline_correct:
+        raise BenchmarkContractError("paired correctness inputs require at least one case")
+    if not 0.5 < confidence_level < 1.0:
+        raise BenchmarkContractError("confidence level must be between 0.5 and 1")
+    if any(type(value) is not bool for value in baseline_correct) or any(
+        type(value) is not bool for value in candidate_correct
+    ):
+        raise BenchmarkContractError("paired correctness inputs must contain booleans")
+
+    e = sum(
+        candidate and baseline
+        for baseline, candidate in zip(
+            baseline_correct,
+            candidate_correct,
+            strict=True,
+        )
+    )
+    f = sum(
+        candidate and not baseline
+        for baseline, candidate in zip(
+            baseline_correct,
+            candidate_correct,
+            strict=True,
+        )
+    )
+    g = sum(
+        baseline and not candidate
+        for baseline, candidate in zip(
+            baseline_correct,
+            candidate_correct,
+            strict=True,
+        )
+    )
+    n = len(baseline_correct)
+    h = n - e - f - g
+    candidate_rate = (e + f) / n
+    baseline_rate = (e + g) / n
+    candidate_low, candidate_high = _wilson_interval(
+        e + f,
+        n,
+        confidence_level,
+    )
+    baseline_low, baseline_high = _wilson_interval(
+        e + g,
+        n,
+        confidence_level,
+    )
+
+    phi_denominator = math.sqrt(
+        (e + f) * (g + h) * (e + g) * (f + h)
+    )
+    raw_phi_numerator = e * h - f * g
+    if phi_denominator == 0:
+        phi = 0.0
+    elif raw_phi_numerator > 0:
+        phi = max(raw_phi_numerator - n / 2.0, 0.0) / phi_denominator
+    else:
+        phi = raw_phi_numerator / phi_denominator
+
+    candidate_down = candidate_rate - candidate_low
+    candidate_up = candidate_high - candidate_rate
+    baseline_down = baseline_rate - baseline_low
+    baseline_up = baseline_high - baseline_rate
+    lower_distance = math.sqrt(
+        max(
+            0.0,
+            candidate_down * candidate_down
+            - 2.0 * phi * candidate_down * baseline_up
+            + baseline_up * baseline_up,
+        )
+    )
+    upper_distance = math.sqrt(
+        max(
+            0.0,
+            candidate_up * candidate_up
+            - 2.0 * phi * candidate_up * baseline_down
+            + baseline_down * baseline_down,
+        )
+    )
+    difference = candidate_rate - baseline_rate
+    return (
+        max(-1.0, difference - lower_distance),
+        min(1.0, difference + upper_distance),
+    )

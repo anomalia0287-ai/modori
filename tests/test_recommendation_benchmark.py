@@ -12,7 +12,10 @@ from modori.recommendation_benchmark import (
     RecommendationIdentity,
     ScorerConfig,
     canonical_json,
+    newcombe_paired_difference_interval,
+    score_predictions,
     scorer_fingerprint,
+    wilson_lower_bound,
 )
 
 
@@ -181,12 +184,41 @@ def test_prediction_requires_recommend_default_in_candidates_and_matching_level(
             candidates=(other,),
             level="candidate",
         )
+    with pytest.raises(BenchmarkContractError, match="first candidate"):
+        PredictionRecord(
+            case_id="case-1",
+            evidence_stage="clarified",
+            primary_action=PrimaryAction(kind="recommend", value=candidate),
+            candidates=(other, candidate),
+            level="candidate",
+        )
     with pytest.raises(BenchmarkContractError, match="level must be none"):
         PredictionRecord(
             case_id="case-1",
             evidence_stage="cold_start",
             primary_action=PrimaryAction(kind="abstain", value="insufficient_context"),
             level="candidate",
+        )
+
+
+def test_gold_action_class_rejects_cross_class_evidence() -> None:
+    candidate = identity()
+
+    with pytest.raises(BenchmarkContractError, match="must not include clarification"):
+        GoldRecord(
+            case_id="case-1",
+            evidence_stage="clarified",
+            action_class="recommendation_eligible",
+            acceptable_recommendations=(candidate,),
+            required_clarification_facts=("paired_status",),
+        )
+    with pytest.raises(BenchmarkContractError, match="must not include recommendations"):
+        GoldRecord(
+            case_id="case-1",
+            evidence_stage="cold_start",
+            action_class="abstention_required",
+            acceptable_recommendations=(candidate,),
+            acceptable_abstention_reasons=("unsupported_design",),
         )
 
 
@@ -214,3 +246,230 @@ def test_benchmark_contracts_are_frozen() -> None:
 
     with pytest.raises(FrozenInstanceError):
         candidate.family = "other"  # type: ignore[misc]
+
+
+def test_score_predictions_separates_recommendation_clarification_and_abstention() -> None:
+    correct = identity()
+    wrong = identity(outcome="other")
+    gold = (
+        GoldRecord(
+            case_id="recommend-correct",
+            evidence_stage="clarified",
+            action_class="recommendation_eligible",
+            acceptable_recommendations=(correct,),
+        ),
+        GoldRecord(
+            case_id="recommend-wrong-top3-hit",
+            evidence_stage="clarified",
+            action_class="recommendation_eligible",
+            acceptable_recommendations=(correct,),
+            failure_severity="E3",
+        ),
+        GoldRecord(
+            case_id="needs-question",
+            evidence_stage="cold_start",
+            action_class="clarification_required",
+            required_clarification_facts=("paired_status",),
+        ),
+        GoldRecord(
+            case_id="must-abstain",
+            evidence_stage="cold_start",
+            action_class="abstention_required",
+            acceptable_abstention_reasons=("unsupported_design",),
+            failure_severity="E4",
+        ),
+    )
+    predictions = (
+        PredictionRecord(
+            case_id="recommend-correct",
+            evidence_stage="clarified",
+            primary_action=PrimaryAction(kind="recommend", value=correct),
+            candidates=(correct,),
+            level="strong",
+        ),
+        PredictionRecord(
+            case_id="recommend-wrong-top3-hit",
+            evidence_stage="clarified",
+            primary_action=PrimaryAction(kind="recommend", value=wrong),
+            candidates=(wrong, correct),
+            level="candidate",
+        ),
+        PredictionRecord(
+            case_id="needs-question",
+            evidence_stage="cold_start",
+            primary_action=PrimaryAction(kind="clarify", value="paired_status"),
+            questions=("paired_status",),
+        ),
+        PredictionRecord(
+            case_id="must-abstain",
+            evidence_stage="cold_start",
+            primary_action=PrimaryAction(kind="abstain", value="unsupported_design"),
+        ),
+    )
+
+    score = score_predictions(gold, predictions, ScorerConfig())
+
+    assert (score.recommendation_top1.successes, score.recommendation_top1.total) == (1, 2)
+    assert (score.top3_case_hit.successes, score.top3_case_hit.total) == (2, 2)
+    assert (score.recommendation_coverage.successes, score.recommendation_coverage.total) == (
+        2,
+        2,
+    )
+    assert (score.clarification_accuracy.successes, score.clarification_accuracy.total) == (
+        1,
+        1,
+    )
+    assert (score.abstention_accuracy.successes, score.abstention_accuracy.total) == (1, 1)
+    assert (score.primary_action_accuracy.successes, score.primary_action_accuracy.total) == (
+        3,
+        4,
+    )
+    assert (score.strong_precision.successes, score.strong_precision.total) == (1, 1)
+    assert (score.question_efficiency.successes, score.question_efficiency.total) == (1, 1)
+    assert dict(score.errors_by_severity) == {
+        "E1": 0,
+        "E2": 0,
+        "E3": 1,
+        "E4": 0,
+        "E5": 0,
+    }
+
+
+def test_tied_alternatives_can_hit_top3_without_top1_or_coverage() -> None:
+    acceptable = identity()
+    alternative = identity(outcome="other")
+    gold = (
+        GoldRecord(
+            case_id="tie",
+            evidence_stage="clarified",
+            action_class="recommendation_eligible",
+            acceptable_recommendations=(acceptable,),
+        ),
+    )
+    predictions = (
+        PredictionRecord(
+            case_id="tie",
+            evidence_stage="clarified",
+            primary_action=PrimaryAction(kind="abstain", value="unresolved_tie"),
+            candidates=(alternative, acceptable),
+            level="none",
+        ),
+    )
+
+    score = score_predictions(gold, predictions, ScorerConfig())
+
+    assert score.recommendation_top1.rate == 0.0
+    assert score.top3_case_hit.rate == 1.0
+    assert score.recommendation_coverage.rate == 0.0
+
+
+def test_score_zero_denominators_are_explicit_and_questions_do_not_inflate_top1() -> None:
+    gold = (
+        GoldRecord(
+            case_id="question",
+            evidence_stage="cold_start",
+            action_class="clarification_required",
+            required_clarification_facts=("unit_of_observation",),
+        ),
+    )
+    predictions = (
+        PredictionRecord(
+            case_id="question",
+            evidence_stage="cold_start",
+            primary_action=PrimaryAction(kind="clarify", value="unit_of_observation"),
+        ),
+    )
+
+    score = score_predictions(gold, predictions, ScorerConfig())
+
+    assert score.recommendation_top1.status == "insufficient_evidence"
+    assert score.recommendation_top1.rate is None
+    assert score.strong_precision.status == "insufficient_evidence"
+    assert score.question_efficiency.status == "not_applicable"
+    assert score.primary_action_accuracy.rate == 1.0
+
+
+def test_score_predictions_rejects_missing_extra_and_duplicate_case_stages() -> None:
+    candidate = identity()
+    gold = (
+        GoldRecord(
+            case_id="case-1",
+            evidence_stage="clarified",
+            action_class="recommendation_eligible",
+            acceptable_recommendations=(candidate,),
+        ),
+    )
+    prediction = PredictionRecord(
+        case_id="case-1",
+        evidence_stage="clarified",
+        primary_action=PrimaryAction(kind="recommend", value=candidate),
+        candidates=(candidate,),
+        level="candidate",
+    )
+
+    with pytest.raises(BenchmarkContractError, match="missing predictions"):
+        score_predictions(gold, (), ScorerConfig())
+    with pytest.raises(BenchmarkContractError, match="unexpected predictions"):
+        score_predictions(
+            gold,
+            (
+                prediction,
+                PredictionRecord(
+                    case_id="case-2",
+                    evidence_stage="clarified",
+                    primary_action=PrimaryAction(kind="abstain", value="no_candidate"),
+                ),
+            ),
+            ScorerConfig(),
+        )
+    with pytest.raises(BenchmarkContractError, match="duplicate gold"):
+        score_predictions((gold[0], gold[0]), (prediction,), ScorerConfig())
+    with pytest.raises(BenchmarkContractError, match="gold records must not be empty"):
+        score_predictions((), (), ScorerConfig())
+
+
+def test_one_sided_wilson_release_boundaries_are_locked() -> None:
+    assert wilson_lower_bound(334, 400, 0.95) > 0.80
+    assert wilson_lower_bound(333, 400, 0.95) < 0.80
+    assert wilson_lower_bound(370, 400, 0.95) > 0.90
+    assert wilson_lower_bound(369, 400, 0.95) < 0.90
+    assert wilson_lower_bound(0, 0, 0.95) is None
+
+
+def test_newcombe_method_10_matches_published_table_iii_example() -> None:
+    both_correct, gain, loss, both_wrong = 20, 12, 2, 16
+    candidate_correct = (
+        [True] * both_correct
+        + [True] * gain
+        + [False] * loss
+        + [False] * both_wrong
+    )
+    baseline_correct = (
+        [True] * both_correct
+        + [False] * gain
+        + [True] * loss
+        + [False] * both_wrong
+    )
+
+    lower, upper = newcombe_paired_difference_interval(
+        baseline_correct,
+        candidate_correct,
+        0.95,
+    )
+    reverse_lower, reverse_upper = newcombe_paired_difference_interval(
+        candidate_correct,
+        baseline_correct,
+        0.95,
+    )
+
+    assert lower == pytest.approx(0.0562, abs=5e-5)
+    assert upper == pytest.approx(0.3292, abs=5e-5)
+    assert reverse_lower == pytest.approx(-upper, abs=1e-12)
+    assert reverse_upper == pytest.approx(-lower, abs=1e-12)
+
+
+def test_newcombe_interval_rejects_empty_or_unpaired_inputs() -> None:
+    with pytest.raises(BenchmarkContractError, match="at least one"):
+        newcombe_paired_difference_interval([], [], 0.95)
+    with pytest.raises(BenchmarkContractError, match="equal length"):
+        newcombe_paired_difference_interval([True], [True, False], 0.95)
