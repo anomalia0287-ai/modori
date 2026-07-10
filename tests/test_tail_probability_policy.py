@@ -11,6 +11,7 @@ PRODUCTION_TAIL_MODULES = (
     Path("src/modori/steps/repeated_measures_anova.py"),
     Path("src/modori/steps/logistic_regression.py"),
     Path("src/modori/factorial_anova_numerics.py"),
+    Path("src/modori/steps/anova_factorial.py"),
 )
 
 
