@@ -46,6 +46,27 @@ Use in Modori:
 - Evidence from these files supports "jamovi GUI representative fixture
   agreement" only, not SPSS/JASP-equivalent breadth.
 
+## `logistic_regression/*.csv`
+
+Deterministic, synthetic, overlapping binary-logistic fixtures.
+
+Use in Modori:
+
+- `continuous.csv` has two ordinary-scale numeric predictors and repeated
+  predictor patterns containing both outcomes; the test derives a fixed
+  five-row complete-case-missingness variant from it.
+- `categorical.csv` has one numeric predictor and three category levels in a
+  deliberately nonalphabetic source order; R and Modori both pin `control` as
+  the reference and use the declared order `control`, `treat`, `placebo`.
+- Both fixtures have at least 20 observations in each outcome class and are
+  anchored to R base `glm`; the continuous fixture is also checked with an
+  independent 80-decimal-digit `mpmath` Newton oracle.
+- `reference-metadata.json` pins fixture/reference-script hashes, runtime
+  versions, achieved maximum differences, and the enforced tolerance ceilings.
+- Large-offset behavior is tested separately through shift invariance and the
+  scaled operational path. Direct large-offset R fitting is not treated as an
+  accuracy oracle because its original-scale design is cancellation-sensitive.
+
 ## `nist/*.csv`
 
 Source: NIST/ITL Statistical Reference Datasets, linear least-squares

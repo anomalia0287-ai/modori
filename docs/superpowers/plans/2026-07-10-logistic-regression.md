@@ -279,6 +279,7 @@ git commit -m "feat: compute binary logistic regression"
 - Create: `tests/r/logistic_regression_reference.R`
 - Create: `tests/fixtures/logistic_regression/continuous.csv`
 - Create: `tests/fixtures/logistic_regression/categorical.csv`
+- Create: `tests/fixtures/logistic_regression/reference-metadata.json`
 - Create: `tests/test_logistic_regression_references.py`
 - Modify: `tests/fixtures/README.md`
 
@@ -296,7 +297,13 @@ Run:
 
 - [ ] **Step 2: Build deterministic fixtures without separation**
 
-The continuous fixture includes a large predictor offset and missing rows. The categorical fixture includes three declared levels with a nonalphabetic reference order and at least 20 observations in each outcome class.
+The continuous fixture uses ordinary-scale predictors, and the test derives a
+fixed complete-case missingness variant from it. The categorical fixture includes
+three declared levels with a nonalphabetic reference order and at least 20
+observations in each outcome class. Large-offset behavior remains in Task 2's
+shift-invariance fixture: a direct `1e12`-offset R `glm` fit is
+cancellation-sensitive and must not be promoted to a coefficient oracle for the
+preconditioned product path.
 
 - [ ] **Step 3: Write the R base reference**
 
