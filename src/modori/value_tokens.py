@@ -137,6 +137,57 @@ def observed_value_options(dataset: object, variable_key: str) -> list[dict[str,
     return options
 
 
+def ordered_observed_value_options(
+    dataset: object,
+    variable_key: str,
+) -> list[dict[str, str]]:
+    """Return typed observed values in a row-order-independent factor order."""
+    options = observed_value_options(dataset, variable_key)
+    variables = getattr(dataset, "variables", None)
+    if not options or not isinstance(variables, Mapping):
+        return options
+    variable = variables.get(str(variable_key).strip())
+    if variable is None:
+        return options
+    return sorted(options, key=lambda row: _deterministic_option_key(variable, row))
+
+
+def _deterministic_option_key(
+    variable: object,
+    option: Mapping[str, str],
+) -> tuple[object, ...]:
+    token = option["token"]
+    value = decode_value_token(token)
+    metadata_rank = _numeric_metadata_rank(variable, value)
+    if metadata_rank is not None:
+        return (0, metadata_rank, token)
+    if isinstance(value, bool):
+        return (1, int(value), token)
+    if isinstance(value, int | float):
+        type_rank = 0 if isinstance(value, int) else 1
+        return (2, float(value), type_rank, token)
+    normalized = unicodedata.normalize("NFKC", value).casefold()
+    return (3, normalized, token)
+
+
+def _numeric_metadata_rank(variable: object, value: ScalarValue) -> int | None:
+    if isinstance(value, bool) or not isinstance(value, int | float):
+        return None
+    value_labels = getattr(variable, "value_labels", {})
+    if not isinstance(value_labels, Mapping):
+        return None
+    for index, (raw_key, raw_label) in enumerate(value_labels.items()):
+        if not str(raw_label).strip() or isinstance(raw_key, bool):
+            continue
+        try:
+            metadata_value = float(raw_key)
+        except (TypeError, ValueError, OverflowError):
+            continue
+        if math.isfinite(metadata_value) and metadata_value == float(value):
+            return index
+    return None
+
+
 def categorical_reference_options(
     dataset: object,
     predictor_keys: Sequence[str],
