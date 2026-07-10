@@ -206,9 +206,11 @@ Map the event to `1.0` and the only other observed outcome to `0.0`. Preserve ra
 
 Reject fewer than 10 rows in either class, `n_obs <= parameter_count`, zero-variance terms, rank deficiency, and unsupported designs before fitting.
 
-- [ ] **Step 5: Register the step but do not add the catalog spec yet**
+- [ ] **Step 5: Keep the incomplete step out of the registry**
 
-Registration makes direct tests possible; the product catalog remains unchanged until reference closure.
+Contract preparation functions and DTOs are directly testable. Do not register
+`stats.logistic_regression` until Task 4 supplies a complete `compute()` path; an
+incomplete registered Step would falsely advertise executable project JSON.
 
 - [ ] **Step 6: Run focused tests and commit**
 
@@ -257,7 +259,10 @@ Use `predicted_event = probability >= threshold`. Collapse duplicate quantile bo
 
 Warnings are deterministic Korean/English message IDs plus rendered text; they disclose the heuristic nature of class-per-parameter thresholds.
 
-- [ ] **Step 7: Run all logistic tests and commit**
+- [ ] **Step 7: Register the now-complete Step, run all logistic tests, and commit**
+
+Add `BinaryLogisticRegressionStep` to `src/modori/steps/__init__.py` and the Step
+registry only after valid overlapping fixtures return a complete result.
 
 ```powershell
 git add src/modori/steps/logistic_regression.py src/modori/logistic_regression_results.py tests/test_logistic_regression_metrics.py tests/test_logistic_regression_hard_conditions.py
