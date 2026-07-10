@@ -181,10 +181,10 @@ def detect_logistic_separation(z_matrix: Any, y_values: Any) -> SeparationStatus
     return "overlap"
 
 
-def logistic_information_condition_number(
+def _weighted_logistic_design(
     z_matrix: Any,
     probabilities: Any,
-) -> float:
+) -> np.ndarray:
     z = _finite_matrix(z_matrix, label="Logistic scaled design matrix")
     fitted = np.asarray(probabilities, dtype=float)
     if fitted.ndim != 1 or len(fitted) != len(z) or not np.all(np.isfinite(fitted)):
@@ -195,6 +195,36 @@ def logistic_information_condition_number(
     weighted_design = np.sqrt(fitted * (1.0 - fitted))[:, None] * z
     if np.linalg.matrix_rank(weighted_design) < weighted_design.shape[1]:
         raise ValueError("Logistic Fisher information is rank deficient.")
+    return weighted_design
+
+
+def logistic_fisher_covariance(
+    z_matrix: Any,
+    probabilities: Any,
+) -> np.ndarray:
+    weighted_design = _weighted_logistic_design(z_matrix, probabilities)
+    try:
+        _left, singular_values, right_transpose = np.linalg.svd(
+            weighted_design,
+            full_matrices=False,
+        )
+    except np.linalg.LinAlgError as exc:
+        raise ValueError("Logistic Fisher covariance decomposition failed.") from exc
+    if np.any(~np.isfinite(singular_values)) or np.any(singular_values <= 0.0):
+        raise ValueError("Logistic Fisher covariance is undefined.")
+    inverse_factor = right_transpose.T / singular_values
+    covariance = inverse_factor @ inverse_factor.T
+    covariance = (covariance + covariance.T) / 2.0
+    if not np.all(np.isfinite(covariance)):
+        raise ValueError("Logistic Fisher covariance is non-finite.")
+    return covariance
+
+
+def logistic_information_condition_number(
+    z_matrix: Any,
+    probabilities: Any,
+) -> float:
+    weighted_design = _weighted_logistic_design(z_matrix, probabilities)
     condition_number = float(np.linalg.cond(weighted_design) ** 2)
     if not np.isfinite(condition_number):
         raise ValueError("Logistic Fisher information condition number is non-finite.")

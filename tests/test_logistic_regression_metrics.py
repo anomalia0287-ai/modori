@@ -80,6 +80,13 @@ def test_logistic_fit_matches_direct_glm_and_reconstructed_metrics() -> None:
     returned_b = np.asarray([row.b for row in result.coefficients])
     returned_se = np.asarray([row.se for row in result.coefficients])
     probability = expit(x @ returned_b)
+    weighted_design = np.sqrt(probability * (1.0 - probability))[:, None] * x
+    fisher_information = weighted_design.T @ weighted_design
+    fisher_covariance = np.linalg.solve(
+        fisher_information,
+        np.eye(fisher_information.shape[0]),
+    )
+    fisher_se = np.sqrt(np.diag(fisher_covariance))
     predicted = probability >= 0.4
     tn = int(np.sum((y == 0) & ~predicted))
     fp = int(np.sum((y == 0) & predicted))
@@ -90,7 +97,7 @@ def test_logistic_fit_matches_direct_glm_and_reconstructed_metrics() -> None:
     nagelkerke = cox_snell / (1.0 - np.exp((2.0 / len(y)) * float(null.llf)))
 
     assert returned_b == pytest.approx(reference.params, abs=1e-9, rel=1e-9)
-    assert returned_se == pytest.approx(reference.bse, abs=1e-9, rel=1e-9)
+    assert returned_se == pytest.approx(fisher_se, abs=1e-10, rel=1e-10)
     assert result.log_likelihood == pytest.approx(reference.llf, abs=1e-10)
     assert result.null_log_likelihood == pytest.approx(null.llf, abs=1e-10)
     assert result.minus_two_log_likelihood == pytest.approx(-2.0 * reference.llf, abs=1e-10)

@@ -17,6 +17,7 @@ from modori.core import Dataset, Measure, PipelineContext, Step, StepResult
 from modori.logistic_numerics import (
     PreconditionedDesign,
     detect_logistic_separation,
+    logistic_fisher_covariance,
     logistic_information_condition_number,
     precondition_logistic_design,
     restore_logistic_parameters,
@@ -234,11 +235,6 @@ class BinaryLogisticRegressionStep(Step):
         ):
             raise ValueError("Logistic regression did not converge.")
         gamma = _finite_array(fitted.params, "scaled coefficients", ndim=1)
-        covariance_gamma = _finite_array(
-            fitted.cov_params(),
-            "scaled covariance",
-            ndim=2,
-        )
         probabilities = _finite_array(
             fitted.fittedvalues,
             "fitted probabilities",
@@ -266,6 +262,14 @@ class BinaryLogisticRegressionStep(Step):
                 f"({information_condition:.3g} exceeds "
                 f"{DEFAULT_LOGISTIC_MAX_INFORMATION_CONDITION_NUMBER:.3g}); inference is undefined."
             )
+        covariance_gamma = _finite_array(
+            logistic_fisher_covariance(
+                prepared.preconditioned.scaled,
+                probabilities,
+            ),
+            "scaled covariance",
+            ndim=2,
+        )
 
         beta, covariance_beta = restore_logistic_parameters(
             gamma,

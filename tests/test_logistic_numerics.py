@@ -7,6 +7,7 @@ import pytest
 
 from modori.logistic_numerics import (
     detect_logistic_separation,
+    logistic_fisher_covariance,
     logistic_information_condition_number,
     precondition_logistic_design,
     restore_logistic_parameters,
@@ -59,6 +60,24 @@ def test_large_offset_uses_stable_scaled_path_and_discloses_offset_ratio() -> No
     assert prepared_shifted.scaled == pytest.approx(prepared_base.scaled, abs=1e-12)
     assert prepared_shifted.offset_ratio > 1e8
     assert prepared_base.offset_ratio < 10
+
+
+def test_fisher_covariance_uses_the_final_fitted_probabilities() -> None:
+    z = np.column_stack(
+        [
+            np.ones(6),
+            np.asarray([-1.5, -0.75, -0.25, 0.25, 0.75, 1.5]),
+        ]
+    )
+    probabilities = np.asarray([0.18, 0.29, 0.43, 0.55, 0.71, 0.84])
+    information = z.T @ ((probabilities * (1.0 - probabilities))[:, None] * z)
+    expected = np.linalg.solve(information, np.eye(information.shape[0]))
+
+    covariance = logistic_fisher_covariance(z, probabilities)
+
+    assert covariance == pytest.approx(expected, abs=1e-14)
+    assert covariance == pytest.approx(covariance.T, abs=1e-15)
+    assert np.linalg.eigvalsh(covariance).min() > 0
 
 
 def test_preconditioning_rejects_invalid_intercept_nonfinite_and_zero_variance() -> None:

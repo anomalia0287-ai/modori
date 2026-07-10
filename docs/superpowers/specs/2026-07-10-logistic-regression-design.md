@@ -247,6 +247,12 @@ After fitting:
    log-odds coefficient/SE/CI, set its OR fields to undefined, and warn. An
    unrepresentable non-intercept OR remains a hard failure.
 
+Inference covariance is recomputed from the final fitted probabilities as
+`(Z.T W Z)^-1` through an SVD factorization. The product does not reuse
+`GLMResults.cov_params()`: IRLS implementations can retain covariance from the
+preceding working-weight state even when the returned coefficients and score have
+already reached the tighter product convergence boundary.
+
 The `1e8` warning and `1e10` rejection limits are product safety policies, not
 mathematical existence theorems. Their values are pinned by near-separation and
 near-collinearity fixtures and may only change with new reference evidence.
