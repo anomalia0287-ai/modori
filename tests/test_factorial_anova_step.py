@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from decimal import Decimal
+from decimal import Decimal, localcontext
 import importlib
 from types import SimpleNamespace
 
 import numpy as np
 import pandas as pd
 import pytest
+from scipy import stats
 
 from modori.core import Dataset, Measure, PipelineContext, Step, Variable
 from modori.core.model import step_class_for_type
@@ -206,6 +207,72 @@ def test_complete_cell_step_builds_invariant_result_without_mutating_source() ->
         "significant_interaction",
     )
     assert result.chart_specs[0].data["series"]
+
+
+def test_extreme_location_cell_interval_uses_decimal_center_before_float_output() -> None:
+    values = (
+        (
+            1000000000000.0002,
+            1000000000000.0,
+            1000000000000.0,
+            1000000000000.0,
+            1000000000000.0,
+            1000000000000.0,
+            999999999999.9999,
+            1000000000000.0001,
+            1000000000000.0002,
+        ),
+        (
+            1000000000000.0002,
+            1000000000000.0,
+            1000000000000.0002,
+            1000000000000.0,
+        ),
+        (
+            1000000000000.0002,
+            1000000000000.0,
+            1000000000000.0,
+            1000000000000.0002,
+            1000000000000.0,
+            1000000000000.0001,
+            999999999999.9999,
+            999999999999.9999,
+        ),
+        (
+            1000000000000.0001,
+            1000000000000.0002,
+            999999999999.9999,
+            1000000000000.0001,
+            999999999999.9999,
+            1000000000000.0002,
+            1000000000000.0,
+            1000000000000.0001,
+            999999999999.9999,
+            1000000000000.0002,
+        ),
+    )
+    rows = [
+        {"score": value, "treatment": factor_a, "site": factor_b}
+        for (factor_a, factor_b), cell in zip(
+            (("control", 1), ("control", 2), ("active", 1), ("active", 2)),
+            values,
+            strict=True,
+        )
+        for value in cell
+    ]
+
+    result = _run(_dataset(pd.DataFrame(rows)))
+    first = result.cells[0]
+    with localcontext() as context:
+        context.prec = 50
+        exact_center = sum(
+            (Decimal(str(value)) for value in values[0]),
+            Decimal(0),
+        ) / Decimal(len(values[0]))
+        radius = Decimal(str(stats.t.ppf(0.975, result.df_error) * first.se))
+
+    assert first.ci_low == float(exact_center - radius)
+    assert first.ci_high == float(exact_center + radius)
 
 
 @pytest.mark.parametrize(

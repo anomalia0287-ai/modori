@@ -18,6 +18,7 @@ _ROUND_OFF_MULTIPLIER = 64.0
 class FactorialMoments:
     counts: tuple[int, ...]
     means: tuple[float, ...]
+    decimal_means: tuple[Decimal, ...]
     sample_sds: tuple[float, ...]
     centered_means: tuple[float, ...]
     residual_groups: tuple[tuple[float, ...], ...]
@@ -96,6 +97,7 @@ def summarize_factorial_cells(
     return FactorialMoments(
         counts=counts,
         means=_finite_float_tuple(means),
+        decimal_means=means,
         sample_sds=_finite_float_tuple(sample_sds),
         centered_means=_finite_float_tuple(centered_means),
         residual_groups=residual_groups,
@@ -268,7 +270,6 @@ def marginal_estimates(
         raise ValueError("Marginal confidence must be strictly between zero and one")
     _validate_moments_for_hypothesis(moments, a * b)
 
-    means = np.asarray(moments.means, dtype=float).reshape(a, b)
     counts = np.asarray(moments.counts, dtype=float).reshape(a, b)
     critical = float(
         stats.t.ppf((1.0 + confidence_value) / 2.0, moments.df_error)
@@ -278,32 +279,44 @@ def marginal_estimates(
 
     estimates: list[MarginalEstimate] = []
     for level_index in range(a):
-        mean = math.fsum(float(value) for value in means[level_index, :]) / b
+        with localcontext() as context:
+            context.prec = 50
+            start = level_index * b
+            center = (
+                sum(moments.decimal_means[start : start + b], Decimal(0))
+                / Decimal(b)
+            )
         se = math.sqrt(
             moments.mse
             * math.fsum(1.0 / float(value) for value in counts[level_index, :])
             / (b * b)
         )
-        estimates.append(_marginal_estimate("A", level_index, mean, se, critical))
+        estimates.append(_marginal_estimate("A", level_index, center, se, critical))
     for level_index in range(b):
-        mean = math.fsum(float(value) for value in means[:, level_index]) / a
+        with localcontext() as context:
+            context.prec = 50
+            center = (
+                sum(moments.decimal_means[level_index::b], Decimal(0))
+                / Decimal(a)
+            )
         se = math.sqrt(
             moments.mse
             * math.fsum(1.0 / float(value) for value in counts[:, level_index])
             / (a * a)
         )
-        estimates.append(_marginal_estimate("B", level_index, mean, se, critical))
+        estimates.append(_marginal_estimate("B", level_index, center, se, critical))
     return tuple(estimates)
 
 
 def _marginal_estimate(
     factor: str,
     level_index: int,
-    mean: float,
+    center: Decimal,
     se: float,
     critical: float,
 ) -> MarginalEstimate:
-    values = (mean, se, mean - critical * se, mean + critical * se)
+    mean, ci_low, ci_high = decimal_location_summary(center, se, critical)
+    values = (mean, se, ci_low, ci_high)
     if not all(math.isfinite(value) for value in values) or se <= 0.0:
         raise ValueError("Marginal estimates must be finite with positive standard errors")
     return MarginalEstimate(
@@ -311,9 +324,32 @@ def _marginal_estimate(
         level_index=level_index,
         mean=mean,
         se=se,
-        ci_low=values[2],
-        ci_high=values[3],
+        ci_low=ci_low,
+        ci_high=ci_high,
     )
+
+
+def decimal_location_summary(
+    center: Decimal,
+    standard_error: float,
+    critical: float,
+) -> tuple[float, float, float]:
+    if not isinstance(center, Decimal) or not center.is_finite():
+        raise ValueError("Factorial location center must be a finite Decimal")
+    if not all(
+        isinstance(value, int | float | Decimal | np.integer | np.floating)
+        and not isinstance(value, bool | np.bool_)
+        and math.isfinite(float(value))
+        and float(value) > 0.0
+        for value in (standard_error, critical)
+    ):
+        raise ValueError("Factorial location interval requires positive finite inputs")
+    with localcontext() as context:
+        context.prec = 50
+        radius = Decimal(str(float(critical) * float(standard_error)))
+        lower = center - radius
+        upper = center + radius
+    return _finite_float(center), _finite_float(lower), _finite_float(upper)
 
 
 def _validate_factor_shape(a: int, b: int) -> None:
@@ -336,6 +372,7 @@ def _validate_moments_for_hypothesis(
         len(moments.counts) != expected_cells
         or len(moments.centered_means) != expected_cells
         or len(moments.means) != expected_cells
+        or len(moments.decimal_means) != expected_cells
     ):
         raise ValueError("Factorial moments do not match the expected cell count")
     if any(
@@ -389,6 +426,20 @@ def _validate_moments_for_hypothesis(
             for value in values
         ):
             raise ValueError(f"Factorial {label} must be finite numeric values")
+    if any(
+        not isinstance(value, Decimal) or not value.is_finite()
+        for value in moments.decimal_means
+    ):
+        raise ValueError("Factorial decimal means must be finite Decimal values")
+    if any(
+        _finite_float(decimal_mean) != float(mean)
+        for decimal_mean, mean in zip(
+            moments.decimal_means,
+            moments.means,
+            strict=True,
+        )
+    ):
+        raise ValueError("Factorial float and Decimal means are inconsistent")
 
 
 def _decimal_cell(values: tuple[object, ...]) -> tuple[Decimal, ...]:

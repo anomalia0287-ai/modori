@@ -304,6 +304,71 @@ def test_statsmodels_sum_contrast_type_three_parity(fixture_name: str) -> None:
     _assert_close(result.mse, reference["mse"], label=f"statsmodels {fixture_name} MSE")
 
 
+@pytest.mark.parametrize(("a", "b"), [(2, 2), (3, 4), (6, 6)])
+def test_statsmodels_sum_contrast_parity_spans_supported_factor_dimensions(
+    a: int,
+    b: int,
+) -> None:
+    rows: list[dict[str, object]] = []
+    cells: list[tuple[float, ...]] = []
+    for index_a in range(a):
+        for index_b in range(b):
+            count = 3 + ((index_a * 7 + index_b * 3) % 5)
+            mean = (
+                100.0
+                + 0.7 * index_a
+                + 1.1 * index_b
+                + 0.2 * index_a * index_b
+            )
+            offsets = np.arange(count, dtype=float) - (count - 1.0) / 2.0
+            values = tuple(mean + 0.15 * float(offset) for offset in offsets)
+            cells.append(values)
+            rows.extend(
+                {
+                    "y": value,
+                    "factor_a": f"a{index_a}",
+                    "factor_b": f"b{index_b}",
+                }
+                for value in values
+            )
+    frame = pd.DataFrame(rows)
+    reference = anova_lm(
+        ols(
+            "y ~ C(factor_a, Sum) * C(factor_b, Sum)",
+            data=frame,
+        ).fit(),
+        typ=3,
+    )
+    moments = summarize_factorial_cells(cells)
+    row_names = (
+        "C(factor_a, Sum)",
+        "C(factor_b, Sum)",
+        "C(factor_a, Sum):C(factor_b, Sum)",
+    )
+
+    for contrast, row_name in zip(
+        factorial_hypotheses(a, b),
+        row_names,
+        strict=True,
+    ):
+        actual = evaluate_hypothesis(moments, contrast)
+        _assert_close(
+            actual.ss,
+            reference.loc[row_name, "sum_sq"],
+            label=f"{a}x{b} SS",
+        )
+        _assert_close(
+            actual.f_value,
+            reference.loc[row_name, "F"],
+            label=f"{a}x{b} F",
+        )
+        _assert_close(
+            actual.p_value,
+            reference.loc[row_name, "PR(>F)"],
+            label=f"{a}x{b} p",
+        )
+
+
 def _rscript_and_env() -> tuple[str, dict[str, str]]:
     configured = os.environ.get("MODORI_RSCRIPT")
     candidates = [ROOT / ".tools" / "r-env" / "Scripts" / "Rscript.exe"]
@@ -451,11 +516,40 @@ def _mp_oracle(frame: pd.DataFrame) -> dict[str, list[mp.mpf] | mp.mpf]:
         f_values.append(f_value)
         p_values.append(p_value)
         eta_values.append(ss / (ss + sse))
+    marginal_means = [
+        mp.fsum(means[index * 3 : (index + 1) * 3]) / 3
+        for index in range(2)
+    ] + [
+        mp.fsum(means[index::3]) / 2
+        for index in range(3)
+    ]
+    marginal_ses = [
+        mp.sqrt(
+            mse
+            * mp.fsum(
+                mp.mpf(1) / count
+                for count in counts[index * 3 : (index + 1) * 3]
+            )
+            / 9
+        )
+        for index in range(2)
+    ] + [
+        mp.sqrt(
+            mse
+            * mp.fsum(mp.mpf(1) / count for count in counts[index::3])
+            / 4
+        )
+        for index in range(3)
+    ]
     return {
         "ss": ss_values,
         "f": f_values,
         "p": p_values,
         "eta": eta_values,
+        "cell_means": means,
+        "cell_ses": [mp.sqrt(mse / count) for count in counts],
+        "marginal_means": marginal_means,
+        "marginal_ses": marginal_ses,
         "sse": sse,
         "mse": mse,
     }
@@ -493,6 +587,20 @@ def test_extreme_offset_matches_independent_80_digit_mpmath_oracle() -> None:
         )
     _assert_mp_close(result.sse, oracle["sse"], label="mpmath SSE")
     _assert_mp_close(result.mse, oracle["mse"], label="mpmath MSE")
+    for index, row in enumerate(result.cells):
+        assert row.mean == float(oracle["cell_means"][index])
+        _assert_mp_close(
+            row.se,
+            oracle["cell_ses"][index],
+            label=f"mpmath cell {index} SE",
+        )
+    for index, row in enumerate(result.marginals):
+        assert row.mean == float(oracle["marginal_means"][index])
+        _assert_mp_close(
+            row.se,
+            oracle["marginal_ses"][index],
+            label=f"mpmath marginal {index} SE",
+        )
 
 
 def test_reference_metamorphics_cover_row_location_scale_and_role_swap() -> None:

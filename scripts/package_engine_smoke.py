@@ -102,6 +102,25 @@ def run_engine_smoke(
         and check.get("analysis_type") == "LogisticRegressionResult"
         for check in checks
     )
+    factorial_evidence = {
+        "analysis_key": "anova_factorial",
+        "cell_count": 6,
+        "chart_type": "factorial_interaction",
+        "effect_count": 3,
+        "finite_effect_statistics": True,
+        "level_counts": [2, 3],
+        "marginal_count": 5,
+        "method": "type_iii_equal_cell_weight",
+        "simple_effect_count": 5,
+    }
+    factorial_ok = isinstance(checks, list) and any(
+        isinstance(check, dict)
+        and check.get("key") == "anova_factorial"
+        and check.get("ok") is True
+        and check.get("analysis_type") == "FactorialAnovaResult"
+        and check.get("evidence") == factorial_evidence
+        for check in checks
+    )
     if (
         payload.get("ok") is not True
         or payload.get("opened") is not True
@@ -111,10 +130,16 @@ def run_engine_smoke(
         or not isinstance(v1_statistics_smoke, dict)
         or v1_statistics_smoke.get("ok") is not True
         or not logistic_ok
+        or not factorial_ok
     ):
         if not logistic_ok:
             print(
                 "Missing or failed logistic_regression packaged smoke evidence",
+                file=sys.stderr,
+            )
+        if not factorial_ok:
+            print(
+                "Missing or failed anova_factorial packaged smoke evidence",
                 file=sys.stderr,
             )
         print(json.dumps(payload, ensure_ascii=False, sort_keys=True), file=sys.stderr)

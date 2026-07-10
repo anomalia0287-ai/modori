@@ -224,6 +224,66 @@ def test_decimal_cell_moments_preserve_large_location_variation() -> None:
     )
 
 
+def test_extreme_location_marginal_mean_avoids_double_rounding() -> None:
+    first_factor_level = (
+        (
+            1000000000000.0002,
+            1000000000000.0001,
+            1000000000000.0,
+            1000000000000.0001,
+            1000000000000.0,
+            1000000000000.0,
+        ),
+        (
+            1000000000000.0001,
+            1000000000000.0,
+            1000000000000.0002,
+            1000000000000.0002,
+            1000000000000.0,
+            1000000000000.0001,
+            1000000000000.0,
+        ),
+        (
+            999999999999.9999,
+            1000000000000.0001,
+            1000000000000.0,
+            1000000000000.0001,
+            1000000000000.0002,
+            999999999999.9999,
+            1000000000000.0,
+            1000000000000.0001,
+        ),
+    )
+    cells = first_factor_level + tuple(
+        tuple(value + 1.0 for value in cell) for cell in first_factor_level
+    )
+    with localcontext() as context:
+        context.prec = 50
+        exact_cell_means = tuple(
+            sum((Decimal(str(value)) for value in cell), Decimal(0))
+            / Decimal(len(cell))
+            for cell in first_factor_level
+        )
+        expected = float(sum(exact_cell_means, Decimal(0)) / Decimal(3))
+
+    moments = _numerics().summarize_factorial_cells(cells)
+    marginals = _numerics().marginal_estimates(moments, 2, 3)
+    with localcontext() as context:
+        context.prec = 50
+        exact_center = sum(exact_cell_means, Decimal(0)) / Decimal(3)
+        radius = Decimal(
+            str(stats.t.ppf(0.975, moments.df_error) * marginals[0].se)
+        )
+        expected_interval = (
+            float(exact_center - radius),
+            float(exact_center + radius),
+        )
+
+    assert expected == 1000000000000.0001
+    assert marginals[0].mean == expected
+    assert (marginals[0].ci_low, marginals[0].ci_high) == expected_interval
+
+
 def test_decimal_cell_moments_allow_one_constant_cell_with_positive_pooled_error() -> (
     None
 ):
@@ -447,6 +507,46 @@ def test_simple_effect_hypotheses_have_frozen_order_shape_and_rank() -> None:
     assert [np.linalg.matrix_rank(matrix) for _, _, matrix in rows] == [1, 1, 1, 2, 2]
 
 
+def test_simple_effect_statistics_match_independent_weighted_slice_formulas() -> None:
+    numerics = _numerics()
+    a, b = 3, 4
+    counts = tuple(
+        3 + ((row * 7 + column * 3) % 6)
+        for row in range(a)
+        for column in range(b)
+    )
+    means = tuple(
+        2.0 + 0.7 * row + 1.1 * column + 0.25 * row * column
+        for row in range(a)
+        for column in range(b)
+    )
+    moments = numerics.summarize_factorial_cells(
+        _cells_from_means(means, counts)
+    )
+    mean_matrix = np.asarray(moments.means).reshape(a, b)
+    count_matrix = np.asarray(moments.counts, dtype=float).reshape(a, b)
+
+    for direction, index, contrast in numerics.simple_effect_hypotheses(a, b):
+        if direction == "A_within_B":
+            slice_means = mean_matrix[:, index]
+            slice_counts = count_matrix[:, index]
+        else:
+            slice_means = mean_matrix[index, :]
+            slice_counts = count_matrix[index, :]
+        weighted_mean = float(np.average(slice_means, weights=slice_counts))
+        expected_ss = float(
+            np.sum(slice_counts * np.square(slice_means - weighted_mean))
+        )
+        expected_df = len(slice_means) - 1
+        expected_f = (expected_ss / expected_df) / moments.mse
+
+        result = numerics.evaluate_hypothesis(moments, contrast)
+
+        assert result.df_num == expected_df
+        assert result.ss == pytest.approx(expected_ss, rel=1e-12, abs=1e-12)
+        assert result.f_value == pytest.approx(expected_f, rel=1e-12, abs=1e-12)
+
+
 def _ordinary_moments():
     return _numerics().summarize_factorial_cells(
         _cells_from_means((1.0, 2.0, 4.0, 8.0), (4, 4, 4, 4))
@@ -627,6 +727,21 @@ def test_hypothesis_kernel_rejects_inconsistent_moments(
     with pytest.raises(ValueError, match=message):
         numerics.evaluate_hypothesis(
             moments,
+            numerics.factorial_hypotheses(2, 2)[0],
+        )
+
+
+def test_hypothesis_kernel_rejects_decimal_mean_drift() -> None:
+    numerics = _numerics()
+    moments = _ordinary_moments()
+    inconsistent = replace(
+        moments,
+        decimal_means=(Decimal("999"),) + moments.decimal_means[1:],
+    )
+
+    with pytest.raises(ValueError, match="float and Decimal means"):
+        numerics.evaluate_hypothesis(
+            inconsistent,
             numerics.factorial_hypotheses(2, 2)[0],
         )
 

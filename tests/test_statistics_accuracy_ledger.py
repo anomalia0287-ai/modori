@@ -7,6 +7,7 @@ LEDGER = Path("docs/qa/statistics-accuracy-ledger.md")
 LITERATURE_MAP = Path("docs/qa/statistics-numerical-accuracy-literature.md")
 LOGISTIC_EVIDENCE = Path("docs/qa/logistic-regression-reference-evidence.md")
 LOGISTIC_REVIEW_BRIEF = Path("docs/qa/logistic-regression-external-review-brief.md")
+FACTORIAL_EVIDENCE = Path("docs/qa/factorial-anova-reference-evidence.md")
 
 
 def test_statistics_accuracy_ledger_records_high_risk_module_coverage() -> None:
@@ -26,6 +27,7 @@ def test_statistics_accuracy_ledger_records_high_risk_module_coverage() -> None:
         "reliability_omega",
         "anova_oneway",
         "rank_based_nonparametric_tests",
+        "anova_factorial",
     ]
     for module in required_modules:
         assert f"`{module}`" in text
@@ -93,6 +95,41 @@ def test_logistic_external_review_brief_is_adversarial_and_reproducible() -> Non
         assert term in text
 
 
+def test_factorial_reference_evidence_records_reproducible_claim_boundaries() -> None:
+    text = FACTORIAL_EVIDENCE.read_text(encoding="utf-8")
+
+    required_terms = [
+        "complete-cell",
+        "equal-cell-weight",
+        "FactorialAnovaResult",
+        "R 4.5.3",
+        "80-digit",
+        "formula-oracle parity",
+        "anchored parity",
+        "library parity",
+        "not adequacy evidence",
+        "2 x 2",
+        "3 x 4",
+        "6 x 6",
+        "1.992507000",
+        "28,714,181",
+        "1498 passed, 5 skipped",
+        "4 passed, 1499 deselected",
+        "22 successful V1 checks",
+        "874CE8AAAB203D84C9B3800354CB9B139968648019684C51911E8AD44C4F65AB",
+        "VM: Modori-CleanWin-QA-Direct / Off",
+        "ModoriPayloadV2.before-rebuild-20260711-010110.vhdx",
+        "double-rounding",
+        "one-family Holm",
+        "pointwise",
+        "omega squared",
+        "empty cells",
+        "package-engine-smoke-ok",
+    ]
+    for term in required_terms:
+        assert term in text
+
+
 def test_closure_matrix_keeps_adequacy_as_statistical_performance_evidence() -> None:
     text = Path("docs/qa/statistics-accuracy-closure-matrix.md").read_text(
         encoding="utf-8"
@@ -104,6 +141,8 @@ def test_closure_matrix_keeps_adequacy_as_statistical_performance_evidence() -> 
     assert "Coverage simulation" in adequacy_row
     assert "iteration policy" not in adequacy_row
     assert "fail-closed limits" not in adequacy_row
+    assert "| Complete-cell factorial ANOVA |" in text
+    assert "owner review of the written complete-cell Type III" not in text
 
 
 def test_statistics_literature_map_records_certified_and_product_specific_risks() -> (

@@ -31,6 +31,7 @@ rejected by fail-closed policy, or documented as outside product scope.
 | Dependency convergence | FactorAnalyzer, KMO/Bartlett, robust covariance helpers. | Runtime/user warnings promoted to fail-closed errors where estimates are unsafe. |
 | Finite logistic MLE existence | Complete or quasi-complete separation, sparse categorical cells. | Independent LP existence gate, ambiguous-solver fail-closed behavior, and overlapping controls. |
 | Presentation drift | Tables, prose, report export, UI bindings. | Report/prose tests that compare rendered meaning to raw result objects. |
+| Factorial estimand drift | Treatment contrasts, sample-size-weighted margins, empty-cell recovery, additive-percent interpretations. | Explicit equal-cell-weight complete-cell hypotheses, direct cell-mean tests, non-additivity wording, and fail-closed unsupported-design gates. |
 
 ## Current Closure State
 
@@ -38,6 +39,7 @@ rejected by fail-closed policy, or documented as outside product scope.
 | --- | --- | --- |
 | Descriptives/Table 1 | NIST NumAcc4 fixture and Decimal mean/sample-SD path are in place. | Add NumAcc1-3 only if they expose distinct product risk. |
 | ANOVA family | One-way ANOVA, RM-ANOVA, and ANCOVA have centered SS/OLS paths and large-offset audits; NIST `AtmWtAg` is covered through the compare-groups Student `t^2 = F` identity; Tukey/Games-Howell posthoc tails have direct studentized-range fixtures; unbalanced one-way ANOVA has a large-offset 50-digit Decimal oracle fixture. | Decide two-treatment ANOVA policy for `anova_oneway`; add broader posthoc edge fixtures only if product scope expands. |
+| Complete-cell factorial ANOVA | The frozen V1 estimand is a two-fixed-factor, equal-cell-weight Type III cell-mean hypothesis with complete cells only. Direct Decimal/formula oracles, R `lm()` anchored parity, statsmodels Sum-contrast library parity, an 80-digit extreme-offset mpmath oracle, supported-dimension checks through 6 x 6, independent simple-effect formulas, one-family Holm gating, typed-level boundaries, reporting/UI/recommendation routing, structural engine smoke, and a 100,000-row performance gate are in place. A self-audit found and fixed high-offset cell/marginal double-rounding before closure. Full/slow/package gates and host Payload V2 rebuild are complete. | Run the attached package inside the clean VM, then receive independent adversarial implementation review. Release promotion remains blocked until both are recorded. Empty cells, alternate SS types, omega squared, pairwise posthoc, simultaneous intervals, weights/clusters/repeated observations, and causal claims remain outside scope. |
 | Compare groups t-family | Welch and Student t paths use centered common-offset inputs for test statistics; NIST `AtmWtAg` anchors Student t against certified `F = t^2`; Welch has a large-offset formula-oracle fixture. | Add broader two-group fixtures only if product scope expands. |
 | Regression OLS | NIST Longley/Wampler fixtures, condition-number gates, perfect-fit fail-closed, outcome-offset audit, complete-case parity, and HC3 robust-covariance parity are in place. | Add broader regression diagnostics only if product scope expands. |
 | Binary logistic regression | Ordinary continuous, complete-case, and categorical fits are anchored to R base `glm`; coefficients, final-probability Fisher SEs, fitted values, likelihood/deviance/AIC, and LR tests meet the recorded `1e-10` ceiling. An 80-digit mpmath Newton/Fisher oracle independently anchors coefficients, SEs, probabilities, and log likelihood at `1e-11`. LP separation, rank, condition, final-score, large-offset, explicit event/reference coding, typed UI token validation, user-visible outcome-label uniqueness, OR range disclosure, calibration ties, warning translation, conditional chart/report output, real pipeline execution, and a 21-check packaged engine smoke are tested. The external adversarial review found a display-label direction ambiguity and a unit-rescaling/OR failure; both findings were reproduced before correction. Post-fix gates reported `197 passed` focused, `1242 passed, 4 skipped` full, `3 passed, 1243 deselected` slow, and all packaged smokes green. | Native packaged visual walkthrough remains open as non-calculation QA. Same-sample classification, AUC, Brier, and calibration remain descriptive rather than adequacy evidence. The finite-MLE safety gates are executable defenses, not an analytic all-cases digit guarantee. External validation, Firth/penalized estimation, weights, clusters, repeated observations, and interactions require separate scope and validation before any claim expansion. |
@@ -48,8 +50,10 @@ rejected by fail-closed policy, or documented as outside product scope.
 
 ## Next Execution Order
 
-1. Obtain owner review of the written complete-cell Type III factorial-ANOVA
-   specification before writing its implementation plan.
-2. Keep other remaining work limited to explicit scope-expansion decisions:
+1. Execute the attached payload inside the clean VM and preserve engine/public
+   data smoke output for the implemented complete-cell factorial ANOVA.
+2. Obtain independent adversarial implementation review and reproduce every
+   actionable finding before release promotion.
+3. Keep other remaining work limited to explicit scope-expansion decisions:
    two-treatment ANOVA in `anova_oneway`, broader bootstrap coverage designs,
    SPSS/JASP anchors, and EFA anchors beyond factor-analyzer parity.

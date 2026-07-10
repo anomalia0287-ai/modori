@@ -27,6 +27,7 @@ def test_app_engine_smoke_writes_success_payload(tmp_path) -> None:
     assert '"status": "ready"' in text
     assert '"v1_statistics_smoke"' in text
     assert '"repeated_measures_anova"' in text
+    assert '"anova_factorial"' in text
     assert '"friedman"' in text
     assert '"mediation"' in text
     assert '"moderated_mediation"' in text
@@ -41,6 +42,23 @@ def test_app_engine_smoke_writes_success_payload(tmp_path) -> None:
         "analysis_type": "LogisticRegressionResult",
         "key": "logistic_regression",
         "ok": True,
+    }
+    factorial = next(
+        check
+        for check in payload["v1_statistics_smoke"]["checks"]
+        if check["key"] == "anova_factorial"
+    )
+    assert factorial["analysis_type"] == "FactorialAnovaResult"
+    assert factorial["evidence"] == {
+        "analysis_key": "anova_factorial",
+        "cell_count": 6,
+        "chart_type": "factorial_interaction",
+        "effect_count": 3,
+        "finite_effect_statistics": True,
+        "level_counts": [2, 3],
+        "marginal_count": 5,
+        "method": "type_iii_equal_cell_weight",
+        "simple_effect_count": 5,
     }
 
 

@@ -15,6 +15,7 @@ from modori.factorial_anova_numerics import (
     FactorialMoments,
     HypothesisStatistic,
     evaluate_hypothesis,
+    decimal_location_summary,
     factorial_hypotheses,
     holm_adjust,
     marginal_estimates,
@@ -526,16 +527,21 @@ def _cell_summaries(
         for level_b in levels_b:
             index = len(rows)
             se = math.sqrt(moments.mse / moments.counts[index])
+            mean, ci_low, ci_high = decimal_location_summary(
+                moments.decimal_means[index],
+                se,
+                critical,
+            )
             rows.append(
                 FactorialCellSummary(
                     factor_a_level=level_a,
                     factor_b_level=level_b,
                     n=moments.counts[index],
-                    mean=moments.means[index],
+                    mean=mean,
                     sd=moments.sample_sds[index],
                     se=se,
-                    ci_low=moments.means[index] - critical * se,
-                    ci_high=moments.means[index] + critical * se,
+                    ci_low=ci_low,
+                    ci_high=ci_high,
                 )
             )
     return tuple(rows)

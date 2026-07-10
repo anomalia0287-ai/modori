@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 
 from modori.core import Dataset, Measure, Variable
+from modori.factorial_anova_results import FactorialAnovaResult
 from modori.logistic_regression_results import LogisticRegressionResult
 from modori.steps import (
     AncovaStep,
@@ -14,6 +15,7 @@ from modori.steps import (
     CompareGroupsStep,
     CorrelationStep,
     DescriptivesTableStep,
+    FactorialAnovaStep,
     FactorPcaStep,
     FrequencyCrosstabStep,
     FriedmanStep,
@@ -28,6 +30,11 @@ from modori.steps import (
 )
 
 
+SmokeEvidence = dict[str, object] | None
+SmokeAssertion = Callable[[Any], SmokeEvidence]
+SmokeFactory = Callable[[], tuple[object, Dataset, SmokeAssertion]]
+
+
 def v1_statistics_smoke_payload() -> dict[str, object]:
     checks = [_run_check(key, factory) for key, factory in _CHECK_FACTORIES]
     return {
@@ -36,18 +43,23 @@ def v1_statistics_smoke_payload() -> dict[str, object]:
     }
 
 
-def _run_check(key: str, factory: Callable[[], tuple[object, Dataset, Callable[[Any], None]]]) -> dict[str, object]:
+def _run_check(key: str, factory: SmokeFactory) -> dict[str, object]:
     try:
         step, dataset, assert_result = factory()
         result = step.compute_context_free(dataset).analysis
         if result is None:
             raise ValueError(f"{key} did not produce an analysis result")
-        assert_result(result)
-        return {
+        evidence = assert_result(result)
+        check: dict[str, object] = {
             "key": key,
             "ok": True,
             "analysis_type": type(result).__name__,
         }
+        if evidence is not None:
+            if not isinstance(evidence, dict):
+                raise TypeError(f"{key} smoke evidence must be a dictionary")
+            check["evidence"] = evidence
+        return check
     except Exception as exc:
         return {
             "key": key,
@@ -139,6 +151,48 @@ def _assert_logistic_result(result: Any) -> None:
         raise ValueError("logistic warning disclosure is not immutable")
     if len(result.warning_codes) != len(result.warnings):
         raise ValueError("logistic warning codes and messages do not align")
+
+
+def _assert_factorial_result(result: Any) -> dict[str, object]:
+    if not isinstance(result, FactorialAnovaResult):
+        raise ValueError("factorial smoke did not produce FactorialAnovaResult")
+    if result.analysis_key != "anova_factorial":
+        raise ValueError("factorial smoke analysis key drifted")
+    if len(result.effects) != 3:
+        raise ValueError("factorial smoke did not produce three omnibus effects")
+    if len(result.cells) != 6 or len(result.marginals) != 5:
+        raise ValueError("factorial smoke cell or marginal coverage drifted")
+    expected_simple_effects = len(result.levels_a) + len(result.levels_b)
+    if len(result.simple_effects) != expected_simple_effects:
+        raise ValueError(
+            "factorial smoke interaction gate did not produce all simple effects"
+        )
+    if not all(
+        np.isfinite(effect.f_value) and np.isfinite(effect.p_value)
+        for effect in result.effects
+    ):
+        raise ValueError("factorial smoke produced non-finite effect statistics")
+    if (
+        len(result.chart_specs) != 1
+        or result.chart_specs[0].type != "factorial_interaction"
+    ):
+        raise ValueError("factorial smoke interaction chart drifted")
+    if (
+        result.method_details.get("sum_of_squares")
+        != "type_iii_equal_cell_weight"
+    ):
+        raise ValueError("factorial smoke method policy drifted")
+    return {
+        "analysis_key": result.analysis_key,
+        "cell_count": len(result.cells),
+        "chart_type": result.chart_specs[0].type,
+        "effect_count": len(result.effects),
+        "finite_effect_statistics": True,
+        "level_counts": [len(result.levels_a), len(result.levels_b)],
+        "marginal_count": len(result.marginals),
+        "method": result.method_details["sum_of_squares"],
+        "simple_effect_count": len(result.simple_effects),
+    }
 
 
 def _assert_positive_attr(attribute: str) -> Callable[[Any], None]:
@@ -399,6 +453,61 @@ def _anova_check() -> tuple[OneWayAnovaStep, Dataset, Callable[[Any], None]]:
         ),
         dataset,
         _assert_noop,
+    )
+
+
+def _factorial_anova_check() -> tuple[
+    FactorialAnovaStep,
+    Dataset,
+    Callable[[Any], dict[str, object]],
+]:
+    rows: list[dict[str, object]] = []
+    for factor_a, factor_b, mean, count in (
+        ("control", "north", 10.0, 4),
+        ("control", "central", 10.5, 5),
+        ("control", "south", 11.0, 6),
+        ("active", "north", 10.2, 7),
+        ("active", "central", 14.0, 8),
+        ("active", "south", 19.0, 9),
+    ):
+        offsets = np.arange(count, dtype=float) - (count - 1.0) / 2.0
+        rows.extend(
+            {
+                "score": mean + 0.15 * float(offset),
+                "treatment": factor_a,
+                "site": factor_b,
+            }
+            for offset in offsets
+        )
+    dataset = _dataset(
+        rows,
+        {
+            "score": Measure.SCALE,
+            "treatment": Measure.NOMINAL,
+            "site": Measure.NOMINAL,
+        },
+    )
+    return (
+        FactorialAnovaStep(
+            id="smoke-factorial-anova",
+            title="Smoke factorial ANOVA",
+            params={
+                "schema_version": 1,
+                "dv": "score",
+                "factor_a": "treatment",
+                "factor_b": "site",
+                "factor_a_levels": ["control", "active"],
+                "factor_b_levels": ["north", "central", "south"],
+                "factorial_policy": {
+                    "sum_of_squares": "type_iii_equal_cell_weight",
+                    "simple_effects": "interaction_gated_holm",
+                    "alpha": 0.05,
+                },
+                "language": "ko",
+            },
+        ),
+        dataset,
+        _assert_factorial_result,
     )
 
 
@@ -813,7 +922,7 @@ def _logistic_regression_check() -> tuple[
     )
 
 
-_CHECK_FACTORIES: tuple[tuple[str, Callable[[], tuple[object, Dataset, Callable[[Any], None]]]], ...] = (
+_CHECK_FACTORIES: tuple[tuple[str, SmokeFactory], ...] = (
     ("descriptives_table1", _descriptives_check),
     ("reliability", _reliability_check),
     ("frequency", _frequency_check),
@@ -825,6 +934,7 @@ _CHECK_FACTORIES: tuple[tuple[str, Callable[[], tuple[object, Dataset, Callable[
     ("paired_t", _paired_t_check),
     ("wilcoxon", _wilcoxon_check),
     ("anova_oneway", _anova_check),
+    ("anova_factorial", _factorial_anova_check),
     ("kruskal_wallis", _kruskal_check),
     ("ancova", _ancova_check),
     ("repeated_measures_anova", _repeated_measures_anova_check),

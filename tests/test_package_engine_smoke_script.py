@@ -8,6 +8,25 @@ import subprocess
 from scripts import package_engine_smoke
 
 
+def _factorial_check() -> dict[str, object]:
+    return {
+        "key": "anova_factorial",
+        "ok": True,
+        "analysis_type": "FactorialAnovaResult",
+        "evidence": {
+            "analysis_key": "anova_factorial",
+            "cell_count": 6,
+            "chart_type": "factorial_interaction",
+            "effect_count": 3,
+            "finite_effect_statistics": True,
+            "level_counts": [2, 3],
+            "marginal_count": 5,
+            "method": "type_iii_equal_cell_weight",
+            "simple_effect_count": 5,
+        },
+    }
+
+
 def test_package_engine_smoke_reports_missing_executable(capsys) -> None:
     result = package_engine_smoke.main(["does-not-exist.exe"])
 
@@ -44,7 +63,8 @@ def test_package_engine_smoke_passes_when_payload_is_ok(monkeypatch, tmp_path) -
                                 "key": "logistic_regression",
                                 "ok": True,
                                 "analysis_type": "LogisticRegressionResult",
-                            }
+                            },
+                            _factorial_check(),
                         ],
                     },
                 },
@@ -82,7 +102,10 @@ def test_package_engine_smoke_rejects_missing_logistic_evidence(
                     "rerun": True,
                     "waited": True,
                     "status": "ready",
-                    "v1_statistics_smoke": {"ok": True, "checks": []},
+                    "v1_statistics_smoke": {
+                        "ok": True,
+                        "checks": [_factorial_check()],
+                    },
                 },
                 handle,
             )
@@ -95,6 +118,48 @@ def test_package_engine_smoke_rejects_missing_logistic_evidence(
     captured = capsys.readouterr()
     assert result == 1
     assert "logistic_regression" in captured.err
+
+
+def test_package_engine_smoke_rejects_missing_factorial_evidence(
+    monkeypatch,
+    tmp_path,
+    capsys,
+) -> None:
+    exe = tmp_path / "Modori.exe"
+    exe.write_text("", encoding="utf-8")
+
+    def fake_run(command, check, timeout, env):
+        output_path = command[3]
+        with open(output_path, "w", encoding="utf-8") as handle:
+            json.dump(
+                {
+                    "ok": True,
+                    "opened": True,
+                    "rerun": True,
+                    "waited": True,
+                    "status": "ready",
+                    "v1_statistics_smoke": {
+                        "ok": True,
+                        "checks": [
+                            {
+                                "key": "logistic_regression",
+                                "ok": True,
+                                "analysis_type": "LogisticRegressionResult",
+                            }
+                        ],
+                    },
+                },
+                handle,
+            )
+        return subprocess.CompletedProcess(command, 0)
+
+    monkeypatch.setattr(package_engine_smoke.subprocess, "run", fake_run)
+
+    result = package_engine_smoke.run_engine_smoke(exe, timeout_seconds=0.01)
+
+    captured = capsys.readouterr()
+    assert result == 1
+    assert "anova_factorial" in captured.err
 
 
 def test_package_engine_smoke_fails_when_payload_is_not_ok(

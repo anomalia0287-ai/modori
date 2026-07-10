@@ -2,7 +2,7 @@
 
 Status: working accuracy record for `release/readiness-1-9`.
 
-Last updated: 2026-07-09 KST.
+Last updated: 2026-07-10 KST.
 
 This ledger separates three claims:
 
@@ -64,6 +64,7 @@ verified separately from raw result-object values.
 | `descriptives_table1` | NIST StRD NumAcc4 generated fixture and module tests. | Large-offset mean and sample standard deviation use one shared Decimal-backed conversion and match certified NumAcc4 values. Boolean SCALE values are explicitly rejected. | Median/min/max remain float64 summaries; NumAcc1-3 and autocorrelation are not product-surfaced fixtures yet. | Add NumAcc1-3 where they expose distinct product risk; only add autocorrelation if Modori surfaces it. |
 | `factor_pca` | Current tests cover PCA/EFA behavior, eigenvalue/loadings surfaces, validation paths, and R `psych`/base-R anchors for KMO, Bartlett, PCA eigenvalues, and PCA loadings. | Correlation-matrix validation, singular correlation rejection, condition-number rejection for near-singular correlation matrices, KMO/Bartlett diagnostic handling, invalid Heywood-like EFA estimate rejection, deterministic parallel-analysis seed, user-facing parallel-analysis default `1000`, warning below `1000`, external R anchor on the public BFI Likert fixture. | EFA loadings remain factor-analyzer parity plus fail-closed policy, not hard R `psych::fa` parity. | Add EFA cross-engine anchors only if EFA claim scope expands. |
 | `reliability_omega` | Current tests include R-gated omega parity and R `psych::omega` parity on a public BFI Likert fixture. | Cronbach alpha paths, corrected item-total correlations, omega singular-correlation rejection, omega condition-number rejection for near-singular item matrices, FactorAnalyzer runtime/user warning fail-closed, invalid Heywood-like omega estimate rejection, R `psych` omega anchors for simple and real Likert fixtures. | McDonald's omega uses maximum-likelihood factor extraction and remains method-sensitive across engines; tolerances are intentionally looser than deterministic algebraic statistics. | Add broader omega fixtures only if new item-matrix shapes are added to product claims. |
+| `anova_factorial` | Direct equal-cell-weight Type III cell-mean hypotheses; 50-digit Decimal formula oracles; explicit statsmodels Sum-contrast parity; base-R `lm()` Sum-contrast Wald anchors; and an independent 80-digit mpmath extreme-offset oracle. | Complete-cell 2-factor designs from 2 through 6 levels per factor; unbalanced 2 x 3 R/statsmodels anchors; 2 x 2, 3 x 4, and 6 x 6 statsmodels dimension coverage; independent weighted-slice simple-effect formulas; typed level/missing/display-label collisions; row, factor-role, location, and positive-scale metamorphics; Decimal cell and marginal location summaries; one-family Holm interaction-gated simple effects; pointwise pooled-MSE intervals; warning/report/chart/UI routing; candidate-only recommendation; 100,000-row time/memory/input-immutability gate; and structural in-process/package smoke evidence. | V1 rejects empty cells, fewer than three complete rows per cell, more than two factors, more than six levels, non-independent/weighted/clustered/repeated structures, and zero pooled error. Type III SS are not additive percentages. Intervals are pointwise, not simultaneous. Omega squared and pairwise posthoc are omitted. The interaction gate and one Holm family are explicit conservative policies, not universal optimality claims. | Complete fresh package/clean-VM evidence and independent adversarial implementation review before release promotion. |
 | `anova_oneway` | SciPy `f_oneway` parity tests, NIST StRD SmLs01/SmLs04/SmLs07 fixtures, a large-offset unbalanced Decimal oracle, and posthoc coverage via statsmodels/Pingouin paths. | Group validation, Levene assumption summaries, omnibus ANOVA, certified df/F/R-squared parity, centered effect-size SS path, large-offset eta/omega stability, unbalanced group-size 50-digit Decimal oracle, posthoc result surfaces, Tukey/Games-Howell p-value source disclosure, studentized-range survival-function policy lock, direct extreme-tail Tukey/Games-Howell fixtures. | `SmLs07` is recorded as achieved float64 precision rather than full 15-digit certified parity. `AtmWtAg` is covered through `compare_groups_t`, but `anova_oneway` still routes/validates one-way ANOVA as three-or-more groups. | Decide whether two-treatment ANOVA should be accepted in `anova_oneway`; add broader posthoc edge fixtures only if product scope expands. |
 | `rank_based_nonparametric_tests` | Current coverage spans Mann-Whitney, Wilcoxon, Kruskal-Wallis, Friedman, and Spearman through module tests, plus R base anchors for tied Mann-Whitney, Wilcoxon p-value, Kruskal-Wallis, and Friedman fixtures. | Mann-Whitney records tie policy and exact-vs-asymptotic selection; untied Mann-Whitney exact is used through `min(n) <= 25`; untied `26-49` is an intentional policy difference from R's wider exact default; Wilcoxon records zero-difference, tie, correction, and method policy; Kruskal-Wallis, Friedman, and Spearman now record tied-rank/method policy details on Likert-shaped fixtures; Kruskal-Wallis warns on small group sizes where chi-square approximation is weak; R-base statistic/df/p parity is locked where statistic conventions align. | SPSS/JASP anchors are not included; Kruskal-Wallis and Friedman posthoc remain intentionally unsupported. Public claims must be phrased as R/NIST/formula anchored, not SPSS-equivalent. | Add SPSS/JASP anchors only if external review requires those engines. |
 
@@ -125,6 +126,21 @@ verified separately from raw result-object values.
   collected zero workspace R DLLs after package environment isolation. The
   executable SHA-256 is
   `23315F94BB82EAC76E7F575E1B7DB2D3B4C9602A275C48DCAB4A46D48B59BFCA`.
+- Complete-cell factorial ANOVA internal closure candidate on 2026-07-10 KST:
+  the focused engine/reference/report/recommendation/UI/smoke gate reported
+  `219 passed` with the required R anchors executed. A broader self-audit found
+  and reproduced a high-offset cell/marginal location double-rounding defect;
+  Decimal centers are now retained through float output conversion and locked
+  by adversarial fixtures. Statsmodels parity spans 2 x 2, 3 x 4, and 6 x 6.
+  Three isolated 100,000-row post-fix probes measured `1.992507000`,
+  `1.965806400`, and `2.241534700` seconds, with median additional traced
+  memory `28,714,181` bytes. The full gate then reported `1498 passed, 5
+  skipped`; the slow layer reported `4 passed, 1499 deselected`; all three
+  fresh packaged smokes passed across 22 V1 checks. The executable SHA-256 is
+  `874CE8AAAB203D84C9B3800354CB9B139968648019684C51911E8AD44C4F65AB`.
+  Payload V2 was rebuilt and attached while the named VM was Off. Clean-VM
+  execution and independent-review gates remain required; details are in
+  `docs/qa/factorial-anova-reference-evidence.md`.
 - jamovi GUI fixture pack:
   `tests/test_jamovi_validation_fixtures.py` locks the expected values used by
   `docs/qa/jamovi-gui-validation-runbook.md`. Manual jamovi screenshots or
