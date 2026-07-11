@@ -72,6 +72,9 @@ function Assert-PayloadDriveContents {
         (Join-Path $DriveRoot "Samples\visible-import-reference.xlsx"),
         (Join-Path $DriveRoot "Samples\visible-import-reference.sav"),
         (Join-Path $DriveRoot "Samples\visible-grid-overflow.csv"),
+        (Join-Path $DriveRoot "Samples\experimental_recommendation\experimental-candidate.csv"),
+        (Join-Path $DriveRoot "Samples\experimental_recommendation\experimental-configuration.csv"),
+        (Join-Path $DriveRoot "Samples\experimental_recommendation\experimental-no-candidate.csv"),
         (Join-Path $DriveRoot "Samples\public_data_formats\kosis-two-row.csv"),
         (Join-Path $DriveRoot "Samples\public_data_formats\cp949-public.csv"),
         (Join-Path $DriveRoot "Samples\public_data_formats\molit-deep-preamble.csv"),
@@ -215,14 +218,22 @@ $samples = @(
     (Join-Path $fixturesRoot "visible-import-reference.sav"),
     (Join-Path $fixturesRoot "visible-grid-overflow.csv")
 )
+$experimentalRecommendationSamples = @(
+    (Join-Path $fixturesRoot "experimental-candidate.csv"),
+    (Join-Path $fixturesRoot "experimental-configuration.csv"),
+    (Join-Path $fixturesRoot "experimental-no-candidate.csv")
+)
 
 Write-Section "Preflight"
 Assert-Path -Path $sourceApp -Label "Packaged app folder"
 foreach ($sample in $samples) {
     Assert-Path -Path $sample -Label "Sample file"
 }
+foreach ($sample in $experimentalRecommendationSamples) {
+    Assert-Path -Path $sample -Label "Experimental recommendation sample file"
+}
 Assert-Path -Path $publicDataFixtures -Label "Public data fixture folder"
-$sourcePaths = @($sourceApp, $publicDataFixtures) + $samples
+$sourcePaths = @($sourceApp, $publicDataFixtures) + $samples + $experimentalRecommendationSamples
 $newestSourceWriteTimeUtc = Get-NewestSourceWriteTimeUtc -Paths $sourcePaths
 
 $vm = Get-VM -Name $VMName -ErrorAction Stop
@@ -293,11 +304,14 @@ try {
     $driveRoot = "$($partition.DriveLetter):\"
     $appTarget = Join-Path $driveRoot "Modori"
     $sampleTarget = Join-Path $driveRoot "Samples"
+    $experimentalRecommendationTarget = Join-Path $sampleTarget "experimental_recommendation"
 
     Write-Section "Copy files"
     New-Item -ItemType Directory -Force -Path $sampleTarget | Out-Null
+    New-Item -ItemType Directory -Force -Path $experimentalRecommendationTarget | Out-Null
     Copy-Item -LiteralPath $sourceApp -Destination $appTarget -Recurse
     Copy-Item -LiteralPath $samples -Destination $sampleTarget
+    Copy-Item -LiteralPath $experimentalRecommendationSamples -Destination $experimentalRecommendationTarget
     Copy-Item -LiteralPath $publicDataFixtures -Destination (Join-Path $sampleTarget "public_data_formats") -Recurse
 
     $readme = @"
@@ -314,6 +328,9 @@ Expected sample files:
 - Samples\visible-import-reference.xlsx
 - Samples\visible-import-reference.sav
 - Samples\visible-grid-overflow.csv
+- Samples\experimental_recommendation\experimental-candidate.csv
+- Samples\experimental_recommendation\experimental-configuration.csv
+- Samples\experimental_recommendation\experimental-no-candidate.csv
 - Samples\public_data_formats\kosis-two-row.csv
 - Samples\public_data_formats\cp949-public.csv
 - Samples\public_data_formats\molit-deep-preamble.csv
@@ -343,6 +360,11 @@ Import visibility samples:
 - Samples\visible-import-reference.sav
 - Samples\visible-grid-overflow.csv
 
+Experimental recommendation interaction samples:
+- Samples\experimental_recommendation\experimental-candidate.csv
+- Samples\experimental_recommendation\experimental-configuration.csv
+- Samples\experimental_recommendation\experimental-no-candidate.csv
+
 Public data import contract samples:
 - Samples\public_data_formats\kosis-two-row.csv
 - Samples\public_data_formats\cp949-public.csv
@@ -358,6 +380,7 @@ Rules:
 - Run-Public-Data-Smoke.bat must validate public-data import contracts, not just app launch.
 - Run-Modori.bat is for visible UI verification.
 - Visible import samples are not a substitute for engine smoke.
+- Experimental recommendation samples verify interaction boundaries, not recommendation accuracy.
 "@
     Set-Content -LiteralPath (Join-Path $driveRoot "QA_CONTRACT.txt") -Value $contract -Encoding ASCII
 
