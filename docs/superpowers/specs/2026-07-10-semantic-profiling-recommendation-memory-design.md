@@ -5,6 +5,12 @@ Date: 2026-07-10
 Status: External-review amendments incorporated and approved for staged execution;
 implementation not started
 
+Live product vocabulary and exposure are governed by
+`docs/superpowers/specs/2026-07-11-experimental-recommendation-boundary-design.md`.
+Until an approved human evidence gate promotes a family, every emitted product
+candidate has `evidence_status=EXPERIMENTAL`; historical
+`strong`/`candidate`/`caution` terms below are benchmark vocabulary only.
+
 ## 1. Purpose
 
 Modori currently recommends analyses using deterministic heuristics over variable
@@ -21,8 +27,8 @@ to make statistical decisions.
 The feature is valuable only if staged evidence demonstrates material improvement.
 Deterministic layers may replace the current heuristic after a frozen deterministic
 validation gate. A public 80 percent claim, an optional local SLM, and expansion of
-strong recommendation require the larger locked claim corpus. A layer that does not
-meet its pre-registered gate is not shipped.
+validated recommendation exposure require the larger locked claim corpus. A layer
+that does not meet its pre-registered gate is not shipped.
 
 ## 2. Current Product Baseline
 
@@ -34,8 +40,10 @@ Verified current behavior:
   metadata.
 - `src/modori/recommendations.py::RecommendationService` is deterministic and has no
   project memory or model dependency.
-- `src/modori/analysis_catalog.py` caps each module at strong, candidate, caution-only,
-  manual-only, or never-recommend status.
+- Before the experimental-boundary migration, `src/modori/analysis_catalog.py` uses
+  legacy strong, candidate, caution-only, manual-only, or never-recommend routing
+  names. The migration replaces them with review-routing policy plus independent
+  recommendation evidence status.
 - `src/modori/ui/recommendation_controller.py` requires an explicit user run action.
 - The statistics pipeline remains deterministic and independently validated. R,
   jamovi, and reference fixtures are QA anchors, not runtime engines.
@@ -47,11 +55,12 @@ The current recommendation layer can propose executable candidates. It does not 
 research-design validity, infer intent reliably from data alone, or achieve a measured
 80 percent recommendation-accuracy claim.
 
-The current catalog marks `reliability`, `compare_groups`, and
+The pre-migration catalog marks `reliability`, `compare_groups`, and
 `descriptives_table1` as `STRONG`, and their providers can emit the user-facing label
 `강한 추천` without recommendation-validity benchmark evidence. This is recorded as
-`legacy_unvalidated` behavior. The catalog value is a policy ceiling, not empirical
-evidence, and does not automatically survive the new recommendation policy.
+historical `legacy_unvalidated` behavior. The experimental-boundary migration removes
+that product wording and automatic live selection while preserving the frozen A
+baseline in its adapter.
 
 ## 3. Product Decision
 
@@ -106,8 +115,9 @@ These rules are release-blocking:
 10. A damaged semantic context cannot prevent the calculation pipeline from opening.
 11. Every active claim has a source, version, scope, and invalidation rule.
 12. A novice user confirms domain facts and research intent, not statistical jargon.
-13. A catalog `STRONG` value is only a ceiling; evidence must separately authorize the
-    user-facing strong level.
+13. Routing tier never implies recommendation evidence. Product exposure uses an
+    independent `evidence_status`, and V1 starts every emitted family at
+    `EXPERIMENTAL`.
 14. Benchmark development, deterministic release validation, and public-claim
     validation use separate data roles and cannot reuse a tuned set as a holdout.
 
@@ -440,7 +450,8 @@ hypothesis that still faces schema, evidence, conflict, policy, and run validati
    override a contradictory physical observation.
 4. Imported third-party confirmations are untrusted until locally reviewed.
 5. Stale claims never participate in recommendation ranking.
-6. Unresolved conflicts block strong recommendation and can trigger one clarification.
+6. Unresolved conflicts block candidate selection and validated exposure and can
+   trigger one clarification.
 7. No confidence number combines incomparable evidence sources before calibration.
 
 ### Decision log
@@ -498,7 +509,7 @@ For each unresolved fact, simulate the permitted answer branches and recompute t
 candidate set. Ask only when an answer changes at least one of:
 
 - top recommendation family;
-- strong/candidate/caution/abstain status;
+- recommendation evidence status, review-routing tier, or abstention state;
 - paired versus independent design;
 - repeated-measure eligibility;
 - data-exclusion decision requiring confirmation;
@@ -538,38 +549,43 @@ plain language, and abstain until resolved.
 2. Required roles, measures, and sample/data-shape checks must pass.
 3. Required study facts must be observed or confirmed.
 4. No blocking conflict or stale dependency may remain.
-5. The catalog policy ceiling must permit the proposed level.
-6. The analysis family's applicable evidence tier must permit that level.
+5. The catalog review-routing policy must permit the proposed candidate.
+6. The analysis family's independent evidence status must permit the requested product
+   exposure.
 
 A weighted score cannot compensate for a failed earlier condition.
 
-### Recommendation levels
+### Evidence status and review routing
 
-`Strong recommendation` requires all mandatory role/design facts, no blocking
-conflicts, a successful run-validator dry check, catalog permission, and a lower 95
-percent confidence bound of at least 90 percent precision for that strong family.
+Live product candidates have an independent evidence status:
 
-The three legacy strong families are reevaluated when the deterministic V2 policy is
-activated. A family retains strong only if the frozen 200-case validation contains
-enough family decisions for its one-sided 95 percent Wilson precision lower bound to
-reach 0.90 with zero E4/E5 failures. Otherwise it is displayed as `가능한 후보`.
-There is no automatic grandfathering. A candidate can remain the default without being
-labeled strong. Promotion of any additional family to strong requires the 800-case
-locked claim gate.
+- `EXPERIMENTAL`: inspectable only through the explicit experimental surface, with no
+  automatic selection, accuracy wording, or direct execution path;
+- `VALIDATED`: reserved for a future family-specific owner promotion after the
+  applicable frozen human evidence gate;
+- `NOT_APPLICABLE`: the module is manual-only or never routed by recommendation.
 
-`Possible candidate` means the configuration is executable but intent or one important
-fact remains uncertain.
+Within the experimental surface, deterministic routing uses `PRIMARY`, `SECONDARY`, or
+`HEIGHTENED_REVIEW`. These values order a review list; they are not confidence or
+accuracy levels. The list states publicly that its ordering is unvalidated, and live
+state starts with no selected candidate.
 
-`Caution required` applies to high-judgment analyses or explicit catalog limits.
-ANCOVA, mediation, and moderated mediation remain caution-only even if a model is
-confident.
+Historical strong precision remains a benchmark release metric. A family can satisfy
+that metric only when all mandatory role/design facts are present, no blocking conflict
+exists, the run-validator dry check succeeds, and its one-sided 95 percent Wilson
+precision lower bound reaches 0.90 with zero E4/E5 failures on the applicable frozen
+split. Passing that metric supports, but does not itself perform, a product promotion
+to `VALIDATED`.
+
+The three historical strong families receive no grandfathering. They remain
+`EXPERIMENTAL` until reevaluated. Additional-family promotion remains subject to the
+800-case locked claim gate. High-judgment families such as ANCOVA, mediation, and
+moderated mediation retain `HEIGHTENED_REVIEW` routing even if later validated for a
+bounded scope.
 
 `Abstain` applies to unsupported, ambiguous, stale, conflicting, out-of-distribution,
-or inadequately benchmarked cases.
-
-Tied candidates are shown as alternatives. A default is selected only when the policy
-produces a meaningful ordering; arbitrary tie-breaking cannot create apparent Top-1
-accuracy.
+or inadequately evidenced cases. Tied candidates are shown as alternatives with no
+automatic selection; arbitrary tie-breaking cannot create apparent Top-1 accuracy.
 
 Internal model probabilities are not shown to users. If a future model emits scores,
 they are calibrated per version using the post-deterministic 200-case calibration role
@@ -645,6 +661,11 @@ outputs after selection; they do not define the recommendation gold label.
 The scorer executable, schema version, metric definitions, confidence-interval method,
 and configuration are hashed and frozen before a frozen split is evaluated. Changing
 any of them invalidates that split's reported result.
+
+The scorer's `strong`/`candidate`/`caution` fields are frozen historical evaluation
+terms. They do not authorize the same words in product UI, help, reports, or product
+documentation and map to live evidence status only through an explicit release
+decision.
 
 - Recommendation Top-1 accuracy is evaluated only on `recommendation_eligible`
   case-stage records. It is 1 only when the primary action is `recommend` and its
@@ -763,9 +784,9 @@ B, C1, and D may replace A after the 200-case frozen deterministic validation wh
   least five percentage points and the two-sided 95 percent Newcombe method-10 interval
   for the paired difference in correctness excludes zero, or reduces E3/E4 errors by
   at least 30 percent without reducing recommendation Top-1 point accuracy or coverage;
-- any strong label emitted by the deterministic configuration independently passes the
-  applicable family evidence gate; disabling an unsupported strong label does not block
-  candidate-only replacement;
+- any historical strong-tier emission used for release scoring independently passes
+  the applicable family evidence gate; disabling that tier does not block an
+  experimental candidate-only replacement;
 - E4 and E5 failures are zero;
 - D reproduces unchanged projects exactly, reduces repeated clarification questions by
   at least 70 percent, and applies stale memory zero times;
@@ -773,17 +794,17 @@ B, C1, and D may replace A after the 200-case frozen deterministic validation wh
 
 This gate authorizes a deterministic product improvement under the existing safe
 "analysis candidate" claim. It does not authorize a public 80 percent claim, C2, or
-new-family strong promotion.
+new-family `VALIDATED` promotion.
 
 ### Locked claim and C2 gates
 
 - Recommendation Top-1 accuracy one-sided 95 percent Wilson lower bound >= 0.80.
 - Clarification and abstention accuracy are reported separately by evidence stage and
   cannot substitute for recommendation Top-1 accuracy.
-- Strong-recommendation precision one-sided 95 percent Wilson lower bound >= 0.90.
+- Historical strong-tier precision one-sided 95 percent Wilson lower bound >= 0.90.
 - Top-3 case-hit rate one-sided 95 percent Wilson lower bound >= 0.90.
 - Coverage on answerable, supported cases >= 0.70.
-- Wrong strong recommendation for a high-risk analysis: zero.
+- Wrong historical strong-tier emission for a high-risk analysis: zero.
 - Unauthorized data mutation, raw-text persistence, stale-memory auto-application, or
   cross-project memory reuse: zero.
 - Questions per case: at most three.
@@ -809,8 +830,8 @@ decreases by no more than five percentage points. Every absolute release gate mu
 still pass. If not, the SLM is omitted.
 
 D is adopted only under the deterministic replacement gate. Promotion of a new family
-to strong remains disabled when that family lacks enough 800-case locked examples to
-satisfy its confidence-bound gate, even if the overall system passes.
+to `VALIDATED` remains disabled when that family lacks enough 800-case locked examples
+to satisfy its confidence-bound gate, even if the overall system passes.
 
 ## 14. Error Cost Policy
 
@@ -819,7 +840,7 @@ satisfy its confidence-bound gate, even if the overall system passes.
 | E1 usability | Unnecessary but safe abstention or extra question | Measured and bounded |
 | E2 recoverable | Non-preferred but acceptable candidate shown as possible | Bounded by Top-1/Top-3 case-hit metrics |
 | E3 major | Wrong role, paired/independent confusion, or stale fact used | Release-blocking until corrected |
-| E4 severe | Wrong strong recommendation or high-risk automatic promotion | Zero allowed in locked high-risk cases |
+| E4 severe | Wrong validated or historical strong-tier recommendation, or high-risk automatic promotion | Zero allowed in locked high-risk cases |
 | E5 boundary failure | Silent data mutation, raw-data leak, or cross-project memory | Zero allowed |
 
 Average accuracy or a weighted score cannot compensate for E4 or E5.
@@ -870,7 +891,7 @@ model-runtime review passes.
 - Profiling covers the full dataset up to the existing untrusted-project limits of
   100,000 rows, 1,000 columns, and 5,000,000 cells.
 - A larger trusted dataset may receive a partial profile, but partial status prohibits
-  strong recommendation.
+  `PRIMARY` routing and validated exposure.
 - Semantic model inference is asynchronous, cancellable, and bound to the dataset
   fingerprint present when it started.
 - Results arriving after a dataset change are discarded.
@@ -879,7 +900,7 @@ model-runtime review passes.
 - Fingerprinting processes at most 100,000 cells per cancellation chunk and has a
   10,000 ms worker-time budget for the supported 5,000,000-cell limit.
 - Budget exhaustion produces `fingerprint_pending_or_incomplete`; it never falls back
-  to a weaker schema-only identity. Project memory and strong recommendation remain
+  to a weaker schema-only identity. Project memory and validated exposure remain
   disabled until a full fingerprint succeeds.
 - Model timeout, resource refusal, missing runtime, or invalid output falls back to the
   deterministic configuration without changing data or memory.
@@ -1027,7 +1048,8 @@ The design is implemented only when all of the following are true:
 - Project memory is local, reversible, isolated, and correctly invalidated.
 - No semantic action silently changes data or executes analysis.
 - Novice questions ask domain facts in plain language and are limited to three.
-- Recommendation ranking obeys hard eligibility and catalog ceilings.
+- Recommendation ranking obeys hard eligibility, review routing, and independent
+  evidence status.
 - Model absence or failure preserves deterministic function and project integrity.
 - Corrupt memory cannot prevent pipeline access.
 - Privacy and prompt-injection controls pass adversarial tests.
@@ -1042,11 +1064,12 @@ The design is implemented only when all of the following are true:
   restricted data and locked labels stay outside git.
 - B/C1/D can pass or fail the frozen deterministic replacement gate independently of
   the 800-case public-claim program.
-- C2, new-family strong promotion, and public 80 percent wording remain blocked until
-  the locked accuracy, precision, case-hit, coverage, severe-error, and boundary-failure
-  gates pass.
-- Legacy strong families are not grandfathered automatically and are demoted when
-  their applicable family evidence is absent or insufficient.
+- C2, new-family `VALIDATED` promotion, and public 80 percent wording remain blocked
+  until the locked accuracy, precision, case-hit, coverage, severe-error, and
+  boundary-failure gates pass.
+- Historical strong-tier families are not grandfathered automatically; their live
+  evidence status remains `EXPERIMENTAL` when applicable family evidence is absent or
+  insufficient.
 - Any layer without material measured benefit is removed from the product.
 - Public wording remains "analysis candidates based on verified data and study facts"
   until the locked evidence supports a stronger claim.
