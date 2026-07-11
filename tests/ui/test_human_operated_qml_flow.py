@@ -173,7 +173,8 @@ def test_explain_mode_control_is_bound_to_explanation_surfaces() -> None:
     assert "uiController.explainModeEnabled" in work
     assert "uiController.setExplainModeEnabled(checked)" in work
     assert "visible: uiController.explainModeEnabled" in results
-    assert "uiController.explainModeEnabled ?" in guide
+    assert "uiController.explainModeEnabled" in guide
+    assert "uiController.explainPlainText" in guide
 
 
 def test_guided_and_standard_modes_change_visible_work_surface() -> None:
@@ -211,7 +212,14 @@ def test_controller_bridge_runs_reference_flow_from_path(tmp_path) -> None:
 
     assert controller.chooseMode("guided") is True
     assert controller.openDataFilePath(str(data_path)) is True
-    assert controller.runPreparedRecommendationNow() is True
+    assert controller.selectRecommendationAt(0) is True
+    assert controller.prepareSelectedRecommendationNow() is True
+    assert controller.setExperimentalRecommendationConfirmed(True) is True
+    assert controller.configureDescriptivesFromText(
+        ", ".join(controller.preparedRecommendationField("variable_keys")),
+        controller.preparedRecommendationField("group_key"),
+    )
+    assert controller.rerunNow() is True
     assert controller.waitForLastRun(timeout=10) is True
     assert controller.dataModel is not None
     assert controller.dataModel.rowCount() == 20

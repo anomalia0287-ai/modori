@@ -7,7 +7,7 @@ from modori.recommendation_policy import RecommendationRoutingTier
 from modori.recommendations import RecommendationService
 
 
-def test_configuration_required_recommendation_cannot_mutate_or_run_pipeline() -> None:
+def test_configuration_required_recommendation_preparation_cannot_mutate_pipeline() -> None:
     from modori.core import Pipeline
     from modori.recommendations import RecommendationCandidate, RecommendationState
     from modori.ui.controller import UiController
@@ -39,11 +39,13 @@ def test_configuration_required_recommendation_cannot_mutate_or_run_pipeline() -
     )
     pipeline_version = controller.pipeline_version
 
-    result = controller.runPreparedRecommendation()
+    prepared = controller.prepareSelectedRecommendationNow()
 
-    assert result.ok is False
-    assert result.error_code == "recommendation_configuration_required"
-    assert result.changed_step_ids == []
+    assert prepared is True
+    assert controller.preparedRecommendationReviewRequirement == (
+        "configuration_required"
+    )
+    assert controller.experimentalRecommendationConfirmed is False
     assert pipeline.steps == []
     assert controller.pipeline_version == pipeline_version
 

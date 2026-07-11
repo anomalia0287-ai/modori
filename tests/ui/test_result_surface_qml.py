@@ -20,7 +20,12 @@ def test_controller_exposes_result_table_and_chart_after_run(tmp_path) -> None:
         if candidate.kind == "reliability"
     )
     assert controller.selectRecommendationAt(reliability_index) is True
-    assert controller.runPreparedRecommendationNow() is True
+    assert controller.prepareSelectedRecommendationNow() is True
+    assert controller.setExperimentalRecommendationConfirmed(True) is True
+    assert controller.configureReliabilityFromText(
+        ", ".join(controller.preparedRecommendationField("item_keys"))
+    )
+    assert controller.rerunNow() is True
     assert controller.waitForLastRun(timeout=10) is True
 
     assert controller.resultTableText
@@ -129,6 +134,10 @@ def test_guide_rail_exposes_all_v1_manual_analysis_paths() -> None:
         "uiController.configureKruskalWallisFromText",
         "uiController.configureAncovaFromText",
         "uiController.configureFactorPcaFromText",
+        "uiController.configureRepeatedMeasuresAnovaFromText",
+        "uiController.configureFriedmanFromText",
+        "uiController.configureMediationFromText",
+        "uiController.configureModeratedMediationFromText",
     ]
 
     for call in expected_calls:

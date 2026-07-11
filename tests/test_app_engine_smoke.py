@@ -69,13 +69,17 @@ def test_app_engine_smoke_fails_when_analysis_rerun_is_rejected(
     import modori.app as app
 
     class RejectingController:
-        recommendationCount = 0
         status = "ready"
         lastError = "rerun rejected"
         resultSummary = ""
         dataModel = None
 
         def openDataFile(self, _path, _options):
+            return SimpleNamespace(ok=True)
+
+        def configureDescriptivesSelection(self, variable_keys, *, group_key):
+            assert variable_keys == "q1, q2, q3, q4, q5, q6, q7, q8"
+            assert group_key == "group"
             return SimpleNamespace(ok=True)
 
         def rerun(self):

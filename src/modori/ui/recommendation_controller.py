@@ -3,12 +3,10 @@ from __future__ import annotations
 from PySide6.QtCore import Property, Signal, Slot
 
 from modori.recommendations import (
-    RecommendationCandidate,
     RecommendationPreparation,
     RecommendationState,
     preparation_for_candidate,
 )
-from modori.ui.contracts import CommandResult
 
 
 def empty_recommendation_state() -> RecommendationState:
@@ -28,23 +26,11 @@ class RecommendationControllerMixin:
         return "" if candidate is None else candidate.title_ko
 
     @Property(str, notify=recommendationStateChanged)
-    def recommendationLevel(self) -> str:
-        candidate = self._recommendation_state.selected_candidate
-        return "" if candidate is None else "실험적 후보"
-
-    @Property(str, notify=recommendationStateChanged)
     def recommendationReason(self) -> str:
         candidate = self._recommendation_state.selected_candidate
         if candidate is None:
             return self._recommendation_state.message_ko
         return candidate.reason_ko
-
-    @Property(str, notify=recommendationStateChanged)
-    def recommendationAlternativesText(self) -> str:
-        return "\n".join(
-            f"{index}. {candidate.title_ko} | 실험적 후보"
-            for index, candidate in enumerate(self._recommendation_state.candidates)
-        )
 
     @Property(int, notify=recommendationStateChanged)
     def recommendationCount(self) -> int:
@@ -77,47 +63,6 @@ class RecommendationControllerMixin:
     def preparedRecommendationReviewRequirement(self) -> str:
         preparation = self._recommendation_preparation
         return "" if preparation is None else preparation.review_requirement
-
-    @Property(str, notify=recommendationStateChanged)
-    def preparedReliabilityItems(self) -> str:
-        candidate = self._recommendation_state.selected_candidate
-        if candidate is None or candidate.kind != "reliability":
-            return ""
-        return ", ".join(candidate.item_keys)
-
-    @Property(str, notify=recommendationStateChanged)
-    def preparedDescriptiveVariables(self) -> str:
-        candidate = self._recommendation_state.selected_candidate
-        if candidate is None or candidate.kind != "descriptives":
-            return ""
-        return ", ".join(candidate.variable_keys)
-
-    @Property(str, notify=recommendationStateChanged)
-    def preparedOutcomeKey(self) -> str:
-        candidate = self._recommendation_state.selected_candidate
-        return "" if candidate is None else candidate.outcome_key
-
-    @Property(str, notify=recommendationStateChanged)
-    def preparedGroupKey(self) -> str:
-        candidate = self._recommendation_state.selected_candidate
-        return "" if candidate is None else candidate.group_key
-
-    @Property(str, notify=recommendationStateChanged)
-    def preparedFactorAKey(self) -> str:
-        candidate = self._recommendation_state.selected_candidate
-        return "" if candidate is None else candidate.factor_a_key
-
-    @Property(str, notify=recommendationStateChanged)
-    def preparedFactorBKey(self) -> str:
-        candidate = self._recommendation_state.selected_candidate
-        return "" if candidate is None else candidate.factor_b_key
-
-    @Property(str, notify=recommendationStateChanged)
-    def preparedPredictorKeys(self) -> str:
-        candidate = self._recommendation_state.selected_candidate
-        if candidate is None:
-            return ""
-        return ", ".join(candidate.predictor_keys)
 
     @Slot(int, result=bool)
     def selectRecommendationAt(self, index: int) -> bool:
@@ -162,14 +107,23 @@ class RecommendationControllerMixin:
             return not bool(confirmed)
         self._experimental_recommendation_confirmed = bool(confirmed)
         self._emit_recommendation_state_changed()
-        self.stateChanged.emit()
         return True
 
     @Slot(result=bool)
     def clearExperimentalRecommendationPreparation(self) -> bool:
         self._reset_recommendation_preparation()
         self._emit_recommendation_state_changed()
-        self.stateChanged.emit()
+        return True
+
+    @Slot(result=bool)
+    def clearExperimentalRecommendationSelection(self) -> bool:
+        self._reset_recommendation_preparation()
+        self._recommendation_state = RecommendationState(
+            candidates=self._recommendation_state.candidates,
+            selected_candidate=None,
+            message_ko=self._recommendation_state.message_ko,
+        )
+        self._emit_recommendation_state_changed()
         return True
 
     @Slot(str, result="QVariant")
@@ -177,7 +131,8 @@ class RecommendationControllerMixin:
         preparation: RecommendationPreparation | None = self._recommendation_preparation
         if preparation is None:
             return None
-        return preparation.prefill_fields.get(str(key))
+        value = preparation.prefill_fields.get(str(key))
+        return list(value) if isinstance(value, tuple) else value
 
     @Slot(int, result=str)
     def recommendationCandidateTitleAt(self, index: int) -> str:
@@ -186,101 +141,11 @@ class RecommendationControllerMixin:
         return self._recommendation_state.candidates[index].title_ko
 
     @Slot(int, result=str)
-    def recommendationCandidateLevelAt(self, index: int) -> str:
+    def recommendationCandidateReviewRequirementAt(self, index: int) -> str:
         if index < 0 or index >= len(self._recommendation_state.candidates):
             return ""
-        return "실험적 후보"
-
-    @Slot(int, result=str)
-    def recommendationCandidateKindAt(self, index: int) -> str:
-        if index < 0 or index >= len(self._recommendation_state.candidates):
-            return ""
-        return self._recommendation_state.candidates[index].kind
-
-    @Slot(int, result=bool)
-    def recommendationCandidateRequiresConfigurationAt(self, index: int) -> bool:
-        if index < 0 or index >= len(self._recommendation_state.candidates):
-            return False
-        return self._recommendation_state.candidates[index].requires_configuration
-
-    def applySelectedRecommendation(self) -> CommandResult:
-        candidate: RecommendationCandidate | None = self._recommendation_state.selected_candidate
-        if candidate is None:
-            return self._command_error("실행할 추천 분석이 없습니다.", "no_recommendation")
-        if candidate.requires_configuration:
-            return self._command_error(
-                "이 추천은 변수 역할과 필수 설정을 직접 확인한 뒤 실행할 수 있습니다.",
-                "recommendation_configuration_required",
-            )
-        if candidate.kind == "descriptives":
-            return self.configureDescriptivesSelection(
-                ", ".join(candidate.variable_keys),
-                group_key=candidate.group_key,
-            )
-        if candidate.kind == "reliability":
-            return self.configureReliabilitySelection(", ".join(candidate.item_keys))
-        if candidate.kind == "comparison":
-            return self.configureComparisonSelection(candidate.outcome_key, candidate.group_key)
-        if candidate.kind == "regression":
-            return self.configureRegressionSelection(
-                candidate.outcome_key,
-                ", ".join(candidate.predictor_keys),
-            )
-        if candidate.kind == "frequency_crosstab":
-            return self.configureFrequencyCrosstabSelection(
-                ", ".join(candidate.variable_keys)
-            )
-        if candidate.kind == "correlation":
-            return self.configureCorrelationSelection(", ".join(candidate.variable_keys))
-        if candidate.kind == "anova_oneway":
-            return self.configureAnovaOneWaySelection(
-                candidate.outcome_key,
-                candidate.group_key,
-            )
-        if candidate.kind == "kruskal_wallis":
-            return self.configureKruskalWallisSelection(
-                candidate.outcome_key,
-                candidate.group_key,
-            )
-        if candidate.kind == "ancova":
-            return self.configureAncovaSelection(
-                candidate.outcome_key,
-                candidate.group_key,
-                ", ".join(candidate.predictor_keys),
-            )
-        if candidate.kind == "factor_pca":
-            return self.configureFactorPcaSelection(", ".join(candidate.variable_keys))
-        if candidate.kind == "repeated_measures_anova":
-            return self.configureRepeatedMeasuresAnovaSelection(
-                ", ".join(candidate.variable_keys)
-            )
-        if candidate.kind == "friedman":
-            return self.configureFriedmanSelection(", ".join(candidate.variable_keys))
-        if candidate.kind == "mediation":
-            return self.configureMediationSelection(
-                candidate.x_key,
-                candidate.mediator_key,
-                candidate.y_key,
-            )
-        if candidate.kind == "moderated_mediation":
-            return self.configureModeratedMediationSelection(
-                candidate.model,
-                candidate.x_key,
-                candidate.mediator_key,
-                candidate.moderator_key,
-                candidate.y_key,
-            )
-        return self._command_error("지원하지 않는 추천 분석입니다.", "invalid_recommendation")
-
-    @Slot(result=bool)
-    def runPreparedRecommendationNow(self) -> bool:
-        return self.runPreparedRecommendation().ok
-
-    def runPreparedRecommendation(self) -> CommandResult:
-        applied = self.applySelectedRecommendation()
-        if not applied.ok:
-            return applied
-        return self.rerun()
+        candidate = self._recommendation_state.candidates[index]
+        return preparation_for_candidate(candidate).review_requirement
 
     def _refresh_recommendations(self) -> None:
         self._reset_recommendation_preparation()

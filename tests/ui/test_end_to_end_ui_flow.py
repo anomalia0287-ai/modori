@@ -50,8 +50,15 @@ def test_explicitly_selected_controller_reference_flow_runs_to_report(tmp_path) 
     assert opened.ok is True
     assert controller.recommendationTitle == ""
     assert controller.selectRecommendationAt(0) is True
+    assert controller.prepareSelectedRecommendationNow() is True
+    assert controller.setExperimentalRecommendationConfirmed(True) is True
+    configured = controller.configureDescriptivesFromText(
+        ", ".join(controller.preparedRecommendationField("variable_keys")),
+        controller.preparedRecommendationField("group_key"),
+    )
+    assert configured is True
 
-    rerun = controller.runPreparedRecommendation()
+    rerun = controller.rerun()
     assert rerun.ok is True
     assert controller.waitForLastRun(timeout=10) is True
 
@@ -64,7 +71,7 @@ def test_explicitly_selected_controller_reference_flow_runs_to_report(tmp_path) 
     assert Path(exported.result_ids[0]).exists()
 
 
-def test_safe_caution_regression_recommendation_runs(tmp_path) -> None:
+def test_explicitly_confirmed_heightened_review_regression_runs(tmp_path) -> None:
     import pandas as pd
 
     from modori.ui.contracts import ImportOptions
@@ -88,8 +95,16 @@ def test_safe_caution_regression_recommendation_runs(tmp_path) -> None:
         if candidate.routing_tier is RecommendationRoutingTier.HEIGHTENED_REVIEW
     )
     assert controller.selectRecommendationAt(caution_index) is True
+    assert controller.prepareSelectedRecommendationNow() is True
+    assert controller.preparedRecommendationReviewRequirement == "heightened_review"
+    assert controller.setExperimentalRecommendationConfirmed(True) is True
+    configured = controller.configureRegressionFromText(
+        controller.preparedRecommendationField("outcome_key"),
+        ", ".join(controller.preparedRecommendationField("predictor_keys")),
+    )
+    assert configured is True
 
-    rerun = controller.runPreparedRecommendation()
+    rerun = controller.rerun()
     assert rerun.ok is True
     assert controller.waitForLastRun(timeout=10) is True
     assert controller.status == "ready"

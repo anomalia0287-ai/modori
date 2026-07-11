@@ -72,7 +72,7 @@ class UiController(
             self._settings_store,
             reduce_effects_override=reduce_effects,
         )
-        self._mode = "guided"
+        self._mode = "standard"
         self._last_error = ""
         self._last_message = ""
         self._result_state = UiResultState()
@@ -202,7 +202,10 @@ class UiController(
     def setMode(self, mode: str) -> CommandResult:
         if mode not in {"guided", "standard"}:
             return self._command_error("지원하지 않는 모드입니다.", "invalid_mode")
+        changed = mode != self._mode
         self._mode = mode
+        if changed:
+            self._refresh_recommendations()
         self._last_error = ""
         self._last_message = "모드가 변경되었습니다."
         self.stateChanged.emit()

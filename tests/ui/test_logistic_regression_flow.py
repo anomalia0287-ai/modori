@@ -469,8 +469,9 @@ def test_controller_exposes_configuration_required_recommendation_state() -> Non
 
     assert controller.recommendationKind == "logistic_regression"
     assert controller.recommendationRequiresConfiguration is True
-    assert controller.preparedOutcomeKey == "event"
-    assert controller.preparedPredictorKeys == "x"
+    assert controller.prepareSelectedRecommendationNow() is True
+    assert controller.preparedRecommendationField("outcome_key") == "event"
+    assert controller.preparedRecommendationField("predictor_keys") == ["x"]
 
 
 def test_qml_uses_value_backed_logistic_selectors_without_free_text_values() -> None:
@@ -488,5 +489,5 @@ def test_qml_uses_value_backed_logistic_selectors_without_free_text_values() -> 
         assert "ComboBox" in source
         assert "logisticEventTokenField" not in source
         assert "logisticReferenceTokenField" not in source
-    assert "recommendationCandidateRequiresConfigurationAt" in guide
-    assert 'root.selectedIntent = "logistic_regression"' in guide
+    assert "recommendationCandidateReviewRequirementAt" in guide
+    assert "root.selectedIntent = uiController.preparedRecommendationIntent" in guide

@@ -306,10 +306,11 @@ def test_open_data_file_populates_recommendation_without_running_worker(tmp_path
 
     assert result.ok is True
     assert controller.recommendationTitle == ""
-    assert controller.recommendationLevel == ""
     assert controller.recommendationReason == ""
-    assert controller.recommendationAlternativesText
-    assert "실험적 후보" in controller.recommendationAlternativesText
+    assert controller.recommendationCount > 0
+    assert controller.recommendationCandidateTitleAt(0)
+    assert not hasattr(controller, "recommendationLevel")
+    assert not hasattr(controller, "recommendationAlternativesText")
     assert worker.calls == []
 
 
@@ -340,7 +341,6 @@ def test_default_open_data_file_imports_fixture_for_recommendations_without_work
     assert controller.pipeline.current_dataset.df.shape[1] > 0
     assert controller.recommendationCount > 0
     assert controller.recommendationTitle == ""
-    assert controller.recommendationLevel == ""
     assert worker.calls == []
 
 
@@ -433,14 +433,18 @@ def test_select_recommendation_updates_prepared_fields_without_running(tmp_path)
     before_version = controller.pipeline_version
 
     assert controller.selectRecommendationAt(1) is True
+    assert controller.prepareSelectedRecommendationNow() is True
 
     assert controller.recommendationTitle.startswith("신뢰도 분석")
-    assert controller.preparedReliabilityItems in {"A1, A2, A3", "C1, C2, C3"}
+    assert ", ".join(controller.preparedRecommendationField("item_keys")) in {
+        "A1, A2, A3",
+        "C1, C2, C3",
+    }
     assert controller.pipeline_version == before_version
     assert controller.status == "ready"
 
 
-def test_run_prepared_recommendation_applies_selection_before_worker_submit(tmp_path) -> None:
+def test_confirmed_manual_configuration_applies_before_worker_submit(tmp_path) -> None:
     import pandas as pd
 
     from modori.core import Dataset, Measure, Variable
@@ -521,8 +525,12 @@ def test_run_prepared_recommendation_applies_selection_before_worker_submit(tmp_
         if candidate.kind == "reliability"
     )
     assert controller.selectRecommendationAt(reliability_index) is True
+    assert controller.prepareSelectedRecommendationNow() is True
+    items = ", ".join(controller.preparedRecommendationField("item_keys"))
+    configured = controller.configureReliabilitySelection(items)
+    assert configured.ok is True
 
-    result = controller.runPreparedRecommendation()
+    result = controller.rerun()
 
     assert result.ok is True
     assert controller.pipeline.steps[0].params["items"] == ["A1", "A2", "A3"]
@@ -624,7 +632,29 @@ def test_advanced_recommendation_candidates_apply_to_pipeline_steps() -> None:
         )
 
         assert controller.selectRecommendationAt(index) is True
-        result = controller.applySelectedRecommendation()
+        assert controller.prepareSelectedRecommendationNow() is True
+        if kind == "repeated_measures_anova":
+            result = controller.configureRepeatedMeasuresAnovaSelection(
+                ", ".join(controller.preparedRecommendationField("variable_keys"))
+            )
+        elif kind == "friedman":
+            result = controller.configureFriedmanSelection(
+                ", ".join(controller.preparedRecommendationField("variable_keys"))
+            )
+        elif kind == "mediation":
+            result = controller.configureMediationSelection(
+                controller.preparedRecommendationField("x_key"),
+                controller.preparedRecommendationField("mediator_key"),
+                controller.preparedRecommendationField("y_key"),
+            )
+        else:
+            result = controller.configureModeratedMediationSelection(
+                controller.preparedRecommendationField("model"),
+                controller.preparedRecommendationField("x_key"),
+                controller.preparedRecommendationField("mediator_key"),
+                controller.preparedRecommendationField("moderator_key"),
+                controller.preparedRecommendationField("y_key"),
+            )
 
         assert result.ok is True
         assert result.changed_step_ids == [expected_step_id]
@@ -635,7 +665,7 @@ def test_advanced_recommendation_candidates_apply_to_pipeline_steps() -> None:
             assert params[key] == value
 
 
-def test_unselected_recommendation_cannot_build_or_run_a_pipeline() -> None:
+def test_unselected_recommendation_cannot_prepare_or_submit_work() -> None:
     from pathlib import Path
 
     from modori.ui.contracts import ImportOptions
@@ -659,10 +689,9 @@ def test_unselected_recommendation_cannot_build_or_run_a_pipeline() -> None:
     assert opened.ok is True
     before_step_ids = [step.id for step in controller.pipeline.steps]
 
-    result = controller.runPreparedRecommendation()
+    prepared = controller.prepareSelectedRecommendationNow()
 
-    assert result.ok is False
-    assert result.error_code == "no_recommendation"
+    assert prepared is False
     assert [step.id for step in controller.pipeline.steps] == before_step_ids
     assert worker.calls == []
 

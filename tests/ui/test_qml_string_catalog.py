@@ -12,6 +12,7 @@ USER_VISIBLE_PROPERTY = re.compile(
 )
 STRING_LITERAL = re.compile(r'"(?P<value>[^"]*[A-Za-z가-힣][^"]*)"')
 CATALOG_CALL = re.compile(r'appBootstrap\.text\("(?P<key>[^"]+)"\)')
+CATALOG_MODEL_KEY = re.compile(r'"label"\s*:\s*"(?P<key>guide\.[^"]+)"')
 COMPARISON_LITERAL = re.compile(r'(===|!==|==|!=)\s*"[^"]*"')
 QSTR_LITERAL = re.compile(r'qsTr\("(?P<value>[^"]*[A-Za-z가-힣][^"]*)"\)')
 
@@ -19,7 +20,9 @@ QSTR_LITERAL = re.compile(r'qsTr\("(?P<value>[^"]*[A-Za-z가-힣][^"]*)"\)')
 def _catalog_keys_used_by_qml() -> set[str]:
     keys: set[str] = set()
     for path in sorted(QML_ROOT.rglob("*.qml")):
-        keys.update(CATALOG_CALL.findall(path.read_text(encoding="utf-8")))
+        text = path.read_text(encoding="utf-8")
+        keys.update(CATALOG_CALL.findall(text))
+        keys.update(CATALOG_MODEL_KEY.findall(text))
     return keys
 
 

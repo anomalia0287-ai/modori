@@ -244,7 +244,7 @@ def test_controller_configures_factorial_without_running_it() -> None:
     assert controller.stale is True
 
 
-def test_factorial_recommendation_prepares_roles_but_cannot_apply_directly() -> None:
+def test_factorial_recommendation_prepares_roles_without_applying() -> None:
     pipeline = Pipeline(_factorial_dataset())
     controller = UiController(pipeline=pipeline)
     controller._refresh_recommendations()
@@ -255,13 +255,14 @@ def test_factorial_recommendation_prepares_roles_but_cannot_apply_directly() -> 
     )
 
     assert controller.selectRecommendationAt(index) is True
-    result = controller.applySelectedRecommendation()
+    assert controller.prepareSelectedRecommendationNow() is True
 
-    assert controller.preparedOutcomeKey == "score"
-    assert controller.preparedFactorAKey == "condition"
-    assert controller.preparedFactorBKey == "site"
-    assert result.ok is False
-    assert result.error_code == "recommendation_configuration_required"
+    assert controller.preparedRecommendationField("outcome_key") == "score"
+    assert controller.preparedRecommendationField("factor_a_key") == "condition"
+    assert controller.preparedRecommendationField("factor_b_key") == "site"
+    assert controller.preparedRecommendationReviewRequirement == (
+        "configuration_required"
+    )
     assert pipeline.steps == []
     assert controller.pipeline_version == 0
 

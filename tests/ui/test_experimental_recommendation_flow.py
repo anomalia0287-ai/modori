@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+from pathlib import Path
 import pandas as pd
 import pytest
+from typing import get_args
 
 from modori.core import Dataset, Measure, Pipeline, Variable
 from modori.recommendation_policy import (
@@ -10,9 +12,11 @@ from modori.recommendation_policy import (
 )
 from modori.recommendations import (
     RecommendationCandidate,
+    RecommendationKind,
     preparation_for_candidate,
 )
 from modori.ui.controller import UiController
+from modori.ui.settings import UiSettingsStore
 
 
 class NoSubmitWorker:
@@ -23,6 +27,38 @@ class NoSubmitWorker:
         del run_id, pipeline_version, job
         self.submissions += 1
         raise AssertionError("recommendation preparation must not submit work")
+
+
+MANUAL_CONFIGURATORS = {
+    "descriptives": "configureDescriptivesFromText",
+    "reliability": "configureReliabilityFromText",
+    "frequency_crosstab": "configureFrequencyCrosstabFromText",
+    "correlation": "configureCorrelationFromText",
+    "factor_pca": "configureFactorPcaFromText",
+    "comparison": "configureComparisonFromText",
+    "anova_oneway": "configureAnovaOneWayFromText",
+    "anova_factorial": "configureFactorialAnovaFromKeys",
+    "kruskal_wallis": "configureKruskalWallisFromText",
+    "ancova": "configureAncovaFromText",
+    "regression": "configureRegressionFromText",
+    "logistic_regression": "configureLogisticRegressionFromTokens",
+    "repeated_measures_anova": "configureRepeatedMeasuresAnovaFromText",
+    "friedman": "configureFriedmanFromText",
+    "mediation": "configureMediationFromText",
+    "moderated_mediation": "configureModeratedMediationFromText",
+}
+
+
+def _qml_block_at(source: str, opening_brace: int) -> str:
+    depth = 0
+    for index in range(opening_brace, len(source)):
+        if source[index] == "{":
+            depth += 1
+        elif source[index] == "}":
+            depth -= 1
+            if depth == 0:
+                return source[opening_brace : index + 1]
+    raise AssertionError("QML block was not closed")
 
 
 def _dataset(frame: pd.DataFrame) -> Dataset:
@@ -162,3 +198,85 @@ def test_confirmation_cannot_be_enabled_without_preparation() -> None:
     assert controller.setExperimentalRecommendationConfirmed(False) is True
     assert controller.experimentalRecommendationConfirmed is False
     assert controller.preparedRecommendationField("outcome_key") is None
+
+
+def test_controller_starts_standard_and_does_not_persist_experimental(
+    tmp_path,
+) -> None:
+    settings_path = tmp_path / "settings.json"
+    first = UiController(settings_store=UiSettingsStore(settings_path))
+
+    assert first.mode == "standard"
+    assert first.chooseMode("guided")
+    assert first.mode == "guided"
+
+    second = UiController(settings_store=UiSettingsStore(settings_path))
+    assert second.mode == "standard"
+
+
+def test_mode_change_invalidates_candidate_selection_and_confirmation() -> None:
+    dataset = _dataset(
+        pd.DataFrame(
+            {
+                "age": [21, 24, 29, 33, 38, 44],
+                "satisfaction": [2, 3, 4, 3, 5, 4],
+            }
+        )
+    )
+    controller = UiController(pipeline=Pipeline(dataset), worker=NoSubmitWorker())
+    controller._refresh_recommendations()
+    assert controller.chooseMode("guided")
+    assert controller.selectRecommendationAt(0)
+    assert controller.prepareSelectedRecommendationNow()
+    assert controller.setExperimentalRecommendationConfirmed(True)
+
+    assert controller.chooseMode("standard")
+
+    assert controller.recommendationTitle == ""
+    assert controller.recommendationPreparationPending is False
+    assert controller.experimentalRecommendationConfirmed is False
+
+
+def test_no_combined_recommendation_execution_api() -> None:
+    controller = UiController()
+
+    assert not hasattr(controller, "applySelectedRecommendation")
+    assert not hasattr(controller, "runPreparedRecommendation")
+    assert not hasattr(controller, "runPreparedRecommendationNow")
+
+
+def test_guide_maps_every_candidate_kind_to_a_manual_configurator() -> None:
+    assert set(MANUAL_CONFIGURATORS) == set(get_args(RecommendationKind))
+    source = Path("src/modori/ui/qml/components/GuideRail.qml").read_text(
+        encoding="utf-8"
+    )
+    marker = "function commitSelectedIntent()"
+    function_start = source.index(marker)
+    function_block = _qml_block_at(
+        source,
+        source.index("{", function_start),
+    )
+
+    for intent, configurator in MANUAL_CONFIGURATORS.items():
+        branch_marker = f'root.selectedIntent === "{intent}"'
+        branch_start = function_block.index(branch_marker)
+        branch = _qml_block_at(
+            function_block,
+            function_block.index("{", branch_start),
+        )
+        assert f"uiController.{configurator}" in branch
+
+
+def test_guide_uses_explicit_experimental_confirmation_flow() -> None:
+    source = Path("src/modori/ui/qml/components/GuideRail.qml").read_text(
+        encoding="utf-8"
+    )
+
+    assert 'appBootstrap.text("guide.experimental_status")' in source
+    assert 'appBootstrap.text("guide.order_disclaimer")' in source
+    assert 'appBootstrap.text("guide.confirm_candidate")' in source
+    assert "uiController.prepareSelectedRecommendationNow()" in source
+    assert "uiController.setExperimentalRecommendationConfirmed" in source
+    assert "uiController.experimentalRecommendationConfirmed" in source
+    assert "runPreparedRecommendation" not in source
+    assert "applySelectedRecommendation" not in source

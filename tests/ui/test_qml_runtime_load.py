@@ -231,26 +231,43 @@ def test_logistic_recommendation_click_opens_unconfirmed_manual_configuration(
 
     try:
         guide = root.findChild(QObject, "guideRail")
-        other_button = root.findChild(QObject, "guideOtherRecommendationsButton")
+        prepare_button = root.findChild(QObject, "guidePrepareCandidateButton")
         assert guide is not None
-        assert other_button is not None
+        assert prepare_button is not None
 
-        other_button.clicked.emit()
-        app.processEvents()
         candidate_button = guide.recommendationItemAt(logistic_index)
         assert candidate_button is not None
         candidate_button.clicked.emit()
+        app.processEvents()
+        assert guide.property("manualSelectionMode") is False
+        assert controller.recommendationPreparationPending is False
+
+        prepare_button.clicked.emit()
         app.processEvents()
 
         outcome = root.findChild(QObject, "guideOutcomeKeyField")
         predictors = root.findChild(QObject, "guidePredictorKeysField")
         event_combo = root.findChild(QObject, "guideLogisticEventCombo")
+        confirmation = root.findChild(QObject, "guideExperimentalConfirmation")
+        run_button = root.findChild(QObject, "guideRunManualButton")
         assert guide.property("manualSelectionMode") is True
         assert guide.property("selectedIntent") == "logistic_regression"
         assert outcome.property("text") == "event"
         assert predictors.property("text") == "x"
         assert event_combo.property("count") == 2
         assert event_combo.property("currentIndex") == -1
+        assert confirmation is not None
+        assert run_button is not None
+        assert confirmation.property("checked") is False
+        assert run_button.property("enabled") is False
+
+        event_combo.setProperty("currentIndex", 0)
+        confirmation.setProperty("checked", True)
+        confirmation.clicked.emit()
+        app.processEvents()
+
+        assert controller.experimentalRecommendationConfirmed is True
+        assert run_button.property("enabled") is True
         assert [step.step_type for step in controller.pipeline.steps] == before_step_types
         assert controller.pipeline_version == before_version
         assert _significant_warnings(messages) == []
@@ -401,15 +418,16 @@ def test_factorial_recommendation_opens_preselected_configuration_without_step(
 
     try:
         guide = root.findChild(QObject, "guideRail")
-        other_button = root.findChild(QObject, "guideOtherRecommendationsButton")
+        prepare_button = root.findChild(QObject, "guidePrepareCandidateButton")
         assert guide is not None
-        assert other_button is not None
-        other_button.clicked.emit()
-        app.processEvents()
+        assert prepare_button is not None
         candidate_button = guide.recommendationItemAt(candidate_index)
         assert candidate_button is not None
 
         candidate_button.clicked.emit()
+        app.processEvents()
+        assert guide.property("manualSelectionMode") is False
+        prepare_button.clicked.emit()
         app.processEvents()
 
         outcome = root.findChild(QObject, "guideFactorialOutcomeCombo")
