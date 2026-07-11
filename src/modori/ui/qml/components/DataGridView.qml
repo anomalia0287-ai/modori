@@ -176,11 +176,12 @@ Item {
                 }
 
                 delegate: Rectangle {
+                    id: cellDelegate
                     required property int row
                     required property int column
                     property string variableKey: model.variableKey ?? ""
                     property string measureValue: model.measureValue ?? ""
-                    property string cellText: model.display ?? ""
+                    property string cellText: String(model.display ?? "")
                     property bool isCurrentCell: root.currentRow === row && root.currentColumn === column
 
                     implicitWidth: root.cellWidth
@@ -193,25 +194,37 @@ Item {
                     border.color: isCurrentCell ? theme.actionTeal : theme.lineGrid
 
                     MouseArea {
+                        id: cellHover
                         anchors.fill: parent
                         hoverEnabled: true
                         onClicked: {
                             body.forceActiveFocus()
-                            root.currentRow = row
-                            root.currentColumn = column
-                            root.cellActivated(row, column, variableKey, measureValue)
+                            root.currentRow = cellDelegate.row
+                            root.currentColumn = cellDelegate.column
+                            root.cellActivated(
+                                cellDelegate.row,
+                                cellDelegate.column,
+                                cellDelegate.variableKey,
+                                cellDelegate.measureValue
+                            )
                         }
-                        ToolTip.visible: containsMouse && cellText.length > 0
-                        ToolTip.text: cellText
                     }
 
                     Text {
+                        id: cellLabel
                         anchors.centerIn: parent
                         width: parent.width - theme.spaceSm
-                        text: cellText
+                        text: cellDelegate.cellText
                         color: theme.textTable
                         elide: Text.ElideRight
                         horizontalAlignment: Text.AlignHCenter
+                    }
+
+                    ToolTip {
+                        id: cellToolTip
+                        objectName: "gridCellTooltip"
+                        visible: cellHover.containsMouse && cellLabel.truncated
+                        text: cellDelegate.cellText
                     }
                 }
             }

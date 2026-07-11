@@ -3,7 +3,16 @@ from pathlib import Path
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6.QtCore import QAbstractTableModel, QByteArray, QModelIndex, QPoint, QPointF, Qt, QUrl
+from PySide6.QtCore import (
+    QAbstractTableModel,
+    QByteArray,
+    QModelIndex,
+    QObject,
+    QPoint,
+    QPointF,
+    Qt,
+    QUrl,
+)
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQuick import QQuickItem, QQuickView
 from PySide6.QtTest import QSignalSpy, QTest
@@ -19,9 +28,12 @@ class _GridFixtureModel(QAbstractTableModel):
     VARIABLE_KEY_ROLE = int(Qt.ItemDataRole.UserRole) + 1
     MEASURE_VALUE_ROLE = int(Qt.ItemDataRole.UserRole) + 2
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        rows: tuple[tuple[str, str, tuple[str, ...]], ...] | None = None,
+    ) -> None:
         super().__init__()
-        self._rows = (
+        self._rows = rows or (
             ("alpha", "scale", ("r0c0", "r0c1")),
             ("beta", "ordinal", ("r1c0", "r1c1")),
         )
@@ -98,6 +110,61 @@ def _grid_delegate(body: QQuickItem, row: int, column: int, columns: int) -> QQu
     return delegates[(row * columns) + column]
 
 
+def _visible_grid_delegate(body: QQuickItem, *, row: int, column: int) -> QQuickItem:
+    content_item = next(
+        child for child in body.childItems() if child.metaObject().className() == "QQuickItem"
+    )
+    return next(
+        child
+        for child in content_item.childItems()
+        if child.metaObject().className().startswith("QQuickRectangle")
+        and child.property("row") == row
+        and child.property("column") == column
+    )
+
+
+def _process_events() -> None:
+    app = _app()
+    app.processEvents()
+    QTest.qWait(100)
+    app.processEvents()
+
+
+def _render_grid(
+    model: QAbstractTableModel,
+    *,
+    width: int,
+    height: int,
+) -> tuple[QQuickView, QQuickItem, QQuickItem]:
+    _app()
+    view = QQuickView()
+    bootstrap = AppBootstrap()
+    view.rootContext().setContextProperty("appBootstrap", bootstrap)
+    view._app_bootstrap = bootstrap
+    view._grid_model = model
+    view.setResizeMode(QQuickView.SizeRootObjectToView)
+    view.setGeometry(0, 0, width, height)
+    view.setSource(QUrl.fromLocalFile(str((QML_ROOT / "components/DataGridView.qml").resolve())))
+    root = view.rootObject()
+    assert root is not None
+    root.setProperty("model", model)
+    view.show()
+    _process_events()
+    return view, root, _grid_body(root)
+
+
+def _hover_delegate(view: QQuickView, delegate: QQuickItem) -> None:
+    scene_point = delegate.mapToScene(QPointF(delegate.width() / 2, delegate.height() / 2))
+    QTest.mouseMove(view, QPoint(round(scene_point.x()), round(scene_point.y())))
+    _process_events()
+
+
+def _close_grid(view: QQuickView) -> None:
+    view.close()
+    view.deleteLater()
+    _process_events()
+
+
 def test_data_grid_uses_virtualized_table_with_synchronized_headers() -> None:
     qml = qml_text("components/DataGridView.qml")
 
@@ -170,6 +237,49 @@ def test_data_grid_has_visible_current_cell_state() -> None:
     assert "root.currentRow === row" in qml
     assert "root.currentColumn === column" in qml
     assert "theme.actionTeal" in qml
+
+
+def test_data_grid_does_not_use_shared_attached_tooltip_for_cells() -> None:
+    qml = qml_text("components/DataGridView.qml")
+
+    assert "ToolTip.visible: containsMouse" not in qml
+    assert "visible: cellHover.containsMouse && cellLabel.truncated" in qml
+    assert "text: cellDelegate.cellText" in qml
+
+
+def test_short_cell_hover_has_no_duplicate_tooltip() -> None:
+    view, _root, body = _render_grid(_GridFixtureModel(), width=480, height=240)
+    cell = _visible_grid_delegate(body, row=0, column=0)
+
+    _hover_delegate(view, cell)
+
+    tooltip = cell.findChild(QObject, "gridCellTooltip")
+    assert tooltip is not None
+    assert tooltip.property("visible") is False
+    _close_grid(view)
+
+
+def test_truncated_cell_tooltip_matches_hovered_delegate_after_reuse() -> None:
+    rows = tuple(
+        (
+            f"v{row}",
+            "scale",
+            (f"row-{row}-" + ("x" * 80), f"other-{row}-" + ("y" * 80)),
+        )
+        for row in range(60)
+    )
+    view, root, body = _render_grid(_GridFixtureModel(rows), width=340, height=180)
+    body.setProperty("contentY", 40 * root.property("cellHeight"))
+    _process_events()
+    cell = _visible_grid_delegate(body, row=40, column=1)
+
+    _hover_delegate(view, cell)
+
+    tooltip = cell.findChild(QObject, "gridCellTooltip")
+    assert tooltip is not None
+    assert tooltip.property("visible") is True
+    assert tooltip.property("text") == "other-40-" + ("y" * 80)
+    _close_grid(view)
 
 
 def test_data_grid_emits_cell_activated_with_variable_roles() -> None:
