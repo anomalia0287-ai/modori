@@ -4,6 +4,7 @@ import pandas as pd
 
 from modori.core import Dataset, Measure, Variable
 from modori.correlation_recommendation import eligibility_provider
+from modori.recommendation_policy import RecommendationRoutingTier
 from modori.recommendations import RecommendationService
 
 
@@ -47,7 +48,7 @@ def test_provider_recommends_correlation_for_numeric_scale_or_ordinal_variables(
     candidate = eligibility_provider().candidates(dataset)[0]
 
     assert candidate.kind == "correlation"
-    assert candidate.level == "가능한 후보"
+    assert candidate.routing_tier is RecommendationRoutingTier.SECONDARY
     assert candidate.variable_keys == ["stress", "sleep"]
     assert "인과" not in candidate.reason_ko
 
@@ -65,5 +66,6 @@ def test_recommendation_service_exposes_correlation_candidate_without_stealing_d
     state = RecommendationService().recommend(dataset)
 
     assert any(candidate.kind == "correlation" for candidate in state.candidates)
-    assert state.default_candidate is not None
-    assert state.default_candidate.kind == "descriptives"
+    assert state.candidates[0].kind == "descriptives"
+    assert state.selected_candidate is None
+    assert not hasattr(state, "default_candidate")

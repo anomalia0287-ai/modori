@@ -9,6 +9,7 @@ from numbers import Real
 import numpy as np
 import pandas as pd
 
+from modori.recommendation_policy import RecommendationRoutingTier
 from modori.recommendations import RecommendationCandidate
 from modori.value_tokens import (
     decode_value_token,
@@ -114,7 +115,7 @@ class FactorialAnovaEligibilityProvider:
                     f"이원 Type III 분산분석 후보: {outcome} by "
                     f"{factor_a} x {factor_b}"
                 ),
-                level="가능한 후보",
+                routing_tier=RecommendationRoutingTier.SECONDARY,
                 reason_ko=(
                     f"{outcome}은 척도형 결과이고 {factor_a}, {factor_b}의 "
                     "모든 조합 셀에 최소 3개의 완전 관측값이 있습니다. "

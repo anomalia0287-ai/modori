@@ -10,6 +10,7 @@ from modori.recommendation_benchmark import (
     RecommendationIdentity,
 )
 from modori.recommendations import RecommendationCandidate, RecommendationService
+from modori.recommendation_policy import RecommendationRoutingTier
 from modori.steps.data_prep import metadata_variables
 from modori.table_io import read_full
 
@@ -51,9 +52,9 @@ _DESIGN_MODE_BY_KIND = {
     "moderated_mediation": "conditional_process",
 }
 _LEVEL_MAP = {
-    "강한 추천": "strong",
-    "가능한 후보": "candidate",
-    "주의 필요": "caution",
+    RecommendationRoutingTier.PRIMARY: "strong",
+    RecommendationRoutingTier.SECONDARY: "candidate",
+    RecommendationRoutingTier.HEIGHTENED_REVIEW: "caution",
 }
 
 
@@ -100,7 +101,23 @@ def candidate_identity(candidate: RecommendationCandidate) -> RecommendationIden
         roles.append(("predictors", tuple(candidate.predictor_keys)))
     if candidate.item_keys:
         roles.append(("items", tuple(candidate.item_keys)))
-    if candidate.variable_keys:
+    if candidate.kind == "mediation":
+        roles.append(
+            ("variables", (candidate.x_key, candidate.mediator_key, candidate.y_key))
+        )
+    elif candidate.kind == "moderated_mediation":
+        roles.append(
+            (
+                "variables",
+                (
+                    candidate.x_key,
+                    candidate.mediator_key,
+                    candidate.moderator_key,
+                    candidate.y_key,
+                ),
+            )
+        )
+    elif candidate.variable_keys:
         roles.append(("variables", tuple(candidate.variable_keys)))
     if not roles:
         raise ValueError(
@@ -113,6 +130,19 @@ def candidate_identity(candidate: RecommendationCandidate) -> RecommendationIden
     )
 
 
+def _historical_baseline_default(
+    candidates: list[RecommendationCandidate],
+) -> RecommendationCandidate | None:
+    for candidate in candidates:
+        if (
+            candidate.routing_tier
+            is not RecommendationRoutingTier.HEIGHTENED_REVIEW
+            and not candidate.requires_configuration
+        ):
+            return candidate
+    return None
+
+
 def predict_current_baseline(
     case: Mapping[str, object],
     dataset: Dataset,
@@ -123,7 +153,8 @@ def predict_current_baseline(
     candidates = tuple(
         candidate_identity(candidate) for candidate in state.candidates[:3]
     )
-    if state.default_candidate is None:
+    historical_default = _historical_baseline_default(state.candidates)
+    if historical_default is None:
         reason = (
             "caution_only_requires_user_selection"
             if state.candidates
@@ -136,7 +167,7 @@ def predict_current_baseline(
             candidates=candidates,
             level="none",
         )
-    default_identity = candidate_identity(state.default_candidate)
+    default_identity = candidate_identity(historical_default)
     if not candidates or candidates[0] != default_identity:
         raise ValueError("current baseline default is not the first ranked candidate")
     return PredictionRecord(
@@ -144,5 +175,5 @@ def predict_current_baseline(
         evidence_stage=evidence_stage,
         primary_action=PrimaryAction(kind="recommend", value=default_identity),
         candidates=candidates,
-        level=_LEVEL_MAP[state.default_candidate.level],
+        level=_LEVEL_MAP[historical_default.routing_tier],
     )

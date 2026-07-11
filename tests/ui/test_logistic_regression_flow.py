@@ -8,9 +8,10 @@ import pandas as pd
 import pytest
 
 from modori.core import Dataset, Measure, Pipeline, Variable
-from modori.ui.controller import UiController
+from modori.recommendation_policy import RecommendationRoutingTier
 from modori.recommendations import RecommendationCandidate, RecommendationState
 from modori.ui.chart_assets import ChartAssetRenderer
+from modori.ui.controller import UiController
 from modori.ui.pipeline_ops import PipelineOperations
 from modori.ui.value_tokens import canonical_value_token, decode_value_token
 
@@ -454,7 +455,7 @@ def test_controller_exposes_configuration_required_recommendation_state() -> Non
         candidate_id="logistic-caution:event:x",
         kind="logistic_regression",
         title_ko="이항 로지스틱 회귀 후보",
-        level="주의 필요",
+        routing_tier=RecommendationRoutingTier.HEIGHTENED_REVIEW,
         reason_ko="사건값 확인이 필요합니다.",
         outcome_key="event",
         predictor_keys=["x"],
@@ -462,7 +463,6 @@ def test_controller_exposes_configuration_required_recommendation_state() -> Non
     )
     controller._recommendation_state = RecommendationState(
         candidates=[candidate],
-        default_candidate=None,
         selected_candidate=candidate,
         message_ko="",
     )

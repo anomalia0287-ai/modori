@@ -10,6 +10,7 @@ from modori.logistic_numerics import (
     detect_logistic_separation,
     precondition_logistic_design,
 )
+from modori.recommendation_policy import RecommendationRoutingTier
 from modori.recommendations import RecommendationCandidate
 
 
@@ -62,7 +63,7 @@ class LogisticRegressionEligibilityProvider:
                     ),
                     kind="logistic_regression",
                     title_ko=f"이항 로지스틱 회귀 후보: {outcome_key}",
-                    level="주의 필요",
+                    routing_tier=RecommendationRoutingTier.HEIGHTENED_REVIEW,
                     reason_ko=(
                         f"{outcome_key}에 두 결과값이 있고 척도형 예측변수 "
                         f"{', '.join(predictor_keys)}를 사용할 수 있습니다. "

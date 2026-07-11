@@ -15,6 +15,7 @@ from modori.logistic_regression_recommendation import eligibility_provider
 from modori.recommendation_policy import (
     RecommendationEvidenceStatus,
     RecommendationRoutingPolicy,
+    RecommendationRoutingTier,
 )
 from modori.recommendations import RecommendationCandidate, RecommendationService
 
@@ -91,7 +92,7 @@ def test_logistic_provider_emits_configuration_required_binary_candidate() -> No
     assert len(candidates) == 1
     candidate = candidates[0]
     assert candidate.kind == "logistic_regression"
-    assert candidate.level == "주의 필요"
+    assert candidate.routing_tier is RecommendationRoutingTier.HEIGHTENED_REVIEW
     assert candidate.requires_configuration is True
     assert candidate.outcome_key == "event"
     assert candidate.predictor_keys == ["x1", "x2"]
@@ -179,7 +180,7 @@ def test_logistic_provider_excludes_complete_separation() -> None:
     assert eligibility_provider().candidates(dataset) == []
 
 
-def test_logistic_candidate_never_becomes_recommendation_default() -> None:
+def test_logistic_candidate_is_never_selected_automatically() -> None:
     state = RecommendationService().recommend(_dataset(pd.read_csv(FIXTURE)))
     logistic = next(
         candidate
@@ -187,17 +188,18 @@ def test_logistic_candidate_never_becomes_recommendation_default() -> None:
         if candidate.kind == "logistic_regression"
     )
 
-    assert logistic.level == "주의 필요"
+    assert logistic.routing_tier is RecommendationRoutingTier.HEIGHTENED_REVIEW
     assert logistic.requires_configuration is True
-    assert state.default_candidate is not logistic
+    assert state.selected_candidate is None
+    assert not hasattr(state, "default_candidate")
 
 
-def test_configuration_requirement_blocks_default_independently_of_level() -> None:
+def test_configuration_requirement_does_not_create_a_live_default() -> None:
     blocked = RecommendationCandidate(
         candidate_id="logistic-strong-but-incomplete",
         kind="logistic_regression",
         title_ko="설정이 끝나지 않은 후보",
-        level="강한 추천",
+        routing_tier=RecommendationRoutingTier.PRIMARY,
         reason_ko="방어 계약 검증용 후보입니다.",
         requires_configuration=True,
     )
@@ -205,7 +207,7 @@ def test_configuration_requirement_blocks_default_independently_of_level() -> No
         candidate_id="descriptives-ready",
         kind="descriptives",
         title_ko="실행 가능한 후보",
-        level="가능한 후보",
+        routing_tier=RecommendationRoutingTier.SECONDARY,
         reason_ko="방어 계약 검증용 후보입니다.",
     )
 
@@ -224,5 +226,6 @@ def test_configuration_requirement_blocks_default_independently_of_level() -> No
     )
 
     assert state.candidates[0] is blocked
-    assert state.default_candidate is fallback
-    assert state.selected_candidate is fallback
+    assert fallback in state.candidates
+    assert state.selected_candidate is None
+    assert not hasattr(state, "default_candidate")

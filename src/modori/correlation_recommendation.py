@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 import pandas as pd
 
+from modori.recommendation_policy import RecommendationRoutingTier
 from modori.recommendations import RecommendationCandidate
 
 
@@ -37,7 +38,7 @@ class CorrelationEligibilityProvider:
                 candidate_id="correlation.matrix",
                 kind="correlation",
                 title_ko="상관분석 후보",
-                level="가능한 후보",
+                routing_tier=RecommendationRoutingTier.SECONDARY,
                 reason_ko=(
                     f"숫자형 척도·서열 변수 {len(selected)}개 사이의 상관을 확인할 수 있습니다."
                 ),

@@ -305,10 +305,11 @@ def test_open_data_file_populates_recommendation_without_running_worker(tmp_path
     result = controller.openDataFile(tmp_path / "survey.csv", ImportOptions(confirm_new_session=True))
 
     assert result.ok is True
-    assert controller.recommendationTitle == "기술통계 표 1"
-    assert controller.recommendationLevel == "강한 추천"
-    assert "기술통계 표" in controller.recommendationReason
+    assert controller.recommendationTitle == ""
+    assert controller.recommendationLevel == ""
+    assert controller.recommendationReason == ""
     assert controller.recommendationAlternativesText
+    assert "실험적 후보" in controller.recommendationAlternativesText
     assert worker.calls == []
 
 
@@ -338,7 +339,8 @@ def test_default_open_data_file_imports_fixture_for_recommendations_without_work
     assert controller.pipeline.current_dataset.df.shape[0] > 0
     assert controller.pipeline.current_dataset.df.shape[1] > 0
     assert controller.recommendationCount > 0
-    assert controller.recommendationTitle
+    assert controller.recommendationTitle == ""
+    assert controller.recommendationLevel == ""
     assert worker.calls == []
 
 
@@ -633,49 +635,36 @@ def test_advanced_recommendation_candidates_apply_to_pipeline_steps() -> None:
             assert params[key] == value
 
 
-def test_default_run_prepared_recommendation_builds_real_dataset_pipeline_without_reference_steps() -> None:
+def test_unselected_recommendation_cannot_build_or_run_a_pipeline() -> None:
     from pathlib import Path
 
     from modori.ui.contracts import ImportOptions
     from modori.ui.controller import UiController
 
-    class FakeFuture:
-        def add_done_callback(self, callback):
-            self.callback = callback
-
     class InspectingWorker:
-        def __init__(self, controller: UiController) -> None:
-            self.controller = controller
+        def __init__(self) -> None:
             self.calls = []
 
         def submit(self, *, run_id, pipeline_version, job):
-            step_ids = [step.id for step in self.controller.pipeline.steps]
-            params_text = repr([step.params for step in self.controller.pipeline.steps])
-            assert step_ids[0] == "import"
-            assert "descriptives_table1" in step_ids
-            assert "reliability" not in step_ids
-            assert "reverse-negative-items" not in step_ids
-            assert "compose-job-sat" not in step_ids
-            assert "compare-groups" not in step_ids
-            assert "q3_R" not in params_text
-            assert "job_sat" not in params_text
-            assert "'group': 'group'" not in params_text
             self.calls.append((run_id, pipeline_version, job))
-            return FakeFuture()
+            raise AssertionError("an unselected candidate must not submit work")
 
     controller = UiController()
-    worker = InspectingWorker(controller)
+    worker = InspectingWorker()
     controller._worker = worker
     opened = controller.openDataFile(
         Path("tests/fixtures/psych_bfi.csv"),
         ImportOptions(confirm_new_session=True),
     )
     assert opened.ok is True
+    before_step_ids = [step.id for step in controller.pipeline.steps]
 
     result = controller.runPreparedRecommendation()
 
-    assert result.ok is True
-    assert len(worker.calls) == 1
+    assert result.ok is False
+    assert result.error_code == "no_recommendation"
+    assert [step.id for step in controller.pipeline.steps] == before_step_ids
+    assert worker.calls == []
 
 
 def test_rerun_blocks_unknown_columns_before_worker_submit() -> None:

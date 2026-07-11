@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 import pandas as pd
 
+from modori.recommendation_policy import RecommendationRoutingTier
 from modori.recommendations import RecommendationCandidate
 
 
@@ -47,7 +48,7 @@ class CompareGroupsEligibilityProvider:
                 candidate_id=f"comparison:{outcome_key}:{group_key}",
                 kind="comparison",
                 title_ko=f"집단 비교: {outcome_key} by {group_key}",
-                level="강한 추천",
+                routing_tier=RecommendationRoutingTier.PRIMARY,
                 reason_ko=f"{group_key}는 두 집단 변수이고 {outcome_key}는 숫자형 결과 변수입니다.",
                 outcome_key=outcome_key,
                 group_key=group_key,

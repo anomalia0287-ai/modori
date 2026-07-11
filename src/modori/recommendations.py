@@ -9,6 +9,10 @@ import numpy as np
 import pandas as pd
 
 from modori.core import Measure
+from modori.recommendation_policy import (
+    RecommendationEvidenceStatus,
+    RecommendationRoutingTier,
+)
 
 
 RecommendationKind = Literal[
@@ -29,10 +33,12 @@ RecommendationKind = Literal[
     "mediation",
     "moderated_mediation",
 ]
-RecommendationLevel = Literal["강한 추천", "가능한 후보", "주의 필요"]
-
-_EMPTY_MESSAGE = "안전하게 추천할 분석을 찾지 못했습니다. 직접 변수를 선택해 주세요."
-_CAUTION_ONLY_MESSAGE = "주의가 필요한 후보만 찾았습니다. 직접 확인한 뒤 선택해 주세요."
+_EMPTY_MESSAGE = (
+    "현재 규칙으로 표시할 실험적 후보가 없습니다. 수동 분석을 사용할 수 있습니다."
+)
+_HEIGHTENED_REVIEW_MESSAGE = (
+    "높은 검토가 필요한 실험적 후보만 있습니다. 연구 설계를 직접 확인해 주세요."
+)
 _CONFIGURATION_REQUIRED_MESSAGE = (
     "설정 확인이 필요한 후보를 찾았습니다. 변수 역할을 직접 확인해 주세요."
 )
@@ -43,8 +49,11 @@ class RecommendationCandidate:
     candidate_id: str
     kind: RecommendationKind
     title_ko: str
-    level: RecommendationLevel
+    routing_tier: RecommendationRoutingTier
     reason_ko: str
+    evidence_status: RecommendationEvidenceStatus = (
+        RecommendationEvidenceStatus.EXPERIMENTAL
+    )
     variable_keys: list[str] = field(default_factory=list)
     item_keys: list[str] = field(default_factory=list)
     outcome_key: str = ""
@@ -52,13 +61,17 @@ class RecommendationCandidate:
     predictor_keys: list[str] = field(default_factory=list)
     factor_a_key: str = ""
     factor_b_key: str = ""
+    x_key: str = ""
+    mediator_key: str = ""
+    moderator_key: str = ""
+    y_key: str = ""
+    model: str = ""
     requires_configuration: bool = False
 
 
 @dataclass(frozen=True)
 class RecommendationState:
     candidates: list[RecommendationCandidate]
-    default_candidate: RecommendationCandidate | None
     selected_candidate: RecommendationCandidate | None
     message_ko: str = ""
 
@@ -156,12 +169,10 @@ class RecommendationService:
             )
         candidates = self._rank(candidates)
 
-        default = self._default_candidate(candidates)
         return RecommendationState(
             candidates=candidates,
-            default_candidate=default,
-            selected_candidate=default,
-            message_ko=self._message(candidates, default),
+            selected_candidate=None,
+            message_ko=self._message(candidates),
         )
 
     @staticmethod
@@ -184,7 +195,6 @@ class RecommendationService:
     def _empty_state() -> RecommendationState:
         return RecommendationState(
             candidates=[],
-            default_candidate=None,
             selected_candidate=None,
             message_ko=_EMPTY_MESSAGE,
         )
@@ -238,13 +248,17 @@ class RecommendationService:
     ) -> list[RecommendationCandidate]:
         candidates: list[RecommendationCandidate] = []
         for prefix, item_keys in item_groups:
-            level: RecommendationLevel = "강한 추천" if len(item_keys) >= 5 else "가능한 후보"
+            routing_tier = (
+                RecommendationRoutingTier.PRIMARY
+                if len(item_keys) >= 5
+                else RecommendationRoutingTier.SECONDARY
+            )
             candidates.append(
                 RecommendationCandidate(
                     candidate_id=f"reliability:{prefix}",
                     kind="reliability",
                     title_ko=f"신뢰도 분석: {item_keys[0]}-{item_keys[-1]}",
-                    level=level,
+                    routing_tier=routing_tier,
                     reason_ko=f"같은 접두사 {prefix}로 묶인 {len(item_keys)}개 설문 문항입니다.",
                     item_keys=item_keys,
                 )
@@ -275,7 +289,7 @@ class RecommendationService:
                 candidate_id=f"comparison:{outcome_key}:{group_key}",
                 kind="comparison",
                 title_ko=f"집단 비교: {outcome_key} by {group_key}",
-                level="강한 추천",
+                routing_tier=RecommendationRoutingTier.PRIMARY,
                 reason_ko=f"{group_key}는 두 집단 변수이고 {outcome_key}는 숫자형 결과 변수입니다.",
                 outcome_key=outcome_key,
                 group_key=group_key,
@@ -327,7 +341,7 @@ class RecommendationService:
                     candidate_id=f"regression-caution:{predictor_key}",
                     kind="regression",
                     title_ko=f"회귀 후보: {predictor_key} -> {outcome_key}",
-                    level="주의 필요",
+                    routing_tier=RecommendationRoutingTier.HEIGHTENED_REVIEW,
                     reason_ko=f"{predictor_key}는 예측 변수로 가능하지만 연구 의도 확인이 필요합니다.",
                     outcome_key=outcome_key,
                     predictor_keys=[predictor_key],
@@ -374,7 +388,11 @@ class RecommendationService:
     def _rank(
         candidates: list[RecommendationCandidate],
     ) -> list[RecommendationCandidate]:
-        level_rank = {"강한 추천": 0, "가능한 후보": 1, "주의 필요": 2}
+        tier_rank = {
+            RecommendationRoutingTier.PRIMARY: 0,
+            RecommendationRoutingTier.SECONDARY: 1,
+            RecommendationRoutingTier.HEIGHTENED_REVIEW: 2,
+        }
         kind_rank = {
             "descriptives": 0,
             "reliability": 1,
@@ -396,33 +414,23 @@ class RecommendationService:
         return sorted(
             candidates,
             key=lambda candidate: (
-                level_rank[candidate.level],
+                tier_rank[candidate.routing_tier],
                 kind_rank[candidate.kind],
                 candidate.candidate_id,
             ),
         )
 
     @staticmethod
-    def _default_candidate(
-        candidates: list[RecommendationCandidate],
-    ) -> RecommendationCandidate | None:
-        for candidate in candidates:
-            if candidate.level != "주의 필요" and not candidate.requires_configuration:
-                return candidate
-        return None
-
-    @staticmethod
     def _message(
         candidates: list[RecommendationCandidate],
-        default: RecommendationCandidate | None,
     ) -> str:
         if not candidates:
             return _EMPTY_MESSAGE
-        if default is None:
-            if any(
-                candidate.requires_configuration and candidate.level != "주의 필요"
-                for candidate in candidates
-            ):
-                return _CONFIGURATION_REQUIRED_MESSAGE
-            return _CAUTION_ONLY_MESSAGE
+        if all(candidate.requires_configuration for candidate in candidates):
+            return _CONFIGURATION_REQUIRED_MESSAGE
+        if all(
+            candidate.routing_tier is RecommendationRoutingTier.HEIGHTENED_REVIEW
+            for candidate in candidates
+        ):
+            return _HEIGHTENED_REVIEW_MESSAGE
         return ""

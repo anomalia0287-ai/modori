@@ -5,6 +5,7 @@ import re
 
 import pandas as pd
 
+from modori.recommendation_policy import RecommendationRoutingTier
 from modori.recommendations import RecommendationCandidate
 
 
@@ -28,7 +29,7 @@ class RepeatedMeasuresAnovaEligibilityProvider:
                 candidate_id=f"repeated_measures_anova:{'-'.join(group)}",
                 kind="repeated_measures_anova",
                 title_ko=f"반복측정 ANOVA 후보: {group[0]}-{group[-1]}",
-                level="가능한 후보",
+                routing_tier=RecommendationRoutingTier.SECONDARY,
                 reason_ko="같은 접두사로 묶인 세 개 이상 숫자형 반복측정 변수입니다.",
                 variable_keys=list(group),
             )

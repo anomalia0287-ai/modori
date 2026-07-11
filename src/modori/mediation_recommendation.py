@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 import pandas as pd
 
+from modori.recommendation_policy import RecommendationRoutingTier
 from modori.recommendations import RecommendationCandidate
 
 
@@ -24,9 +25,11 @@ class MediationEligibilityProvider:
                 candidate_id="mediation:x:m:y",
                 kind="mediation",
                 title_ko="매개분석 후보: x -> m -> y",
-                level="주의 필요",
+                routing_tier=RecommendationRoutingTier.HEIGHTENED_REVIEW,
                 reason_ko="x, m, y로 명명된 척도형 후보가 있으나 연구모형 확인이 필요합니다.",
-                variable_keys=["x", "m", "y"],
+                x_key="x",
+                mediator_key="m",
+                y_key="y",
             )
         ]
 

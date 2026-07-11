@@ -6,6 +6,7 @@ from types import SimpleNamespace
 import pandas as pd
 
 from modori.core import Dataset, Measure, Variable
+from modori.recommendation_policy import RecommendationRoutingTier
 from modori.recommendations import RecommendationService
 
 
@@ -102,7 +103,7 @@ def test_factorial_provider_emits_configuration_required_complete_cell_candidate
     candidate = candidates[0]
     assert candidate.candidate_id == "anova_factorial:score:condition:site"
     assert candidate.kind == "anova_factorial"
-    assert candidate.level == "가능한 후보"
+    assert candidate.routing_tier is RecommendationRoutingTier.SECONDARY
     assert candidate.outcome_key == "score"
     assert candidate.factor_a_key == "condition"
     assert candidate.factor_b_key == "site"
@@ -251,8 +252,8 @@ def test_factorial_candidate_is_never_default_and_has_configuration_message() ->
     state = RecommendationService(providers=[_provider()]).recommend(_dataset())
 
     assert len(state.candidates) == 1
-    assert state.default_candidate is None
     assert state.selected_candidate is None
+    assert not hasattr(state, "default_candidate")
     assert "설정 확인" in state.message_ko
 
 
@@ -267,4 +268,5 @@ def test_default_recommendation_service_registers_factorial_after_oneway() -> No
         candidate for candidate in state.candidates if candidate.kind == "anova_factorial"
     )
     assert candidate.requires_configuration is True
-    assert state.default_candidate != candidate
+    assert state.selected_candidate is None
+    assert not hasattr(state, "default_candidate")

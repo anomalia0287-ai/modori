@@ -4,6 +4,7 @@ import pandas as pd
 
 from modori.core import Dataset, Measure, Variable
 from modori.kruskal_wallis_recommendation import eligibility_provider
+from modori.recommendation_policy import RecommendationRoutingTier
 from modori.recommendations import RecommendationService
 
 
@@ -46,7 +47,7 @@ def test_provider_recommends_kruskal_wallis_for_ordinal_or_scale_dependent() -> 
     candidate = eligibility_provider().candidates(dataset)[0]
 
     assert candidate.kind == "kruskal_wallis"
-    assert candidate.level == "가능한 후보"
+    assert candidate.routing_tier is RecommendationRoutingTier.SECONDARY
     assert candidate.outcome_key == "rating"
     assert candidate.group_key == "group"
     assert "인과" not in candidate.reason_ko
@@ -68,5 +69,6 @@ def test_recommendation_service_exposes_kruskal_candidate_without_stealing_defau
     state = RecommendationService().recommend(dataset)
 
     assert any(candidate.kind == "kruskal_wallis" for candidate in state.candidates)
-    assert state.default_candidate is not None
-    assert state.default_candidate.kind == "descriptives"
+    assert state.candidates[0].kind == "descriptives"
+    assert state.selected_candidate is None
+    assert not hasattr(state, "default_candidate")

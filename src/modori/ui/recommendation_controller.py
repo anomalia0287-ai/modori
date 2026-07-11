@@ -9,7 +9,6 @@ from modori.ui.contracts import CommandResult
 def empty_recommendation_state() -> RecommendationState:
     return RecommendationState(
         candidates=[],
-        default_candidate=None,
         selected_candidate=None,
         message_ko="",
     )
@@ -26,7 +25,7 @@ class RecommendationControllerMixin:
     @Property(str, notify=recommendationStateChanged)
     def recommendationLevel(self) -> str:
         candidate = self._recommendation_state.selected_candidate
-        return "" if candidate is None else candidate.level
+        return "" if candidate is None else "실험적 후보"
 
     @Property(str, notify=recommendationStateChanged)
     def recommendationReason(self) -> str:
@@ -38,7 +37,7 @@ class RecommendationControllerMixin:
     @Property(str, notify=recommendationStateChanged)
     def recommendationAlternativesText(self) -> str:
         return "\n".join(
-            f"{index}. {candidate.title_ko} | {candidate.level}"
+            f"{index}. {candidate.title_ko} | 실험적 후보"
             for index, candidate in enumerate(self._recommendation_state.candidates)
         )
 
@@ -107,7 +106,6 @@ class RecommendationControllerMixin:
         selected = self._recommendation_state.candidates[index]
         self._recommendation_state = RecommendationState(
             candidates=self._recommendation_state.candidates,
-            default_candidate=self._recommendation_state.default_candidate,
             selected_candidate=selected,
             message_ko=self._recommendation_state.message_ko,
         )
@@ -127,7 +125,7 @@ class RecommendationControllerMixin:
     def recommendationCandidateLevelAt(self, index: int) -> str:
         if index < 0 or index >= len(self._recommendation_state.candidates):
             return ""
-        return self._recommendation_state.candidates[index].level
+        return "실험적 후보"
 
     @Slot(int, result=str)
     def recommendationCandidateKindAt(self, index: int) -> str:
@@ -196,17 +194,17 @@ class RecommendationControllerMixin:
             return self.configureFriedmanSelection(", ".join(candidate.variable_keys))
         if candidate.kind == "mediation":
             return self.configureMediationSelection(
-                candidate.variable_keys[0] if len(candidate.variable_keys) > 0 else "",
-                candidate.variable_keys[1] if len(candidate.variable_keys) > 1 else "",
-                candidate.variable_keys[2] if len(candidate.variable_keys) > 2 else "",
+                candidate.x_key,
+                candidate.mediator_key,
+                candidate.y_key,
             )
         if candidate.kind == "moderated_mediation":
             return self.configureModeratedMediationSelection(
-                "7",
-                candidate.variable_keys[0] if len(candidate.variable_keys) > 0 else "",
-                candidate.variable_keys[1] if len(candidate.variable_keys) > 1 else "",
-                candidate.variable_keys[2] if len(candidate.variable_keys) > 2 else "",
-                candidate.variable_keys[3] if len(candidate.variable_keys) > 3 else "",
+                candidate.model,
+                candidate.x_key,
+                candidate.mediator_key,
+                candidate.moderator_key,
+                candidate.y_key,
             )
         return self._command_error("지원하지 않는 추천 분석입니다.", "invalid_recommendation")
 

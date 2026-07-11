@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 import pandas as pd
 
+from modori.recommendation_policy import RecommendationRoutingTier
 from modori.recommendations import RecommendationCandidate
 
 
@@ -42,7 +43,7 @@ class AnovaOneWayEligibilityProvider:
                         candidate_id=f"anova_oneway:{dv_key}:{group_key}",
                         kind="anova_oneway",
                         title_ko=f"일원분산분석 후보: {dv_key} by {group_key}",
-                        level="가능한 후보",
+                        routing_tier=RecommendationRoutingTier.SECONDARY,
                         reason_ko=(
                             f"{group_key}가 3개 이상 집단이고 {dv_key}는 척도형 변수라 "
                             "집단 간 평균 차이를 검토할 수 있습니다."

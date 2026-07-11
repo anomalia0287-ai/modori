@@ -4,6 +4,7 @@ import pandas as pd
 
 from modori.ancova_recommendation import eligibility_provider
 from modori.core import Dataset, Measure, Variable
+from modori.recommendation_policy import RecommendationRoutingTier
 from modori.recommendations import RecommendationService
 
 
@@ -50,7 +51,7 @@ def test_provider_recommends_ancova_as_caution_candidate_with_covariate() -> Non
     candidate = eligibility_provider().candidates(dataset)[0]
 
     assert candidate.kind == "ancova"
-    assert candidate.level == "주의 필요"
+    assert candidate.routing_tier is RecommendationRoutingTier.HEIGHTENED_REVIEW
     assert candidate.outcome_key == "outcome"
     assert candidate.group_key == "group"
     assert candidate.predictor_keys == ["pretest"]
@@ -77,5 +78,6 @@ def test_recommendation_service_exposes_ancova_without_stealing_default() -> Non
     state = RecommendationService().recommend(dataset)
 
     assert any(candidate.kind == "ancova" for candidate in state.candidates)
-    assert state.default_candidate is not None
-    assert state.default_candidate.kind == "descriptives"
+    assert state.candidates[0].kind == "descriptives"
+    assert state.selected_candidate is None
+    assert not hasattr(state, "default_candidate")

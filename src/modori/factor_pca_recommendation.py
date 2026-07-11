@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 import pandas as pd
 
+from modori.recommendation_policy import RecommendationRoutingTier
 from modori.recommendations import RecommendationCandidate
 
 
@@ -37,7 +38,7 @@ class FactorPcaEligibilityProvider:
                 candidate_id="factor_pca.item_set",
                 kind="factor_pca",
                 title_ko="요인/PCA 후보",
-                level="가능한 후보",
+                routing_tier=RecommendationRoutingTier.SECONDARY,
                 reason_ko=(
                     f"척도·서열 숫자형 문항 {len(selected)}개가 있어 "
                     "문항 묶음의 차원성을 탐색할 수 있습니다. "

@@ -1,8 +1,12 @@
+from pathlib import Path
+
 from modori.analysis_catalog import AnalysisStatus, module_specs
+from modori.recommendation_baseline import load_case_dataset
 from modori.recommendation_policy import (
     RecommendationEvidenceStatus,
     RecommendationRoutingPolicy,
 )
+from modori.recommendations import RecommendationService
 
 
 ROUTED = {
@@ -33,3 +37,25 @@ def test_no_live_family_is_validated() -> None:
         is not RecommendationEvidenceStatus.VALIDATED
         for spec in module_specs()
     )
+
+
+def test_live_recommendation_state_starts_without_selection() -> None:
+    pilot_root = Path("tests/fixtures/recommendation_benchmark/public/pilot")
+    dataset = load_case_dataset(
+        {
+            "case_id": "pilot-003-two-groups",
+            "evidence_stage": "cold_start",
+            "data_file": "data/pilot-003-two-groups.csv",
+        },
+        pilot_root,
+    )
+
+    state = RecommendationService().recommend(dataset)
+
+    assert state.candidates
+    assert all(
+        candidate.evidence_status is RecommendationEvidenceStatus.EXPERIMENTAL
+        for candidate in state.candidates
+    )
+    assert state.selected_candidate is None
+    assert not hasattr(state, "default_candidate")
