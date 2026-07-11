@@ -2,11 +2,14 @@ import pytest
 
 from modori.analysis_catalog import (
     AnalysisStatus,
-    RecommendationPolicy,
     get_capability,
     get_module_spec,
     require_executable,
     survey_v1_executable_keys,
+)
+from modori.recommendation_policy import (
+    RecommendationEvidenceStatus,
+    RecommendationRoutingPolicy,
 )
 
 
@@ -35,34 +38,34 @@ def test_survey_v1_exposes_only_supported_executable_comparisons() -> None:
 @pytest.mark.parametrize(
     "key, step_type, policy",
     [
-        ("reliability", "stats.reliability", RecommendationPolicy.STRONG),
-        ("compare_groups", "stats.compare_groups", RecommendationPolicy.STRONG),
-        ("paired_comparison", "stats.paired_comparison", RecommendationPolicy.MANUAL_ONLY),
-        ("regression_ols", "stats.regression_ols", RecommendationPolicy.CAUTION_ONLY),
-        ("frequency_crosstab", "stats.frequency_crosstab", RecommendationPolicy.CANDIDATE),
-        ("correlation", "stats.correlation", RecommendationPolicy.CANDIDATE),
-        ("anova_oneway", "stats.anova_oneway", RecommendationPolicy.CANDIDATE),
-        ("kruskal_wallis", "stats.kruskal_wallis", RecommendationPolicy.CANDIDATE),
-        ("ancova", "stats.ancova", RecommendationPolicy.CAUTION_ONLY),
-        ("factor_pca", "stats.factor_pca", RecommendationPolicy.CANDIDATE),
+        ("reliability", "stats.reliability", RecommendationRoutingPolicy.PRIMARY_REVIEW),
+        ("compare_groups", "stats.compare_groups", RecommendationRoutingPolicy.PRIMARY_REVIEW),
+        ("paired_comparison", "stats.paired_comparison", RecommendationRoutingPolicy.MANUAL_ONLY),
+        ("regression_ols", "stats.regression_ols", RecommendationRoutingPolicy.HEIGHTENED_REVIEW),
+        ("frequency_crosstab", "stats.frequency_crosstab", RecommendationRoutingPolicy.SECONDARY_REVIEW),
+        ("correlation", "stats.correlation", RecommendationRoutingPolicy.SECONDARY_REVIEW),
+        ("anova_oneway", "stats.anova_oneway", RecommendationRoutingPolicy.SECONDARY_REVIEW),
+        ("kruskal_wallis", "stats.kruskal_wallis", RecommendationRoutingPolicy.SECONDARY_REVIEW),
+        ("ancova", "stats.ancova", RecommendationRoutingPolicy.HEIGHTENED_REVIEW),
+        ("factor_pca", "stats.factor_pca", RecommendationRoutingPolicy.SECONDARY_REVIEW),
         (
             "repeated_measures_anova",
             "stats.repeated_measures_anova",
-            RecommendationPolicy.CANDIDATE,
+            RecommendationRoutingPolicy.SECONDARY_REVIEW,
         ),
-        ("friedman", "stats.friedman", RecommendationPolicy.CANDIDATE),
-        ("mediation", "stats.mediation", RecommendationPolicy.CAUTION_ONLY),
+        ("friedman", "stats.friedman", RecommendationRoutingPolicy.SECONDARY_REVIEW),
+        ("mediation", "stats.mediation", RecommendationRoutingPolicy.HEIGHTENED_REVIEW),
         (
             "moderated_mediation",
             "stats.moderated_mediation",
-            RecommendationPolicy.CAUTION_ONLY,
+            RecommendationRoutingPolicy.HEIGHTENED_REVIEW,
         ),
     ],
 )
 def test_existing_executable_modules_are_new_style_specs(
     key: str,
     step_type: str,
-    policy: RecommendationPolicy,
+    policy: RecommendationRoutingPolicy,
 ) -> None:
     spec = get_module_spec(key)
 
@@ -70,6 +73,12 @@ def test_existing_executable_modules_are_new_style_specs(
     assert spec.status is AnalysisStatus.EXECUTABLE
     assert spec.step_type == step_type
     assert spec.recommendation_policy is policy
+    expected_evidence = (
+        RecommendationEvidenceStatus.NOT_APPLICABLE
+        if policy is RecommendationRoutingPolicy.MANUAL_ONLY
+        else RecommendationEvidenceStatus.EXPERIMENTAL
+    )
+    assert spec.recommendation_evidence_status is expected_evidence
 
 
 def test_repeated_measures_anova_is_executable_with_sphericity_gates() -> None:
@@ -127,7 +136,14 @@ def test_factorial_anova_catalog_contract_is_narrow_and_evidence_gated() -> None
         "statsmodels Sum-contrast Type III comparators",
         "80-digit mpmath extreme-offset oracle",
     )
-    assert spec.recommendation_policy is RecommendationPolicy.CANDIDATE
+    assert (
+        spec.recommendation_policy
+        is RecommendationRoutingPolicy.SECONDARY_REVIEW
+    )
+    assert (
+        spec.recommendation_evidence_status
+        is RecommendationEvidenceStatus.EXPERIMENTAL
+    )
     assert spec.release_evidence_required is True
     assert {
         "tests/test_factorial_anova_numerics.py",

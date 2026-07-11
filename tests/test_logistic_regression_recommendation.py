@@ -8,11 +8,14 @@ import pytest
 
 from modori.analysis_catalog import (
     AnalysisStatus,
-    RecommendationPolicy,
     get_module_spec,
 )
 from modori.core import Dataset, Measure, Variable
 from modori.logistic_regression_recommendation import eligibility_provider
+from modori.recommendation_policy import (
+    RecommendationEvidenceStatus,
+    RecommendationRoutingPolicy,
+)
 from modori.recommendations import RecommendationCandidate, RecommendationService
 
 
@@ -61,7 +64,14 @@ def test_logistic_catalog_spec_is_executable_but_caution_only() -> None:
     assert spec.result_type == (
         "modori.logistic_regression_results.LogisticRegressionResult"
     )
-    assert spec.recommendation_policy is RecommendationPolicy.CAUTION_ONLY
+    assert (
+        spec.recommendation_policy
+        is RecommendationRoutingPolicy.HEIGHTENED_REVIEW
+    )
+    assert (
+        spec.recommendation_evidence_status
+        is RecommendationEvidenceStatus.EXPERIMENTAL
+    )
     assert spec.release_evidence_required is True
     assert {"outcome", "predictors"} <= set(spec.variable_roles)
     assert {"odds_ratio", "model_likelihood_ratio", "brier_score"} <= set(
