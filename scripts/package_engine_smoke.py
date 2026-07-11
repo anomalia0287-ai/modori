@@ -9,6 +9,11 @@ from pathlib import Path
 
 import pandas as pd
 
+if __package__:
+    from scripts.package_environment import packaged_subprocess_environment
+else:
+    from package_environment import packaged_subprocess_environment
+
 
 GROUP1_SCORES = [
     [3, 2, 3, 2, 4, 4, 4, 4],
@@ -63,6 +68,7 @@ def run_engine_smoke(
     data_path = smoke_dir / "reference.xlsx"
     output_path = smoke_dir / "result.json"
     write_reference_xlsx(data_path)
+    output_path.unlink(missing_ok=True)
     completed = subprocess.run(
         [
             str(exe_path),
@@ -72,9 +78,13 @@ def run_engine_smoke(
         ],
         check=False,
         timeout=timeout_seconds,
+        env=packaged_subprocess_environment("packaged-engine-runtime"),
     )
     if completed.returncode != 0:
         return completed.returncode
+    if not output_path.is_file():
+        print("Packaged engine smoke did not produce a fresh result", file=sys.stderr)
+        return 1
 
     payload = json.loads(output_path.read_text(encoding="utf-8"))
     v1_statistics_smoke = payload.get("v1_statistics_smoke")

@@ -1,5 +1,7 @@
+import os
 from pathlib import Path
 
+from scripts import quality_gate
 from scripts.quality_gate import quality_commands, reference_environment
 
 
@@ -75,6 +77,60 @@ def test_quality_gate_normalizes_relative_rscript_override(tmp_path, monkeypatch
 
     assert env["MODORI_RSCRIPT"] == str(local_rscript.resolve())
     assert str(tmp_path / ".tools" / "r-env" / "Library" / "bin") in env["PATH"]
+
+
+def test_quality_gate_pins_release_workspace_source_first(monkeypatch) -> None:
+    foreign_source = str(
+        (Path(".worktrees") / "recommendation-benchmark-pilot" / "src").resolve()
+    )
+    monkeypatch.setenv("PYTHONPATH", foreign_source)
+
+    env = reference_environment()
+
+    python_paths = env["PYTHONPATH"].split(os.pathsep)
+    assert Path(python_paths[0]) == Path("src").resolve()
+    assert foreign_source in python_paths[1:]
+
+
+def test_quality_gate_limits_r_runtime_path_to_reference_commands() -> None:
+    base = {"PATH": "C:\\Windows"}
+    reference = {
+        "PATH": "C:\\repo\\.tools\\r-env\\Library\\bin;C:\\Windows",
+        "MODORI_RSCRIPT": "C:\\repo\\.tools\\r-env\\Scripts\\Rscript.exe",
+    }
+
+    assert (
+        quality_gate.environment_for_command(
+            ["-m", "pytest", "-q"],
+            base_environment=base,
+            reference_environment=reference,
+        )
+        == reference
+    )
+    assert (
+        quality_gate.environment_for_command(
+            ["scripts/slow_stats_gate.py"],
+            base_environment=base,
+            reference_environment=reference,
+        )
+        == reference
+    )
+    assert (
+        quality_gate.environment_for_command(
+            ["scripts/package_windows.py"],
+            base_environment=base,
+            reference_environment=reference,
+        )
+        == base
+    )
+    assert (
+        quality_gate.environment_for_command(
+            ["scripts/package_engine_smoke.py"],
+            base_environment=base,
+            reference_environment=reference,
+        )
+        == base
+    )
 
 
 def test_release_checklist_documents_dependency_release_gate() -> None:

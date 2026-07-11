@@ -7,6 +7,11 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
+if __package__:
+    from scripts.package_environment import packaged_subprocess_environment
+else:
+    from package_environment import packaged_subprocess_environment
+
 
 _REQUIRED_HARDENED_CASE_NAMES = frozenset(
     {
@@ -36,6 +41,7 @@ def run_public_data_smoke(
     smoke_dir = Path(".tmp") / "packaged-public-data-smoke"
     output_path = smoke_dir / "result.json"
     smoke_dir.mkdir(parents=True, exist_ok=True)
+    output_path.unlink(missing_ok=True)
     completed = subprocess.run(
         [
             str(exe_path),
@@ -45,9 +51,16 @@ def run_public_data_smoke(
         ],
         check=False,
         timeout=timeout_seconds,
+        env=packaged_subprocess_environment("packaged-public-data-runtime"),
     )
     if completed.returncode != 0:
         return completed.returncode
+    if not output_path.is_file():
+        print(
+            "Packaged public-data smoke did not produce a fresh result",
+            file=sys.stderr,
+        )
+        return 1
 
     payload = json.loads(output_path.read_text(encoding="utf-8"))
     cases = payload.get("cases")

@@ -8,6 +8,11 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
+if __package__:
+    from scripts.package_environment import without_workspace_reference_runtime
+else:
+    from package_environment import without_workspace_reference_runtime
+
 
 def pyinstaller_available() -> bool:
     return importlib.util.find_spec("PyInstaller") is not None
@@ -46,7 +51,14 @@ def build_pyinstaller_command() -> list[str]:
 
 
 def build_package_environment() -> dict[str, str]:
-    env = dict(os.environ)
+    env = without_workspace_reference_runtime(os.environ)
+    workspace_src = str((Path(__file__).resolve().parents[1] / "src").resolve())
+    existing_pythonpath = env.get("PYTHONPATH")
+    env["PYTHONPATH"] = (
+        workspace_src
+        if not existing_pythonpath
+        else os.pathsep.join((workspace_src, existing_pythonpath))
+    )
     env["MPLCONFIGDIR"] = str(Path(".tmp") / "pyinstaller-matplotlib")
     env["MODORI_CACHE_DIR"] = str(Path(".tmp") / "pyinstaller-modori-cache")
     Path(env["MPLCONFIGDIR"]).mkdir(parents=True, exist_ok=True)

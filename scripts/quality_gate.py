@@ -4,8 +4,13 @@ import argparse
 import os
 import subprocess
 import sys
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
+
+if __package__:
+    from scripts.package_environment import without_workspace_reference_runtime
+else:
+    from package_environment import without_workspace_reference_runtime
 
 
 def quality_commands(
@@ -50,7 +55,7 @@ def quality_commands(
 
 
 def reference_environment() -> dict[str, str]:
-    env = os.environ.copy()
+    env = _with_workspace_source(os.environ)
     rscript = env.get("MODORI_RSCRIPT")
     if not rscript:
         local_rscript = Path(".tools") / "r-env" / "Scripts" / "Rscript.exe"
@@ -71,6 +76,31 @@ def reference_environment() -> dict[str, str]:
             "",
         )
     return env
+
+
+def _with_workspace_source(source: Mapping[str, str]) -> dict[str, str]:
+    env = dict(source)
+    workspace_src = str((Path(__file__).resolve().parents[1] / "src").resolve())
+    existing_pythonpath = env.get("PYTHONPATH")
+    env["PYTHONPATH"] = (
+        workspace_src
+        if not existing_pythonpath
+        else os.pathsep.join((workspace_src, existing_pythonpath))
+    )
+    return env
+
+
+def environment_for_command(
+    command: Sequence[str],
+    *,
+    base_environment: dict[str, str],
+    reference_environment: dict[str, str],
+) -> dict[str, str]:
+    needs_reference_runtime = list(command[:2]) == ["-m", "pytest"] or list(
+        command[:1]
+    ) == ["scripts/slow_stats_gate.py"]
+    selected = reference_environment if needs_reference_runtime else base_environment
+    return dict(selected)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -103,7 +133,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="Also run slow statistical adequacy checks.",
     )
     args = parser.parse_args(argv)
-    env = reference_environment()
+    base_env = _with_workspace_source(without_workspace_reference_runtime())
+    reference_env = reference_environment()
 
     for command in quality_commands(
         include_pip_audit=args.with_pip_audit,
@@ -114,7 +145,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     ):
         display = " ".join([sys.executable, *command])
         print(f"$ {display}", flush=True)
-        completed = subprocess.run([sys.executable, *command], check=False, env=env)
+        command_env = environment_for_command(
+            command,
+            base_environment=base_env,
+            reference_environment=reference_env,
+        )
+        completed = subprocess.run(
+            [sys.executable, *command],
+            check=False,
+            env=command_env,
+        )
         if completed.returncode != 0:
             return completed.returncode
     return 0
