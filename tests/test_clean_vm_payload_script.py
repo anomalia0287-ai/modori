@@ -98,6 +98,7 @@ def test_payload_v2_check_wrapper_is_read_only_and_requires_admin() -> None:
     assert "No VM changes were made." in text
     assert "Expected current-payload evidence" in text
     assert "Payload V2 is current for the packaged app" in text
+    assert '-WorkspaceRoot "%~dp0."' in text
 
 
 def test_payload_v2_check_reports_stale_payload_against_packaged_app() -> None:
@@ -121,6 +122,21 @@ def test_existing_payload_vhdx_is_validated_before_attach() -> None:
     assert "Samples\\public_data_formats\\kosis-two-row.csv" in text
     assert "Samples\\public_data_formats\\cp949-public.csv" in text
     assert "Samples\\public_data_formats\\notice-only.xlsx" in text
+
+
+def test_payload_identity_contract_prevents_source_lane_ambiguity() -> None:
+    text = _payload_script_text()
+
+    assert '$PayloadContract = "experimental-recommendation-boundary-v1"' in text
+    assert text.count("PAYLOAD_IDENTITY.txt") >= 3
+    assert '"Contract=$PayloadContract"' in text
+    assert '"ModoriExeSHA256=$sourceExeHash"' in text
+    assert "Get-FileHash -LiteralPath $sourceExe -Algorithm SHA256" in text
+    assert 'Get-FileHash -LiteralPath $payloadExecutable -Algorithm SHA256' in text
+    assert 'Get-FileHash -LiteralPath $payloadSample -Algorithm SHA256' in text
+    assert 'throw "Payload identity contract is invalid' in text
+    assert 'throw "Payload executable hash does not match identity' in text
+    assert 'throw "Payload sample hash does not match identity' in text
 
 
 def test_payload_attach_requires_vm_off_to_avoid_hot_add_detection_drift() -> None:

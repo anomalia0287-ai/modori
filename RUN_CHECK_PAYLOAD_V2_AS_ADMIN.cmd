@@ -26,7 +26,7 @@ if %errorlevel% neq 0 (
     exit /b 5
 )
 
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT%"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT%" -WorkspaceRoot "%~dp0."
 set "RC=%ERRORLEVEL%"
 echo.
 echo Check script exit code: %RC%

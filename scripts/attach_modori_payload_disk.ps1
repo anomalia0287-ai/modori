@@ -11,6 +11,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+$PayloadContract = "experimental-recommendation-boundary-v1"
 
 function Write-Section {
     param([Parameter(Mandatory = $true)][string]$Title)
@@ -82,6 +83,7 @@ function Assert-PayloadDriveContents {
         (Join-Path $DriveRoot "Samples\public_data_formats\merged-public-header.xlsx"),
         (Join-Path $DriveRoot "Samples\public_data_formats\aggregate-row.csv"),
         (Join-Path $DriveRoot "Samples\public_data_formats\notice-only.xlsx"),
+        (Join-Path $DriveRoot "PAYLOAD_IDENTITY.txt"),
         (Join-Path $DriveRoot "README.txt"),
         (Join-Path $DriveRoot "QA_CONTRACT.txt"),
         (Join-Path $DriveRoot "Run-Modori.bat"),
@@ -91,6 +93,41 @@ function Assert-PayloadDriveContents {
 
     foreach ($requiredPath in $requiredPaths) {
         Assert-Path -Path $requiredPath -Label "Payload content"
+    }
+
+    $identityPath = Join-Path $DriveRoot "PAYLOAD_IDENTITY.txt"
+    $identity = @{}
+    foreach ($line in Get-Content -LiteralPath $identityPath) {
+        $parts = $line -split "=", 2
+        if ($parts.Count -eq 2 -and $parts[0]) {
+            $identity[$parts[0]] = $parts[1]
+        }
+    }
+    if ($identity["Contract"] -ne $PayloadContract) {
+        throw "Payload identity contract is invalid: $($identity['Contract'])"
+    }
+
+    $payloadExecutable = Join-Path $DriveRoot "Modori\Modori.exe"
+    $payloadExecutableHash = (
+        Get-FileHash -LiteralPath $payloadExecutable -Algorithm SHA256
+    ).Hash.ToUpperInvariant()
+    if ($identity["ModoriExeSHA256"] -ne $payloadExecutableHash) {
+        throw "Payload executable hash does not match identity: $payloadExecutableHash"
+    }
+
+    foreach ($sampleName in @(
+        "experimental-candidate.csv",
+        "experimental-configuration.csv",
+        "experimental-no-candidate.csv"
+    )) {
+        $payloadSample = Join-Path $DriveRoot "Samples\experimental_recommendation\$sampleName"
+        $payloadSampleHash = (
+            Get-FileHash -LiteralPath $payloadSample -Algorithm SHA256
+        ).Hash.ToUpperInvariant()
+        $identityKey = "Sample.$sampleName.SHA256"
+        if ($identity[$identityKey] -ne $payloadSampleHash) {
+            throw "Payload sample hash does not match identity: $sampleName / $payloadSampleHash"
+        }
     }
 
     $engineSmokeBatch = Get-Content -LiteralPath (Join-Path $DriveRoot "Run-Engine-Smoke-XLSX.bat") -Raw
@@ -208,7 +245,9 @@ try {
     Write-Warning "Could not start transcript: $($_.Exception.Message)"
 }
 
+$WorkspaceRoot = (Resolve-Path -LiteralPath $WorkspaceRoot).Path
 $sourceApp = Join-Path $WorkspaceRoot "dist\Modori"
+$sourceExe = Join-Path $sourceApp "Modori.exe"
 $fixturesRoot = Join-Path $WorkspaceRoot ".visual-qa\clean-win-vm-payload"
 $publicDataFixtures = Join-Path $WorkspaceRoot "tests\fixtures\public_data_formats"
 $samples = @(
@@ -226,6 +265,7 @@ $experimentalRecommendationSamples = @(
 
 Write-Section "Preflight"
 Assert-Path -Path $sourceApp -Label "Packaged app folder"
+Assert-Path -Path $sourceExe -Label "Packaged executable"
 foreach ($sample in $samples) {
     Assert-Path -Path $sample -Label "Sample file"
 }
@@ -233,6 +273,19 @@ foreach ($sample in $experimentalRecommendationSamples) {
     Assert-Path -Path $sample -Label "Experimental recommendation sample file"
 }
 Assert-Path -Path $publicDataFixtures -Label "Public data fixture folder"
+$sourceExeHash = (
+    Get-FileHash -LiteralPath $sourceExe -Algorithm SHA256
+).Hash.ToUpperInvariant()
+$experimentalRecommendationHashes = [ordered]@{}
+foreach ($sample in $experimentalRecommendationSamples) {
+    $sampleName = Split-Path -Leaf $sample
+    $experimentalRecommendationHashes[$sampleName] = (
+        Get-FileHash -LiteralPath $sample -Algorithm SHA256
+    ).Hash.ToUpperInvariant()
+}
+Write-Host "Workspace root: $WorkspaceRoot"
+Write-Host "Payload contract: $PayloadContract"
+Write-Host "Packaged executable SHA-256: $sourceExeHash"
 $sourcePaths = @($sourceApp, $publicDataFixtures) + $samples + $experimentalRecommendationSamples
 $newestSourceWriteTimeUtc = Get-NewestSourceWriteTimeUtc -Paths $sourcePaths
 
@@ -314,6 +367,18 @@ try {
     Copy-Item -LiteralPath $experimentalRecommendationSamples -Destination $experimentalRecommendationTarget
     Copy-Item -LiteralPath $publicDataFixtures -Destination (Join-Path $sampleTarget "public_data_formats") -Recurse
 
+    $payloadIdentityLines = @(
+        "Contract=$PayloadContract"
+        "ModoriExeSHA256=$sourceExeHash"
+    )
+    foreach ($sample in $experimentalRecommendationSamples) {
+        $sampleName = Split-Path -Leaf $sample
+        $payloadIdentityLines += (
+            "Sample.$sampleName.SHA256=$($experimentalRecommendationHashes[$sampleName])"
+        )
+    }
+    Set-Content -LiteralPath (Join-Path $driveRoot "PAYLOAD_IDENTITY.txt") -Value $payloadIdentityLines -Encoding ASCII
+
     $readme = @"
 Modori clean Windows QA payload
 
@@ -323,6 +388,7 @@ Modori clean Windows QA payload
 4. Run Run-Public-Data-Smoke.bat for Korean public-data import contract checks.
 
 Expected sample files:
+- PAYLOAD_IDENTITY.txt
 - Samples\engine-smoke-reference.xlsx
 - Samples\visible-import-reference.csv
 - Samples\visible-import-reference.xlsx
@@ -350,6 +416,9 @@ Engine smoke expected JSON:
 
     $contract = @"
 Clean Windows QA contract
+
+Payload identity:
+- PAYLOAD_IDENTITY.txt must contain Contract=$PayloadContract and hashes matching the packaged executable and experimental recommendation samples.
 
 Engine smoke sample:
 - Samples\engine-smoke-reference.xlsx
