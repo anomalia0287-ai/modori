@@ -86,6 +86,8 @@ class UiController(
         self._variable_model = None
         self._data_view_notice = ""
         self._recommendation_state = empty_recommendation_state()
+        self._recommendation_preparation = None
+        self._experimental_recommendation_confirmed = False
         self.resultsModel: list[Any] = self._result_state.results_model
         self._run_tracker = UiRunTracker()
         self._worker = worker or SerializedEngineWorker()
@@ -341,6 +343,7 @@ class UiController(
         )
         self.stepsModel = self._pipeline_state.steps_model
         self._refresh_dataset_models()
+        self._refresh_recommendations()
         self._last_error = ""
         self._last_message = result.message_ko
         self.stateChanged.emit()

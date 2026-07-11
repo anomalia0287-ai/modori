@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 import re
+from types import MappingProxyType
 from typing import Literal
 
 import numpy as np
@@ -67,6 +68,53 @@ class RecommendationCandidate:
     y_key: str = ""
     model: str = ""
     requires_configuration: bool = False
+
+
+@dataclass(frozen=True)
+class RecommendationPreparation:
+    candidate_id: str
+    analysis_intent: RecommendationKind
+    prefill_fields: Mapping[str, object]
+    evidence_status: RecommendationEvidenceStatus
+    review_requirement: Literal[
+        "standard",
+        "configuration_required",
+        "heightened_review",
+    ]
+
+
+def preparation_for_candidate(
+    candidate: RecommendationCandidate,
+) -> RecommendationPreparation:
+    if candidate.requires_configuration:
+        review_requirement = "configuration_required"
+    elif candidate.routing_tier is RecommendationRoutingTier.HEIGHTENED_REVIEW:
+        review_requirement = "heightened_review"
+    else:
+        review_requirement = "standard"
+    fields = MappingProxyType(
+        {
+            "variable_keys": tuple(candidate.variable_keys),
+            "item_keys": tuple(candidate.item_keys),
+            "outcome_key": candidate.outcome_key,
+            "group_key": candidate.group_key,
+            "predictor_keys": tuple(candidate.predictor_keys),
+            "factor_a_key": candidate.factor_a_key,
+            "factor_b_key": candidate.factor_b_key,
+            "x_key": candidate.x_key,
+            "mediator_key": candidate.mediator_key,
+            "moderator_key": candidate.moderator_key,
+            "y_key": candidate.y_key,
+            "model": candidate.model,
+        }
+    )
+    return RecommendationPreparation(
+        candidate_id=candidate.candidate_id,
+        analysis_intent=candidate.kind,
+        prefill_fields=fields,
+        evidence_status=candidate.evidence_status,
+        review_requirement=review_requirement,
+    )
 
 
 @dataclass(frozen=True)

@@ -156,6 +156,40 @@ def test_controller_maps_missing_codes_to_engine_missing_values(tmp_path) -> Non
     assert compute_frame["group"].isna().tolist() == [False, True]
 
 
+def test_metadata_edit_invalidates_experimental_recommendation_preparation(
+    tmp_path,
+) -> None:
+    data_path = tmp_path / "survey.csv"
+    pd.DataFrame(
+        {
+            "group": [1, 1, 1, 2, 2, 2],
+            "score": [3.5, 4.5, 5.0, 6.0, 7.5, 8.0],
+        }
+    ).to_csv(data_path, index=False)
+    pipeline = Pipeline(Dataset.empty())
+    pipeline.add(
+        ImportStep(
+            id="import",
+            title="Import CSV",
+            params={"path": str(data_path), "file_type": "csv"},
+        )
+    )
+    pipeline.recompute(dirty_from=None)
+    controller = UiController(pipeline=pipeline)
+    controller._refresh_recommendations()
+    assert controller.recommendationCount > 0
+    assert controller.selectRecommendationAt(0)
+    assert controller.prepareSelectedRecommendationNow()
+    assert controller.setExperimentalRecommendationConfirmed(True)
+
+    result = controller.updateVariableMetadata("score", {"label": "Outcome score"})
+
+    assert result.ok is True
+    assert controller.recommendationPreparationPending is False
+    assert controller.experimentalRecommendationConfirmed is False
+    assert controller.recommendationTitle == ""
+
+
 def test_controller_rejects_ambiguous_missing_code_aliases(tmp_path) -> None:
     data_path = tmp_path / "survey.csv"
     _write_csv(data_path)
