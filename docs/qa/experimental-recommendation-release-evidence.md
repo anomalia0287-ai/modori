@@ -2,8 +2,10 @@
 
 Date: 2026-07-11 KST
 
-Status: host-side implementation and package evidence passed. Clean-VM visual
-walkthrough and owner acceptance remain open. This evidence does not establish
+Status: host-side implementation, functional-hardening, and package evidence
+passed. The first clean-VM walkthrough found data-grid and wording defects; those
+defects were reproduced, fixed, and covered by host-side tests. A rebuilt payload
+and owner recheck on the clean VM remain open. This evidence does not establish
 recommendation accuracy and does not promote any recommendation family to
 `VALIDATED`.
 
@@ -26,7 +28,7 @@ validation and a fixed disclosure at the start of report prose.
 | Item | Pinned value |
 | --- | --- |
 | Branch | `codex/recommendation-benchmark-pilot` |
-| Implementation HEAD under test | `34e42eb8fa2075f88b7ff524d5a1dae55d16c3da` |
+| Implementation HEAD under test | `7367eee5e5332060b0c6ad1f16dbb52a0ffb2db8` |
 | Experimental-boundary base | `aa04d4347e065f44ef3431ffc59e31c53ca844b9` |
 | Pilot case count | 20 |
 | Manifest count | 20 |
@@ -61,6 +63,33 @@ state has no default selection.
 - Package engine smoke configures its analysis directly and no longer depends on
   recommendation output.
 
+## Post-VM Functional Hardening
+
+The first owner walkthrough did not pass silently. It exposed four product-path
+defects or ambiguities, all of which are now represented by executable contracts:
+
+- Grid hover used a shared attached tooltip whose text could lag behind a reused
+  delegate. The tooltip is now local to the hovered delegate, appears only when
+  the rendered value is truncated, and is tested after both row and column reuse.
+- The body and both header flickables accepted overshoot behavior. All three now
+  use `Flickable.StopAtBounds` for movement and behavior; runtime QML tests cover
+  origin drag, right/down navigation, and header synchronization.
+- Repeated experimental wording obscured the action. The main surface now uses
+  `분석 후보 안내`, with the persistent status limited to
+  `실험적 · 자동 실행 안 함`. Report provenance disclosure remains explicit.
+- Identically named payload wrappers in two workspaces allowed the wrong source
+  lane to be rebuilt without obvious evidence. The wrapper now passes an explicit
+  workspace root, the scripts log the resolved root and package hash, and every
+  payload carries `PAYLOAD_IDENTITY.txt`. Rebuild validation recomputes the EXE
+  and three experimental-fixture hashes before attaching the disk.
+
+Host visual captures from the actual Windows QPA are retained locally under
+`.tmp/grid-hardening-visual-windows/`: `grid-origin-short-hover.png`,
+`grid-scrolled.png`, `grid-truncated-tooltip.png`, and
+`analysis-candidate-panel.png`. The long-tooltip value itself is pinned by the
+runtime QML test because a separate native tooltip window is not included in
+`grabWindow()` output. Offscreen-renderer captures are not treated as evidence.
+
 ## Executed Gates
 
 All commands ran from the isolated worktree with Python 3.12.10. The final
@@ -75,14 +104,14 @@ integrated gate explicitly set
    ruff: pass
    bandit: pass
    launch-smoke-ok
-   1532 passed, 5 skipped in 81.24s
+   1542 passed, 5 skipped in 126.87s
    pip check: no broken requirements
    package-tool-ok
    package build: pass
    package-launch-smoke-ok
    package-engine-smoke-ok
    package-public-data-smoke-ok
-   4 passed, 1533 deselected in 23.08s
+   4 passed, 1543 deselected in 38.25s
    exit code: 0
    ```
 
@@ -93,10 +122,8 @@ integrated gate explicitly set
    - Four skips are tests guarded by `MODORI_RUN_SLOW_STATS=1`: three bootstrap
      adequacy tests and one factorial-ANOVA performance test.
    - The separate slow-statistics gate executed all four guarded tests and passed.
-   - Explicit R configuration increased the full result from 1524 passed and 13
-     skipped to 1532 passed and 5 skipped. The eight previously skipped R
-     references therefore executed and passed; they are not counted as skipped
-     evidence.
+   - The explicit R configuration executed the R-reference tests; none of those
+     tests appear in the five skipped cases.
 
 3. Focused boundary and product-path gates executed during implementation:
 
@@ -110,6 +137,10 @@ integrated gate explicitly set
    product-wording scanner tests: 6 passed
    file-operation audit plus scanner: 8 passed
    PowerShell payload script parser: pass
+   complete UI suite after functional hardening: 429 passed
+   grid/wording/boundary/payload regression bundle: 46 passed
+   complete data-grid QML suite: 17 passed
+   clean-VM payload tests after identity hardening: 20 passed
    ```
 
 4. Source-range audit:
@@ -122,13 +153,17 @@ integrated gate explicitly set
    M src/modori/steps/reporting.py
    ```
 
+   The narrower `0ec8a92..7367eee` functional-hardening range changes no file
+   under `src/modori/steps` or `src/modori/core`; it is limited to grid UI,
+   recommendation copy, payload tooling, tests, and supporting documents.
+
 ## Built Package And VM Fixtures
 
 The final integrated gate rebuilt the Windows package with PyInstaller 6.21.0.
 
 | Artifact | Size | SHA-256 |
 | --- | ---: | --- |
-| `dist/Modori/Modori.exe` | 30,983,214 bytes | `79D4944B56B5E8929C06B408B9D9971240C8FAB6CEA89437F2D8B57BF1ADC210` |
+| `dist/Modori/Modori.exe` | 30,983,166 bytes | `A531C537423613DDFA3867569EF6F43EC2BB24917C91FCB0ED3C53620AD19098` |
 | `experimental-candidate.csv` | fixed fixture | `7C8930F6CF05428F4C80EF99E54278664D4CEE303361C5A4B819407DF1975CF3` |
 | `experimental-configuration.csv` | fixed fixture | `DA555DA9FB6379AC0192EC174477885DB0812AB806B7734CB155206CC56D8DCD` |
 | `experimental-no-candidate.csv` | fixed fixture | `8E2B0BFF6B601D1D54626990A48F2436F0AD7C2021C19AE636B3A34C1CADA4AC` |
@@ -141,10 +176,12 @@ treated as evidence.
 
 ## Open Gates And Residual Limits
 
-1. The owner must complete the clean-VM walkthrough in
-   `docs/qa/experimental-recommendation-vm-runbook.md`. Until then, layout,
-   keyboard/mouse interaction, no-preselection behavior, and disclosure visibility
-   on the clean VM are not accepted.
+1. The owner must rebuild the clean-VM payload from this worktree, verify that
+   `PAYLOAD_IDENTITY.txt` begins with
+   `Contract=experimental-recommendation-boundary-v1`, and repeat the walkthrough
+   in `docs/qa/experimental-recommendation-vm-runbook.md`. Until then, the fixed
+   tooltip binding, scroll bounds, revised wording, and payload source identity
+   are not accepted on the clean VM.
 2. If Word is absent in the VM, successful DOCX creation is useful but does not
    verify rendered disclosure placement. That inspection remains open until the
    document is viewed on a machine with a compatible renderer.
@@ -154,5 +191,8 @@ treated as evidence.
 4. Recommendation accuracy, expert equivalence, public 80 percent claims, SLM
    adoption, and any `VALIDATED` promotion remain blocked by their human evidence
    gates.
-5. This pass is ready for payload rebuild and owner VM inspection, not product
+5. Broad visual redesign is intentionally outside this functional-hardening pass.
+   The current interface remains visually rough and must be handled as a separate
+   design track rather than being misrepresented as closed by these fixes.
+6. This pass is ready for payload rebuild and owner VM inspection, not product
    promotion or public recommendation-quality claims.
