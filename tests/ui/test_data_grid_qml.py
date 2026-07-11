@@ -14,6 +14,7 @@ from PySide6.QtCore import (
     QUrl,
 )
 from PySide6.QtGui import QGuiApplication
+from PySide6.QtQml import QQmlEngine, QQmlExpression
 from PySide6.QtQuick import QQuickItem, QQuickView
 from PySide6.QtTest import QSignalSpy, QTest
 
@@ -165,6 +166,48 @@ def _close_grid(view: QQuickView) -> None:
     _process_events()
 
 
+def _large_grid_model(*, rows: int, columns: int) -> _GridFixtureModel:
+    return _GridFixtureModel(
+        tuple(
+            (
+                f"variable-{row}",
+                "scale",
+                tuple(f"r{row}c{column}" for column in range(columns)),
+            )
+            for row in range(rows)
+        )
+    )
+
+
+def _grid_headers(root: QQuickItem) -> tuple[QQuickItem, QQuickItem]:
+    children = root.findChildren(QQuickItem)
+    horizontal = next(
+        child
+        for child in children
+        if child.metaObject().className().startswith("HorizontalHeaderView")
+    )
+    vertical = next(
+        child
+        for child in children
+        if child.metaObject().className().startswith("VerticalHeaderView")
+    )
+    return horizontal, vertical
+
+
+def _point(scene_point: QPointF) -> QPoint:
+    return QPoint(round(scene_point.x()), round(scene_point.y()))
+
+
+def _qml_value(item: QQuickItem, expression_text: str) -> object:
+    context = QQmlEngine.contextForObject(item)
+    assert context is not None
+    expression = QQmlExpression(context, item, expression_text)
+    value, is_undefined = expression.evaluate()
+    assert not expression.hasError(), expression.error().toString()
+    assert not is_undefined
+    return value
+
+
 def test_data_grid_uses_virtualized_table_with_synchronized_headers() -> None:
     qml = qml_text("components/DataGridView.qml")
 
@@ -188,6 +231,65 @@ def test_data_grid_exposes_scrollbars_and_viewport_position() -> None:
     assert 'appBootstrap.text("data.grid_rows")' in qml
     assert 'appBootstrap.text("data.grid_columns")' in qml
     assert 'appBootstrap.text("data.grid_extent_separator")' in qml
+
+
+def test_grid_and_headers_stop_at_content_bounds() -> None:
+    qml = qml_text("components/DataGridView.qml")
+
+    assert qml.count("boundsBehavior: Flickable.StopAtBounds") == 3
+    assert qml.count("boundsMovement: Flickable.StopAtBounds") == 3
+
+
+def test_runtime_grid_and_headers_use_stop_at_bounds() -> None:
+    model = _large_grid_model(rows=80, columns=20)
+    view, root, body = _render_grid(model, width=360, height=190)
+    horizontal, vertical = _grid_headers(root)
+
+    states = [
+        (
+            _qml_value(flickable, "Number(boundsBehavior)"),
+            _qml_value(flickable, "Number(boundsMovement)"),
+        )
+        for flickable in (horizontal, vertical, body)
+    ]
+
+    assert states == [(0.0, 0.0)] * 3
+
+    _close_grid(view)
+
+
+def test_pointer_drag_at_origin_cannot_pull_grid_above_or_left() -> None:
+    model = _large_grid_model(rows=80, columns=20)
+    view, _root, body = _render_grid(model, width=360, height=190)
+    start = body.mapToScene(QPointF(body.width() / 2, body.height() / 2))
+    moved = QPoint(round(start.x() + 100), round(start.y() + 100))
+
+    QTest.mousePress(view, Qt.LeftButton, Qt.NoModifier, _point(start))
+    QTest.mouseMove(view, moved, 30)
+    _app().processEvents()
+
+    assert float(body.property("contentX")) >= 0.0
+    assert float(body.property("contentY")) >= 0.0
+    QTest.mouseRelease(view, Qt.LeftButton, Qt.NoModifier, moved)
+    _close_grid(view)
+
+
+def test_right_and_down_navigation_remain_scrollable_and_header_synced() -> None:
+    model = _large_grid_model(rows=80, columns=20)
+    view, _root, body = _render_grid(model, width=360, height=190)
+    body.forceActiveFocus()
+
+    QTest.keyClick(view, Qt.Key_End)
+    for _ in range(4):
+        QTest.keyClick(view, Qt.Key_PageDown)
+    _process_events()
+
+    horizontal, vertical = _grid_headers(_root)
+    assert float(body.property("contentX")) > 0.0
+    assert float(body.property("contentY")) > 0.0
+    assert abs(float(horizontal.property("contentX")) - float(body.property("contentX"))) < 1.0
+    assert abs(float(vertical.property("contentY")) - float(body.property("contentY"))) < 1.0
+    _close_grid(view)
 
 
 def test_data_grid_headers_have_distinct_visual_treatment() -> None:

@@ -78,6 +78,8 @@ Item {
             HorizontalHeaderView {
                 id: horizontalHeader
                 syncView: body
+                boundsBehavior: Flickable.StopAtBounds
+                boundsMovement: Flickable.StopAtBounds
                 Layout.fillWidth: true
                 Layout.preferredHeight: theme.gridHeaderHeight
 
@@ -102,6 +104,8 @@ Item {
             VerticalHeaderView {
                 id: verticalHeader
                 syncView: body
+                boundsBehavior: Flickable.StopAtBounds
+                boundsMovement: Flickable.StopAtBounds
                 Layout.preferredWidth: theme.gridRowLabelWidth
                 Layout.fillHeight: true
 
@@ -128,6 +132,8 @@ Item {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 clip: true
+                boundsBehavior: Flickable.StopAtBounds
+                boundsMovement: Flickable.StopAtBounds
                 reuseItems: true
                 animate: false
                 activeFocusOnTab: true
