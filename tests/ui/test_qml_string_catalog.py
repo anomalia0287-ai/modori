@@ -57,3 +57,16 @@ def test_qml_string_catalog_is_complete_and_used() -> None:
 
     assert missing_keys == []
     assert unused_keys == []
+
+
+def test_recommendation_surface_uses_one_persistent_experimental_status() -> None:
+    assert UI_STRINGS_KO["entry.guided"] == "분석 후보 안내"
+    assert UI_STRINGS_KO["work.guided"] == "분석 후보"
+    assert UI_STRINGS_KO["guide.title"] == "분석 후보 안내"
+    assert UI_STRINGS_KO["guide.experimental_status"] == "실험적 · 자동 실행 안 함"
+    assert UI_STRINGS_KO["guide.candidate_list"] == "분석 후보 목록"
+    assert UI_STRINGS_KO["guide.candidate_label"] == "분석 후보"
+    assert UI_STRINGS_KO["guide.no_recommendation"] == (
+        "현재 규칙으로 표시할 분석 후보가 없습니다. 수동 분석을 사용할 수 있습니다."
+    )
+    assert "분석 자동 추천" not in UI_STRINGS_KO.values()

@@ -218,16 +218,21 @@ No caller may infer the second answer from the first.
 
 ## 8. Product Experience
 
+The exact surface wording in Sections 8.1 and 8.2 is amended by
+`docs/superpowers/specs/2026-07-11-data-grid-interaction-hardening-design.md`.
+The experimental evidence boundary remains persistent, but repeated experimental
+labels are consolidated into one compact panel-level status.
+
 ### 8.1 Entry and mode boundary
 
 - The controller default mode becomes `standard`.
 - Opening data directly or from recent files stays in standard mode.
-- `안내 모드` becomes `실험적 후보 안내` in Korean production text.
+- `안내 모드` becomes `분석 후보 안내` in Korean production text.
 - Every process starts in standard mode. Mode is not persisted in V1. Entering
   experimental guidance is an explicit action once per running application session;
   no valid, stale, or malformed prior setting can restore it on the next launch.
 - The experimental surface displays a persistent, compact status label:
-  `검증 중인 분석 후보 · 자동 실행 안 함`.
+  `실험적 · 자동 실행 안 함`.
 - Stable manual analysis remains available regardless of recommendation state.
 
 No modal warning is required merely to inspect the experimental surface. Repeated
@@ -239,8 +244,8 @@ where a candidate can affect configuration.
 - No candidate is selected when the surface opens.
 - The ordered experimental candidate list is visible without a hidden default card.
 - A user selection creates `현재 검토 후보`; before selection that surface is empty.
-- `다른 추천 보기` becomes `실험적 후보 목록`.
-- Every candidate displays `실험적 후보`; no candidate displays `강한 추천`.
+- `다른 추천 보기` becomes `분석 후보 목록`.
+- Candidate labels use `분석 후보`; no candidate displays `강한 추천`.
 - `수준` becomes `검토 상태`.
 - The reason remains visible and must describe observed deterministic facts, not the
   candidate as statistically correct.

@@ -35,10 +35,10 @@ RecommendationKind = Literal[
     "moderated_mediation",
 ]
 _EMPTY_MESSAGE = (
-    "현재 규칙으로 표시할 실험적 후보가 없습니다. 수동 분석을 사용할 수 있습니다."
+    "현재 규칙으로 표시할 분석 후보가 없습니다. 수동 분석을 사용할 수 있습니다."
 )
 _HEIGHTENED_REVIEW_MESSAGE = (
-    "높은 검토가 필요한 실험적 후보만 있습니다. 연구 설계를 직접 확인해 주세요."
+    "높은 검토가 필요한 분석 후보만 있습니다. 연구 설계를 직접 확인해 주세요."
 )
 _CONFIGURATION_REQUIRED_MESSAGE = (
     "설정 확인이 필요한 후보를 찾았습니다. 변수 역할을 직접 확인해 주세요."

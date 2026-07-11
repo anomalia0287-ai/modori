@@ -149,7 +149,9 @@ def test_select_and_prepare_do_not_touch_pipeline_or_worker() -> None:
     before_dataset = pipeline.current_dataset
 
     assert controller.selectRecommendationAt(0)
+    assert controller.lastMessage == "분석 후보를 선택했습니다."
     assert controller.prepareSelectedRecommendationNow()
+    assert controller.lastMessage == "분석 후보 설정을 검토할 수 있습니다."
 
     assert list(pipeline.steps) == before_steps
     assert controller.pipeline_version == before_version
@@ -194,6 +196,8 @@ def test_confirmation_is_invalidated_by_candidate_change_and_refresh() -> None:
 def test_confirmation_cannot_be_enabled_without_preparation() -> None:
     controller = UiController()
 
+    assert controller.selectRecommendationAt(0) is False
+    assert controller.lastError == "분석 후보를 찾을 수 없습니다."
     assert controller.setExperimentalRecommendationConfirmed(True) is False
     assert controller.setExperimentalRecommendationConfirmed(False) is True
     assert controller.experimentalRecommendationConfirmed is False

@@ -4,7 +4,7 @@ import pandas as pd
 
 from modori.core import Dataset, Measure, Variable
 from modori.recommendation_policy import RecommendationRoutingTier
-from modori.recommendations import RecommendationService
+from modori.recommendations import RecommendationCandidate, RecommendationService
 
 
 def test_configuration_required_recommendation_preparation_cannot_mutate_pipeline() -> None:
@@ -42,12 +42,17 @@ def test_configuration_required_recommendation_preparation_cannot_mutate_pipelin
     prepared = controller.prepareSelectedRecommendationNow()
 
     assert prepared is True
+    assert controller.lastMessage == "분석 후보 설정을 검토할 수 있습니다."
     assert controller.preparedRecommendationReviewRequirement == (
         "configuration_required"
     )
     assert controller.experimentalRecommendationConfirmed is False
     assert pipeline.steps == []
     assert controller.pipeline_version == pipeline_version
+
+    assert controller.clearExperimentalRecommendationSelection()
+    assert controller.prepareSelectedRecommendationNow() is False
+    assert controller.lastError == "검토할 분석 후보를 먼저 선택해 주세요."
 
 
 def _variable(
@@ -216,7 +221,7 @@ def test_recommendation_service_returns_no_candidate_for_unusable_fields() -> No
     assert state.selected_candidate is None
     assert not hasattr(state, "default_candidate")
     assert state.message_ko == (
-        "현재 규칙으로 표시할 실험적 후보가 없습니다. "
+        "현재 규칙으로 표시할 분석 후보가 없습니다. "
         "수동 분석을 사용할 수 있습니다."
     )
 
@@ -239,6 +244,20 @@ def test_recommendation_service_explains_caution_only_state() -> None:
     assert state.candidates[0].kind == "descriptives"
     assert state.selected_candidate is None
     assert state.message_ko == ""
+
+
+def test_heightened_review_message_uses_analysis_candidate_vocabulary() -> None:
+    candidate = RecommendationCandidate(
+        candidate_id="mediation:x:m:y",
+        kind="mediation",
+        title_ko="매개분석",
+        routing_tier=RecommendationRoutingTier.HEIGHTENED_REVIEW,
+        reason_ko="연구모형을 확인해야 합니다.",
+    )
+
+    assert RecommendationService._message([candidate]) == (
+        "높은 검토가 필요한 분석 후보만 있습니다. 연구 설계를 직접 확인해 주세요."
+    )
 
 
 def test_regression_caution_candidates_exclude_perfect_linear_pairs() -> None:

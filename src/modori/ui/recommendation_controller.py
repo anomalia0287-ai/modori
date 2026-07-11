@@ -67,7 +67,7 @@ class RecommendationControllerMixin:
     @Slot(int, result=bool)
     def selectRecommendationAt(self, index: int) -> bool:
         if index < 0 or index >= len(self._recommendation_state.candidates):
-            self._last_error = "추천 후보를 찾을 수 없습니다."
+            self._last_error = "분석 후보를 찾을 수 없습니다."
             self._last_message = ""
             self.stateChanged.emit()
             return False
@@ -79,7 +79,7 @@ class RecommendationControllerMixin:
             message_ko=self._recommendation_state.message_ko,
         )
         self._last_error = ""
-        self._last_message = "추천 후보를 선택했습니다."
+        self._last_message = "분석 후보를 선택했습니다."
         self._emit_recommendation_state_changed()
         self.stateChanged.emit()
         return True
@@ -88,14 +88,14 @@ class RecommendationControllerMixin:
     def prepareSelectedRecommendationNow(self) -> bool:
         candidate = self._recommendation_state.selected_candidate
         if candidate is None:
-            self._last_error = "검토할 실험적 후보를 먼저 선택해 주세요."
+            self._last_error = "검토할 분석 후보를 먼저 선택해 주세요."
             self._last_message = ""
             self.stateChanged.emit()
             return False
         self._recommendation_preparation = preparation_for_candidate(candidate)
         self._experimental_recommendation_confirmed = False
         self._last_error = ""
-        self._last_message = "실험적 후보 설정을 검토할 수 있습니다."
+        self._last_message = "분석 후보 설정을 검토할 수 있습니다."
         self._emit_recommendation_state_changed()
         self.stateChanged.emit()
         return True

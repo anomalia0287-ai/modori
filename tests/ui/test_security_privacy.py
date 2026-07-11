@@ -75,7 +75,7 @@ def test_app_bootstrap_exposes_string_catalog() -> None:
 
     bootstrap = AppBootstrap()
 
-    assert bootstrap.text("entry.guided") == "실험적 후보 안내"
+    assert bootstrap.text("entry.guided") == "분석 후보 안내"
     assert bootstrap.text("privacy.local") == "데이터는 이 컴퓨터를 떠나지 않습니다"
     assert bootstrap.text("missing.key") == "missing.key"
 
