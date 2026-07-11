@@ -273,6 +273,14 @@ Advanced candidates such as binary logistic regression and factorial ANOVA conti
 require explicit event/reference or factor-role configuration. The experimental layer
 may pre-fill known fields but cannot invent missing values.
 
+The shortcut removal must not make an existing candidate family unreachable. Before
+the shortcut is deleted, all emitted candidate kinds must have an explicit manual-form
+path. Repeated-measures ANOVA and Friedman use a reviewed measures list; mediation and
+moderated mediation use separately named X, mediator, moderator, Y, model, and
+covariate fields. Mediation roles must never be inferred later from positional list
+indexes. An exhaustive contract test locks the candidate-kind-to-form mapping so a new
+provider cannot silently create an unreviewable candidate.
+
 ### 8.4 Selection provenance
 
 The UI session records one of:
