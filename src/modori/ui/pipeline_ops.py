@@ -576,6 +576,7 @@ class PipelineOperations:
         params = self._step_params(report_step)
         params["language"] = options.language
         params["include_figures"] = bool(options.include_figures)
+        params["selection_origin"] = options.selection_origin
         include = self._filtered_report_include(params.get("include"), options)
         if include is not None:
             params["include"] = include

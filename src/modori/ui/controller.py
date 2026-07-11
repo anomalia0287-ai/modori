@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 from typing import Any, Callable, Mapping
 
@@ -67,9 +68,8 @@ class UiController(
             library=library,
         )
         self._report_exporter = report_exporter
-        self._settings_store = settings_store or UiSettingsStore()
         self._session = UiSessionState(
-            self._settings_store,
+            settings_store or UiSettingsStore(),
             reduce_effects_override=reduce_effects,
         )
         self._mode = "standard"
@@ -88,6 +88,7 @@ class UiController(
         self._recommendation_state = empty_recommendation_state()
         self._recommendation_preparation = None
         self._experimental_recommendation_confirmed = False
+        self._analysis_selection_origin = "manual"
         self.resultsModel: list[Any] = self._result_state.results_model
         self._run_tracker = UiRunTracker()
         self._worker = worker or SerializedEngineWorker()
@@ -112,6 +113,10 @@ class UiController(
     @Property(str, notify=stateChanged)
     def status(self) -> str:
         return self._pipeline_state.status
+
+    @Property(str, notify=stateChanged)
+    def analysisSelectionOrigin(self) -> str:
+        return self._analysis_selection_origin
 
     @Property(bool, notify=stateChanged)
     def stale(self) -> bool:
@@ -251,6 +256,7 @@ class UiController(
             fallback=self.stepsModel,
         )
         self.stepsModel = self._pipeline_state.steps_model
+        self._analysis_selection_origin = "manual"
         self._last_error = ""
         self._last_message = "단계가 변경되었습니다."
         self.stateChanged.emit()
@@ -278,6 +284,7 @@ class UiController(
 
         self.pipeline = load_result.pipeline
         self._services.replace_pipeline(load_result.pipeline)
+        self._analysis_selection_origin = "manual"
         self._refresh_recommendations()
         if load_result.path is not None:
             self._session.remember_recent_file(load_result.path)
@@ -389,6 +396,10 @@ class UiController(
 
     def exportReport(self, options: ReportExportOptions) -> CommandResult:
         exporter = self._report_exporter or export_report_from_pipeline
+        options = replace(
+            options,
+            selection_origin=self._analysis_selection_origin,
+        )
         result = self._services.report_export_service.export(
             pipeline=self.pipeline,
             options=options,
@@ -406,6 +417,14 @@ class UiController(
         self._last_message = result.message_ko
         self.stateChanged.emit()
         return result
+
+    @Slot(bool, result=bool)
+    def markCurrentSelectionExperimental(self, assisted: bool) -> bool:
+        self._analysis_selection_origin = (
+            "experimental_candidate_assisted" if assisted else "manual"
+        )
+        self.stateChanged.emit()
+        return True
 
     @Slot(result=bool)
     def exportReportNow(self) -> bool:
@@ -533,6 +552,7 @@ class UiController(
         self._last_error = ""
         self._last_message = result.message_ko
         self.stepsModel = self._pipeline_state.steps_model
+        self._analysis_selection_origin = "manual"
         self._refresh_dataset_models()
         self.stateChanged.emit()
         return CommandResult(

@@ -391,6 +391,32 @@ def test_export_report_with_selections_passes_expanded_family_options(tmp_path) 
     ]
 
 
+def test_export_report_injects_local_selection_origin(tmp_path) -> None:
+    from modori.ui.contracts import ReportExportOptions
+    from modori.ui.controller import UiController
+
+    seen: list[ReportExportOptions] = []
+    output_path = tmp_path / "report.docx"
+    output_path.write_bytes(b"docx")
+
+    def exporter(pipeline, options):
+        del pipeline
+        seen.append(options)
+        return output_path
+
+    controller = UiController(
+        pipeline=ImportablePipeline(["import", "report"]),
+        report_exporter=exporter,
+    )
+    assert controller.markCurrentSelectionExperimental(True)
+
+    result = controller.exportReport(ReportExportOptions(language="ko"))
+
+    assert result.ok is True
+    assert len(seen) == 1
+    assert seen[0].selection_origin == "experimental_candidate_assisted"
+
+
 def test_select_recommendation_updates_prepared_fields_without_running(tmp_path) -> None:
     import pandas as pd
 

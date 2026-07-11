@@ -278,5 +278,27 @@ def test_guide_uses_explicit_experimental_confirmation_flow() -> None:
     assert "uiController.prepareSelectedRecommendationNow()" in source
     assert "uiController.setExperimentalRecommendationConfirmed" in source
     assert "uiController.experimentalRecommendationConfirmed" in source
+    assert "uiController.markCurrentSelectionExperimental" in source
     assert "runPreparedRecommendation" not in source
     assert "applySelectedRecommendation" not in source
+
+
+def test_successful_manual_configuration_resets_selection_origin() -> None:
+    dataset = _dataset(
+        pd.DataFrame(
+            {
+                "age": [21, 24, 29, 33, 38, 44],
+                "satisfaction": [2, 3, 4, 3, 5, 4],
+            }
+        )
+    )
+    controller = UiController(pipeline=Pipeline(dataset), worker=NoSubmitWorker())
+    assert controller.markCurrentSelectionExperimental(True)
+    assert controller.analysisSelectionOrigin == "experimental_candidate_assisted"
+
+    configured = controller.configureDescriptivesSelection("age, satisfaction")
+
+    assert configured.ok is True
+    assert controller.analysisSelectionOrigin == "manual"
+    assert controller.markCurrentSelectionExperimental(True)
+    assert controller.analysisSelectionOrigin == "experimental_candidate_assisted"

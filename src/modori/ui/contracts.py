@@ -6,6 +6,7 @@ from typing import Any, Literal
 
 
 Language = Literal["ko", "en"]
+SelectionOrigin = Literal["manual", "experimental_candidate_assisted"]
 ControllerModeValue = Literal["guided", "standard"]
 RunStatusValue = Literal["empty", "ready", "running", "error"]
 
@@ -64,6 +65,7 @@ class ReportExportOptions:
     include_dimension_reduction: bool = True
     include_regression: bool = True
     include_figures: bool = True
+    selection_origin: SelectionOrigin = "manual"
 
 
 @dataclass(frozen=True)

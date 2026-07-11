@@ -104,6 +104,97 @@ def reliability_result_with_chart(chart_type: str) -> ReliabilityResult:
     )
 
 
+def _report_for_selection_origin(
+    tmp_path: Path,
+    *,
+    selection_origin: str,
+    language: str,
+) -> ReportResult:
+    step = ReportStep(
+        id="report",
+        title="APA report",
+        params={
+            "include": ["reliability"],
+            "output_dir": str(tmp_path),
+            "filename": f"{selection_origin}-{language}.docx",
+            "language": language,
+            "include_figures": False,
+            "selection_origin": selection_origin,
+        },
+    )
+    result = step.compute(
+        PipelineContext(
+            dataset=Dataset.empty(),
+            analyses={"reliability": reliability_result_with_chart("horizontal_bar")},
+        )
+    )
+    assert isinstance(result.analysis, ReportResult)
+    return result.analysis
+
+
+@pytest.mark.parametrize(
+    ("language", "expected"),
+    [
+        (
+            "ko",
+            "분석 방법 선택에 실험적 후보 안내가 사용되었습니다. "
+            "계산 모듈의 수치 검증 범위와 추천 타당성은 별개입니다.",
+        ),
+        (
+            "en",
+            "An experimental analysis-candidate aid was used to select this method. "
+            "Numerical validation of the calculation module and validity of the "
+            "recommendation are separate.",
+        ),
+    ],
+)
+def test_assisted_report_discloses_selection_origin_once(
+    tmp_path: Path,
+    language: str,
+    expected: str,
+) -> None:
+    report = _report_for_selection_origin(
+        tmp_path,
+        selection_origin="experimental_candidate_assisted",
+        language=language,
+    )
+
+    assert report.prose[0] == expected
+    assert report.prose.count(expected) == 1
+    document = Document(report.docx_path)
+    assert [paragraph.text for paragraph in document.paragraphs].count(expected) == 1
+
+
+def test_selection_origin_does_not_change_analysis_tables(
+    tmp_path: Path,
+) -> None:
+    manual = _report_for_selection_origin(
+        tmp_path,
+        selection_origin="manual",
+        language="ko",
+    )
+    assisted = _report_for_selection_origin(
+        tmp_path,
+        selection_origin="experimental_candidate_assisted",
+        language="ko",
+    )
+
+    assert assisted.prose[1:] == manual.prose
+    assert assisted.tables == manual.tables
+    assert assisted.figure_paths == manual.figure_paths
+
+
+def test_report_rejects_unknown_selection_origin_before_writing(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="Unsupported selection origin"):
+        _report_for_selection_origin(
+            tmp_path,
+            selection_origin="unknown",
+            language="ko",
+        )
+
+    assert not (tmp_path / "unknown-ko.docx").exists()
+
+
 def factorial_report_dataset() -> Dataset:
     rows: list[dict[str, object]] = []
     for (treatment, site), mean in (

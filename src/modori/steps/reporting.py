@@ -1312,6 +1312,19 @@ def _report_chart_specs(result: object) -> tuple[ChartSpec, ...]:
     return tuple(specs)
 
 
+SELECTION_DISCLOSURE = {
+    "ko": (
+        "분석 방법 선택에 실험적 후보 안내가 사용되었습니다. "
+        "계산 모듈의 수치 검증 범위와 추천 타당성은 별개입니다."
+    ),
+    "en": (
+        "An experimental analysis-candidate aid was used to select this method. "
+        "Numerical validation of the calculation module and validity of the "
+        "recommendation are separate."
+    ),
+}
+
+
 @dataclass
 class ReportStep(Step):
     step_type = "report.apa"
@@ -1324,6 +1337,12 @@ class ReportStep(Step):
         if language_base not in {"ko", "en"}:
             raise ValueError("Unsupported report language")
         language = "en" if language_base == "en" else "ko"
+        selection_origin = str(self.params.get("selection_origin", "manual"))
+        if selection_origin not in {
+            "manual",
+            "experimental_candidate_assisted",
+        }:
+            raise ValueError("Unsupported selection origin")
 
         include = _normalise_include(self.params)
         include_figures = bool(self.params.get("include_figures", True))
@@ -1334,6 +1353,8 @@ class ReportStep(Step):
 
         created_paths: list[Path] = []
         prose: list[str] = []
+        if selection_origin == "experimental_candidate_assisted":
+            prose.append(SELECTION_DISCLOSURE[language])
         tables: dict[str, list[dict[str, str]]] = {}
         figure_paths: dict[str, list[str]] = {}
         try:

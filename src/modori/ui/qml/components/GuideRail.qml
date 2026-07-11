@@ -932,6 +932,9 @@ Rectangle {
                         return
                     }
                     if (root.commitSelectedIntent()) {
+                        uiController.markCurrentSelectionExperimental(
+                            root.experimentalPreparation
+                        )
                         uiController.rerunNow()
                     }
                 }

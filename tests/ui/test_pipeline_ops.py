@@ -549,6 +549,7 @@ def test_pipeline_operations_export_report_applies_dialog_options_to_report_step
             include_comparison=False,
             include_regression=True,
             include_figures=False,
+            selection_origin="experimental_candidate_assisted",
         )
     )
 
@@ -561,6 +562,7 @@ def test_pipeline_operations_export_report_applies_dialog_options_to_report_step
             "filename": "report.docx",
             "language": "en",
             "include_figures": False,
+            "selection_origin": "experimental_candidate_assisted",
         },
     )
 
