@@ -2,6 +2,37 @@
 
 Status: working release gate document for the `release/readiness-1-9` lane.
 
+Current host-verified candidate from 2026-07-11:
+
+- Scope excludes the separately managed analysis-recommendation and semantic-
+  recommendation research.
+- Source/tooling commit: `16fc2c4f5ab705a41f971f5942293577a604781c` on
+  `release/readiness-1-9`.
+- Slow statistical gate: `3 passed, 1021 deselected`.
+- Packaged host gate: `1029 passed, 4 skipped`, `package-tool-ok`,
+  `package-launch-smoke-ok`, `package-engine-smoke-ok`, and
+  `package-public-data-smoke-ok`.
+- Package:
+  `C:\Users\V\Desktop\TongTong\dist\Modori\Modori.exe`
+- SHA256:
+  `5580A8C7854AB1A60659B0FF31D47F211FB244607DDB8326DBF9488556C58F57`
+- Package build time: `2026-07-11 21:56:26 +09:00`.
+- Fresh engine smoke: `ok: true`, `status: ready`, 20 V1 checks.
+- Fresh public-data smoke: `ok: true`, `case_count: 10`.
+- Verification-tool incident: the initial package attempts were invalid because
+  a foreign editable worktree and then the R reference-runtime DLL path leaked
+  into PyInstaller/package execution. The tooling now pins the release workspace
+  source, limits R to reference-test commands, isolates packaged-runtime caches,
+  and rejects stale smoke output.
+- Evidence boundary: the verification-tool fix is committed at `16fc2c4` and
+  independently reviewed with no findings. Two attempts to launch the approved
+  elevated payload rebuild ended at the UAC prompt with `The user canceled the
+  operation`; the administrator transcript was not updated and no VM/VHDX
+  mutation occurred. Payload rebuild/attachment, clean Windows VM, visible guest
+  QA, and Word integration are pending. This is not yet a final release anchor.
+- Full incident and host evidence:
+  `docs\superpowers\handoffs\2026-07-11-current-head-release-verification-handoff.md`
+
 Latest release-lane evidence handoff:
 
 ```text
