@@ -129,8 +129,11 @@ Research OS digests.
 
 ### 4.2 Hashes
 
-Every durable hash is 32 raw SHA-256 bytes internally and lowercase 64-character hex
-on the wire.
+Hash framing decodes prior hashes and body digests to 32 raw SHA-256 bytes before
+concatenation. Public contracts, canonical wire documents, and the V1 SQLite schema
+store only validated lowercase 64-character hex. Textual hex is never concatenated
+directly into a hash domain. This representation keeps SQLite, Python, and bundle
+identity comparisons exact without changing the cryptographic preimage.
 
 ```text
 body_digest = SHA-256(canonical_event_body)
@@ -242,7 +245,8 @@ Derived tables:
 - `materialized_request`: canonical current QuestionSpec, EstimandSpec, StudySpec,
   evidence references, dataset fingerprint, available variable IDs, surface, and
   remaining question budget;
-- `import_sources`: source bundle digest and authority-free disposition.
+- `import_sources`: source bundle digest, verified foreign head hash, foreign project
+  ID, imported assertion IDs, and authority-free disposition.
 
 Derived rows may be replaced transactionally but are never accepted as evidence. They
 must match a replay from authoritative rows or be discarded and rebuilt.
@@ -257,7 +261,7 @@ Ledger storage uses a managed local durable root, never `cache_dir()` and never 
 fallback. The default Windows location is:
 
 ```text
-%LOCALAPPDATA%\Modori\projects\<local-project-id>\decision-ledger.sqlite3
+%LOCALAPPDATA%\Modori\projects\<sha256(local-project-id)[:32]>\decision-ledger.sqlite3
 ```
 
 If a secure absolute local directory cannot be established, ledger persistence is
@@ -284,10 +288,14 @@ extensions, shared cache, URI parameters supplied by callers, and attached datab
 are disabled. Runtime SQLite and Python versions are recorded in `ledger_meta` and
 release evidence.
 
-One private writer connection owns mutation. Reader connections use read-only mode.
-The runtime authorizer denies UPDATE or DELETE on authoritative tables and denies
-schema, attach, extension, and unsafe pragma operations after schema initialization.
-Migrations use a separately scoped migrator.
+One private writer connection owns mutation and the verified reads in this delivery;
+no separate reader connection is exposed. Any future reader connection must use
+read-only mode. The store records SQLite `data_version` after a complete verification.
+Public reads fail closed after another connection changes the file, and append compares
+that version plus the derived head and authoritative event tail before writing. The
+runtime authorizer denies UPDATE or DELETE on authoritative tables and denies schema,
+attach, extension, and unsafe pragma operations after schema initialization. Migrations
+use a separately scoped migrator.
 
 ### 5.5 Atomic append
 
@@ -301,13 +309,16 @@ An append request supplies:
 The store executes:
 
 1. `BEGIN IMMEDIATE`;
-2. read and compare the current head;
+2. compare the derived head, authoritative event tail, expected head, and verified
+   `data_version`;
 3. validate artifact identity and insert missing artifacts;
-4. validate sequence, project, previous hash, body digest, and event hash;
+4. validate sequence, project, previous hash, body digest, event hash, each event's
+   request-snapshot subject, and every typed artifact role;
 5. insert every event and subject relationship;
 6. replace the materialized snapshot;
 7. update the derived head;
-8. replay the affected state and compare it with the supplied snapshot;
+8. replay the affected state, verify import provenance representations, and compare it
+   with the supplied snapshot;
 9. `COMMIT`;
 10. return a receipt only after commit succeeds.
 
@@ -331,8 +342,10 @@ Before application rows are consumed:
 8. replay the authoritative chain;
 9. compare or rebuild derived rows.
 
-`PRAGMA integrity_check` runs before export, after an unclean-shutdown recovery test,
-and in the release gate. No heuristic database repair is allowed.
+`DecisionLedgerStore.export_evidence_bundle()` runs `PRAGMA integrity_check` before
+collecting a complete canonical bundle. The same full check runs after an
+unclean-shutdown recovery test and in the release gate. No heuristic database repair
+is allowed.
 
 ### 6.2 Failure states
 
@@ -340,8 +353,9 @@ and in the release gate. No heuristic database repair is allowed.
   records a local diagnostic code without raw content.
 - Any authoritative database, schema, artifact, or chain failure quarantines the whole
   ledger. The original file is not modified.
-- A quarantined ledger returns a typed `memory_unavailable` result. The calculation
-  pipeline and deterministic no-memory Research OS path remain available.
+- `open_decision_memory()` returns a closed `MemoryOpenResult`: either a verified live
+  store or `memory_unavailable` with a path-free reason code. The calculation pipeline
+  and deterministic no-memory Research OS path remain available.
 - Undo creates `decision_retracted`; it never deletes an event.
 - Clear-memory destroys the entire per-project ledger through a separately confirmed
   product operation. V1 makes no forensic secure-erasure claim.
@@ -422,14 +436,9 @@ rich content.
 ### 7.3 Quarantine stages
 
 ```text
-received
-  -> structurally_valid
-  -> self_consistent
-  -> assertion_ready
-  -> locally_confirmed
-
-Any failure -> rejected
-Any unresolved semantic conflict -> held
+internal checks: received -> structurally_valid -> self_consistent
+terminal import result: assertion_ready | held | rejected
+local-only follow-up: locally_confirmed
 ```
 
 - `structurally_valid` means only that bytes, budgets, and schemas passed.
@@ -437,6 +446,8 @@ Any unresolved semantic conflict -> held
   themselves.
 - `assertion_ready` means applicable identifiers and versions can be compared with the
   local project. It still grants no C1 authority.
+- `held` includes dataset mismatch, foreign conflict or staleness, and a valid bundle
+  that contains no importable proposition. It carries no partial assertions.
 - `locally_confirmed` is not an imported state. It exists only after a new local answer
   event is created.
 
@@ -458,6 +469,8 @@ the foreign ID, the importer never merges, overwrites, or resumes that chain.
 | `user_confirmed` fact | imported assertion; cannot narrow C1 admissible domain |
 | observed physical fact | discarded and recomputed from local dataset |
 | inferred or lexical fact | imported assertion for question planning only |
+| unknown fact | discarded because it asserts no value |
+| applicable `not_applicable` fact | imported assertion only; never local authority |
 | conflict or stale fact | held conflict/stale evidence only |
 | passport or recommendation | historical artifact only; locally re-resolved |
 | route | revalidated against the current local route catalog |
@@ -470,22 +483,22 @@ can change that rule.
 
 ### 8.3 Local promotion
 
-The promotion coordinator accepts a `self_consistent` quarantine result and local
-dataset context. It:
+The persistence coordinator accepts only an `assertion_ready` quarantine result and
+matching local dataset context. In this delivery it:
 
-1. allocates a new local project identity;
+1. requires a caller-allocated fresh local project identity and an empty local ledger;
 2. records one `project_created` event;
-3. records one `import_accepted_as_assertions` event containing only the source bundle
-   digest, source head hash, and sanitized imported subject digests;
+3. records one `import_accepted_as_assertions` event containing the foreign project
+   ID, source bundle digest, source head hash, sanitized imported subject digests, and
+   the unchanged local request-snapshot reference;
 4. stores foreign fact values only as `ImportedAssertion` artifacts outside the active
    `Fact` graph;
 5. leaves a caller-supplied, locally constructed ResearchRequest unchanged, including
    its locally recomputed observations and unknown human-owned facts;
-6. runs the current local resolver on that unchanged request;
-7. asks a neutral local clarification for any decision-changing human-owned fact,
-   without preselecting the imported value;
-8. records a normal local `clarification_answered` event if the user answers;
-9. records `revision_accepted` when acceptance is required.
+The separately reviewable product orchestration, excluded from this storage slice,
+then runs the current local resolver on the unchanged request, asks a neutral local
+clarification without preselecting the imported value, and uses the ordinary local
+`clarification_answered` and `revision_accepted` transitions if the user answers.
 
 Keeping imported proposals outside the active `Fact` graph is stricter than adding an
 `IMPORTED_ASSERTION` Fact state: it makes accidental satisfaction of any present or
