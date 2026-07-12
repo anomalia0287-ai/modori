@@ -245,7 +245,8 @@ model guess repairs a stale fact.
 Address-specific cardinality:
 
 - outcome, focal predictor, and group: exactly one variable;
-- repeated-measure role: at least two variables;
+- repeated-measure role: zero or at least two variables; empty explicitly means no
+  repeated-measure set exists;
 - repeated-measure order: at least two variables;
 - weight and cluster: zero or more variables;
 - ordered variables cannot contain duplicates.

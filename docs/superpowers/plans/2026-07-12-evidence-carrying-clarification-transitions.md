@@ -271,7 +271,7 @@ Run transition tests and ruff. Commit message: `feat: validate clarification rev
 
 - [ ] **Step 1: Write one mapping test for every P1 question ID**
 
-Parameterize all 15 IDs. Verify the exact target Fact becomes `USER_CONFIRMED` with answer-event provenance, or `UNKNOWN` with `user_not_sure` reason. Verify role insertion/replacement and address-specific cardinality.
+Parameterize all 15 IDs. Verify the exact target Fact becomes `USER_CONFIRMED` with answer-event provenance, or `UNKNOWN` with `user_not_sure` reason. Verify role insertion/replacement and address-specific cardinality, including zero-or-at-least-two for the repeated-measure role.
 
 - [ ] **Step 2: Write invalidation metamorphic tests**
 

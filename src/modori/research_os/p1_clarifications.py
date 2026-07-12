@@ -3,6 +3,9 @@ from __future__ import annotations
 from modori.research_os.clarification import (
     AnswerChoice,
     AnswerKind,
+    BranchMatchKind,
+    ClarificationBranch,
+    ClarificationLifecycle,
     ClarificationRegistry,
     ClarificationSpec,
     ClarificationTrigger,
@@ -25,7 +28,50 @@ def _question(
     *,
     choices: tuple[AnswerChoice, ...] = (),
     triggers: tuple[ClarificationTrigger, ...],
+    dependencies: tuple[str, ...] = (),
 ) -> ClarificationSpec:
+    if choices:
+        branches = tuple(
+            ClarificationBranch(
+                branch_id=f"choice_{choice.value}",
+                match_kind=BranchMatchKind.CHOICE_VALUES,
+                choice_values=(choice.value,),
+                effects=triggers,
+            )
+            for choice in choices
+        )
+    elif answer_kind is AnswerKind.VARIABLE_MULTI:
+        branches = (
+            ClarificationBranch(
+                branch_id="empty_variables",
+                match_kind=BranchMatchKind.EMPTY_VARIABLES,
+                choice_values=(),
+                effects=triggers,
+            ),
+            ClarificationBranch(
+                branch_id="nonempty_variables",
+                match_kind=BranchMatchKind.NONEMPTY_VARIABLES,
+                choice_values=(),
+                effects=triggers,
+            ),
+        )
+    else:
+        branches = (
+            ClarificationBranch(
+                branch_id="answered",
+                match_kind=BranchMatchKind.ANSWERED,
+                choice_values=(),
+                effects=triggers,
+            ),
+        )
+    branches += (
+        ClarificationBranch(
+            branch_id="not_sure",
+            match_kind=BranchMatchKind.NOT_SURE,
+            choice_values=(),
+            effects=triggers,
+        ),
+    )
     return ClarificationSpec(
         question_id=question_id,
         version=1,
@@ -38,6 +84,9 @@ def _question(
         choices=choices,
         triggers=triggers,
         not_sure_enabled=True,
+        dependencies=dependencies,
+        branches=branches,
+        lifecycle=ClarificationLifecycle.ACTIVE,
     )
 
 
@@ -77,6 +126,7 @@ def _questions() -> tuple[ClarificationSpec, ...]:
                 ),
             ),
             triggers=method_estimand,
+            dependencies=("estimand.template",),
         ),
         _question(
             "confirm_causal_intent",
@@ -98,6 +148,7 @@ def _questions() -> tuple[ClarificationSpec, ...]:
                 ClarificationTrigger.ACTION_CHANGE,
                 ClarificationTrigger.CLAIM_BOUNDARY_CHANGE,
             ),
+            dependencies=("question.research_goal",),
         ),
         _question(
             "confirm_claim_basis",
@@ -120,6 +171,11 @@ def _questions() -> tuple[ClarificationSpec, ...]:
                 ClarificationTrigger.ACTION_CHANGE,
                 ClarificationTrigger.CLAIM_BOUNDARY_CHANGE,
             ),
+            dependencies=(
+                "question.research_goal",
+                "question.causal_intent",
+                "estimand.template",
+            ),
         ),
         _question(
             "confirm_cluster_use",
@@ -133,6 +189,10 @@ def _questions() -> tuple[ClarificationSpec, ...]:
                 ClarificationTrigger.ACTION_CHANGE,
                 ClarificationTrigger.DESIGN_CHANGE,
                 ClarificationTrigger.DATA_POLICY_CHANGE,
+            ),
+            dependencies=(
+                "study.design_family",
+                "study.sampling_design",
             ),
         ),
         _question(
@@ -152,6 +212,7 @@ def _questions() -> tuple[ClarificationSpec, ...]:
                 _choice("not_applicable", "비교가 연구목적이 아님", "No comparison is intended"),
             ),
             triggers=method_estimand,
+            dependencies=("estimand.template",),
         ),
         _question(
             "confirm_dependence",
@@ -169,6 +230,10 @@ def _questions() -> tuple[ClarificationSpec, ...]:
                 ClarificationTrigger.METHOD_IDENTITY_CHANGE,
                 ClarificationTrigger.DESIGN_CHANGE,
             ),
+            dependencies=(
+                "study.data_layout",
+                "study.temporal_structure",
+            ),
         ),
         _question(
             "confirm_effect_scale",
@@ -184,6 +249,7 @@ def _questions() -> tuple[ClarificationSpec, ...]:
                 _choice("correlation", "두 수치가 함께 변하는 정도", "Degree to which two numeric variables co-vary"),
             ),
             triggers=method_estimand,
+            dependencies=("estimand.template",),
         ),
         _question(
             "confirm_estimand_template",
@@ -201,6 +267,7 @@ def _questions() -> tuple[ClarificationSpec, ...]:
                 _choice("association", "두 변수의 관계를 요약", "Summarize a relationship between two variables"),
             ),
             triggers=action_estimand,
+            dependencies=("question.research_goal",),
         ),
         _question(
             "confirm_focal_predictor_role",
@@ -214,6 +281,7 @@ def _questions() -> tuple[ClarificationSpec, ...]:
                 ClarificationTrigger.METHOD_IDENTITY_CHANGE,
                 ClarificationTrigger.ROLE_CHANGE,
             ),
+            dependencies=("estimand.template",),
         ),
         _question(
             "confirm_group_role",
@@ -227,6 +295,7 @@ def _questions() -> tuple[ClarificationSpec, ...]:
                 ClarificationTrigger.METHOD_IDENTITY_CHANGE,
                 ClarificationTrigger.ROLE_CHANGE,
             ),
+            dependencies=("estimand.template",),
         ),
         _question(
             "confirm_outcome_role",
@@ -240,6 +309,7 @@ def _questions() -> tuple[ClarificationSpec, ...]:
                 ClarificationTrigger.METHOD_IDENTITY_CHANGE,
                 ClarificationTrigger.ROLE_CHANGE,
             ),
+            dependencies=("estimand.template",),
         ),
         _question(
             "confirm_repeated_measure_order",
@@ -252,6 +322,10 @@ def _questions() -> tuple[ClarificationSpec, ...]:
             triggers=(
                 ClarificationTrigger.METHOD_IDENTITY_CHANGE,
                 ClarificationTrigger.DESIGN_CHANGE,
+            ),
+            dependencies=(
+                "study.dependence_structure",
+                "estimand.role.repeated_measure",
             ),
         ),
         _question(
@@ -266,6 +340,10 @@ def _questions() -> tuple[ClarificationSpec, ...]:
                 ClarificationTrigger.METHOD_IDENTITY_CHANGE,
                 ClarificationTrigger.ROLE_CHANGE,
                 ClarificationTrigger.DESIGN_CHANGE,
+            ),
+            dependencies=(
+                "estimand.template",
+                "study.dependence_structure",
             ),
         ),
         _question(
@@ -297,6 +375,7 @@ def _questions() -> tuple[ClarificationSpec, ...]:
                 ClarificationTrigger.DESIGN_CHANGE,
                 ClarificationTrigger.DATA_POLICY_CHANGE,
             ),
+            dependencies=("study.sampling_design",),
         ),
     )
 

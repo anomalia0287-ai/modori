@@ -35,6 +35,20 @@ class ClarificationTrigger(str, Enum):
     DATA_POLICY_CHANGE = "data_policy_change"
 
 
+class ClarificationLifecycle(str, Enum):
+    DRAFT = "draft"
+    ACTIVE = "active"
+    WITHDRAWN = "withdrawn"
+
+
+class BranchMatchKind(str, Enum):
+    CHOICE_VALUES = "choice_values"
+    EMPTY_VARIABLES = "empty_variables"
+    NONEMPTY_VARIABLES = "nonempty_variables"
+    ANSWERED = "answered"
+    NOT_SURE = "not_sure"
+
+
 _CHOICE_KINDS = {
     AnswerKind.YES_NO,
     AnswerKind.SINGLE_CHOICE,
@@ -128,6 +142,84 @@ class AnswerChoice:
 
 
 @dataclass(frozen=True)
+class ClarificationBranch:
+    branch_id: str
+    match_kind: BranchMatchKind
+    choice_values: tuple[str, ...]
+    effects: tuple[ClarificationTrigger, ...]
+
+    def __post_init__(self) -> None:
+        _require_text(self.branch_id, "branch_id")
+        if not _CHOICE_VALUE_RE.fullmatch(self.branch_id):
+            raise ClarificationError("branch_id must be a lowercase closed identifier")
+        if not isinstance(self.match_kind, BranchMatchKind):
+            raise ClarificationError("match_kind must be a BranchMatchKind")
+        if not isinstance(self.choice_values, tuple):
+            raise ClarificationError("choice_values must be a tuple")
+        for value in self.choice_values:
+            _require_text(value, "branch choice value")
+            if not _CHOICE_VALUE_RE.fullmatch(value):
+                raise ClarificationError(
+                    "branch choice value must be a lowercase closed identifier"
+                )
+        if len(set(self.choice_values)) != len(self.choice_values):
+            raise ClarificationError("branch choice_values cannot contain duplicates")
+        if self.match_kind is BranchMatchKind.CHOICE_VALUES:
+            if not self.choice_values:
+                raise ClarificationError(
+                    "choice_values branch requires at least one choice"
+                )
+        elif self.choice_values:
+            raise ClarificationError(
+                f"{self.match_kind.value} branch cannot carry choice_values"
+            )
+        if not isinstance(self.effects, tuple) or not self.effects:
+            raise ClarificationError("branch effects must be a non-empty tuple")
+        if any(not isinstance(effect, ClarificationTrigger) for effect in self.effects):
+            raise ClarificationError(
+                "branch effects must contain ClarificationTrigger values"
+            )
+        if len(set(self.effects)) != len(self.effects):
+            raise ClarificationError("branch effects cannot contain duplicates")
+
+    def to_mapping(self) -> dict[str, Any]:
+        return {
+            "branch_id": self.branch_id,
+            "match_kind": self.match_kind.value,
+            "choice_values": list(self.choice_values),
+            "effects": [effect.value for effect in self.effects],
+        }
+
+    @classmethod
+    def from_mapping(cls, payload: Mapping[str, Any]) -> ClarificationBranch:
+        payload = _require_mapping(payload, "ClarificationBranch")
+        _require_exact_keys(
+            payload,
+            frozenset({"branch_id", "match_kind", "choice_values", "effects"}),
+            "ClarificationBranch",
+        )
+        raw_values = payload["choice_values"]
+        raw_effects = payload["effects"]
+        if not isinstance(raw_values, list):
+            raise ClarificationError("branch choice_values must be a list")
+        if not isinstance(raw_effects, list):
+            raise ClarificationError("branch effects must be a list")
+        return cls(
+            branch_id=_require_text(payload["branch_id"], "branch_id"),
+            match_kind=_decode_enum(
+                BranchMatchKind,
+                payload["match_kind"],
+                "branch match_kind",
+            ),  # type: ignore[arg-type]
+            choice_values=tuple(
+                _require_text(value, "branch choice value") for value in raw_values
+            ),
+            effects=tuple(
+                _decode_enum(ClarificationTrigger, effect, "branch effect")
+                for effect in raw_effects
+            ),  # type: ignore[arg-type]
+        )
+@dataclass(frozen=True)
 class ClarificationSpec:
     question_id: str
     version: int
@@ -140,6 +232,9 @@ class ClarificationSpec:
     choices: tuple[AnswerChoice, ...]
     triggers: tuple[ClarificationTrigger, ...]
     not_sure_enabled: bool
+    dependencies: tuple[str, ...]
+    branches: tuple[ClarificationBranch, ...]
+    lifecycle: ClarificationLifecycle
 
     def __post_init__(self) -> None:
         _require_text(self.question_id, "question_id")
@@ -180,6 +275,121 @@ class ClarificationSpec:
             raise ClarificationError("clarification has a duplicate trigger")
         if self.not_sure_enabled is not True:
             raise ClarificationError("not_sure_enabled must be true")
+        self._validate_dependencies()
+        self._validate_branches(values)
+
+    def _validate_dependencies(self) -> None:
+        if not isinstance(self.dependencies, tuple):
+            raise ClarificationError("dependencies must be a tuple")
+        for dependency in self.dependencies:
+            _require_text(dependency, "dependency")
+            if not _REFERENCE_RE.fullmatch(dependency) or "." not in dependency:
+                raise ClarificationError(
+                    "dependency must be a dotted lowercase address"
+                )
+        if len(set(self.dependencies)) != len(self.dependencies):
+            raise ClarificationError("clarification has a duplicate dependency")
+        if self.fact_address in self.dependencies:
+            raise ClarificationError("clarification cannot depend on its own fact")
+
+    def _validate_branches(self, choice_values: tuple[str, ...]) -> None:
+        if not isinstance(self.lifecycle, ClarificationLifecycle):
+            raise ClarificationError("lifecycle must be a ClarificationLifecycle")
+        if not isinstance(self.branches, tuple):
+            raise ClarificationError("branches must be a tuple")
+        if any(not isinstance(branch, ClarificationBranch) for branch in self.branches):
+            raise ClarificationError(
+                "branches must contain ClarificationBranch values"
+            )
+        branch_ids = tuple(branch.branch_id for branch in self.branches)
+        if len(set(branch_ids)) != len(branch_ids):
+            raise ClarificationError("clarification has a duplicate branch_id")
+        for branch in self.branches:
+            if not set(branch.effects).issubset(self.triggers):
+                raise ClarificationError(
+                    "branch effects must be declared by clarification triggers"
+                )
+        if self.lifecycle is not ClarificationLifecycle.ACTIVE:
+            return
+        not_sure_count = sum(
+            branch.match_kind is BranchMatchKind.NOT_SURE
+            for branch in self.branches
+        )
+        if not_sure_count != 1:
+            raise ClarificationError(
+                "active clarification requires exactly one not_sure branch"
+            )
+        match_kinds = {branch.match_kind for branch in self.branches}
+        if self.answer_kind in _CHOICE_KINDS:
+            covered = tuple(
+                value
+                for branch in self.branches
+                if branch.match_kind is BranchMatchKind.CHOICE_VALUES
+                for value in branch.choice_values
+            )
+            if len(set(covered)) != len(covered):
+                raise ClarificationError("choice is covered by multiple branches")
+            unknown = sorted(set(covered) - set(choice_values))
+            if unknown:
+                raise ClarificationError(
+                    f"branch covers unregistered choice(s): {', '.join(unknown)}"
+                )
+            missing = sorted(set(choice_values) - set(covered))
+            if missing:
+                raise ClarificationError(
+                    f"active clarification has uncovered choice(s): {', '.join(missing)}"
+                )
+            forbidden = match_kinds - {
+                BranchMatchKind.CHOICE_VALUES,
+                BranchMatchKind.NOT_SURE,
+            }
+            if forbidden:
+                raise ClarificationError(
+                    "choice clarification has an incompatible branch kind"
+                )
+        elif self.answer_kind is AnswerKind.VARIABLE_MULTI:
+            for required in (
+                BranchMatchKind.EMPTY_VARIABLES,
+                BranchMatchKind.NONEMPTY_VARIABLES,
+            ):
+                count = sum(
+                    branch.match_kind is required for branch in self.branches
+                )
+                if count == 0:
+                    raise ClarificationError(
+                        f"variable_multi requires a {required.value} branch"
+                    )
+                if count != 1:
+                    raise ClarificationError(
+                        f"variable_multi requires exactly one {required.value} branch"
+                    )
+            allowed = {
+                BranchMatchKind.EMPTY_VARIABLES,
+                BranchMatchKind.NONEMPTY_VARIABLES,
+                BranchMatchKind.NOT_SURE,
+            }
+            if match_kinds - allowed:
+                raise ClarificationError(
+                    "variable_multi has an incompatible branch kind"
+                )
+        else:
+            answered_count = sum(
+                branch.match_kind is BranchMatchKind.ANSWERED
+                for branch in self.branches
+            )
+            if answered_count == 0:
+                raise ClarificationError(
+                    "open clarification requires an answered branch"
+                )
+            if answered_count != 1:
+                raise ClarificationError(
+                    "open clarification requires exactly one answered branch"
+                )
+            allowed = {BranchMatchKind.ANSWERED, BranchMatchKind.NOT_SURE}
+            if match_kinds - allowed:
+                raise ClarificationError(
+                    "open clarification has an incompatible branch kind"
+                )
 
     def _validate_method_neutrality(self) -> None:
         combined = " ".join(
@@ -203,6 +413,9 @@ class ClarificationSpec:
             "choices": [choice.to_mapping() for choice in self.choices],
             "triggers": [trigger.value for trigger in self.triggers],
             "not_sure_enabled": self.not_sure_enabled,
+            "dependencies": list(self.dependencies),
+            "branches": [branch.to_mapping() for branch in self.branches],
+            "lifecycle": self.lifecycle.value,
         }
 
     @classmethod
@@ -221,6 +434,9 @@ class ClarificationSpec:
                 "choices",
                 "triggers",
                 "not_sure_enabled",
+                "dependencies",
+                "branches",
+                "lifecycle",
             }
         )
         _require_exact_keys(payload, allowed, "ClarificationSpec")
@@ -228,10 +444,16 @@ class ClarificationSpec:
             raise ClarificationError("version must be a positive integer")
         raw_choices = payload["choices"]
         raw_triggers = payload["triggers"]
+        raw_dependencies = payload["dependencies"]
+        raw_branches = payload["branches"]
         if not isinstance(raw_choices, list):
             raise ClarificationError("choices must be a list")
         if not isinstance(raw_triggers, list):
             raise ClarificationError("triggers must be a list")
+        if not isinstance(raw_dependencies, list):
+            raise ClarificationError("dependencies must be a list")
+        if not isinstance(raw_branches, list):
+            raise ClarificationError("branches must be a list")
         if type(payload["not_sure_enabled"]) is not bool:
             raise ClarificationError("not_sure_enabled must be a boolean")
         return cls(
@@ -256,6 +478,21 @@ class ClarificationSpec:
                 for item in raw_triggers
             ),  # type: ignore[arg-type]
             not_sure_enabled=payload["not_sure_enabled"],
+            dependencies=tuple(
+                _require_text(dependency, "dependency")
+                for dependency in raw_dependencies
+            ),
+            branches=tuple(
+                ClarificationBranch.from_mapping(
+                    _require_mapping(branch, "ClarificationBranch")
+                )
+                for branch in raw_branches
+            ),
+            lifecycle=_decode_enum(
+                ClarificationLifecycle,
+                payload["lifecycle"],
+                "lifecycle",
+            ),  # type: ignore[arg-type]
         )
 
     def digest(self) -> str:
