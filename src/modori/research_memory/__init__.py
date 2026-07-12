@@ -23,12 +23,23 @@ from modori.research_memory.ledger_contracts import (
     LedgerReceipt,
     ResearchRequestSnapshot,
 )
+from modori.research_memory.ledger_store import (
+    DecisionLedgerStore,
+    LedgerConflictError,
+    LedgerIntegrityError,
+    LedgerPathError,
+    LedgerRuntimeError,
+    LedgerStoreError,
+    LedgerVerificationReport,
+    default_ledger_path,
+)
 
 __all__ = [
     "CANONICALIZATION_ID",
     "HASH_ALGORITHM",
     "ZERO_HASH",
     "CanonicalizationError",
+    "DecisionLedgerStore",
     "ImportedAssertion",
     "ImportSourceRecord",
     "LedgerArtifact",
@@ -38,10 +49,17 @@ __all__ = [
     "LedgerEvent",
     "LedgerEventKind",
     "LedgerHead",
+    "LedgerConflictError",
+    "LedgerIntegrityError",
+    "LedgerPathError",
     "LedgerReceipt",
+    "LedgerRuntimeError",
+    "LedgerStoreError",
+    "LedgerVerificationReport",
     "ResearchRequestSnapshot",
     "artifact_id",
     "canonical_bytes",
     "canonical_digest",
+    "default_ledger_path",
     "event_hash",
 ]

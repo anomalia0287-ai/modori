@@ -1,0 +1,296 @@
+from __future__ import annotations
+
+from pathlib import Path
+import sqlite3
+
+import pytest
+
+import modori.research_memory.ledger_store as ledger_store
+from modori.research_memory.canonical import ZERO_HASH
+from modori.research_memory.ledger_contracts import (
+    LedgerArtifactKind,
+    LedgerCommit,
+    LedgerEvent,
+    LedgerEventKind,
+    LedgerHead,
+    ResearchRequestSnapshot,
+)
+from modori.research_memory.ledger_store import (
+    DecisionLedgerStore,
+    LedgerConflictError,
+    LedgerIntegrityError,
+    LedgerPathError,
+    LedgerRuntimeError,
+    default_ledger_path,
+)
+from modori.research_os import ResearchRequest
+from tests.test_research_memory_ledger_contracts import _request
+
+
+def _path(tmp_path: Path) -> Path:
+    return (tmp_path / "owned-project" / "decision-ledger.sqlite3").resolve()
+
+
+def _genesis_commit(request: ResearchRequest) -> LedgerCommit:
+    snapshot, artifacts = ResearchRequestSnapshot.capture(request)
+    snapshot_artifact = next(
+        artifact
+        for artifact in artifacts
+        if artifact.artifact_kind is LedgerArtifactKind.REQUEST_SNAPSHOT
+    )
+    event = LedgerEvent.create(
+        project_id=snapshot.project_id,
+        event_id="event:project:1",
+        sequence=1,
+        event_kind=LedgerEventKind.PROJECT_CREATED,
+        subject_artifact_ids=tuple(sorted(item.artifact_id for item in artifacts)),
+        payload={
+            "resulting_snapshot_artifact_id": snapshot_artifact.artifact_id,
+        },
+        previous_event_hash=ZERO_HASH,
+        recorded_at_utc=None,
+    )
+    return LedgerCommit(
+        expected_head=LedgerHead.genesis(),
+        events=(event,),
+        artifacts=artifacts,
+        resulting_snapshot_artifact_id=snapshot_artifact.artifact_id,
+    )
+
+
+def _invalid_duplicate_event_commit(store: DecisionLedgerStore) -> LedgerCommit:
+    request = store.load_request()
+    _, artifacts = ResearchRequestSnapshot.capture(request)
+    snapshot = next(
+        artifact
+        for artifact in artifacts
+        if artifact.artifact_kind is LedgerArtifactKind.REQUEST_SNAPSHOT
+    )
+    head = store.head
+    event = LedgerEvent.create(
+        project_id=store.project_id,
+        event_id="event:project:1",
+        sequence=head.sequence + 1,
+        event_kind=LedgerEventKind.FACT_INVALIDATED,
+        subject_artifact_ids=(snapshot.artifact_id,),
+        payload={
+            "fact_address": "study.dependence_structure",
+            "reason_code": "test_invalidation",
+            "resulting_snapshot_artifact_id": snapshot.artifact_id,
+        },
+        previous_event_hash=head.event_hash,
+        recorded_at_utc=None,
+    )
+    return LedgerCommit(
+        expected_head=head,
+        events=(event,),
+        artifacts=artifacts,
+        resulting_snapshot_artifact_id=snapshot.artifact_id,
+    )
+
+
+def test_store_rejects_relative_unc_and_wrong_suffix_paths(tmp_path: Path) -> None:
+    with pytest.raises(LedgerPathError, match="absolute"):
+        DecisionLedgerStore.create(Path("relative.sqlite3"), "project-1")
+    with pytest.raises(LedgerPathError, match="local"):
+        DecisionLedgerStore.create(
+            Path(r"\\server\share\decision-ledger.sqlite3"),
+            "project-1",
+        )
+    with pytest.raises(LedgerPathError, match="sqlite3"):
+        DecisionLedgerStore.create(tmp_path / "ledger.db", "project-1")
+
+
+def test_store_requires_supported_python_sqlite_controls(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(ledger_store, "_has_required_runtime", lambda: False)
+    with pytest.raises(LedgerRuntimeError, match="Python 3.12"):
+        DecisionLedgerStore.create(_path(tmp_path), "project-1")
+
+
+def test_store_refuses_existing_or_missing_target_by_operation(tmp_path: Path) -> None:
+    path = _path(tmp_path)
+    path.parent.mkdir(parents=True)
+    path.write_bytes(b"not sqlite")
+    with pytest.raises(LedgerPathError, match="already exists"):
+        DecisionLedgerStore.create(path, "project-1")
+    with pytest.raises(LedgerPathError, match="does not exist"):
+        DecisionLedgerStore.open(_path(tmp_path / "missing"), "project-1")
+
+
+def test_default_path_uses_hashed_project_directory(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path.resolve()))
+    first = default_ledger_path("project-1")
+    second = default_ledger_path("project-2")
+    assert first.name == "decision-ledger.sqlite3"
+    assert first.parent.parent.name == "projects"
+    assert first.parent != second.parent
+    assert "project-1" not in str(first)
+
+
+def test_create_applies_required_connection_controls(tmp_path: Path) -> None:
+    with DecisionLedgerStore.create(_path(tmp_path), "project-1") as store:
+        connection = store._connection
+        assert connection.execute("PRAGMA journal_mode").fetchone()[0] == "wal"
+        assert connection.execute("PRAGMA synchronous").fetchone()[0] == 2
+        assert connection.execute("PRAGMA foreign_keys").fetchone()[0] == 1
+        assert connection.execute("PRAGMA trusted_schema").fetchone()[0] == 0
+        assert connection.execute("PRAGMA cell_size_check").fetchone()[0] == 1
+        assert connection.execute("PRAGMA mmap_size").fetchone()[0] == 0
+        assert connection.getlimit(sqlite3.SQLITE_LIMIT_ATTACHED) == 0
+        assert connection.getconfig(sqlite3.SQLITE_DBCONFIG_DEFENSIVE) is True
+
+
+def test_append_commits_events_artifacts_and_snapshot_atomically(
+    tmp_path: Path,
+) -> None:
+    request = _request(with_evidence=True)
+    with DecisionLedgerStore.create(_path(tmp_path), "project-1") as store:
+        receipt = store.append(_genesis_commit(request))
+        assert receipt.head.sequence == 1
+        assert store.load_request() == request
+        assert tuple(event.sequence for event in store.events()) == (1,)
+        report = store.verify(full_integrity=True)
+        assert report.event_count == 1
+        assert report.artifact_count == 5
+        assert report.full_integrity_check is True
+
+
+def test_stale_expected_head_rolls_back_every_write(tmp_path: Path) -> None:
+    path = _path(tmp_path)
+    first = DecisionLedgerStore.create(path, "project-1")
+    second = DecisionLedgerStore.open(path, "project-1")
+    try:
+        commit = _genesis_commit(_request())
+        first.append(commit)
+        with pytest.raises(LedgerConflictError, match="head"):
+            second.append(commit)
+        assert second.verify().head == first.head
+        assert second.load_request() == _request()
+    finally:
+        first.close()
+        second.close()
+
+
+def test_constraint_failure_rolls_back_authoritative_and_derived_rows(
+    tmp_path: Path,
+) -> None:
+    with DecisionLedgerStore.create(_path(tmp_path), "project-1") as store:
+        store.append(_genesis_commit(_request()))
+        before = store.verify()
+        with pytest.raises(LedgerIntegrityError, match="append"):
+            store.append(_invalid_duplicate_event_commit(store))
+        after = store.verify()
+        assert after == before
+        assert len(store.events()) == 1
+
+
+@pytest.mark.parametrize("corruption", ["head", "materialized"])
+def test_open_rebuilds_only_derived_state(
+    tmp_path: Path,
+    corruption: str,
+) -> None:
+    path = _path(tmp_path)
+    request = _request()
+    with DecisionLedgerStore.create(path, "project-1") as store:
+        store.append(_genesis_commit(request))
+    connection = sqlite3.connect(path)
+    if corruption == "head":
+        connection.execute(
+            "UPDATE ledger_head SET sequence=0,event_hash=?",
+            (ZERO_HASH,),
+        )
+    else:
+        question_id = connection.execute(
+            "SELECT artifact_id FROM ledger_artifacts WHERE artifact_kind='question_spec'"
+        ).fetchone()[0]
+        connection.execute(
+            "UPDATE materialized_request SET snapshot_artifact_id=?",
+            (question_id,),
+        )
+    connection.commit()
+    connection.close()
+    with DecisionLedgerStore.open(path, "project-1") as reopened:
+        report = reopened.verify()
+        assert report.derived_rebuilt is False
+        assert reopened.load_request() == request
+        assert reopened.head.sequence == 1
+
+
+@pytest.mark.parametrize(
+    "corruption",
+    ["event", "artifact", "relationship", "metadata", "schema"],
+)
+def test_open_rejects_authoritative_or_schema_corruption(
+    tmp_path: Path,
+    corruption: str,
+) -> None:
+    path = _path(tmp_path)
+    with DecisionLedgerStore.create(path, "project-1") as store:
+        store.append(_genesis_commit(_request()))
+    connection = sqlite3.connect(path)
+    if corruption == "event":
+        connection.execute("UPDATE ledger_events SET event_hash=?", ("f" * 64,))
+    elif corruption == "artifact":
+        connection.execute(
+            "UPDATE ledger_artifacts SET canonical_body=? "
+            "WHERE artifact_kind='question_spec'",
+            (b"{}",),
+        )
+    elif corruption == "relationship":
+        connection.execute("DELETE FROM event_artifacts WHERE ordinal=0")
+    elif corruption == "metadata":
+        connection.execute(
+            "UPDATE ledger_meta SET project_id='different-project'"
+        )
+    else:
+        connection.execute("CREATE TABLE attacker(value TEXT) STRICT")
+    connection.commit()
+    connection.close()
+    with pytest.raises(LedgerIntegrityError):
+        DecisionLedgerStore.open(path, "project-1")
+
+
+def test_open_binds_file_to_exact_local_project(tmp_path: Path) -> None:
+    path = _path(tmp_path)
+    with DecisionLedgerStore.create(path, "project-1"):
+        pass
+    with pytest.raises(LedgerIntegrityError, match="project"):
+        DecisionLedgerStore.open(path, "project-2")
+
+
+def test_runtime_authorizer_blocks_authoritative_rewrite_and_schema_change(
+    tmp_path: Path,
+) -> None:
+    with DecisionLedgerStore.create(_path(tmp_path), "project-1") as store:
+        store.append(_genesis_commit(_request()))
+        with pytest.raises(sqlite3.DatabaseError, match="authorized"):
+            store._connection.execute(
+                "UPDATE ledger_events SET event_hash=?",
+                ("f" * 64,),
+            )
+        with pytest.raises(sqlite3.DatabaseError, match="authorized"):
+            store._connection.execute("CREATE TABLE attacker(value TEXT)")
+
+
+def test_all_application_tables_are_strict_and_no_active_code_exists(
+    tmp_path: Path,
+) -> None:
+    with DecisionLedgerStore.create(_path(tmp_path), "project-1") as store:
+        table_list = store._connection.execute("PRAGMA table_list").fetchall()
+        application_tables = {
+            row[1]: row[5]
+            for row in table_list
+            if row[1] not in {"sqlite_schema", "sqlite_temp_schema"}
+        }
+        assert application_tables
+        assert set(application_tables.values()) == {1}
+        active = store._connection.execute(
+            "SELECT name FROM sqlite_schema WHERE type IN ('trigger','view')"
+        ).fetchall()
+        assert active == []
