@@ -39,6 +39,14 @@ from modori.research_memory.evidence_bundle import (
     EvidenceBundleErrorCode,
     EvidenceBundleLimits,
 )
+from modori.research_memory.quarantine import (
+    EvidenceBundleQuarantine,
+    QuarantineDisposition,
+    QuarantineFinding,
+    QuarantineReasonCode,
+    QuarantineResult,
+    QuarantineStage,
+)
 
 __all__ = [
     "CANONICALIZATION_ID",
@@ -50,6 +58,7 @@ __all__ = [
     "EvidenceBundleError",
     "EvidenceBundleErrorCode",
     "EvidenceBundleLimits",
+    "EvidenceBundleQuarantine",
     "ImportedAssertion",
     "ImportSourceRecord",
     "LedgerArtifact",
@@ -67,6 +76,11 @@ __all__ = [
     "LedgerStoreError",
     "LedgerVerificationReport",
     "ResearchRequestSnapshot",
+    "QuarantineDisposition",
+    "QuarantineFinding",
+    "QuarantineReasonCode",
+    "QuarantineResult",
+    "QuarantineStage",
     "artifact_id",
     "canonical_bytes",
     "canonical_digest",
