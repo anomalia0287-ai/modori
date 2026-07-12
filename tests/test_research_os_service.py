@@ -33,6 +33,10 @@ from modori.research_os.contracts import (
     UnitKind,
 )
 from modori.research_os.resolver import PrimaryAction, ProductSurface
+from modori.research_os.decision_evidence import (
+    DecisionEvidenceKind,
+    DecisionEvidenceRef,
+)
 from modori.research_os.service import (
     ResearchOsService,
     ResearchRequest,
@@ -518,3 +522,45 @@ def test_research_request_rejects_boolean_or_oversized_question_budget() -> None
         replace(request, question_budget_remaining=True)
     with pytest.raises(ResearchServiceError, match="cannot exceed 3"):
         replace(request, question_budget_remaining=4)
+
+
+def _evidence_ref(
+    sequence: int,
+    suffix: str,
+    *,
+    project_id: str = "project-1",
+) -> DecisionEvidenceRef:
+    fill = format(sequence, "x")[-1]
+    return DecisionEvidenceRef(
+        evidence_id=f"answer:evidence:{suffix}",
+        project_id=project_id,
+        evidence_kind=DecisionEvidenceKind.CLARIFICATION_ANSWER,
+        event_sequence=sequence,
+        evidence_digest=fill * 64,
+        subject_digests=("f" * 64,),
+    )
+
+
+def test_research_request_requires_unique_ordered_local_decision_evidence() -> None:
+    request = _independent_mean_request()
+    first = _evidence_ref(1, "first")
+    second = _evidence_ref(2, "second")
+
+    assert replace(
+        request,
+        decision_evidence_refs=(first, second),
+    ).decision_evidence_refs == (first, second)
+    with pytest.raises(ResearchServiceError, match="strictly increasing"):
+        replace(request, decision_evidence_refs=(second, first))
+    with pytest.raises(ResearchServiceError, match="repeat an evidence ID"):
+        replace(
+            request,
+            decision_evidence_refs=(first, replace(second, evidence_id=first.evidence_id)),
+        )
+    with pytest.raises(ResearchServiceError, match="project ID"):
+        replace(
+            request,
+            decision_evidence_refs=(
+                _evidence_ref(1, "wrong-project", project_id="project-2"),
+            ),
+        )

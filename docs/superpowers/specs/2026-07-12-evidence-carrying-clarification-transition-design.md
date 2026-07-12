@@ -246,7 +246,8 @@ Address-specific cardinality:
 
 - outcome, focal predictor, and group: exactly one variable;
 - repeated-measure role: zero or at least two variables; empty explicitly means no
-  repeated-measure set exists;
+  repeated-measure set exists and is stored as `not_applicable`, not an empty active
+  role;
 - repeated-measure order: at least two variables;
 - weight and cluster: zero or more variables;
 - ordered variables cannot contain duplicates.

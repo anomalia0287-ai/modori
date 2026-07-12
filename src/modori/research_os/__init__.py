@@ -102,6 +102,11 @@ from modori.research_os.service import (
     ResearchRequest,
     ResearchServiceError,
 )
+from modori.research_os.transition import (
+    ClarificationTransitionService,
+    RevisionCandidate,
+    TransitionError,
+)
 
 __all__ = [
     "AbstainPayload",
@@ -127,6 +132,7 @@ __all__ = [
     "ClarificationRegistry",
     "ClarificationSpec",
     "ClarificationTrigger",
+    "ClarificationTransitionService",
     "ClarifyPayload",
     "ComponentRevisionRef",
     "ContrastKind",
@@ -163,6 +169,7 @@ __all__ = [
     "ResolutionContext",
     "ResolutionDecision",
     "RevisionAcceptanceCertificate",
+    "RevisionCandidate",
     "ResolverError",
     "ResearchGoal",
     "RoleHint",
@@ -186,6 +193,7 @@ __all__ = [
     "TemporalStructure",
     "UnitKind",
     "TrustFloor",
+    "TransitionError",
     "canonical_digest",
     "build_p1_clarification_registry",
     "build_p1_method_space",

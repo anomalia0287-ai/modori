@@ -23,6 +23,7 @@ from modori.research_os.clarification import (
     ClarificationRegistry,
     ClarificationSpec,
 )
+from modori.research_os.decision_evidence import DecisionEvidenceRef
 from modori.research_os.method_space import (
     LifecycleStatus,
     MethodSpace,
@@ -87,6 +88,7 @@ class ResearchRequest:
     available_variable_ids: tuple[str, ...]
     surface: ProductSurface = ProductSurface.EXPERIMENTAL
     question_budget_remaining: int = 3
+    decision_evidence_refs: tuple[DecisionEvidenceRef, ...] = ()
 
     def __post_init__(self) -> None:
         if not isinstance(self.question, QuestionSpec):
@@ -123,6 +125,56 @@ class ResearchRequest:
             if variable_id != unicodedata.normalize("NFC", variable_id):
                 raise ResearchServiceError(
                     "available_variable_ids must use canonical NFC Unicode"
+                )
+        if not isinstance(self.decision_evidence_refs, tuple):
+            raise ResearchServiceError("decision_evidence_refs must be a tuple")
+        if any(
+            not isinstance(reference, DecisionEvidenceRef)
+            for reference in self.decision_evidence_refs
+        ):
+            raise ResearchServiceError(
+                "decision_evidence_refs must contain DecisionEvidenceRef values"
+            )
+        evidence_ids = tuple(
+            reference.evidence_id for reference in self.decision_evidence_refs
+        )
+        evidence_digests = tuple(
+            reference.evidence_digest for reference in self.decision_evidence_refs
+        )
+        sequences = tuple(
+            reference.event_sequence for reference in self.decision_evidence_refs
+        )
+        if len(set(evidence_ids)) != len(evidence_ids):
+            raise ResearchServiceError(
+                "decision_evidence_refs cannot repeat an evidence ID"
+            )
+        if len(set(evidence_digests)) != len(evidence_digests):
+            raise ResearchServiceError(
+                "decision_evidence_refs cannot repeat an evidence digest"
+            )
+        if sequences != tuple(sorted(sequences)) or len(set(sequences)) != len(
+            sequences
+        ):
+            raise ResearchServiceError(
+                "decision_evidence_refs must have strictly increasing event sequences"
+            )
+        if self.decision_evidence_refs:
+            project_ids = {
+                self.question.envelope.project_id,
+                self.estimand.envelope.project_id,
+                self.study.envelope.project_id,
+            }
+            if len(project_ids) != 1:
+                raise ResearchServiceError(
+                    "decision evidence requires aligned component project IDs"
+                )
+            project_id = next(iter(project_ids))
+            if any(
+                reference.project_id != project_id
+                for reference in self.decision_evidence_refs
+            ):
+                raise ResearchServiceError(
+                    "decision evidence project ID must match request components"
                 )
 
 
