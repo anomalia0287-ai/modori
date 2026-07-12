@@ -185,6 +185,60 @@ missing. For the V1 statistical coverage build, the packaged engine smoke JSON
 must also include `v1_statistics_smoke.ok: true` with every V1 statistical
 engine check marked `ok: true`.
 
+## Internal Installer Gate
+
+The installer gate is opt-in and does not change the default offline quality
+gate. Preflight the local Inno Setup toolchain and current packaged payload with:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\build_installer.py --check
+```
+
+Build the internal installer and exercise its installed lifecycle with:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\build_installer.py --with-installed-smoke
+```
+
+The same operations can be appended to the quality gate with
+`--with-installer-check` or with
+`--with-installer-build --with-installed-smoke`. Installed smoke requires the
+installer build. Do not combine `--with-package-build` and
+`--with-installer-build`, because the installer build already rebuilds and
+smoke-tests the package. Installer commands use the base environment; the R
+reference runtime remains limited to pytest and the slow statistical gate.
+
+This artifact contract is unsigned, offline, per-user, internal-only, and not a
+public-distribution trust claim. The manifest records `signed: false`; the Inno
+definition uses `PrivilegesRequired=lowest` and installs below
+`%LocalAppData%\Programs\Modori` without download or machine-wide integration.
+Passing these gates does not provide publisher authentication, code-signing
+trust, SmartScreen reputation, or approval for public distribution.
+
+Required installer identity and evidence:
+
+- Production AppId: `{430f4cea-53ca-4578-800c-f7ce1b6aead2}`.
+- Isolated lifecycle-smoke AppId: `{97d13afd-818d-40c5-80ee-ce53eea57c0c}`.
+- Payload paths must satisfy
+  `90 + 1 + longest_relative_path_chars <= 240`: a 90-character assumed
+  install root, one separator, and the measured longest relative payload path.
+- Repair smoke plants `{app}\Modori\orphan-stale-probe.bin`, reruns the same
+  installer, and requires that stale file to be removed while the current
+  payload remains healthy.
+- Downgrade smoke runs an isolated `0.0.9` probe, requires a nonzero result, and
+  verifies that the installed version and executable SHA256 remain unchanged.
+- A publishable clean-source build must produce immutable
+  `dist\installer\<build-id>\release-manifest.json` and
+  `dist\installer\<build-id>\SHA256SUMS.txt` evidence beside the installer. The
+  manifest records source identity, tool versions, AppId, measured payload-path
+  evidence, file sizes and hashes, and the installed-lifecycle result; the
+  checksum file records the final installer bytes.
+- Inno `[InstallDelete]` is deliberately narrow: repair deletes only the
+  installer-owned `{app}\Modori` payload tree. Product user state lives at
+  `%LocalAppData%\Modori\cache`, outside the install tree, and is not deleted by
+  repair or uninstall. Lifecycle smoke independently proves that an external
+  user-state sentinel survives uninstall before removing only its own sentinel.
+
 ## Release QA Runbook Gate
 
 Use `docs/specs/release-qa-runbook.md` as the standing procedure for release QA

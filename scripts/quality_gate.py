@@ -18,9 +18,17 @@ def quality_commands(
     include_pip_audit: bool = False,
     include_package_check: bool = False,
     include_package_build: bool = False,
+    include_installer_check: bool = False,
+    include_installer_build: bool = False,
+    include_installed_smoke: bool = False,
     include_packaged_launch: bool = False,
     include_slow_stats: bool = False,
 ) -> list[list[str]]:
+    if include_installed_smoke and not include_installer_build:
+        raise ValueError("Installed smoke requires installer build")
+    if include_package_build and include_installer_build:
+        raise ValueError("Installer build already rebuilds the package")
+
     commands = [
         ["-m", "compileall", "-q", "src", "tests", "scripts"],
         ["-m", "ruff", "check", "src", "tests", "scripts"],
@@ -31,8 +39,15 @@ def quality_commands(
     ]
     if include_package_check:
         commands.append(["scripts/package_windows.py", "--check"])
+    if include_installer_check:
+        commands.append(["scripts/build_installer.py", "--check"])
     if include_package_build:
         commands.append(["scripts/package_windows.py"])
+    if include_installer_build:
+        installer_command = ["scripts/build_installer.py"]
+        if include_installed_smoke:
+            installer_command.append("--with-installed-smoke")
+        commands.append(installer_command)
     if include_packaged_launch:
         commands.append(["scripts/package_launch_smoke.py"])
         commands.append(["scripts/package_engine_smoke.py"])
@@ -123,6 +138,21 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="Also build the Windows desktop package. This is slow.",
     )
     parser.add_argument(
+        "--with-installer-check",
+        action="store_true",
+        help="Also verify that the Inno Setup installer toolchain is installed.",
+    )
+    parser.add_argument(
+        "--with-installer-build",
+        action="store_true",
+        help="Also build the internal Windows installer. This rebuilds the package.",
+    )
+    parser.add_argument(
+        "--with-installed-smoke",
+        action="store_true",
+        help="Also run installed lifecycle smoke with the installer build.",
+    )
+    parser.add_argument(
         "--with-packaged-launch",
         action="store_true",
         help="Also smoke-test the packaged executable in offscreen mode.",
@@ -140,6 +170,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         include_pip_audit=args.with_pip_audit,
         include_package_check=args.with_package_check,
         include_package_build=args.with_package_build,
+        include_installer_check=args.with_installer_check,
+        include_installer_build=args.with_installer_build,
+        include_installed_smoke=args.with_installed_smoke,
         include_packaged_launch=args.with_packaged_launch,
         include_slow_stats=args.with_slow_stats,
     ):

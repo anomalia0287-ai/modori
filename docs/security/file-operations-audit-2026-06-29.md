@@ -2,7 +2,8 @@
 
 Scope: production Python files under `src/` and release scripts under `scripts/`
 that call direct filesystem helpers:
-`write_text`, `write_bytes`, `mkdir`, `unlink`, `replace`, `rmdir`, or `resolve`.
+`write_text`, `write_bytes`, `mkdir`, `unlink`, `replace`, `rmdir`, or `resolve`,
+plus the Inno Setup `[InstallDelete]` boundary.
 
 Guard: `tests/test_file_operation_audit.py` fails when a new product file starts
 using one of these operations without being added to this audited allowlist.
@@ -23,6 +24,10 @@ using one of these operations without being added to this audited allowlist.
 | `src/modori/steps/reporting.py` | `mkdir`, `resolve`, `unlink`, `rmdir` | `ReportStep` is not allowed in untrusted project JSON. Report paths reject direct output aliases, path separators in filenames, symlink output targets, and chart dirs outside `output_dir`. Failure cleanup deletes only created report/chart files under `output_dir` and removes the output directory only when this run created it. |
 | `src/modori/knowledge/loader.py` | `resolve` | Read-only package data root resolution. No mutation. |
 | `src/modori/ui/resources.py` | `resolve` | Read-only QML resource root resolution. No mutation. |
+| `scripts/build_installer.py` | `mkdir`, `replace`, `resolve`, `write_bytes` | The builder's direct writes stay in a unique `.tmp/installer-build/<build-id>-<uuid>` staging tree and are published by directory move to an immutable `dist/installer/<build-id>` directory that must not already exist. It invokes the separately audited package builder for `dist/Modori`; it does not delete user data. |
+| `scripts/installer_contract.py` | `write_text` | The contract measures source, payload-path, installer, and SHA256 evidence, then writes `release-manifest.json`, the smoke manifest, or `SHA256SUMS.txt` only to caller-selected staging paths. It does not select or delete user paths. |
+| `scripts/installer_smoke.py` | `mkdir`, `resolve`, `rmdir`, `unlink`, `write_bytes`, `write_text` | Lifecycle smoke writes only under a unique `.tmp/installer-smoke/run-<uuid>` tree. It plants and checks one fixed `{app}\Modori\orphan-stale-probe.bin` under the dedicated smoke install; after proving uninstall preserved external state, its direct delete removes only its own validated `user-state/sentinel.json` and empty directory. |
+| `installer/modori.iss` | `[InstallDelete]` | Repair cleanup deletes only the installer-owned `{app}\Modori` payload tree. It never targets product user state in `%LocalAppData%\Modori\cache`; that cache remains outside the per-user install tree and outside this delete boundary. |
 | `scripts/package_environment.py` | `mkdir`, `resolve` | Shared release-only environment boundary. It removes workspace R runtime directories from packaged build/run `PATH` values so R DLLs cannot contaminate the PySide6 package, and creates isolated Matplotlib, Modori cache, and settings paths under the workspace `.tmp` directory. It does not inspect or mutate user data. |
 | `scripts/package_windows.py` | `mkdir` | Local release-build setup under the workspace `.tmp` directory. Not user-data cleanup. |
 | `scripts/package_launch_smoke.py` | `mkdir`, `resolve` | Local smoke-test setup under the workspace `.tmp` directory and explicit executable/cwd normalization. Not product runtime deletion. |
@@ -35,6 +40,9 @@ using one of these operations without being added to this audited allowlist.
 
 - No new delete-capable product file operation is accepted without updating this
   audit and extending tests around its boundary.
+- Installer repair cleanup remains limited to `{app}\Modori`; the application
+  cache at `%LocalAppData%\Modori\cache` is user state and is never an
+  `[InstallDelete]` target.
 - `ReportStep`, table imports, and regression imports remain blocked from
   untrusted project JSON, so attacker-controlled project files cannot trigger
   report output writes or cleanup.

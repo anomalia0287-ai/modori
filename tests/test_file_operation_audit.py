@@ -5,6 +5,9 @@ from pathlib import Path
 
 
 AUDITED_FILE_OPERATION_FILES = {
+    "scripts/build_installer.py",
+    "scripts/installer_contract.py",
+    "scripts/installer_smoke.py",
     "scripts/quality_gate.py",
     "scripts/package_engine_smoke.py",
     "scripts/package_environment.py",

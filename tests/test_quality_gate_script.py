@@ -1,6 +1,8 @@
 import os
 from pathlib import Path
 
+import pytest
+
 from scripts import quality_gate
 from scripts.quality_gate import quality_commands, reference_environment
 
@@ -36,6 +38,32 @@ def test_quality_gate_can_opt_into_packaging_check() -> None:
     commands = quality_commands(include_package_check=True)
 
     assert ["scripts/package_windows.py", "--check"] in commands
+
+
+def test_quality_gate_can_check_installer_toolchain() -> None:
+    assert ["scripts/build_installer.py", "--check"] in quality_commands(
+        include_installer_check=True
+    )
+
+
+def test_quality_gate_builds_installer_with_optional_lifecycle() -> None:
+    assert ["scripts/build_installer.py"] in quality_commands(
+        include_installer_build=True
+    )
+    assert ["scripts/build_installer.py", "--with-installed-smoke"] in quality_commands(
+        include_installer_build=True,
+        include_installed_smoke=True,
+    )
+
+
+def test_quality_gate_rejects_installed_smoke_without_installer_build() -> None:
+    with pytest.raises(ValueError, match="requires installer build"):
+        quality_commands(include_installed_smoke=True)
+
+
+def test_quality_gate_rejects_duplicate_package_and_installer_builds() -> None:
+    with pytest.raises(ValueError, match="already rebuilds the package"):
+        quality_commands(include_package_build=True, include_installer_build=True)
 
 
 def test_quality_gate_can_opt_into_slow_statistics_gate() -> None:
