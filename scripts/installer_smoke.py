@@ -6,6 +6,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 import uuid
 import winreg
 from collections.abc import Callable, Sequence
@@ -32,6 +33,10 @@ SMOKE_ROOT = WORKSPACE / ".tmp" / "installer-smoke"
 UNINSTALL_ROOT = r"Software\Microsoft\Windows\CurrentVersion\Uninstall"
 _VERSION_PATTERN = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+$")
 _RUN_ROOT_PATTERN = re.compile(r"^r-[0-9a-f]{12}$")
+_UNINSTALL_POLL_INTERVAL_SECONDS = 0.05
+# Inno 6.7.3's second phase completed about 1.1 seconds after signaling the
+# first phase; keep the condition wait finite with ample evidence-safe margin.
+_UNINSTALL_WAIT_TIMEOUT_SECONDS = 10.0
 
 
 def uninstall_key(app_id: str = SMOKE_APP_ID) -> str:
@@ -158,14 +163,33 @@ class LifecycleAdapter:
             raise RuntimeError("Downgrade attempt changed the installed executable")
 
     def require_uninstalled(self) -> None:
-        if read_smoke_registration() is not None:
-            raise RuntimeError("Smoke uninstall registration remains")
-        if (
-            (self.install_dir / "Modori").exists()
-            or self.uninstaller.exists()
-            or self.start_menu_shortcut.exists()
-        ):
-            raise RuntimeError("Smoke installer-owned files remain")
+        deadline = time.monotonic() + _UNINSTALL_WAIT_TIMEOUT_SECONDS
+        while True:
+            remaining: list[str] = []
+            if read_smoke_registration() is not None:
+                remaining.append(
+                    f"registry=HKEY_CURRENT_USER\\{uninstall_key()}"
+                )
+            for name, path in (
+                ("Modori subtree", self.install_dir / "Modori"),
+                ("uninstaller", self.uninstaller),
+                ("Start Menu shortcut", self.start_menu_shortcut),
+            ):
+                if path.exists():
+                    remaining.append(f"{name}={path}")
+            if not remaining:
+                return
+
+            remaining_seconds = deadline - time.monotonic()
+            if remaining_seconds <= 0:
+                raise RuntimeError(
+                    "Smoke installer-owned state remains after "
+                    f"{_UNINSTALL_WAIT_TIMEOUT_SECONDS:.1f} seconds: "
+                    + ", ".join(remaining)
+                )
+            time.sleep(
+                min(_UNINSTALL_POLL_INTERVAL_SECONDS, remaining_seconds)
+            )
 
     def verify_and_remove_user_state(self) -> None:
         sentinel = self.user_state_dir / "sentinel.json"

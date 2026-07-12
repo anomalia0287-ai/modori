@@ -5,6 +5,7 @@ from pathlib import Path
 import re
 import subprocess
 import sys
+from types import SimpleNamespace
 from typing import Any
 from uuid import UUID
 
@@ -607,6 +608,93 @@ def test_repair_and_downgrade_checks_detect_payload_changes(
         adapter.require_downgrade_unchanged("0.1.0", installed_sha256)
 
     assert checked_versions == ["0.1.0", "0.1.0", "0.1.0", "0.1.0"]
+
+
+def test_uninstall_waits_for_transient_inno_self_delete(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    adapter = installer_smoke.LifecycleAdapter.for_test(tmp_path)
+    adapter.uninstaller.parent.mkdir(parents=True)
+    adapter.uninstaller.write_bytes(b"inno-first-phase")
+    monkeypatch.setattr(installer_smoke, "read_smoke_registration", lambda: None)
+    elapsed = 0.0
+    sleeps: list[float] = []
+
+    def monotonic() -> float:
+        return elapsed
+
+    def sleep(seconds: float) -> None:
+        nonlocal elapsed
+        sleeps.append(seconds)
+        elapsed += seconds
+        if len(sleeps) == 2:
+            adapter.uninstaller.unlink()
+
+    monkeypatch.setattr(
+        installer_smoke,
+        "time",
+        SimpleNamespace(monotonic=monotonic, sleep=sleep),
+        raising=False,
+    )
+
+    adapter.require_uninstalled()
+
+    assert sleeps == [0.05, 0.05]
+
+
+def test_uninstall_timeout_names_persistent_owned_path(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    adapter = installer_smoke.LifecycleAdapter.for_test(tmp_path)
+    adapter.uninstaller.parent.mkdir(parents=True)
+    adapter.uninstaller.write_bytes(b"persistent")
+    monkeypatch.setattr(installer_smoke, "read_smoke_registration", lambda: None)
+    elapsed = 0.0
+    sleeps: list[float] = []
+
+    def monotonic() -> float:
+        return elapsed
+
+    def sleep(seconds: float) -> None:
+        nonlocal elapsed
+        sleeps.append(seconds)
+        elapsed += seconds
+
+    monkeypatch.setattr(
+        installer_smoke,
+        "time",
+        SimpleNamespace(monotonic=monotonic, sleep=sleep),
+        raising=False,
+    )
+
+    with pytest.raises(RuntimeError) as exc_info:
+        adapter.require_uninstalled()
+
+    assert str(adapter.uninstaller) in str(exc_info.value)
+    assert "10.0 seconds" in str(exc_info.value)
+    assert sum(sleeps) == pytest.approx(10.0)
+    assert 1 < len(sleeps) <= 201
+
+
+def test_uninstall_check_returns_without_sleep_when_state_is_absent(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    adapter = installer_smoke.LifecycleAdapter.for_test(tmp_path)
+    monkeypatch.setattr(installer_smoke, "read_smoke_registration", lambda: None)
+    sleeps: list[float] = []
+    monkeypatch.setattr(
+        installer_smoke,
+        "time",
+        SimpleNamespace(monotonic=lambda: 0.0, sleep=sleeps.append),
+        raising=False,
+    )
+
+    adapter.require_uninstalled()
+
+    assert sleeps == []
 
 
 def test_user_state_cleanup_removes_only_the_sentinel_and_empty_directory(
