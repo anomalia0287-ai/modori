@@ -86,7 +86,8 @@ class ResearchOsService:
             integrity_errors=integrity_errors,
             question_budget_remaining=request.question_budget_remaining,
         )
-        decision = self._resolver.resolve(context)
+        resolve_context = self._resolver.resolve
+        decision = resolve_context(context)
         if integrity_errors:
             return decision
         if self._is_confirmed_causal_request(request.question):
