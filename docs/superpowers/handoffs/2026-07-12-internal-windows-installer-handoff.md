@@ -220,7 +220,10 @@ installer-build-ok: dist\installer\0.1.0-gd23656588dee
 ```
 
 This result belongs only to the revoked d236 candidate and is not the current
-gate. Fresh packaged engine evidence was written at `2026-07-12T16:41:09+09:00`
+gate. The relative `dist\installer` path in that historical output was emitted
+while the worktree `dist` path was a junction to the main checkout; the
+preserved bytes now reside at the absolute main-checkout path recorded below.
+Fresh packaged engine evidence was written at `2026-07-12T16:41:09+09:00`
 with `ok: true`, `status: ready`, and all 20 V1 checks passing. Fresh packaged
 public-data evidence was written at `2026-07-12T16:41:12+09:00` with
 `ok: true` and `case_count: 10`.
@@ -230,7 +233,7 @@ public-data evidence was written at `2026-07-12T16:41:12+09:00` with
 Revoked historical candidate directory:
 
 ```text
-C:\Users\V\Desktop\TongTong\.worktrees\internal-windows-installer\dist\installer\0.1.0-gd23656588dee
+C:\Users\V\Desktop\TongTong\dist\installer\0.1.0-gd23656588dee
 ```
 
 It contains exactly three files:
