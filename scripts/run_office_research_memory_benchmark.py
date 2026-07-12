@@ -39,6 +39,7 @@ from scripts.verify_office_research_memory_kit import (  # noqa: E402
 
 _RESULT_SCHEMA_ID = "modori.office_research_memory_benchmark"
 _MEASUREMENT_RE = re.compile(r"^[0-9a-f]{32}$")
+_ERROR_CODE_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 _DRIVE_RE = re.compile(r"^[A-Za-z]:$")
 _TOP_HARDWARE_FIELDS = frozenset(
     {
@@ -86,6 +87,23 @@ _DRIVE_TYPES = {
 
 class OfficeBenchmarkError(RuntimeError):
     """Raised when the portable measurement cannot produce valid evidence."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        code: str = "runner_error",
+        exit_code: int = 1,
+    ) -> None:
+        if not isinstance(message, str) or not message:
+            raise ValueError("office benchmark error message is invalid")
+        if not isinstance(code, str) or not _ERROR_CODE_RE.fullmatch(code):
+            raise ValueError("office benchmark error code is invalid")
+        if type(exit_code) is not int or not 1 <= exit_code <= 255:
+            raise ValueError("office benchmark exit code is invalid")
+        super().__init__(message)
+        self.code = code
+        self.exit_code = exit_code
 
 
 @dataclass(frozen=True)
@@ -527,12 +545,24 @@ def run_office_measurement(
     verified = verify_kit(kit_root)
     hardware = (hardware_probe or probe_windows_hardware)(verified.root)
     if hardware.get("ac_power") is not True:
-        raise OfficeBenchmarkError("AC power is required")
+        raise OfficeBenchmarkError(
+            "AC power is required",
+            code="ac_power_required",
+            exit_code=10,
+        )
     if hardware.get("drive_type") != "fixed":
-        raise OfficeBenchmarkError("fixed internal execution volume is required")
+        raise OfficeBenchmarkError(
+            "fixed internal execution volume is required",
+            code="fixed_internal_volume_required",
+            exit_code=11,
+        )
     storage = hardware.get("storage")
     if not isinstance(storage, Mapping) or storage.get("free_bytes", 0) < 2 * 1024**3:
-        raise OfficeBenchmarkError("at least 2 GiB free space is required")
+        raise OfficeBenchmarkError(
+            "at least 2 GiB free space is required",
+            code="free_space_required",
+            exit_code=12,
+        )
     identifier = _require_measurement_id(measurement_id or uuid.uuid4().hex)
     started = now_utc()
     executor = child_executor or run_benchmark_child
@@ -622,8 +652,11 @@ def main(argv: list[str] | None = None) -> int:
         print("[4/5] 결과 장부와 SHA-256을 검증했습니다.", flush=True)
         print(f"[5/5] 완료: {receipt.json_path.name}", flush=True)
         return 0
-    except (OfficeBenchmarkError, KitVerificationError, ValueError) as exc:
-        print(f"오류 코드: {exc}", flush=True)
+    except OfficeBenchmarkError as exc:
+        print(f"오류 코드: {exc.code}", flush=True)
+        return exc.exit_code
+    except (KitVerificationError, ValueError):
+        print("오류 코드: runner_error", flush=True)
         return 1
 
 

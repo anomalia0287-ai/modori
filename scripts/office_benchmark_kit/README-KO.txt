@@ -10,6 +10,14 @@ Modori Decision Ledger 사무용 하드웨어 측정 키트
 4. ZIP을 그 내부 디스크에 압축 해제하십시오. USB에서 직접 실행하지 마십시오.
 5. 제공된 ZIP SHA-256이 안내받은 값과 같은지 확인하십시오.
 
+중요한 실행 위치
+- OneDrive나 다른 클라우드 동기화 폴더에서는 실행하지 마십시오.
+- 바탕 화면과 문서 폴더도 OneDrive에 연결되어 있을 수 있습니다.
+- 재분석 지점(reparse point), 바로가기, 심볼릭 링크, junction은 거부됩니다.
+- 안전한 일반 사용자 위치가 필요하면 Win+R을 누르고 %LOCALAPPDATA%를 연 뒤
+  그 안에 ModoriBench 폴더를 만드십시오. 완성된 경로는
+  %LOCALAPPDATA%\ModoriBench이며, 여기에서 ZIP을 새로 압축 해제하십시오.
+
 실행
 1. RUN-MODORI-BENCHMARK.cmd를 두 번 클릭하십시오.
 2. 창을 닫지 말고 완료될 때까지 기다리십시오. 구형 HDD에서는 시간이 오래 걸릴 수 있습니다.

@@ -72,8 +72,14 @@ try {
     $python = Join-Path $KitRoot 'runtime\python.exe'
     $runner = Join-Path $KitRoot 'payload\scripts\run_office_research_memory_benchmark.py'
     & $python -B -I $runner
-    if ($LASTEXITCODE -ne 0) {
-        Stop-ModoriKit ("runner_exit_" + $LASTEXITCODE)
+    $runnerExit = $LASTEXITCODE
+    switch ($runnerExit) {
+        10 { Stop-ModoriKit 'ac_power_required' }
+        11 { Stop-ModoriKit 'fixed_internal_volume_required' }
+        12 { Stop-ModoriKit 'free_space_required' }
+    }
+    if ($runnerExit -ne 0) {
+        Stop-ModoriKit ("runner_exit_" + $runnerExit)
     }
     exit 0
 } catch {

@@ -76,6 +76,24 @@ def test_powershell_and_cmd_templates_have_no_network_elevation_or_host_mutation
     assert not {item for item in forbidden if item in source}
     assert "get-filehash" not in source
     assert source.count("system.security.cryptography.sha256") >= 2
+    assert "10 { stop-modorikit 'ac_power_required' }" in source
+    assert "11 { stop-modorikit 'fixed_internal_volume_required' }" in source
+    assert "12 { stop-modorikit 'free_space_required' }" in source
+    assert '("runner_exit_" + $runnerexit)' in source
+
+
+def test_operator_guidance_excludes_cloud_reparse_execution() -> None:
+    sources = (
+        Path("scripts/office_benchmark_kit/README-KO.txt").read_text(
+            encoding="utf-8"
+        )
+        + Path("docs/qa/portable-office-benchmark-kit-runbook.md").read_text(
+            encoding="utf-8"
+        )
+    ).lower()
+    assert "onedrive" in sources
+    assert "reparse" in sources
+    assert "%localappdata%\\modoribench" in sources
 
 
 def test_hardware_probe_uses_only_approved_windows_inventory_commands() -> None:

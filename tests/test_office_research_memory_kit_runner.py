@@ -6,6 +6,7 @@ import subprocess
 
 import pytest
 
+import scripts.run_office_research_memory_benchmark as office_runner
 from scripts.office_research_memory_kit import (
     canonical_json_bytes,
     evaluate_measurements,
@@ -117,14 +118,70 @@ def test_battery_power_refuses_before_any_child_run(tmp_path: Path) -> None:
         calls += 1
         return _run()
 
-    with pytest.raises(OfficeBenchmarkError, match="AC power"):
+    with pytest.raises(OfficeBenchmarkError, match="AC power") as caught:
         run_office_measurement(
             root,
             hardware_probe=lambda _root: parse_hardware_probe(json.dumps(payload)),
             child_executor=child,
             measurement_id="b" * 32,
         )
+    assert caught.value.code == "ac_power_required"
+    assert caught.value.exit_code == 10
     assert calls == 0
+
+
+@pytest.mark.parametrize(
+    ("profile_change", "code", "exit_code"),
+    [
+        ({"drive_type": "removable"}, "fixed_internal_volume_required", 11),
+        (
+            {"storage": {"free_bytes": 1024**3}},
+            "free_space_required",
+            12,
+        ),
+    ],
+)
+def test_other_preflight_failures_use_stable_codes(
+    tmp_path: Path,
+    profile_change: dict[str, object],
+    code: str,
+    exit_code: int,
+) -> None:
+    root = _fake_kit(tmp_path)
+    payload = _probe_payload()
+    for key, value in profile_change.items():
+        if key == "storage":
+            payload["storage"].update(value)
+        else:
+            payload[key] = value
+    with pytest.raises(OfficeBenchmarkError) as caught:
+        run_office_measurement(
+            root,
+            hardware_probe=lambda _root: parse_hardware_probe(json.dumps(payload)),
+            child_executor=lambda *_args: pytest.fail("child benchmark started"),
+            measurement_id="b" * 32,
+        )
+    assert caught.value.code == code
+    assert caught.value.exit_code == exit_code
+
+
+def test_main_returns_the_typed_preflight_exit(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setattr(office_runner, "_kit_root_from_script", lambda: tmp_path)
+
+    def fail(_root: Path):
+        raise OfficeBenchmarkError(
+            "AC power is required",
+            code="ac_power_required",
+            exit_code=10,
+        )
+
+    monkeypatch.setattr(office_runner, "run_office_measurement", fail)
+    assert office_runner.main([]) == 10
+    assert "ac_power_required" in capsys.readouterr().out
 
 
 def test_result_writer_never_overwrites_or_escapes_results(tmp_path: Path) -> None:
