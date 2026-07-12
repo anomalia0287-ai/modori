@@ -78,6 +78,7 @@ class QuarantineResult:
     source_bundle_digest: str
     source_project_id: str | None
     source_head: LedgerHead | None
+    source_dataset_fingerprint: str | None
     dataset_match: bool | None
     findings: tuple[QuarantineFinding, ...]
     imported_assertions: tuple[ImportedAssertion, ...]
@@ -90,6 +91,7 @@ class QuarantineResult:
                 self.disposition is not QuarantineDisposition.ACCEPT_AS_ASSERTIONS
                 or self.source_project_id is None
                 or self.source_head is None
+                or self.source_dataset_fingerprint is None
                 or self.dataset_match is not True
                 or self.findings
                 or not self.imported_assertions
@@ -99,6 +101,7 @@ class QuarantineResult:
             if (
                 self.disposition is not QuarantineDisposition.HELD
                 or self.dataset_match is not False
+                or self.source_dataset_fingerprint is None
                 or not self.findings
                 or self.imported_assertions
             ):
@@ -157,6 +160,7 @@ def _rejected(
         source_bundle_digest=digest,
         source_project_id=None if bundle is None else bundle.source_project_id,
         source_head=None if bundle is None else bundle.head,
+        source_dataset_fingerprint=None,
         dataset_match=None,
         findings=(QuarantineFinding(reason, source_code),),
         imported_assertions=(),
@@ -361,6 +365,9 @@ class EvidenceBundleQuarantine:
                     source_bundle_digest=source_bundle_digest,
                     source_project_id=bundle.source_project_id,
                     source_head=bundle.head,
+                    source_dataset_fingerprint=(
+                        snapshot.current_dataset_fingerprint
+                    ),
                     dataset_match=False,
                     findings=(
                         QuarantineFinding(QuarantineReasonCode.DATASET_MISMATCH),
@@ -395,6 +402,7 @@ class EvidenceBundleQuarantine:
             source_bundle_digest=source_bundle_digest,
             source_project_id=bundle.source_project_id,
             source_head=bundle.head,
+            source_dataset_fingerprint=snapshot.current_dataset_fingerprint,
             dataset_match=True,
             findings=(),
             imported_assertions=assertions,

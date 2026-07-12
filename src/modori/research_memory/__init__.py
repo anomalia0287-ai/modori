@@ -47,6 +47,11 @@ from modori.research_memory.quarantine import (
     QuarantineResult,
     QuarantineStage,
 )
+from modori.research_memory.promotion import (
+    PromotionError,
+    PromotionReceipt,
+    ResearchMemoryCoordinator,
+)
 
 __all__ = [
     "CANONICALIZATION_ID",
@@ -81,6 +86,9 @@ __all__ = [
     "QuarantineReasonCode",
     "QuarantineResult",
     "QuarantineStage",
+    "PromotionError",
+    "PromotionReceipt",
+    "ResearchMemoryCoordinator",
     "artifact_id",
     "canonical_bytes",
     "canonical_digest",
