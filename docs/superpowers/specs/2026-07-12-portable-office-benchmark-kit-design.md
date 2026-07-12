@@ -199,6 +199,10 @@ reason code, while preserving the measurements as reference evidence.
 - Include only a declared source allowlist; reject extra files and imported third-party
   dependencies.
 - Pin the exact official Python embeddable archive URL and SHA-256.
+- The pinned runtime is Python 3.12.10 Windows x64 embeddable at
+  `https://www.python.org/ftp/python/3.12.10/python-3.12.10-embed-amd64.zip`,
+  SHA-256
+  `4acbed6dd1c744b0376e3b1cf57ce906f9dc9e95e68824584c8099a63025a3c3`.
 - Record source commit, builder version, runtime version, SQLite version, immutable
   inventory digest, and build timestamp in `KIT-IDENTITY.json`.
 - Create a reproducible source/runtime tree. The final ZIP timestamp normalization and
