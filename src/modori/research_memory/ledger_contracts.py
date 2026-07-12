@@ -338,6 +338,8 @@ class LedgerEvent:
                 raise LedgerContractError("genesis event must be project_created")
         elif previous_event_hash == ZERO_HASH:
             raise LedgerContractError("non-genesis event cannot use the zero previous hash")
+        if sequence != 1 and event_kind is LedgerEventKind.PROJECT_CREATED:
+            raise LedgerContractError("project_created is valid only at genesis")
         _require_digest(previous_event_hash, "previous_event_hash")
         recorded_at_utc = _require_utc(recorded_at_utc, "recorded_at_utc")
         payload_mapping = _validate_payload(

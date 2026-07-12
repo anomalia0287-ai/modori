@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from modori.research_memory.evidence_bundle import EvidenceBundle
 from modori.research_memory.ledger_contracts import LedgerArtifactKind, LedgerEventKind
 from modori.research_memory.ledger_store import DecisionLedgerStore
 from modori.research_memory.promotion import (
@@ -163,6 +164,14 @@ def test_accepted_answer_appends_two_events_in_one_committed_transition(
         )
         assert store.load_request() == receipt.request
         assert len(receipt.request.decision_evidence_refs) == 2
+        exported = EvidenceBundle.create(
+            source_project_id="project-1",
+            head=store.head,
+            artifacts=store.artifacts(),
+            events=store.events(),
+            exported_at_utc=None,
+        )
+        assert EvidenceBundle.from_bytes(exported.to_bytes()) == exported
     finally:
         store.close()
 

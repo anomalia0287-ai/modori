@@ -23,7 +23,7 @@ from modori.research_memory.ledger_store import (
     LedgerRuntimeError,
     default_ledger_path,
 )
-from modori.research_os import ResearchRequest
+from modori.research_os import PrimaryAction, ResearchOsService, ResearchRequest
 from tests.test_research_memory_ledger_contracts import _request
 
 
@@ -101,6 +101,21 @@ def test_store_rejects_relative_unc_and_wrong_suffix_paths(tmp_path: Path) -> No
         DecisionLedgerStore.create(tmp_path / "ledger.db", "project-1")
 
 
+def test_store_rejects_symlink_or_junction_ancestry(tmp_path: Path) -> None:
+    target = tmp_path / "actual"
+    target.mkdir()
+    linked = tmp_path / "linked"
+    try:
+        linked.symlink_to(target, target_is_directory=True)
+    except OSError as exc:
+        pytest.skip(f"directory symlink creation unavailable: {exc}")
+    with pytest.raises(LedgerPathError, match="symlink|junction"):
+        DecisionLedgerStore.create(
+            linked / "decision-ledger.sqlite3",
+            "project-1",
+        )
+
+
 def test_store_requires_supported_python_sqlite_controls(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -108,6 +123,7 @@ def test_store_requires_supported_python_sqlite_controls(
     monkeypatch.setattr(ledger_store, "_has_required_runtime", lambda: False)
     with pytest.raises(LedgerRuntimeError, match="Python 3.12"):
         DecisionLedgerStore.create(_path(tmp_path), "project-1")
+    assert isinstance(ResearchOsService().resolve(_request()).action, PrimaryAction)
 
 
 def test_store_refuses_existing_or_missing_target_by_operation(tmp_path: Path) -> None:
@@ -118,6 +134,22 @@ def test_store_refuses_existing_or_missing_target_by_operation(tmp_path: Path) -
         DecisionLedgerStore.create(path, "project-1")
     with pytest.raises(LedgerPathError, match="does not exist"):
         DecisionLedgerStore.open(_path(tmp_path / "missing"), "project-1")
+
+
+def test_open_rejects_foreign_sqlite_without_mutating_its_bytes(tmp_path: Path) -> None:
+    path = _path(tmp_path)
+    path.parent.mkdir(parents=True)
+    foreign = sqlite3.connect(path)
+    foreign.execute("CREATE TABLE foreign_data(value TEXT)")
+    foreign.execute("INSERT INTO foreign_data VALUES('untouched')")
+    foreign.commit()
+    foreign.close()
+    before = path.read_bytes()
+    with pytest.raises(LedgerIntegrityError):
+        DecisionLedgerStore.open(path, "project-1")
+    assert path.read_bytes() == before
+    assert not path.with_name(path.name + "-wal").exists()
+    assert not path.with_name(path.name + "-shm").exists()
 
 
 def test_default_path_uses_hashed_project_directory(
@@ -254,6 +286,7 @@ def test_open_rejects_authoritative_or_schema_corruption(
     connection.close()
     with pytest.raises(LedgerIntegrityError):
         DecisionLedgerStore.open(path, "project-1")
+    assert isinstance(ResearchOsService().resolve(_request()).action, PrimaryAction)
 
 
 def test_open_binds_file_to_exact_local_project(tmp_path: Path) -> None:

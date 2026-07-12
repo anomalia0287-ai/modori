@@ -22,7 +22,14 @@ from modori.research_memory.ledger_contracts import (
     LedgerHead,
     ResearchRequestSnapshot,
 )
-from modori.research_os import EstimandSpec, Fact, QuestionSpec, StudySpec
+from modori.research_os import (
+    AnalysisPassport,
+    EstimandSpec,
+    Fact,
+    QuestionSpec,
+    StudySpec,
+    build_p1_method_space,
+)
 
 
 class QuarantineStage(str, Enum):
@@ -55,6 +62,7 @@ class QuarantineReasonCode(str, Enum):
     UNSUPPORTED_SENSITIVE_PAYLOAD = "unsupported_sensitive_payload"
     SOURCE_INTEGRITY = "source_integrity"
     DATASET_MISMATCH = "dataset_mismatch"
+    STALE_CATALOG = "stale_catalog"
 
 
 @dataclass(frozen=True)
@@ -316,6 +324,24 @@ def _extract_assertions(
     )
 
 
+def _catalogs_are_current(bundle: EvidenceBundle) -> bool:
+    method_space = build_p1_method_space()
+    method_space_digest = method_space.digest()
+    for artifact in bundle.artifacts:
+        if artifact.artifact_kind is not LedgerArtifactKind.ANALYSIS_PASSPORT:
+            continue
+        passport = artifact.decode_value()
+        if not isinstance(passport, AnalysisPassport):
+            return False
+        if (
+            passport.method_space_version != method_space.version
+            or passport.method_space_digest != method_space_digest
+            or passport.ruleset_version != method_space.ruleset_version
+        ):
+            return False
+    return True
+
+
 class EvidenceBundleQuarantine:
     """Inspect bytes and return only rejected, held, or foreign assertions."""
 
@@ -352,6 +378,12 @@ class EvidenceBundleQuarantine:
                 study_artifact,
                 study,
             ) = _decode_current_specs(bundle)
+            if not _catalogs_are_current(bundle):
+                return _rejected(
+                    source_bundle_digest,
+                    QuarantineReasonCode.STALE_CATALOG,
+                    bundle=bundle,
+                )
             if snapshot.current_dataset_fingerprint != study.dataset_fingerprint:
                 return _rejected(
                     source_bundle_digest,

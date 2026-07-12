@@ -11,6 +11,7 @@ from modori.research_memory.evidence_bundle import (
     EvidenceBundleError,
     EvidenceBundleErrorCode,
     EvidenceBundleLimits,
+    _event_wire_size,
 )
 from modori.research_memory.ledger_contracts import (
     LedgerArtifactKind,
@@ -97,6 +98,9 @@ def test_bundle_roundtrip_is_deterministic_and_complete() -> None:
         sorted(item.artifact_id for item in restored.artifacts)
     )
     assert restored.verify() is None
+    assert _event_wire_size(restored.events[0]) == len(
+        canonical_bytes(restored.events[0].to_mapping())
+    )
 
 
 @pytest.mark.parametrize(
@@ -154,6 +158,17 @@ def test_bundle_rejects_byte_and_count_limits_before_typed_use() -> None:
             limits=replace(EvidenceBundleLimits(), max_artifacts=1),
         )
     assert caught.value.code is EvidenceBundleErrorCode.RESOURCE_LIMIT
+    bundle = _bundle()
+    with pytest.raises(EvidenceBundleError) as caught:
+        EvidenceBundle.create(
+            source_project_id=bundle.source_project_id,
+            head=bundle.head,
+            artifacts=bundle.artifacts,
+            events=bundle.events,
+            exported_at_utc=None,
+            limits=replace(EvidenceBundleLimits(), max_string_length=1),
+        )
+    assert caught.value.code is EvidenceBundleErrorCode.STRING_LIMIT
 
 
 @pytest.mark.parametrize("mutation", ["gap", "duplicate", "bad_head", "truncated"])

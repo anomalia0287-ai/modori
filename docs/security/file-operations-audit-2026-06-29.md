@@ -2,7 +2,8 @@
 
 Scope: production Python files under `src/` and release scripts under `scripts/`
 that call direct filesystem helpers:
-`write_text`, `write_bytes`, `mkdir`, `unlink`, `replace`, `rmdir`, or `resolve`.
+`write_text`, `write_bytes`, `mkdir`, `unlink`, `replace`, `rmdir`, `resolve`, or
+`shutil.rmtree`.
 
 Guard: `tests/test_file_operation_audit.py` fails when a new product file starts
 using one of these operations without being added to this audited allowlist.
@@ -11,6 +12,7 @@ using one of these operations without being added to this audited allowlist.
 
 | File | Operations | Boundary |
 | --- | --- | --- |
+| `scripts/benchmark_research_memory.py` | `shutil.rmtree` | Developer-only Decision Ledger benchmark. It creates a UUID-named directory below the worktree's existing `.test-tmp` root, prints metrics to stdout only, verifies the exact parent and `research-memory-benchmark-` prefix, and recursively removes only that owned temporary directory. It never runs in the product or writes benchmark evidence into the repository. |
 | `src/modori/path_policy.py` | `resolve` | Central path validation helper. Rejects relative paths and symlink/junction ancestors before returning configured paths. |
 | `src/modori/app.py` | `mkdir`, `write_text` | Hidden `--engine-smoke` and `--public-data-smoke` packaging gates only. The normal QML app path does not invoke these branches; the CLI writes diagnostic JSON payloads to caller-supplied smoke output paths for release verification. |
 | `src/modori/public_data_smoke.py` | `mkdir`, `write_text` | Hidden public-data release verification helper used only through `--public-data-smoke`. It reads checked-in or payload fixtures and writes one diagnostic JSON result to the caller-supplied smoke output path. |

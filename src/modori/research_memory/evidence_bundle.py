@@ -68,7 +68,7 @@ class EvidenceBundleLimits:
     max_event_bytes: int = 8 * 1024
     max_artifact_bytes: int = 128 * 1024
     max_string_length: int = 512
-    max_items: int = 250_000
+    max_items: int = 2_000_000
 
     def __post_init__(self) -> None:
         for name, value in vars(self).items():
@@ -101,6 +101,25 @@ _FORBIDDEN_KEYS = frozenset(
         "executable",
         "pipeline",
         "tool_call",
+        "tool",
+        "worker",
+        "persistence",
+        "execution",
+        "execution_token",
+        "plugin",
+        "plugin_call",
+        "callback",
+        "endpoint",
+        "host",
+        "sql",
+        "query",
+        "shell",
+        "process",
+        "thread",
+        "browser",
+        "file",
+        "write_path",
+        "read_path",
         "network",
         "socket",
     }
@@ -110,6 +129,22 @@ _UTC_RE = re.compile(
     r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?Z$"
 )
 _MAX_SAFE_INTEGER = 9_007_199_254_740_991
+_EVENT_WIRE_OVERHEAD = len(
+    canonical_bytes(
+        {
+            "body": {},
+            "body_digest": "0" * 64,
+            "previous_event_hash": "0" * 64,
+            "event_hash": "0" * 64,
+        }
+    )
+) - len(b"{}")
+
+
+def _event_wire_size(event: LedgerEvent) -> int:
+    """Return exact canonical wire bytes without reparsing the verified body."""
+
+    return len(event.canonical_body) + _EVENT_WIRE_OVERHEAD
 
 
 def _raise(code: EvidenceBundleErrorCode, message: str) -> NoReturn:
@@ -327,14 +362,23 @@ class EvidenceBundle:
             exported_at_utc=exported_at_utc,
         )
         bundle._verify_with_limits(limits)
-        if len(bundle.to_bytes()) > limits.max_bytes:
+        bundle_mapping = bundle.to_mapping()
+        raw = canonical_bytes(bundle_mapping)
+        if len(raw) > limits.max_bytes:
             _raise(
                 EvidenceBundleErrorCode.BYTE_LIMIT,
                 "evidence bundle exceeds its byte limit",
             )
+        _scan_depth(raw.decode("utf-8"), limits.max_depth)
+        _walk_resources(bundle_mapping, limits=limits)
         return bundle
 
-    def _verify_with_limits(self, limits: EvidenceBundleLimits) -> None:
+    def _verify_with_limits(
+        self,
+        limits: EvidenceBundleLimits,
+        *,
+        typed_identities_verified: bool = False,
+    ) -> None:
         _require_project_id(self.source_project_id)
         _require_utc(self.exported_at_utc)
         if not isinstance(self.head, LedgerHead) or self.head.sequence < 1:
@@ -359,10 +403,11 @@ class EvidenceBundle:
                     EvidenceBundleErrorCode.RESOURCE_LIMIT,
                     "artifact exceeds its per-item byte limit",
                 )
-            try:
-                artifact.verify()
-            except (LedgerContractError, ValueError, TypeError) as exc:
-                _artifact_error(exc)
+            if not typed_identities_verified:
+                try:
+                    artifact.verify()
+                except (LedgerContractError, ValueError, TypeError) as exc:
+                    _artifact_error(exc)
             if artifact.project_id != self.source_project_id:
                 _raise(
                     EvidenceBundleErrorCode.PROJECT_MISMATCH,
@@ -382,15 +427,16 @@ class EvidenceBundle:
                     EvidenceBundleErrorCode.CHAIN_INVALID,
                     "event collection contains an untyped value",
                 )
-            if len(canonical_bytes(event.to_mapping())) > limits.max_event_bytes:
+            if _event_wire_size(event) > limits.max_event_bytes:
                 _raise(
                     EvidenceBundleErrorCode.RESOURCE_LIMIT,
                     "event exceeds its per-item byte limit",
                 )
-            try:
-                event.verify()
-            except (LedgerContractError, ValueError, TypeError) as exc:
-                _event_error(exc)
+            if not typed_identities_verified:
+                try:
+                    event.verify()
+                except (LedgerContractError, ValueError, TypeError) as exc:
+                    _event_error(exc)
             if event.project_id != self.source_project_id:
                 _raise(
                     EvidenceBundleErrorCode.PROJECT_MISMATCH,
@@ -599,11 +645,12 @@ class EvidenceBundle:
             head = LedgerHead.from_mapping(raw_head)
         except (LedgerContractError, ValueError, TypeError) as exc:
             _event_error(exc)
-        return cls.create(
+        bundle = cls(
             source_project_id=parsed["source_project_id"],
             head=head,
             artifacts=tuple(artifacts),
             events=tuple(events),
             exported_at_utc=parsed["exported_at_utc"],
-            limits=limits,
         )
+        bundle._verify_with_limits(limits, typed_identities_verified=True)
+        return bundle

@@ -232,6 +232,17 @@ def test_non_genesis_zero_previous_hash_and_forgery_are_rejected() -> None:
             previous_event_hash=ZERO_HASH,
             recorded_at_utc=None,
         )
+    with pytest.raises(LedgerContractError, match="project_created"):
+        LedgerEvent.create(
+            project_id="project-1",
+            event_id="event:project:2",
+            sequence=2,
+            event_kind=LedgerEventKind.PROJECT_CREATED,
+            subject_artifact_ids=("a" * 64,),
+            payload={"resulting_snapshot_artifact_id": "a" * 64},
+            previous_event_hash="b" * 64,
+            recorded_at_utc=None,
+        )
     event = LedgerEvent.create(
         project_id="project-1",
         event_id="event:project:1",
@@ -285,6 +296,19 @@ def test_durable_artifacts_reject_raw_question_text_and_text_answers() -> None:
     answer = AnswerValue(kind=AnswerValueKind.TEXT, text_value="민감한 원문")
     with pytest.raises(LedgerContractError, match="sensitive"):
         LedgerArtifact.from_value(answer)
+    answer_event = ClarificationAnswerEvent(
+        event_id="answer:text:2",
+        project_id="project-1",
+        event_sequence=2,
+        source_passport_digest="a" * 64,
+        question_id="bounded_text",
+        question_version=1,
+        question_digest="b" * 64,
+        fact_address="estimand.target_population",
+        answer_value=answer,
+    )
+    with pytest.raises(LedgerContractError, match="sensitive"):
+        LedgerArtifact.from_value(answer_event)
 
 
 def test_all_nontext_research_os_artifacts_roundtrip_with_separate_identities() -> None:

@@ -287,7 +287,18 @@ def default_ledger_path(project_id: str) -> Path:
     return candidate
 
 
-def _configure_connection(connection: sqlite3.Connection) -> None:
+def _configure_durability(connection: sqlite3.Connection) -> None:
+    connection.execute("PRAGMA synchronous=FULL")
+    mode = connection.execute("PRAGMA journal_mode=WAL").fetchone()[0]
+    if str(mode).lower() != "wal":
+        raise LedgerRuntimeError("SQLite WAL journal mode is unavailable")
+
+
+def _configure_connection(
+    connection: sqlite3.Connection,
+    *,
+    durability: bool = True,
+) -> None:
     try:
         settings = (
             (sqlite3.SQLITE_DBCONFIG_DEFENSIVE, True),
@@ -313,10 +324,8 @@ def _configure_connection(connection: sqlite3.Connection) -> None:
         connection.execute("PRAGMA trusted_schema=OFF")
         connection.execute("PRAGMA cell_size_check=ON")
         connection.execute("PRAGMA mmap_size=0")
-        connection.execute("PRAGMA synchronous=FULL")
-        mode = connection.execute("PRAGMA journal_mode=WAL").fetchone()[0]
-        if str(mode).lower() != "wal":
-            raise LedgerRuntimeError("SQLite WAL journal mode is unavailable")
+        if durability:
+            _configure_durability(connection)
     except (AttributeError, sqlite3.DatabaseError) as exc:
         if isinstance(exc, LedgerRuntimeError):
             raise
@@ -519,9 +528,11 @@ class DecisionLedgerStore:
                 isolation_level=None,
                 check_same_thread=True,
             )
-            _configure_connection(connection)
-            connection.set_authorizer(_authorizer)
+            _configure_connection(connection, durability=False)
             store = cls(resolved, project_id, connection)
+            store._validate_header_and_schema()
+            _configure_durability(connection)
+            connection.set_authorizer(_authorizer)
             store.verify()
             return store
         except (LedgerStoreError, sqlite3.DatabaseError):
@@ -871,15 +882,15 @@ class DecisionLedgerStore:
                 )
             last = commit.events[-1]
             self._connection.execute(
-                "UPDATE ledger_head SET sequence=?,event_hash=? WHERE singleton=1",
-                (last.sequence, last.event_hash),
-            )
-            self._connection.execute(
                 "INSERT INTO materialized_request VALUES(1,?,?) "
                 "ON CONFLICT(singleton) DO UPDATE SET "
                 "project_id=excluded.project_id,"
                 "snapshot_artifact_id=excluded.snapshot_artifact_id",
                 (self._project_id, commit.resulting_snapshot_artifact_id),
+            )
+            self._connection.execute(
+                "UPDATE ledger_head SET sequence=?,event_hash=? WHERE singleton=1",
+                (last.sequence, last.event_hash),
             )
             if commit.import_source is not None:
                 source = commit.import_source

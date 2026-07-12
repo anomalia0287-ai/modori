@@ -5,6 +5,7 @@ from pathlib import Path
 
 
 AUDITED_FILE_OPERATION_FILES = {
+    "scripts/benchmark_research_memory.py",
     "scripts/build_recommendation_pilot.py",
     "scripts/check_product_wording.py",
     "scripts/quality_gate.py",
@@ -33,7 +34,8 @@ AUDITED_FILE_OPERATION_FILES = {
 }
 
 FILE_OPERATION_PATTERN = re.compile(
-    r"\.(?:write_text|write_bytes|mkdir|unlink|replace|rmdir|resolve)\s*\("
+    r"(?:\.(?:write_text|write_bytes|mkdir|unlink|replace|rmdir|resolve)"
+    r"|\bshutil\.rmtree)\s*\("
 )
 AUDIT_DOCUMENT = Path("docs/security/file-operations-audit-2026-06-29.md")
 

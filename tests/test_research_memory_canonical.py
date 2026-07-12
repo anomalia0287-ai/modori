@@ -50,6 +50,20 @@ def test_bool_is_not_treated_as_an_integer_and_negative_safe_integer_is_valid() 
     assert canonical_bytes({"enabled": False, "value": -9_007_199_254_740_991}) == (
         b'{"enabled":false,"value":-9007199254740991}'
     )
+    assert canonical_bytes({"value": 9_007_199_254_740_991}) == (
+        b'{"value":9007199254740991}'
+    )
+
+
+def test_control_quote_and_backslash_encoding_is_frozen() -> None:
+    assert canonical_bytes({"text": 'line\n"quoted"\\tail'}) == (
+        b'{"text":"line\\n\\"quoted\\"\\\\tail"}'
+    )
+
+
+def test_lone_surrogate_is_rejected_as_invalid_utf8_text() -> None:
+    with pytest.raises(CanonicalizationError, match="UTF-8"):
+        canonical_bytes({"text": "\ud800"})
 
 
 def test_digest_is_sha256_of_canonical_bytes() -> None:
