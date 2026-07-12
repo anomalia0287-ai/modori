@@ -6,6 +6,8 @@ import json
 from pathlib import Path
 import re
 import stat
+import subprocess
+import sys
 import zipfile
 
 import pytest
@@ -223,3 +225,19 @@ def test_zip_digest_changes_after_one_byte_mutation(tmp_path: Path) -> None:
     result = build_kit(_request(tmp_path))
     mutated = io.BytesIO(result.archive.read_bytes() + b"x").getvalue()
     assert hashlib.sha256(mutated).hexdigest() != result.archive_sha256
+
+
+def test_builder_cli_bootstraps_repository_imports_from_any_working_directory(
+    tmp_path: Path,
+) -> None:
+    script = Path("scripts/build_office_research_memory_kit.py").resolve()
+    completed = subprocess.run(
+        [sys.executable, str(script), "--help"],
+        cwd=tmp_path,
+        capture_output=True,
+        check=False,
+        encoding="utf-8",
+        timeout=20,
+    )
+    assert completed.returncode == 0, completed.stderr
+    assert "--runtime-archive" in completed.stdout

@@ -19,7 +19,12 @@ from types import MappingProxyType
 import uuid
 import zipfile
 
-from scripts.office_research_memory_kit import (
+
+_REPOSITORY_ROOT = Path(__file__).resolve().parent.parent
+if str(_REPOSITORY_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPOSITORY_ROOT))
+
+from scripts.office_research_memory_kit import (  # noqa: E402
     RUNTIME_SPEC,
     KitContractError,
     ManifestEntry,
@@ -541,9 +546,8 @@ def _parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     arguments = _parser().parse_args(argv)
-    repository_root = Path(__file__).resolve().parent.parent
     try:
-        snapshot = snapshot_from_git(repository_root, arguments.source_commit)
+        snapshot = snapshot_from_git(_REPOSITORY_ROOT, arguments.source_commit)
         result = build_kit(
             BuildRequest(
                 output_dir=arguments.output_dir.resolve(),
