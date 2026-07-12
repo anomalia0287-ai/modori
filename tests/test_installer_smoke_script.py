@@ -6,6 +6,7 @@ import re
 import subprocess
 import sys
 from typing import Any
+from uuid import UUID
 
 import pytest
 
@@ -279,6 +280,42 @@ def test_existing_registration_blocks_with_manual_cleanup_path(
         adapter.require_no_existing_registration()
 
 
+def test_existing_registration_preflight_creates_no_run_evidence_or_state(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    installer, manifest, probe = _inputs(tmp_path)
+    run_uuid = UUID("1" * 32)
+    smoke_root = tmp_path / "runs"
+    run_root = smoke_root / f"run-{run_uuid.hex}"
+    adapter = installer_smoke.LifecycleAdapter.for_test(run_root)
+    uninstall_path = tmp_path / "existing-unins000.exe"
+    calls: list[list[str]] = []
+    monkeypatch.setattr(installer_smoke, "SMOKE_ROOT", smoke_root)
+    monkeypatch.setattr(installer_smoke.uuid, "uuid4", lambda: run_uuid)
+    monkeypatch.setattr(
+        installer_smoke,
+        "read_smoke_registration",
+        lambda: {"UninstallString": str(uninstall_path)},
+    )
+
+    result = installer_smoke.run_installer_smoke(
+        installer,
+        manifest,
+        probe,
+        runner=lambda command: calls.append(command) or 0,
+        lifecycle_adapter=adapter,
+    )
+
+    assert result == 1
+    assert calls == []
+    assert not smoke_root.exists()
+    assert not run_root.exists()
+    assert not adapter.user_state_dir.exists()
+    assert str(uninstall_path) in capsys.readouterr().err
+
+
 def test_installed_adapter_requires_expected_registration_and_files(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -482,15 +519,69 @@ def test_smoke_repairs_stale_file_rejects_downgrade_and_uninstalls(
     tmp_path: Path,
 ) -> None:
     installer, manifest, probe = _inputs(tmp_path)
-    calls: list[list[str]] = []
-    events: list[str] = []
+    run_uuid = UUID("2" * 32)
+    smoke_root = tmp_path / "runs"
+    run_root = smoke_root / f"run-{run_uuid.hex}"
+    adapter = installer_smoke.LifecycleAdapter.for_test(run_root)
+    timeline: list[str | tuple[str, ...]] = []
+    monkeypatch.setattr(installer_smoke, "SMOKE_ROOT", smoke_root)
+    monkeypatch.setattr(installer_smoke.uuid, "uuid4", lambda: run_uuid)
+    monkeypatch.setattr(
+        adapter,
+        "require_no_existing_registration",
+        lambda: timeline.append("preflight"),
+    )
+    monkeypatch.setattr(
+        adapter,
+        "require_installed",
+        lambda _version: timeline.append("installed"),
+    )
+    monkeypatch.setattr(
+        adapter,
+        "plant_stale_probe",
+        lambda: timeline.append("plant"),
+    )
+    monkeypatch.setattr(
+        adapter,
+        "require_repaired",
+        lambda _version: timeline.append("repaired"),
+    )
 
-    monkeypatch.setattr(installer_smoke, "SMOKE_ROOT", tmp_path / "runs")
-    adapter = installer_smoke.LifecycleAdapter.for_test(tmp_path)
-    _patch_recording_adapter(monkeypatch, adapter, events)
+    def record_hash() -> str:
+        timeline.append("record-hash")
+        return "A" * 64
+
+    monkeypatch.setattr(adapter, "record_executable_hash", record_hash)
+    monkeypatch.setattr(
+        adapter,
+        "require_downgrade_unchanged",
+        lambda _version, _sha: timeline.append("unchanged"),
+    )
+    monkeypatch.setattr(
+        adapter,
+        "require_uninstalled",
+        lambda: timeline.append("uninstalled"),
+    )
+    real_state_cleanup = adapter.verify_and_remove_user_state
+
+    def verify_and_remove_real_state() -> None:
+        timeline.append("state-cleanup")
+        real_state_cleanup()
+
+    monkeypatch.setattr(
+        adapter,
+        "verify_and_remove_user_state",
+        verify_and_remove_real_state,
+    )
 
     def runner(command: list[str]) -> int:
-        calls.append(command)
+        timeline.append(tuple(command))
+        log_argument = next(
+            (item for item in command if item.startswith("/LOG=")),
+            None,
+        )
+        if log_argument is not None:
+            Path(log_argument[5:]).write_text("preserved-log", encoding="utf-8")
         return 7 if command[0] == str(probe.resolve()) else 0
 
     result = installer_smoke.run_installer_smoke(
@@ -502,56 +593,92 @@ def test_smoke_repairs_stale_file_rejects_downgrade_and_uninstalls(
     )
 
     assert result == 0
-    assert events == [
-        "preflight",
-        "installed",
-        "planted",
-        "repaired",
-        "downgrade-rejected",
-        "uninstalled",
-        "state-preserved",
-    ]
-    assert calls[1:4] == [
-        [
-            sys.executable,
-            "scripts/package_launch_smoke.py",
-            str(adapter.executable),
-        ],
-        [
-            sys.executable,
-            "scripts/package_engine_smoke.py",
-            str(adapter.executable),
-        ],
-        [
-            sys.executable,
-            "scripts/package_public_data_smoke.py",
-            str(adapter.executable),
-            "--fixture-dir",
-            str(
-                installer_smoke.WORKSPACE
-                / "tests"
-                / "fixtures"
-                / "public_data_formats"
-            ),
-        ],
-    ]
-    assert [call[0] for call in calls].count(str(installer.resolve())) == 2
-    assert calls[5][0] == str(probe.resolve())
-    install_log = next(item[5:] for item in calls[0] if item.startswith("/LOG="))
-    repair_log = next(item[5:] for item in calls[4] if item.startswith("/LOG="))
-    downgrade_log = next(item[5:] for item in calls[5] if item.startswith("/LOG="))
-    run_root = Path(install_log).parent
-    assert re.fullmatch(r"run-[0-9a-f]{32}", run_root.name)
-    assert Path(repair_log) == run_root / "repair.log"
-    assert Path(downgrade_log) == run_root / "downgrade.log"
-    assert f"/DIR={adapter.install_dir.resolve()}" in calls[0]
-    assert calls[6] == [
+    install_command = tuple(
+        installer_smoke.setup_command(
+            installer,
+            adapter.install_dir,
+            run_root / "install.log",
+        )
+    )
+    repair_command = tuple(
+        installer_smoke.setup_command(
+            installer,
+            adapter.install_dir,
+            run_root / "repair.log",
+        )
+    )
+    downgrade_command = tuple(
+        installer_smoke.setup_command(
+            probe,
+            adapter.install_dir,
+            run_root / "downgrade.log",
+        )
+    )
+    launch_command = (
+        sys.executable,
+        "scripts/package_launch_smoke.py",
+        str(adapter.executable),
+    )
+    engine_command = (
+        sys.executable,
+        "scripts/package_engine_smoke.py",
+        str(adapter.executable),
+    )
+    public_data_command = (
+        sys.executable,
+        "scripts/package_public_data_smoke.py",
+        str(adapter.executable),
+        "--fixture-dir",
+        str(
+            installer_smoke.WORKSPACE
+            / "tests"
+            / "fixtures"
+            / "public_data_formats"
+        ),
+    )
+    uninstall_command = (
         str(adapter.uninstaller),
         "/VERYSILENT",
         "/SUPPRESSMSGBOXES",
         "/NORESTART",
         f"/LOG={(run_root / 'uninstall.log').resolve()}",
+    )
+    assert timeline == [
+        "preflight",
+        install_command,
+        "installed",
+        launch_command,
+        engine_command,
+        public_data_command,
+        "plant",
+        repair_command,
+        "repaired",
+        "record-hash",
+        downgrade_command,
+        "unchanged",
+        uninstall_command,
+        "uninstalled",
+        "state-cleanup",
     ]
+    assert adapter.install_dir == run_root / "install"
+    assert not (adapter.user_state_dir / "sentinel.json").exists()
+    assert not adapter.user_state_dir.exists()
+    assert run_root.is_dir()
+    assert sorted(path.name for path in run_root.iterdir()) == [
+        "downgrade.log",
+        "install.log",
+        "repair.log",
+        "uninstall.log",
+    ]
+    assert all(
+        (run_root / name).read_text(encoding="utf-8") == "preserved-log"
+        for name in (
+            "install.log",
+            "repair.log",
+            "downgrade.log",
+            "uninstall.log",
+        )
+    )
 
 
 def test_successful_downgrade_probe_is_a_lifecycle_failure(

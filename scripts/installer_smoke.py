@@ -257,9 +257,9 @@ def run_installer_smoke(
         payload = validate_inputs(installer, manifest_path, probe)
         version = str(payload["version"])
         run_root = SMOKE_ROOT / f"run-{uuid.uuid4().hex}"
-        run_root.mkdir(parents=True)
         adapter = lifecycle_adapter or LifecycleAdapter.for_real_run(run_root)
         adapter.require_no_existing_registration()
+        run_root.mkdir(parents=True)
         adapter.user_state_dir.mkdir(parents=True)
         (adapter.user_state_dir / "sentinel.json").write_text(
             "preserve",
