@@ -10,6 +10,16 @@ import pytest
 from scripts import package_engine_smoke
 
 
+@pytest.fixture(autouse=True)
+def _isolate_workspace_smoke_outputs(monkeypatch, tmp_path: Path):
+    original_directory = Path.cwd()
+    monkeypatch.chdir(tmp_path)
+    try:
+        yield
+    finally:
+        monkeypatch.chdir(original_directory)
+
+
 def test_package_engine_smoke_reports_missing_executable(capsys) -> None:
     result = package_engine_smoke.main(["does-not-exist.exe"])
 
@@ -107,14 +117,18 @@ def test_package_engine_smoke_cli_routes_exact_state_paths(
     exe = tmp_path / "Modori.exe"
     exe.write_text("", encoding="utf-8")
     state_root = tmp_path / "state-parent" / ".." / "state"
+    evidence_dir = tmp_path / "engine-evidence"
+    evidence_dir.mkdir()
     captured_environment: dict[str, str] = {}
+    subprocess_outputs: list[Path] = []
 
     def fake_run(command, check, timeout, env):
         captured_environment.update(env)
         cache_path = Path(env["MODORI_CACHE_DIR"])
         assert not cache_path.exists()
         cache_path.mkdir(parents=True)
-        output_path = command[3]
+        output_path = Path(command[3])
+        subprocess_outputs.append(output_path)
         with open(output_path, "w", encoding="utf-8") as handle:
             json.dump(
                 {
@@ -130,7 +144,15 @@ def test_package_engine_smoke_cli_routes_exact_state_paths(
 
     try:
         result = package_engine_smoke.main(
-            [str(exe), "--state-root", str(state_root), "--timeout", "0.01"]
+            [
+                str(exe),
+                "--state-root",
+                str(state_root),
+                "--evidence-dir",
+                str(evidence_dir),
+                "--timeout",
+                "0.01",
+            ]
         )
     finally:
         monkeypatch.chdir(original_directory)
@@ -143,6 +165,26 @@ def test_package_engine_smoke_cli_routes_exact_state_paths(
     )
     assert captured_environment["MPLCONFIGDIR"] == str(resolved_root / "matplotlib")
     assert captured_environment["QT_QPA_PLATFORM"] == "offscreen"
+    assert len(subprocess_outputs) == 1
+    assert subprocess_outputs[0].parent == evidence_dir
+    assert subprocess_outputs[0].name.startswith(".result-")
+    assert sorted(path.name for path in evidence_dir.iterdir()) == [
+        "reference.xlsx",
+        "result.json",
+    ]
+
+
+def test_package_engine_smoke_requires_existing_explicit_evidence_directory(
+    tmp_path: Path,
+) -> None:
+    exe = tmp_path / "Modori.exe"
+    exe.write_text("", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="directory does not exist"):
+        package_engine_smoke.run_engine_smoke(
+            exe,
+            evidence_dir=tmp_path / "missing-evidence",
+        )
 
 
 @pytest.mark.parametrize(
@@ -260,7 +302,9 @@ def test_package_engine_smoke_rejects_linked_state_ancestor_before_subprocess(
     assert list(outside.iterdir()) == []
 
 
-def test_package_engine_smoke_fails_when_payload_is_not_ok(monkeypatch, tmp_path, capsys) -> None:
+def test_package_engine_smoke_fails_when_payload_is_not_ok(
+    monkeypatch, tmp_path, capsys
+) -> None:
     exe = tmp_path / "Modori.exe"
     exe.write_text("", encoding="utf-8")
 

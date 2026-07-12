@@ -2,12 +2,30 @@
 
 ## Status and Scope
 
-The current local internal-installer candidate is the clean build from
-`b4a6fa4a93f454b162aec3ba70387ed19f7d2954`. Its package and isolated
-current-user lifecycle evidence passed all fail-closed publication checks. The
-candidate is retained locally for internal evaluation only.
+This handoff now records a **superseded/revoked** pre-hardening candidate from
+`b4a6fa4a93f454b162aec3ba70387ed19f7d2954`; it is not the current internal
+installer. Whole-branch review found that its installed engine and public-data
+results used shared workspace paths and ordinary tests overwrote them. The
+surviving shared files are failure/empty fixtures, not the successful lifecycle
+bytes: engine SHA256
+`804534DC82794AD30A62743219A689DD617AE367D25F3E476F101F8DEFE5B9B2` and
+public-data SHA256
+`A14D136AB1543E5D12DC23357252639EC3F649EF74C870DA1DBB6A96DC91AEE5`.
+The b4 source also predates final candidate-byte revalidation, identity-bound
+smoke roots, durable per-run evidence, and two-stage publication rollback.
+Its artifact and success claims are historical audit information only; do not
+install or distribute it.
 
-**Unsigned internal test build; not approved for public distribution**.
+No internal installer candidate is currently approved; a replacement clean
+build from the hardened source is pending.
+
+Before this hardening began, branch HEAD
+`0060ca0cb0b47e39515f17e20387fca22d97d62a` was a docs-only descendant of
+the b4 artifact source. A replacement candidate must record its own clean
+artifact source commit, separately from later evidence-only documentation
+commits.
+
+**Revoked unsigned internal build; do not install or distribute**.
 
 This evidence does not claim publisher authentication, code-signing trust,
 SmartScreen reputation, clean-VM validation, or permission to publish the
@@ -24,7 +42,7 @@ b4a6fa4a93f454b162aec3ba70387ed19f7d2954
 The production manifest records `git_dirty: false`, `channel: internal`,
 `signed: false`, and `smoke_only: false`.
 
-## Current Internal Candidate Identity
+## Superseded b4 Candidate Identity — Do Not Use
 
 Candidate directory:
 
@@ -54,7 +72,7 @@ Manifest-tracked build inputs are:
 | `dist\Modori\Modori.exe` | 30832815 | `6B4A95307FF7D1959FE9D34D52338B33908A66C8489BA8D55C0302FE4E78913D` |
 | `installer\modori.iss` | 3948 | `A587B51F3B02FC509769306160829B8FC4D4B43B5CF6B482FDE18B31D6B6BD43` |
 
-## Current Manifest and Path Contract
+## Superseded b4 Manifest and Path Contract
 
 - Build time: `2026-07-12T22:53:42.737366+09:00`.
 - Source: `b4a6fa4a93f454b162aec3ba70387ed19f7d2954`, clean.
@@ -71,7 +89,7 @@ Manifest-tracked build inputs are:
 - Manifest install-path calculation: `219 <= 240`.
 - Actual compiler source-path calculation: `103 + 1 + 128 = 232 <= 240`.
 
-## Current Successful Installed Lifecycle
+## Superseded b4 Installed Lifecycle Record
 
 Successful run root:
 
@@ -79,7 +97,8 @@ Successful run root:
 .tmp\installer-smoke\r-da7fbcf6d052
 ```
 
-It contains exactly four regular log files:
+It retained four regular log files, but not durable run-local engine/public
+result files:
 
 | Log | Bytes | SHA256 | Result |
 |---|---:|---|---|
@@ -104,19 +123,19 @@ The installed public-data result was recorded at
 SHA256
 `6ABC9EC0967FD64F6E21D9BBB0F16C5946568A28952E5D1B00547CA97E958DFA`.
 
-## Current Gate Evidence and Transparency
+## Superseded b4 Gate Evidence and Transparency
 
 The source-head preflight recorded `1195 passed, 4 skipped` and a passing
 installer tool check. The slow statistical gate recorded
 `3 passed, 1196 deselected in 35.16s`.
 
-The final current-candidate command's output cell was mistakenly detached
+The final b4-candidate command's output cell was mistakenly detached
 while its operating-system process tree continued and exited. Its numeric exit
 code and captured stdout were not retained, so this handoff does **not** claim
-a captured exit code `0` for that command. Candidate publication is instead
-evidenced by the gate's fail-closed publication semantics together with the
-clean manifest, successful lifecycle flags, exact log and artifact hashes, and
-post-run state audits above.
+a captured exit code `0` for that command. At the time, publication was inferred
+from the then-existing code semantics together with the clean manifest,
+lifecycle flags, hashes, logs, and state audits. That inference is retained only
+as historical context and is insufficient for approval after the later review.
 
 ## Historical Corrected Rebuild Diagnostic — No Release Artifact
 
@@ -149,7 +168,7 @@ write. The authenticated compiler-source preflight counts strict UTF-16 code
 units across files, directories, the root wildcard, and recursive directory `\*` search
 paths. The historical failure measurements contain only BMP characters, so its
 `156 + 1 + 128 = 285` diagnosis remains unchanged. These changes later fed the
-current candidate, but the `67ab0815` attempt itself remains non-release
+superseded b4 candidate, but the `67ab0815` attempt itself remains non-release
 evidence.
 
 ## Historical baa49b Installed Cache Diagnostic — No Release Artifact
@@ -193,8 +212,8 @@ The subsequent code hardening makes the installed engine-smoke process create
 and report the real selected cache, requires its wrapper to match that report
 to routed `MODORI_CACHE_DIR` and a real non-link/junction directory, and
 validates the supplied state root component-by-component without following
-links. Those changes are verified by the current b4a6fa4 candidate; they do not
-retroactively turn this baa49 run into release evidence.
+links. Those changes were exercised by the now-superseded b4a6fa4 candidate;
+they do not retroactively turn this baa49 run into release evidence.
 
 ## Historical Revoked d236 Gate
 
@@ -347,8 +366,8 @@ its four logs.
 - Source-head preflight: `1195 passed, 4 skipped`; installer tool check passed.
 - Slow statistical gate with the reference Rscript:
   `3 passed, 1196 deselected in 35.16s`.
-- The final current-candidate command's numeric exit code and stdout were not
+- The final b4-candidate command's numeric exit code and stdout were not
   retained; no exit-code claim is made for it.
 
-The current candidate and historical evidence remain local. No artifact was
+The superseded candidate and historical evidence remain local. No artifact was
 signed or published externally, and no branch was pushed.

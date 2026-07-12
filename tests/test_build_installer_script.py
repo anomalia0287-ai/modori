@@ -50,9 +50,11 @@ def _configure_release_workspace(monkeypatch, tmp_path: Path):
     monkeypatch.setattr(
         build_installer.importlib.metadata,
         "version",
-        lambda name: "6.21.0"
-        if name == "pyinstaller"
-        else pytest.fail(f"unexpected package metadata lookup: {name}"),
+        lambda name: (
+            "6.21.0"
+            if name == "pyinstaller"
+            else pytest.fail(f"unexpected package metadata lookup: {name}")
+        ),
     )
     return identity
 
@@ -72,7 +74,9 @@ def _release_runner(
             (package / "Modori.exe").write_bytes(b"package")
             (qml / "Main.qml").write_text("Item {}", encoding="utf-8")
         if command and str(command[0]).endswith("ISCC.exe"):
-            output_arg = next(item for item in command if item.startswith("/DOutputDir="))
+            output_arg = next(
+                item for item in command if item.startswith("/DOutputDir=")
+            )
             name_arg = next(
                 item for item in command if item.startswith("/DOutputBaseFilename=")
             )
@@ -87,7 +91,9 @@ def _release_runner(
     return fake_runner
 
 
-def _write_complete_package(root: Path, *, executable_bytes: bytes = b"package") -> None:
+def _write_complete_package(
+    root: Path, *, executable_bytes: bytes = b"package"
+) -> None:
     qml = root / "_internal" / "modori" / "ui" / "qml"
     qml.mkdir(parents=True)
     (root / "Modori.exe").write_bytes(executable_bytes)
@@ -125,6 +131,37 @@ def _create_directory_junction(link: Path, target: Path) -> None:
     assert link.is_junction()
 
 
+def _mutate_first_byte(path: Path) -> None:
+    payload = bytearray(path.read_bytes())
+    assert payload
+    payload[0] ^= 1
+    path.write_bytes(payload)
+
+
+def _write_candidate(candidate: Path, installer_name: str) -> None:
+    candidate.mkdir()
+    installer = candidate / installer_name
+    installer.write_bytes(b"installer")
+    installer_evidence = build_installer.FileEvidence.from_path(
+        installer_name,
+        installer,
+    )
+    build_installer.write_manifest(
+        candidate / "release-manifest.json",
+        {
+            "installer": {
+                "filename": installer_evidence.path,
+                "size_bytes": installer_evidence.size_bytes,
+                "sha256": installer_evidence.sha256,
+            }
+        },
+    )
+    build_installer.write_checksum_file(
+        candidate / "SHA256SUMS.txt",
+        installer_evidence,
+    )
+
+
 def _mock_inno_registration(
     monkeypatch,
     *,
@@ -157,7 +194,10 @@ def test_find_iscc_prefers_explicit_environment(tmp_path: Path) -> None:
     compiler = tmp_path / "ISCC.exe"
     compiler.write_bytes(b"compiler")
 
-    assert build_installer.find_iscc({"INNO_SETUP_COMPILER": str(compiler)}) == compiler.resolve()
+    assert (
+        build_installer.find_iscc({"INNO_SETUP_COMPILER": str(compiler)})
+        == compiler.resolve()
+    )
 
 
 def test_find_iscc_rejects_non_file_candidates(monkeypatch, tmp_path: Path) -> None:
@@ -250,9 +290,11 @@ def test_read_inno_version_binds_selected_compiler_to_registration(
     monkeypatch.setattr(
         build_installer,
         "read_windows_file_version",
-        lambda selected: "0.0.0.0"
-        if selected == compiler
-        else pytest.fail(f"unexpected compiler: {selected}"),
+        lambda selected: (
+            "0.0.0.0"
+            if selected == compiler
+            else pytest.fail(f"unexpected compiler: {selected}")
+        ),
         raising=False,
     )
     _mock_inno_registration(
@@ -600,7 +642,9 @@ def test_freeze_release_inputs_rejects_copied_snapshot_content_mismatch(
 
 
 def test_check_rejects_dirty_publishable_source(monkeypatch, capsys) -> None:
-    monkeypatch.setattr(build_installer, "find_iscc", lambda _env=None: Path("ISCC.exe"))
+    monkeypatch.setattr(
+        build_installer, "find_iscc", lambda _env=None: Path("ISCC.exe")
+    )
     monkeypatch.setattr(
         build_installer,
         "read_inno_version",
@@ -611,7 +655,9 @@ def test_check_rejects_dirty_publishable_source(monkeypatch, capsys) -> None:
         "git_output",
         lambda *args: " M file.py" if args[0] == "status" else "a" * 40,
     )
-    monkeypatch.setattr(build_installer, "check_payload", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        build_installer, "check_payload", lambda *_args, **_kwargs: None
+    )
 
     result = build_installer.main(["--check"])
 
@@ -620,7 +666,9 @@ def test_check_rejects_dirty_publishable_source(monkeypatch, capsys) -> None:
 
 
 def test_check_allows_dirty_staging_only(monkeypatch) -> None:
-    monkeypatch.setattr(build_installer, "find_iscc", lambda _env=None: Path("ISCC.exe"))
+    monkeypatch.setattr(
+        build_installer, "find_iscc", lambda _env=None: Path("ISCC.exe")
+    )
     monkeypatch.setattr(
         build_installer,
         "read_inno_version",
@@ -631,7 +679,9 @@ def test_check_allows_dirty_staging_only(monkeypatch) -> None:
         "git_output",
         lambda *args: " M file.py" if args[0] == "status" else "a" * 40,
     )
-    monkeypatch.setattr(build_installer, "check_payload", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        build_installer, "check_payload", lambda *_args, **_kwargs: None
+    )
 
     assert build_installer.main(["--check", "--staging-only"]) == 0
 
@@ -642,18 +692,24 @@ def test_check_fails_cleanly_when_pyinstaller_is_missing(
 ) -> None:
     identity = build_installer.make_source_identity("0.1.0", "a" * 40, dirty=True)
     monkeypatch.setattr(build_installer, "source_identity", lambda **_kwargs: identity)
-    monkeypatch.setattr(build_installer, "find_iscc", lambda _env=None: Path("ISCC.exe"))
+    monkeypatch.setattr(
+        build_installer, "find_iscc", lambda _env=None: Path("ISCC.exe")
+    )
     monkeypatch.setattr(
         build_installer,
         "read_inno_version",
         _bound_inno_evidence,
     )
-    monkeypatch.setattr(build_installer, "check_payload", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        build_installer, "check_payload", lambda *_args, **_kwargs: None
+    )
 
     def missing_pyinstaller(_name: str) -> str:
         raise build_installer.importlib.metadata.PackageNotFoundError("pyinstaller")
 
-    monkeypatch.setattr(build_installer.importlib.metadata, "version", missing_pyinstaller)
+    monkeypatch.setattr(
+        build_installer.importlib.metadata, "version", missing_pyinstaller
+    )
 
     assert build_installer.main(["--check", "--staging-only"]) == 2
     assert "PyInstaller" in capsys.readouterr().err
@@ -667,13 +723,19 @@ def test_check_prints_all_bound_tool_versions(monkeypatch, capsys) -> None:
     monkeypatch.setattr(
         build_installer,
         "read_inno_version",
-        lambda selected: _bound_inno_evidence(selected)
-        if selected == compiler
-        else pytest.fail(f"unexpected compiler: {selected}"),
+        lambda selected: (
+            _bound_inno_evidence(selected)
+            if selected == compiler
+            else pytest.fail(f"unexpected compiler: {selected}")
+        ),
     )
-    monkeypatch.setattr(build_installer.importlib.metadata, "version", lambda _name: "6.21.0")
+    monkeypatch.setattr(
+        build_installer.importlib.metadata, "version", lambda _name: "6.21.0"
+    )
     monkeypatch.setattr(build_installer.platform, "python_version", lambda: "3.12.10")
-    monkeypatch.setattr(build_installer, "check_payload", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        build_installer, "check_payload", lambda *_args, **_kwargs: None
+    )
 
     assert build_installer.main(["--check", "--staging-only"]) == 0
     output = capsys.readouterr().out
@@ -726,7 +788,9 @@ def test_build_release_rejects_publish_without_lifecycle_before_mutation(
     assert calls == []
 
 
-def test_windows_path_utf16_units_counts_non_bmp_and_rejects_unpaired_surrogate() -> None:
+def test_windows_path_utf16_units_counts_non_bmp_and_rejects_unpaired_surrogate() -> (
+    None
+):
     assert len("😀") == 1
     assert build_installer.windows_path_utf16_units("😀") == 2
     with pytest.raises(ValueError, match="UTF-16"):
@@ -735,9 +799,7 @@ def test_windows_path_utf16_units_counts_non_bmp_and_rejects_unpaired_surrogate(
 
 def test_compiler_source_path_budget_uses_utf16_units_at_exact_boundaries() -> None:
     package_root = Path("C:/w")
-    root_units = build_installer.windows_path_utf16_units(
-        str(package_root.resolve())
-    )
+    root_units = build_installer.windows_path_utf16_units(str(package_root.resolve()))
 
     passing_relative_units = 240 - root_units - 1
     passing_relative = "a" * (passing_relative_units - 2) + "😀"
@@ -775,9 +837,7 @@ def test_compact_staging_path_arithmetic_keeps_128_unit_source_within_budget() -
     )
 
     expected = (
-        build_installer.windows_path_utf16_units(str(package_root.resolve()))
-        + 1
-        + 128
+        build_installer.windows_path_utf16_units(str(package_root.resolve())) + 1 + 128
     )
     assert evidence.longest_entry_kind == "file"
     assert evidence.computed_max_utf16_units == expected
@@ -954,9 +1014,7 @@ def test_build_release_revalidates_staging_after_package_build_before_snapshot(
         return result
 
     expected_outside_snapshot = (
-        outside / "s"
-        if replaced_component == "run"
-        else outside / run_name / "s"
+        outside / "s" if replaced_component == "run" else outside / run_name / "s"
     )
 
     with pytest.raises(ValueError, match="link or junction/reparse"):
@@ -1011,7 +1069,9 @@ def test_over_budget_frozen_snapshot_fails_before_smokes_outputs_or_iscc(
         script_digest=build_installer.file_content_digest(frozen_script),
     )
     assert len(str(frozen.package_root)) + 1 + len(relative) > 240
-    monkeypatch.setattr(build_installer, "freeze_release_inputs", lambda **_kwargs: frozen)
+    monkeypatch.setattr(
+        build_installer, "freeze_release_inputs", lambda **_kwargs: frozen
+    )
 
     with pytest.raises(
         ValueError,
@@ -1064,7 +1124,9 @@ def test_over_budget_empty_directory_fails_before_smokes_outputs_or_iscc(
         package_inventory=build_installer.inventory_tree(package_root),
         script_digest=build_installer.file_content_digest(frozen_script),
     )
-    monkeypatch.setattr(build_installer, "freeze_release_inputs", lambda **_kwargs: frozen)
+    monkeypatch.setattr(
+        build_installer, "freeze_release_inputs", lambda **_kwargs: frozen
+    )
     base_runner = _release_runner(tmp_path, calls)
 
     def runner_with_empty_directory(command: list[str]) -> int:
@@ -1141,7 +1203,9 @@ def test_build_release_runs_package_gates_before_compiler(
             (package / "Modori.exe").write_bytes(b"package")
             (qml / "Main.qml").write_text("Item {}", encoding="utf-8")
         if command and str(command[0]).endswith("ISCC.exe"):
-            output_arg = next(item for item in command if item.startswith("/DOutputDir="))
+            output_arg = next(
+                item for item in command if item.startswith("/DOutputDir=")
+            )
             name_arg = next(
                 item for item in command if item.startswith("/DOutputBaseFilename=")
             )
@@ -1160,14 +1224,14 @@ def test_build_release_runs_package_gates_before_compiler(
         i for i, value in enumerate(flattened) if "package_windows.py" in value
     )
     public_index = next(
-        i for i, value in enumerate(flattened) if "package_public_data_smoke.py" in value
+        i
+        for i, value in enumerate(flattened)
+        if "package_public_data_smoke.py" in value
     )
     compiler_index = next(i for i, value in enumerate(flattened) if "ISCC.exe" in value)
     assert package_index < public_index < compiler_index
     iscc_calls = [
-        command
-        for command in calls
-        if command and str(command[0]).endswith("ISCC.exe")
+        command for command in calls if command and str(command[0]).endswith("ISCC.exe")
     ]
     assert [
         item
@@ -1192,12 +1256,7 @@ def test_compact_staging_with_128_unit_relative_path_reaches_fake_iscc(
 
     monkeypatch.setattr(build_installer.uuid, "uuid4", lambda: FixedUuid())
     expected_package = (
-        tmp_path
-        / ".tmp"
-        / "ib"
-        / f"{identity.git_commit[:12]}-{'b' * 12}"
-        / "s"
-        / "p"
+        tmp_path / ".tmp" / "ib" / f"{identity.git_commit[:12]}-{'b' * 12}" / "s" / "p"
     ).resolve()
     test_budget = (
         len(str(expected_package).encode("utf-16-le")) // 2 + 1 + len(relative)
@@ -1217,9 +1276,7 @@ def test_compact_staging_with_128_unit_relative_path_reaches_fake_iscc(
     )
 
     iscc_call = next(
-        command
-        for command in calls
-        if command and str(command[0]).endswith("ISCC.exe")
+        command for command in calls if command and str(command[0]).endswith("ISCC.exe")
     )
     package_argument = next(
         item for item in iscc_call if item.startswith("/DPackageRoot=")
@@ -1275,13 +1332,13 @@ def test_build_release_freezes_inputs_before_all_smokes_and_compilers(
     assert len(snapshot_executables) == 1
     snapshot_executable = snapshot_executables.pop()
     assert snapshot_executable.is_file()
-    assert snapshot_executable != (tmp_path / "dist" / "Modori" / "Modori.exe").resolve()
+    assert (
+        snapshot_executable != (tmp_path / "dist" / "Modori" / "Modori.exe").resolve()
+    )
     assert snapshot_executable.is_relative_to(result.parent)
 
     iscc_calls = [
-        command
-        for command in calls
-        if command and str(command[0]).endswith("ISCC.exe")
+        command for command in calls if command and str(command[0]).endswith("ISCC.exe")
     ]
     assert len(iscc_calls) == 3
     package_roots = [
@@ -1328,7 +1385,9 @@ def test_build_release_freezes_inputs_before_all_smokes_and_compilers(
     assert package_build_index < min(smoke_indexes)
     assert max(smoke_indexes) < min(compiler_indexes)
 
-    manifest = json.loads((result / "release-manifest.json").read_text(encoding="utf-8"))
+    manifest = json.loads(
+        (result / "release-manifest.json").read_text(encoding="utf-8")
+    )
     assert {path.name for path in result.iterdir()} == {
         f"Modori-Setup-{identity.build_identity}.exe",
         "release-manifest.json",
@@ -1405,9 +1464,7 @@ def test_installed_smoke_success_uses_isolated_identity_and_marks_production(
     )
 
     iscc_calls = [
-        command
-        for command in calls
-        if command and str(command[0]).endswith("ISCC.exe")
+        command for command in calls if command and str(command[0]).endswith("ISCC.exe")
     ]
     assert len(iscc_calls) == 3
     app_ids = [
@@ -1430,9 +1487,7 @@ def test_installed_smoke_success_uses_isolated_identity_and_marks_production(
     assert versions == ["0.1.0", DOWNGRADE_PROBE_VERSION, "0.1.0"]
     allow_custom_dir_values = [
         next(
-            item
-            for item in command
-            if item.startswith("/DAllowCustomDirValue=")
+            item for item in command if item.startswith("/DAllowCustomDirValue=")
         ).split("=", 1)[1]
         for command in iscc_calls
     ]
@@ -1454,16 +1509,14 @@ def test_installed_smoke_success_uses_isolated_identity_and_marks_production(
         for command in calls
         if any(item.endswith("installer_smoke.py") for item in command)
     )
-    assert calls.index(iscc_calls[1]) < calls.index(smoke_command) < calls.index(
-        iscc_calls[2]
+    assert (
+        calls.index(iscc_calls[1])
+        < calls.index(smoke_command)
+        < calls.index(iscc_calls[2])
     )
     smoke_installer = Path(smoke_command[2])
-    smoke_manifest_path = Path(
-        smoke_command[smoke_command.index("--manifest") + 1]
-    )
-    probe_installer = Path(
-        smoke_command[smoke_command.index("--downgrade-probe") + 1]
-    )
+    smoke_manifest_path = Path(smoke_command[smoke_command.index("--manifest") + 1])
+    probe_installer = Path(smoke_command[smoke_command.index("--downgrade-probe") + 1])
     assert smoke_installer.is_file()
     assert probe_installer.is_file()
     smoke_manifest = json.loads(smoke_manifest_path.read_text(encoding="utf-8"))
@@ -1509,14 +1562,11 @@ def test_failed_installed_smoke_never_compiles_production_or_publishes(
         )
 
     iscc_calls = [
-        command
-        for command in calls
-        if command and str(command[0]).endswith("ISCC.exe")
+        command for command in calls if command and str(command[0]).endswith("ISCC.exe")
     ]
     assert len(iscc_calls) == 2
     assert all(
-        f"/DAppIdValue={SMOKE_APP_ID.strip('{}')}" in command
-        for command in iscc_calls
+        f"/DAppIdValue={SMOKE_APP_ID.strip('{}')}" in command for command in iscc_calls
     )
     assert all("/DAllowCustomDirValue=1" in command for command in iscc_calls)
     assert not any(
@@ -1563,9 +1613,7 @@ def test_live_input_drift_after_snapshot_prevents_candidate_publication(
             and f"/DAppIdValue={PRODUCTION_APP_ID.strip('{}')}" in command
         ):
             if mutated_input == "package":
-                (tmp_path / "dist" / "Modori" / "Modori.exe").write_bytes(
-                    b"mutated"
-                )
+                (tmp_path / "dist" / "Modori" / "Modori.exe").write_bytes(b"mutated")
             else:
                 (tmp_path / "installer" / "modori.iss").write_bytes(b"[Files]\n")
         return result
@@ -1694,9 +1742,8 @@ def test_compiler_drift_at_release_boundaries_fails_closed(
         iscc_count = sum(
             bool(call and str(call[0]).endswith("ISCC.exe")) for call in calls
         )
-        if (
-            mutation_boundary == "after-package-build"
-            and any(item.endswith("package_windows.py") for item in command)
+        if mutation_boundary == "after-package-build" and any(
+            item.endswith("package_windows.py") for item in command
         ):
             binding["sha256"] = "B" * 64
         elif mutation_boundary == "after-smoke-compile" and is_iscc and iscc_count == 1:
@@ -1714,9 +1761,7 @@ def test_compiler_drift_at_release_boundaries_fails_closed(
         )
 
     iscc_calls = [
-        command
-        for command in calls
-        if command and str(command[0]).endswith("ISCC.exe")
+        command for command in calls if command and str(command[0]).endswith("ISCC.exe")
     ]
     assert len(iscc_calls) == expected_iscc_calls
     assert not (tmp_path / "dist" / "installer" / identity.build_identity).exists()
@@ -1763,6 +1808,368 @@ def test_candidate_runtime_inventory_rejects_extra_or_reparse_entries(
     assert len(staging_directories) == 1
     assert (staging_directories[0] / "c").is_dir()
     assert not (tmp_path / "dist" / "installer").exists()
+
+
+def test_candidate_evidence_captures_exact_files_and_relations(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setattr(build_installer, "WORKSPACE", tmp_path)
+    candidate = tmp_path / "candidate"
+    installer_name = "Modori-Setup-test.exe"
+    _write_candidate(candidate, installer_name)
+
+    evidence = build_installer.capture_candidate_evidence(
+        candidate,
+        installer_name,
+    )
+
+    observed = {
+        item.name: item
+        for item in (evidence.installer, evidence.manifest, evidence.checksum)
+    }
+    assert set(observed) == {
+        installer_name,
+        "release-manifest.json",
+        "SHA256SUMS.txt",
+    }
+    for name, item in observed.items():
+        path = candidate / name
+        assert item.is_regular is True
+        assert item.is_reparse_point is False
+        assert item.size_bytes == path.stat().st_size
+        assert item.sha256 == build_installer.sha256_file(path)
+    assert evidence.manifest_installer == build_installer.FileEvidence(
+        path=installer_name,
+        size_bytes=evidence.installer.size_bytes,
+        sha256=evidence.installer.sha256,
+    )
+    assert evidence.checksum_line == (
+        f"{evidence.installer.sha256}  {installer_name}\n"
+    )
+
+
+@pytest.mark.parametrize("relation", ["manifest", "checksum"])
+def test_candidate_evidence_rejects_invalid_installer_relations(
+    monkeypatch,
+    tmp_path: Path,
+    relation: str,
+) -> None:
+    _configure_release_workspace(monkeypatch, tmp_path)
+    if relation == "manifest":
+        original_manifest = build_installer.write_manifest
+
+        def write_invalid_manifest(path: Path, payload) -> None:
+            invalid = dict(payload)
+            invalid["installer"] = {
+                **payload["installer"],
+                "sha256": "0" * 64,
+            }
+            original_manifest(path, invalid)
+
+        monkeypatch.setattr(
+            build_installer,
+            "write_manifest",
+            write_invalid_manifest,
+        )
+    else:
+
+        def write_invalid_checksum(path: Path, evidence) -> None:
+            path.write_text(
+                f"{'0' * 64}  {Path(evidence.path).name}\n",
+                encoding="utf-8",
+            )
+
+        monkeypatch.setattr(
+            build_installer,
+            "write_checksum_file",
+            write_invalid_checksum,
+        )
+
+    with pytest.raises(RuntimeError, match=f"candidate.*{relation}"):
+        build_installer.build_release(
+            build_installer.BuildOptions(staging_only=True),
+            runner=_release_runner(tmp_path, []),
+        )
+
+
+@pytest.mark.parametrize(
+    "candidate_name",
+    ["installer", "release-manifest.json", "SHA256SUMS.txt"],
+)
+@pytest.mark.parametrize("staging_only", [True, False], ids=["return", "publish"])
+def test_candidate_drift_during_final_input_revalidation_is_rejected(
+    monkeypatch,
+    tmp_path: Path,
+    candidate_name: str,
+    staging_only: bool,
+) -> None:
+    identity = _configure_release_workspace(monkeypatch, tmp_path)
+    original_revalidation = build_installer.require_release_inputs_unchanged
+
+    def mutate_candidate_after_input_revalidation(**kwargs) -> None:
+        original_revalidation(**kwargs)
+        candidate = _release_staging_directories(tmp_path)[0] / "c"
+        selected_name = (
+            f"Modori-Setup-{identity.build_identity}.exe"
+            if candidate_name == "installer"
+            else candidate_name
+        )
+        _mutate_first_byte(candidate / selected_name)
+
+    monkeypatch.setattr(
+        build_installer,
+        "require_release_inputs_unchanged",
+        mutate_candidate_after_input_revalidation,
+    )
+    options = (
+        build_installer.BuildOptions(staging_only=True)
+        if staging_only
+        else build_installer.BuildOptions(with_installed_smoke=True)
+    )
+
+    with pytest.raises(RuntimeError, match="candidate.*(changed|evidence)"):
+        build_installer.build_release(
+            options,
+            runner=_release_runner(tmp_path, []),
+        )
+
+    staging = _release_staging_directories(tmp_path)[0]
+    assert (staging / "c").is_dir()
+    assert not (tmp_path / "dist" / "installer" / identity.build_identity).exists()
+
+
+def test_publish_rejects_final_parent_junction_before_move(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    identity = _configure_release_workspace(monkeypatch, tmp_path)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    publication_parent = tmp_path / "dist" / "installer"
+    publication_parent.parent.mkdir()
+    _create_directory_junction(publication_parent, outside)
+
+    with pytest.raises(ValueError, match="link or junction/reparse"):
+        build_installer.build_release(
+            build_installer.BuildOptions(with_installed_smoke=True),
+            runner=_release_runner(tmp_path, []),
+        )
+
+    staging = _release_staging_directories(tmp_path)[0]
+    assert (staging / "c").is_dir()
+    assert list(outside.iterdir()) == []
+    assert not (outside / identity.build_identity).exists()
+
+
+def test_publish_rejects_cross_volume_before_move(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    identity = _configure_release_workspace(monkeypatch, tmp_path)
+
+    def different_volume_ids(path: Path) -> int:
+        return 1 if path.name == "c" else 2
+
+    monkeypatch.setattr(
+        build_installer,
+        "_path_volume_id",
+        different_volume_ids,
+        raising=False,
+    )
+
+    with pytest.raises(ValueError, match="same volume"):
+        build_installer.build_release(
+            build_installer.BuildOptions(with_installed_smoke=True),
+            runner=_release_runner(tmp_path, []),
+        )
+
+    staging = _release_staging_directories(tmp_path)[0]
+    assert (staging / "c").is_dir()
+    assert not (tmp_path / "dist" / "installer" / identity.build_identity).exists()
+
+
+def test_publish_revalidates_final_parent_identity_immediately_before_move(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    identity = _configure_release_workspace(monkeypatch, tmp_path)
+    outside = tmp_path / "outside-swap-target"
+    outside.mkdir()
+    publication_parent = tmp_path / "dist" / "installer"
+    original_parent = tmp_path / "dist" / "installer-original"
+    real_volume_id = build_installer._path_volume_id
+    swapped = False
+
+    def swap_after_volume_check(path: Path) -> int:
+        nonlocal swapped
+        volume_id = real_volume_id(path)
+        if path == publication_parent and not swapped:
+            publication_parent.rename(original_parent)
+            _create_directory_junction(publication_parent, outside)
+            swapped = True
+        return volume_id
+
+    monkeypatch.setattr(build_installer, "_path_volume_id", swap_after_volume_check)
+
+    try:
+        with pytest.raises(
+            RuntimeError, match="publication.*replaced|replaced.*publication"
+        ):
+            build_installer.build_release(
+                build_installer.BuildOptions(with_installed_smoke=True),
+                runner=_release_runner(tmp_path, []),
+            )
+
+        assert swapped is True
+        assert list(outside.iterdir()) == []
+        assert not (outside / identity.build_identity).exists()
+    finally:
+        if publication_parent.is_junction():
+            publication_parent.rmdir()
+        if original_parent.exists():
+            original_parent.rename(publication_parent)
+
+
+def test_post_move_candidate_mutation_is_reported_as_validation_error(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    identity = _configure_release_workspace(monkeypatch, tmp_path)
+    final = tmp_path / "dist" / "installer" / identity.build_identity
+    installer_name = f"Modori-Setup-{identity.build_identity}.exe"
+    original_digest = build_installer.file_content_digest
+    mutated = False
+
+    def mutate_installer_when_final_validation_starts(
+        path: Path,
+    ) -> build_installer.FileContentDigest:
+        nonlocal mutated
+        if path == final / installer_name and not mutated:
+            _mutate_first_byte(path)
+            mutated = True
+        return original_digest(path)
+
+    monkeypatch.setattr(
+        build_installer,
+        "file_content_digest",
+        mutate_installer_when_final_validation_starts,
+    )
+
+    with pytest.raises(RuntimeError, match="candidate.*(changed|evidence)"):
+        build_installer.build_release(
+            build_installer.BuildOptions(with_installed_smoke=True),
+            runner=_release_runner(tmp_path, []),
+        )
+
+    assert mutated is True
+    assert not final.exists()
+    staging = _release_staging_directories(tmp_path)[0]
+    assert (staging / "c").is_dir()
+
+
+def test_hidden_publication_mutation_never_reaches_canonical_directory(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    identity = _configure_release_workspace(monkeypatch, tmp_path)
+    final = tmp_path / "dist" / "installer" / identity.build_identity
+    installer_name = f"Modori-Setup-{identity.build_identity}.exe"
+    original_digest = build_installer.file_content_digest
+    mutated = False
+
+    def mutate_installer_during_hidden_validation(
+        path: Path,
+    ) -> build_installer.FileContentDigest:
+        nonlocal mutated
+        if (
+            path.name == installer_name
+            and path.parent.name.startswith(f".{identity.build_identity}.publishing-")
+            and not mutated
+        ):
+            _mutate_first_byte(path)
+            mutated = True
+        return original_digest(path)
+
+    monkeypatch.setattr(
+        build_installer,
+        "file_content_digest",
+        mutate_installer_during_hidden_validation,
+    )
+
+    with pytest.raises(RuntimeError, match="candidate.*(changed|evidence)"):
+        build_installer.build_release(
+            build_installer.BuildOptions(with_installed_smoke=True),
+            runner=_release_runner(tmp_path, []),
+        )
+
+    assert mutated is True
+    assert not final.exists()
+    staging = _release_staging_directories(tmp_path)[0]
+    assert (staging / "c").is_dir()
+    publication_parent = tmp_path / "dist" / "installer"
+    assert all(".publishing-" not in path.name for path in publication_parent.iterdir())
+
+
+def test_mid_publish_canonical_collision_is_preserved_and_candidate_rolls_back(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    identity = _configure_release_workspace(monkeypatch, tmp_path)
+    final = tmp_path / "dist" / "installer" / identity.build_identity
+    sentinel = final / "preserve.txt"
+    original_validation = build_installer.require_candidate_evidence
+    injected = False
+
+    def inject_collision_after_hidden_validation(path: Path, expected) -> None:
+        nonlocal injected
+        original_validation(path, expected)
+        if ".publishing-" in path.name and not injected:
+            final.mkdir()
+            sentinel.write_bytes(b"preserve")
+            injected = True
+
+    monkeypatch.setattr(
+        build_installer,
+        "require_candidate_evidence",
+        inject_collision_after_hidden_validation,
+    )
+
+    with pytest.raises(FileExistsError, match="appeared during publication"):
+        build_installer.build_release(
+            build_installer.BuildOptions(with_installed_smoke=True),
+            runner=_release_runner(tmp_path, []),
+        )
+
+    assert injected is True
+    assert sentinel.read_bytes() == b"preserve"
+    assert {path.name for path in final.iterdir()} == {"preserve.txt"}
+    staging = _release_staging_directories(tmp_path)[0]
+    assert (staging / "c").is_dir()
+    publication_parent = final.parent
+    assert all(".publishing-" not in path.name for path in publication_parent.iterdir())
+
+
+def test_publish_collision_preserves_existing_final_directory(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    identity = _configure_release_workspace(monkeypatch, tmp_path)
+    final = tmp_path / "dist" / "installer" / identity.build_identity
+    final.mkdir(parents=True)
+    sentinel = final / "preserve.txt"
+    sentinel.write_bytes(b"preserve")
+
+    with pytest.raises(FileExistsError, match="already exists"):
+        build_installer.build_release(
+            build_installer.BuildOptions(with_installed_smoke=True),
+            runner=_release_runner(tmp_path, []),
+        )
+
+    assert sentinel.read_bytes() == b"preserve"
+    assert {path.name for path in final.iterdir()} == {"preserve.txt"}
+    staging = _release_staging_directories(tmp_path)[0]
+    assert (staging / "c").is_dir()
 
 
 @pytest.mark.parametrize(

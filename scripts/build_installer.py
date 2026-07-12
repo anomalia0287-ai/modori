@@ -5,6 +5,7 @@ import ctypes
 import datetime as dt
 import hashlib
 import importlib.metadata
+import json
 import os
 import platform
 import shutil
@@ -50,7 +51,9 @@ else:
     )
 
 WORKSPACE = Path(__file__).resolve().parents[1]
-INNO_REGISTRY_KEY = r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Inno Setup 6_is1"
+INNO_REGISTRY_KEY = (
+    r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Inno Setup 6_is1"
+)
 COMPILER_SOURCE_PATH_BUDGET_UTF16_UNITS = 240
 _VS_FIXEDFILEINFO_SIGNATURE = 0xFEEF04BD
 
@@ -147,6 +150,79 @@ class FileContentDigest:
 
 
 @dataclass(frozen=True)
+class CandidateFileEvidence:
+    name: str
+    is_regular: bool
+    is_reparse_point: bool
+    size_bytes: int
+    sha256: str
+
+
+@dataclass(frozen=True)
+class CandidateEvidence:
+    installer: CandidateFileEvidence
+    manifest: CandidateFileEvidence
+    checksum: CandidateFileEvidence
+    manifest_installer: FileEvidence
+    checksum_line: str
+
+
+@dataclass(frozen=True)
+class DirectoryAncestryBoundary:
+    directories: tuple[Path, ...]
+    identities: tuple[tuple[int, int, int, int], ...]
+    resolved_workspace: Path
+
+    @classmethod
+    def capture(cls, selected: Path) -> DirectoryAncestryBoundary:
+        workspace = _lexical_absolute(WORKSPACE)
+        selected_directory = _lexical_absolute(selected)
+        try:
+            relative = selected_directory.relative_to(workspace)
+        except ValueError as exc:
+            raise ValueError(
+                f"Directory boundary is outside the workspace: {selected_directory}"
+            ) from exc
+        workspace_metadata = _tree_lstat(workspace)
+        if not stat.S_ISDIR(workspace_metadata.st_mode):
+            raise ValueError(f"Workspace boundary is not a directory: {workspace}")
+        resolved_workspace = workspace.resolve(strict=True)
+        directories = [workspace]
+        component = workspace
+        for part in relative.parts:
+            component /= part
+            directories.append(component)
+        boundary = cls(
+            directories=tuple(directories),
+            identities=tuple(
+                _directory_identity_signature(directory) for directory in directories
+            ),
+            resolved_workspace=resolved_workspace,
+        )
+        boundary.revalidate()
+        return boundary
+
+    @property
+    def selected(self) -> Path:
+        return self.directories[-1]
+
+    def revalidate(self) -> None:
+        try:
+            current = tuple(
+                _directory_identity_signature(directory)
+                for directory in self.directories
+            )
+            for directory in self.directories:
+                _require_resolved_inside(directory, self.resolved_workspace)
+        except (OSError, ValueError) as exc:
+            raise RuntimeError(
+                f"Installer publication boundary was replaced: {exc}"
+            ) from exc
+        if current != self.identities:
+            raise RuntimeError("Installer publication boundary was replaced")
+
+
+@dataclass(frozen=True)
 class FrozenReleaseInputs:
     package_root: Path
     installer_script: Path
@@ -191,6 +267,18 @@ def _tree_lstat(path: Path) -> os.stat_result:
     if _is_reparse_point(metadata):
         raise ValueError(f"Tree path contains a link or junction/reparse point: {path}")
     return metadata
+
+
+def _directory_identity_signature(path: Path) -> tuple[int, int, int, int]:
+    metadata = _tree_lstat(path)
+    if not stat.S_ISDIR(metadata.st_mode):
+        raise ValueError(f"Directory boundary component is not a directory: {path}")
+    return (
+        metadata.st_dev,
+        metadata.st_ino,
+        metadata.st_mode,
+        getattr(metadata, "st_file_attributes", 0),
+    )
 
 
 def _require_resolved_inside(path: Path, resolved_root: Path) -> None:
@@ -440,7 +528,9 @@ def copy_inventory_tree(
         source_file = source_root / Path(file.relative_path)
         before = _tree_lstat(source_file)
         if not stat.S_ISREG(before.st_mode):
-            raise RuntimeError(f"Snapshot source file changed before copy: {source_file}")
+            raise RuntimeError(
+                f"Snapshot source file changed before copy: {source_file}"
+            )
         _require_resolved_inside(source_file, resolved_root)
         destination_file = destination_root / Path(file.relative_path)
         destination_file.parent.mkdir(parents=True, exist_ok=True)
@@ -461,7 +551,9 @@ def copy_inventory_tree(
             after.st_ino,
             getattr(after, "st_file_attributes", 0),
         ):
-            raise RuntimeError(f"Snapshot source file changed during copy: {source_file}")
+            raise RuntimeError(
+                f"Snapshot source file changed during copy: {source_file}"
+            )
 
 
 def freeze_release_inputs(
@@ -610,7 +702,12 @@ def read_windows_file_version(executable: Path) -> str:
 
     buffer = ctypes.create_string_buffer(size)
     get_info = version_api.GetFileVersionInfoW
-    get_info.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD, wintypes.LPVOID]
+    get_info.argtypes = [
+        wintypes.LPCWSTR,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        wintypes.LPVOID,
+    ]
     get_info.restype = wintypes.BOOL
     if not get_info(str(selected), 0, size, buffer):
         raise ctypes.WinError(ctypes.get_last_error())
@@ -625,16 +722,22 @@ def read_windows_file_version(executable: Path) -> str:
     query_value.restype = wintypes.BOOL
     fixed_pointer = wintypes.LPVOID()
     fixed_size = wintypes.UINT()
-    if not query_value(buffer, "\\", ctypes.byref(fixed_pointer), ctypes.byref(fixed_size)):
+    if not query_value(
+        buffer, "\\", ctypes.byref(fixed_pointer), ctypes.byref(fixed_size)
+    ):
         raise ctypes.WinError(ctypes.get_last_error())
     if fixed_size.value < ctypes.sizeof(_VSFixedFileInfo):
-        raise ValueError(f"Selected compiler has truncated Windows version metadata: {selected}")
+        raise ValueError(
+            f"Selected compiler has truncated Windows version metadata: {selected}"
+        )
     fixed = ctypes.cast(
         fixed_pointer,
         ctypes.POINTER(_VSFixedFileInfo),
     ).contents
     if fixed.signature != _VS_FIXEDFILEINFO_SIGNATURE:
-        raise ValueError(f"Selected compiler has invalid Windows version metadata: {selected}")
+        raise ValueError(
+            f"Selected compiler has invalid Windows version metadata: {selected}"
+        )
     components = (
         fixed.file_version_ms >> 16,
         fixed.file_version_ms & 0xFFFF,
@@ -665,7 +768,9 @@ def read_inno_version(compiler: Path) -> InnoToolchainEvidence:
     try:
         compiler_before = file_content_digest(selected)
     except (OSError, RuntimeError) as exc:
-        raise RuntimeError(f"Could not hash selected compiler: {selected}: {exc}") from exc
+        raise RuntimeError(
+            f"Could not hash selected compiler: {selected}: {exc}"
+        ) from exc
     try:
         file_version = _fixed_file_version(read_windows_file_version(selected))
     except (OSError, ValueError) as exc:
@@ -679,7 +784,9 @@ def read_inno_version(compiler: Path) -> InnoToolchainEvidence:
     try:
         compiler_after = file_content_digest(selected)
     except (OSError, RuntimeError) as exc:
-        raise RuntimeError(f"Could not hash selected compiler: {selected}: {exc}") from exc
+        raise RuntimeError(
+            f"Could not hash selected compiler: {selected}: {exc}"
+        ) from exc
     if compiler_after != compiler_before:
         raise RuntimeError(
             "Selected compiler changed while binding toolchain evidence: "
@@ -862,7 +969,9 @@ def run_command(command: list[str]) -> int:
 def run_required(command: list[str], runner=run_command) -> None:
     result = runner(command)
     if result != 0:
-        raise RuntimeError(f"Command failed with exit code {result}: {' '.join(command)}")
+        raise RuntimeError(
+            f"Command failed with exit code {result}: {' '.join(command)}"
+        )
 
 
 def compile_installer(
@@ -898,11 +1007,15 @@ def compile_installer(
     finally:
         require_inno_toolchain_unchanged(inno)
     if result != 0:
-        raise RuntimeError(f"Command failed with exit code {result}: {' '.join(command)}")
+        raise RuntimeError(
+            f"Command failed with exit code {result}: {' '.join(command)}"
+        )
     installers = sorted(output_dir.glob("*.exe"))
     expected = output_dir / f"{output_base_filename}.exe"
     if installers != [expected] or not expected.is_file():
-        raise RuntimeError(f"ISCC did not create exactly the expected installer: {expected}")
+        raise RuntimeError(
+            f"ISCC did not create exactly the expected installer: {expected}"
+        )
     return expected
 
 
@@ -930,14 +1043,10 @@ def package_commands(
     return [package_build_command(), *package_smoke_commands(selected)]
 
 
-def publish_directory(staged: Path, final: Path) -> None:
-    if final.exists():
-        raise FileExistsError(f"Installer evidence directory already exists: {final}")
-    final.parent.mkdir(parents=True, exist_ok=True)
-    staged.replace(final)
-
-
-def require_candidate_inventory(candidate: Path, installer_name: str) -> None:
+def _validated_candidate_files(
+    candidate: Path,
+    installer_name: str,
+) -> tuple[Path, Path, dict[str, Path]]:
     expected = {installer_name, "release-manifest.json", "SHA256SUMS.txt"}
     try:
         lexical_candidate, resolved_candidate = _validated_tree_root(candidate)
@@ -956,13 +1065,300 @@ def require_candidate_inventory(candidate: Path, installer_name: str) -> None:
         metadata = entry.stat(follow_symlinks=False)
         if _is_reparse_point(metadata) or not stat.S_ISREG(metadata.st_mode):
             raise RuntimeError(
-                "Installer candidate entry is not a regular non-reparse file: "
-                f"{path}"
+                f"Installer candidate entry is not a regular non-reparse file: {path}"
             )
         try:
             _require_resolved_inside(path, resolved_candidate)
         except ValueError as exc:
             raise RuntimeError(f"Installer candidate entry is invalid: {exc}") from exc
+    return (
+        lexical_candidate,
+        resolved_candidate,
+        {entry.name: lexical_candidate / entry.name for entry in entries},
+    )
+
+
+def require_candidate_inventory(candidate: Path, installer_name: str) -> None:
+    _validated_candidate_files(candidate, installer_name)
+
+
+def _candidate_file_evidence(
+    path: Path,
+    resolved_candidate: Path,
+) -> CandidateFileEvidence:
+    try:
+        metadata = path.lstat()
+        is_reparse_point = _is_reparse_point(metadata)
+        is_regular = stat.S_ISREG(metadata.st_mode)
+        if is_reparse_point or not is_regular:
+            raise ValueError(f"entry is not a regular non-reparse file: {path}")
+        content = _safe_tree_file_digest(path, resolved_candidate)
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise RuntimeError(
+            f"Installer candidate file evidence is invalid: {path}: {exc}"
+        ) from exc
+    return CandidateFileEvidence(
+        name=path.name,
+        is_regular=is_regular,
+        is_reparse_point=is_reparse_point,
+        size_bytes=content.size_bytes,
+        sha256=content.sha256,
+    )
+
+
+def _read_candidate_text(
+    path: Path,
+    evidence: CandidateFileEvidence,
+    resolved_candidate: Path,
+) -> str:
+    try:
+        metadata = _tree_lstat(path)
+        if not stat.S_ISREG(metadata.st_mode):
+            raise ValueError(f"Candidate metadata is not a regular file: {path}")
+        _require_resolved_inside(path, resolved_candidate)
+        text = path.read_text(encoding="utf-8")
+        after = _safe_tree_file_digest(path, resolved_candidate)
+    except (OSError, RuntimeError, UnicodeError, ValueError) as exc:
+        raise RuntimeError(
+            f"Installer candidate metadata file is invalid: {path}: {exc}"
+        ) from exc
+    if (after.size_bytes, after.sha256) != (
+        evidence.size_bytes,
+        evidence.sha256,
+    ):
+        raise RuntimeError(
+            f"Installer candidate metadata changed while validating: {path}"
+        )
+    return text
+
+
+def capture_candidate_evidence(
+    candidate: Path,
+    installer_name: str,
+) -> CandidateEvidence:
+    (
+        _lexical_candidate,
+        resolved_candidate,
+        candidate_files,
+    ) = _validated_candidate_files(candidate, installer_name)
+    installer = _candidate_file_evidence(
+        candidate_files[installer_name],
+        resolved_candidate,
+    )
+    manifest = _candidate_file_evidence(
+        candidate_files["release-manifest.json"],
+        resolved_candidate,
+    )
+    checksum = _candidate_file_evidence(
+        candidate_files["SHA256SUMS.txt"],
+        resolved_candidate,
+    )
+
+    manifest_text = _read_candidate_text(
+        candidate_files["release-manifest.json"],
+        manifest,
+        resolved_candidate,
+    )
+    try:
+        manifest_payload = json.loads(manifest_text)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(
+            f"Installer candidate manifest is not valid JSON: {exc}"
+        ) from exc
+    if not isinstance(manifest_payload, dict):
+        raise RuntimeError("Installer candidate manifest is not a JSON object")
+    manifest_installer_payload = manifest_payload.get("installer")
+    expected_manifest_installer = {
+        "filename": installer.name,
+        "size_bytes": installer.size_bytes,
+        "sha256": installer.sha256,
+    }
+    if (
+        not isinstance(manifest_installer_payload, dict)
+        or type(manifest_installer_payload.get("filename")) is not str
+        or type(manifest_installer_payload.get("size_bytes")) is not int
+        or type(manifest_installer_payload.get("sha256")) is not str
+        or manifest_installer_payload != expected_manifest_installer
+    ):
+        raise RuntimeError(
+            "Installer candidate manifest relation mismatch: "
+            f"expected={expected_manifest_installer}; "
+            f"actual={manifest_installer_payload}"
+        )
+    manifest_installer = FileEvidence(
+        path=manifest_installer_payload["filename"],
+        size_bytes=manifest_installer_payload["size_bytes"],
+        sha256=manifest_installer_payload["sha256"],
+    )
+
+    checksum_line = _read_candidate_text(
+        candidate_files["SHA256SUMS.txt"],
+        checksum,
+        resolved_candidate,
+    )
+    expected_checksum_line = f"{installer.sha256}  {installer.name}\n"
+    if checksum_line != expected_checksum_line:
+        raise RuntimeError(
+            "Installer candidate checksum relation mismatch: "
+            f"expected={expected_checksum_line!r}; actual={checksum_line!r}"
+        )
+
+    require_candidate_inventory(candidate, installer_name)
+    return CandidateEvidence(
+        installer=installer,
+        manifest=manifest,
+        checksum=checksum,
+        manifest_installer=manifest_installer,
+        checksum_line=checksum_line,
+    )
+
+
+def require_candidate_evidence(
+    candidate: Path,
+    expected: CandidateEvidence,
+) -> None:
+    try:
+        current = capture_candidate_evidence(candidate, expected.installer.name)
+    except RuntimeError as exc:
+        raise RuntimeError(
+            f"Installer candidate evidence validation failed: {exc}"
+        ) from exc
+    if current != expected:
+        raise RuntimeError(
+            "Installer candidate evidence changed: "
+            f"expected={expected}; current={current}"
+        )
+
+
+def _require_safe_publication_parent(
+    final: Path,
+) -> tuple[Path, DirectoryAncestryBoundary]:
+    workspace = _lexical_absolute(WORKSPACE)
+    workspace_metadata = _tree_lstat(workspace)
+    if not stat.S_ISDIR(workspace_metadata.st_mode):
+        raise ValueError(f"Workspace boundary is not a directory: {workspace}")
+    resolved_workspace = workspace.resolve(strict=True)
+    selected_final = _lexical_absolute(final)
+    try:
+        relative_parent = selected_final.parent.relative_to(workspace)
+    except ValueError as exc:
+        raise ValueError(
+            f"Installer publication is outside the workspace: {selected_final}"
+        ) from exc
+
+    component = workspace
+    _require_safe_staging_directory(component, resolved_workspace)
+    for part in relative_parent.parts:
+        component /= part
+        try:
+            component.mkdir()
+        except FileExistsError:
+            pass
+        metadata = _tree_lstat(component)
+        if not stat.S_ISDIR(metadata.st_mode):
+            raise ValueError(
+                "Installer publication parent component is not a directory: "
+                f"{component}"
+            )
+        _require_resolved_inside(component, resolved_workspace)
+    boundary = DirectoryAncestryBoundary.capture(selected_final.parent)
+    return selected_final, boundary
+
+
+def _path_volume_id(path: Path) -> int:
+    return _tree_lstat(path).st_dev
+
+
+def _restore_failed_publication(
+    current: Path,
+    staged: Path,
+    *,
+    final_parent_boundary: DirectoryAncestryBoundary,
+    staging_parent_boundary: DirectoryAncestryBoundary,
+) -> None:
+    final_parent_boundary.revalidate()
+    staging_parent_boundary.revalidate()
+    if os.path.lexists(staged):
+        raise RuntimeError(
+            f"Installer publication rollback target already exists: {staged}"
+        )
+    current.rename(staged)
+    final_parent_boundary.revalidate()
+    staging_parent_boundary.revalidate()
+    if os.path.lexists(current) or not os.path.lexists(staged):
+        raise RuntimeError("Installer publication rollback did not complete")
+
+
+def publish_directory(
+    staged: Path,
+    final: Path,
+    expected: CandidateEvidence,
+) -> None:
+    require_candidate_evidence(staged, expected)
+    selected_final, final_parent_boundary = _require_safe_publication_parent(final)
+    final_parent = final_parent_boundary.selected
+    staging_parent_boundary = DirectoryAncestryBoundary.capture(staged.parent)
+    hidden = final_parent / (
+        f".{selected_final.name}.publishing-{uuid.uuid4().hex[:12]}"
+    )
+    if os.path.lexists(selected_final):
+        raise FileExistsError(
+            f"Installer evidence directory already exists: {selected_final}"
+        )
+    if os.path.lexists(hidden):
+        raise FileExistsError(
+            f"Installer hidden publication directory already exists: {hidden}"
+        )
+    if _path_volume_id(staged) != _path_volume_id(final_parent):
+        raise ValueError(
+            "Installer publication requires staging and destination on the same volume "
+            "for atomic rename"
+        )
+    final_parent_boundary.revalidate()
+    staging_parent_boundary.revalidate()
+    require_candidate_evidence(staged, expected)
+    if os.path.lexists(selected_final) or os.path.lexists(hidden):
+        raise FileExistsError("Installer publication destination changed before move")
+
+    staged.rename(hidden)
+    candidate_current = hidden
+    try:
+        final_parent_boundary.revalidate()
+        staging_parent_boundary.revalidate()
+        if os.path.lexists(staged):
+            raise RuntimeError("Installer staged candidate remained after atomic move")
+        require_candidate_evidence(hidden, expected)
+        final_parent_boundary.revalidate()
+        if os.path.lexists(selected_final):
+            raise FileExistsError(
+                f"Installer evidence directory appeared during publication: "
+                f"{selected_final}"
+            )
+        require_candidate_evidence(hidden, expected)
+        hidden.rename(selected_final)
+        candidate_current = selected_final
+        final_parent_boundary.revalidate()
+        if os.path.lexists(hidden):
+            raise RuntimeError(
+                "Installer hidden candidate remained after canonical promotion"
+            )
+        require_candidate_evidence(selected_final, expected)
+    except Exception as exc:
+        if os.path.lexists(candidate_current):
+            try:
+                _restore_failed_publication(
+                    candidate_current,
+                    staged,
+                    final_parent_boundary=final_parent_boundary,
+                    staging_parent_boundary=staging_parent_boundary,
+                )
+            except Exception as rollback_exc:
+                raise RuntimeError(
+                    "Installer publication failed and automatic quarantine rollback "
+                    f"also failed: current={candidate_current}; staged={staged}; "
+                    f"rollback={rollback_exc}"
+                ) from exc
+        raise
 
 
 def build_release(
@@ -1125,7 +1521,10 @@ def build_release(
         candidate / "SHA256SUMS.txt",
         FileEvidence.from_path(final_installer.name, final_installer),
     )
-    require_candidate_inventory(candidate, final_installer.name)
+    candidate_evidence = capture_candidate_evidence(
+        candidate,
+        final_installer.name,
+    )
     require_release_inputs_unchanged(
         identity=identity,
         staging_only=options.staging_only,
@@ -1135,14 +1534,17 @@ def build_release(
         inno=toolchain.inno,
     )
     if options.staging_only:
+        require_candidate_evidence(candidate, candidate_evidence)
         return candidate
     final = WORKSPACE / "dist" / "installer" / identity.build_identity
-    publish_directory(candidate, final)
+    publish_directory(candidate, final, candidate_evidence)
     return final
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Build the internal Modori Windows installer.")
+    parser = argparse.ArgumentParser(
+        description="Build the internal Modori Windows installer."
+    )
     parser.add_argument("--check", action="store_true")
     parser.add_argument("--staging-only", action="store_true")
     parser.add_argument("--with-installed-smoke", action="store_true")
@@ -1166,8 +1568,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             f"{tools['inno_setup_compiler_file_version']}"
         )
         print(
-            "installer-tool-ok: ISCC.exe SHA256 "
-            f"{tools['inno_setup_compiler_sha256']}"
+            f"installer-tool-ok: ISCC.exe SHA256 {tools['inno_setup_compiler_sha256']}"
         )
         print(f"installer-tool-ok: PyInstaller {tools['pyinstaller']}")
         print(f"installer-tool-ok: Python {tools['python']}")
@@ -1180,7 +1581,14 @@ def main(argv: Sequence[str] | None = None) -> int:
                 with_installed_smoke=args.with_installed_smoke,
             )
         )
-    except (FileExistsError, FileNotFoundError, KeyError, OSError, RuntimeError, ValueError) as exc:
+    except (
+        FileExistsError,
+        FileNotFoundError,
+        KeyError,
+        OSError,
+        RuntimeError,
+        ValueError,
+    ) as exc:
         print(f"installer-build-failed: {exc}", file=sys.stderr)
         return 1
     print(f"installer-build-ok: {result_path}")

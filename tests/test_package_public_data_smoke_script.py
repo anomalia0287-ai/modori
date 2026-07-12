@@ -10,16 +10,30 @@ import pytest
 from scripts import package_public_data_smoke
 
 
+@pytest.fixture(autouse=True)
+def _isolate_workspace_smoke_outputs(monkeypatch, tmp_path: Path):
+    original_directory = Path.cwd()
+    monkeypatch.chdir(tmp_path)
+    try:
+        yield
+    finally:
+        monkeypatch.chdir(original_directory)
+
+
 def hardened_cases() -> list[dict[str, object]]:
     return [
         {
             "name": "kosis-two-row-csv",
             "ok": True,
             "status": "preview_and_full_import_ok",
-            "warnings": ["집계/합계 행 1개를 감지했습니다. 필요한 경우 가져오기 창에서 제외할 수 있습니다."],
+            "warnings": [
+                "집계/합계 행 1개를 감지했습니다. 필요한 경우 가져오기 창에서 제외할 수 있습니다."
+            ],
             "full_import": {
                 "row_count": 2,
-                "warnings": ["집계/합계 행 1개를 감지했습니다. 필요한 경우 가져오기 창에서 제외할 수 있습니다."],
+                "warnings": [
+                    "집계/합계 행 1개를 감지했습니다. 필요한 경우 가져오기 창에서 제외할 수 있습니다."
+                ],
                 "sample_rows": [{"행정구역별(1)": "전국"}],
             },
         },
@@ -63,7 +77,9 @@ def test_package_public_data_smoke_reports_missing_executable(capsys) -> None:
     assert "Packaged executable does not exist" in captured.err
 
 
-def test_package_public_data_smoke_reports_missing_fixture_dir(tmp_path, capsys) -> None:
+def test_package_public_data_smoke_reports_missing_fixture_dir(
+    tmp_path, capsys
+) -> None:
     exe = tmp_path / "Modori.exe"
     exe.write_text("", encoding="utf-8")
 
@@ -76,7 +92,9 @@ def test_package_public_data_smoke_reports_missing_fixture_dir(tmp_path, capsys)
     assert "Public data smoke fixture directory does not exist" in captured.err
 
 
-def test_package_public_data_smoke_passes_when_payload_is_ok(monkeypatch, tmp_path) -> None:
+def test_package_public_data_smoke_passes_when_payload_is_ok(
+    monkeypatch, tmp_path
+) -> None:
     exe = tmp_path / "Modori.exe"
     exe.write_text("", encoding="utf-8")
     fixture_dir = tmp_path / "fixtures"
@@ -158,11 +176,15 @@ def test_package_public_data_smoke_cli_routes_exact_state_paths(
     fixture_dir = tmp_path / "fixtures"
     fixture_dir.mkdir()
     state_root = tmp_path / "state-parent" / ".." / "state"
+    evidence_dir = tmp_path / "public-evidence"
+    evidence_dir.mkdir()
     captured_environment: dict[str, str] = {}
+    subprocess_outputs: list[Path] = []
 
     def fake_run(command, check, timeout, env):
         captured_environment.update(env)
-        output_path = command[3]
+        output_path = Path(command[3])
+        subprocess_outputs.append(output_path)
         with open(output_path, "w", encoding="utf-8") as handle:
             cases = hardened_cases()
             json.dump({"ok": True, "case_count": len(cases), "cases": cases}, handle)
@@ -178,6 +200,8 @@ def test_package_public_data_smoke_cli_routes_exact_state_paths(
                 str(fixture_dir),
                 "--state-root",
                 str(state_root),
+                "--evidence-dir",
+                str(evidence_dir),
                 "--timeout",
                 "0.01",
             ]
@@ -193,6 +217,26 @@ def test_package_public_data_smoke_cli_routes_exact_state_paths(
     )
     assert captured_environment["MPLCONFIGDIR"] == str(resolved_root / "matplotlib")
     assert captured_environment["QT_QPA_PLATFORM"] == "offscreen"
+    assert len(subprocess_outputs) == 1
+    assert subprocess_outputs[0].parent == evidence_dir
+    assert subprocess_outputs[0].name.startswith(".result-")
+    assert sorted(path.name for path in evidence_dir.iterdir()) == ["result.json"]
+
+
+def test_package_public_data_smoke_requires_existing_explicit_evidence_directory(
+    tmp_path: Path,
+) -> None:
+    exe = tmp_path / "Modori.exe"
+    exe.write_text("", encoding="utf-8")
+    fixture_dir = tmp_path / "fixtures"
+    fixture_dir.mkdir()
+
+    with pytest.raises(ValueError, match="directory does not exist"):
+        package_public_data_smoke.run_public_data_smoke(
+            exe,
+            fixture_dir=fixture_dir,
+            evidence_dir=tmp_path / "missing-evidence",
+        )
 
 
 def test_package_public_data_smoke_rejects_linked_state_before_subprocess(

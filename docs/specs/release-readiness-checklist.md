@@ -2,9 +2,19 @@
 
 Status: working release gate document for the `release/readiness-1-9` lane.
 
-Current internal Windows installer evidence from 2026-07-12:
+Current internal Windows installer status from 2026-07-12:
 
-- Source commit: `b4a6fa4a93f454b162aec3ba70387ed19f7d2954` on
+- No internal installer candidate is currently approved. A replacement clean
+  build is pending from the hardened source.
+- The branch entered hardening at docs-only HEAD
+  `0060ca0cb0b47e39515f17e20387fca22d97d62a`; this is not an artifact source
+  commit. The replacement artifact source and any later docs-only HEAD must be
+  recorded separately.
+
+Superseded/revoked b4 internal Windows installer evidence:
+
+- **Do not install or distribute this candidate.** Source commit:
+  `b4a6fa4a93f454b162aec3ba70387ed19f7d2954` on
   `codex/internal-windows-installer`; the manifest records `git_dirty: false`,
   `channel: internal`, `signed: false`, and `smoke_only: false`.
 - Candidate directory: `dist\installer\0.1.0-gb4a6fa4a93f4`; it contains
@@ -34,8 +44,8 @@ Current internal Windows installer evidence from 2026-07-12:
 - Payload evidence: `4376` files, `380` directories, longest relative path
   `128` characters, manifest install calculation `219 <= 240`, and actual
   compiler calculation `103 + 1 + 128 = 232 <= 240`.
-- Successful lifecycle root: `.tmp\installer-smoke\r-da7fbcf6d052`; it
-  contains exactly four regular logs:
+- Former lifecycle root: `.tmp\installer-smoke\r-da7fbcf6d052`; it retained
+  four regular logs but did not retain run-local engine/public result files:
   - `install.log`: `2032606` bytes, SHA256
     `8F63263D8F04667F978A7A0D7295574AA223C75ACF13A69C1E7E597A254B3A25`;
     install succeeded.
@@ -51,22 +61,32 @@ Current internal Windows installer evidence from 2026-07-12:
 - Post-lifecycle state audit found no install tree, `user-state`, stale probe,
   smoke or production registration, shortcut, production install root, Modori
   process, uninstaller, or Inno cleanup-helper process.
-- Installed engine result: `2026-07-12T22:49:04.7759268+09:00`, `ok: true`,
+- Former installed engine result claim: `2026-07-12T22:49:04.7759268+09:00`,
+  `ok: true`,
   `status: ready`, routed cache under the lifecycle run root, SHA256
   `93E7262421AEB613742A4CC78FE667E35D0C7743A44DF6A5496FFB56AE8C558C`.
   Installed public-data result: `ok: true`, `case_count: 10`, SHA256
   `6ABC9EC0967FD64F6E21D9BBB0F16C5946568A28952E5D1B00547CA97E958DFA`.
-- Source-head preflight: `1195 passed, 4 skipped`; installer tool check passed.
+- Those successful JSON bytes are no longer present. Ordinary tests overwrote
+  the shared engine result with SHA256
+  `804534DC82794AD30A62743219A689DD617AE367D25F3E476F101F8DEFE5B9B2`
+  (`ok: false`) and the shared public-data result with SHA256
+  `A14D136AB1543E5D12DC23357252639EC3F649EF74C870DA1DBB6A96DC91AEE5`
+  (`case_count: 0`). The hardened lifecycle now writes unique run-local
+  evidence and revalidates exact SHA256 snapshots at completion.
+- Historical source-head preflight: `1195 passed, 4 skipped`; installer tool
+  check passed.
   Slow statistical gate: `3 passed, 1196 deselected in 35.16s`.
-- Transparency: the final current-candidate command's output cell was
+- Transparency: the final b4-candidate command's output cell was
   mistakenly detached while its OS process tree continued and exited. Its
   numeric exit code and stdout were not retained, so there is no captured
-  exit-code-`0` claim. Local publication is evidenced by fail-closed code
-  semantics plus the clean manifest, lifecycle flags, hashes, logs, and state
-  audits.
+  exit-code-`0` claim. At the time, local publication was inferred from the
+  then-existing code semantics plus the clean manifest, lifecycle flags,
+  hashes, logs, and state audits. That inference is retained only as historical
+  context and is not sufficient for candidate approval after the later review.
 - Exact handoff:
   `docs\superpowers\handoffs\2026-07-12-internal-windows-installer-handoff.md`.
-- **Unsigned internal test build; not approved for public distribution**. This
+- **Revoked unsigned internal build; do not install or distribute**. This
   evidence makes no signing, publisher-trust, SmartScreen, clean-VM, or public
   release claim.
 
@@ -298,6 +318,9 @@ Build an unpublished, build-only quality candidate with:
 .\.venv\Scripts\python.exe scripts\build_installer.py --staging-only
 ```
 
+A bare `scripts\build_installer.py` invocation is rejected before build
+mutation. It is not a publication shortcut.
+
 Build the internal installer, exercise its installed lifecycle, and publish
 only after that lifecycle succeeds with:
 
@@ -328,6 +351,16 @@ wrapper constructs the child environment once, compares that path with the
 resolved `MODORI_CACHE_DIR`, and requires the lexical expected path to be a real
 non-link/junction directory. Missing, mismatched, absent, or linked cache
 evidence fails before repair or publication.
+
+Lifecycle engine evidence is written only to the unique run-local
+`engine-smoke` directory as exact `reference.xlsx` and `result.json` files;
+public-data evidence is written to run-local `public-data-smoke\result.json`.
+The wrappers use identity-bound empty directories and unpredictable transient
+filenames, share payload validators with the lifecycle, and promote only valid
+regular files. The lifecycle freezes size/SHA256 snapshots and repeats exact
+inventory and byte validation after repair, downgrade, uninstall, and
+test-state cleanup. Ordinary unit tests change into their own temporary working
+directories and cannot overwrite these lifecycle files.
 
 After the package build, the builder creates a frozen snapshot of the complete
 package tree and the exact `.iss` bytes under the unique compact
@@ -365,6 +398,14 @@ snapshot, toolchain, or live-input drift fails closed; the unique staging tree
 is preserved on failure. Manifest evidence comes from snapshot bytes while
 retaining the logical `dist/Modori/Modori.exe` and `installer/modori.iss`
 display paths.
+
+Before publication the exact three candidate files and their internal
+manifest/checksum relationships are revalidated. Staging and destination
+ancestry identities must remain unchanged and reside on the same volume. The
+candidate is first moved to a unique hidden sibling under `dist\installer`,
+validated again, and only then atomically promoted to its canonical build ID.
+Any validation failure rolls the tracked candidate back to staging without
+moving or replacing a pre-existing or concurrently appearing final directory.
 
 This artifact contract is unsigned, offline, per-user, internal-only, and not a
 public-distribution trust claim. The manifest records `signed: false`; the Inno

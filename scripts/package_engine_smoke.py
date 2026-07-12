@@ -4,6 +4,7 @@ import argparse
 import json
 import subprocess
 import sys
+import uuid
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -12,9 +13,19 @@ import pandas as pd
 from modori.path_policy import is_link_or_junction
 
 if __package__:
-    from scripts.package_environment import packaged_subprocess_environment
+    from scripts.package_environment import (
+        ExplicitDirectoryBoundary,
+        packaged_subprocess_environment,
+    )
+    from scripts.package_smoke_contract import engine_payload_has_contract
 else:
-    from package_environment import packaged_subprocess_environment
+    from package_environment import (  # type: ignore[import-not-found]
+        ExplicitDirectoryBoundary,
+        packaged_subprocess_environment,
+    )
+    from package_smoke_contract import (  # type: ignore[import-not-found]
+        engine_payload_has_contract,
+    )
 
 
 GROUP1_SCORES = [
@@ -51,7 +62,9 @@ def write_reference_xlsx(path: Path) -> None:
             raw[2] = 6 - raw[2]
             raw[6] = 6 - raw[6]
             rows.append([*raw, group])
-    frame = pd.DataFrame(rows, columns=[f"q{index}" for index in range(1, 9)] + ["group"])
+    frame = pd.DataFrame(
+        rows, columns=[f"q{index}" for index in range(1, 9)] + ["group"]
+    )
     path.parent.mkdir(parents=True, exist_ok=True)
     frame.to_excel(path, index=False, sheet_name="Responses")
 
@@ -61,58 +74,96 @@ def run_engine_smoke(
     *,
     timeout_seconds: float = 60.0,
     state_root: str | Path | None = None,
+    evidence_dir: str | Path | None = None,
 ) -> int:
     exe_path = Path(executable).resolve()
     if not exe_path.is_file():
         print(f"Packaged executable does not exist: {exe_path}", file=sys.stderr)
         return 2
 
-    smoke_dir = Path(".tmp") / "packaged-engine-smoke"
+    evidence_boundary = (
+        None
+        if evidence_dir is None
+        else ExplicitDirectoryBoundary.capture(evidence_dir)
+    )
+    smoke_dir = (
+        Path(".tmp") / "packaged-engine-smoke"
+        if evidence_boundary is None
+        else evidence_boundary.lexical_directory
+    )
+    if evidence_boundary is not None:
+        evidence_boundary.require_empty()
     data_path = smoke_dir / "reference.xlsx"
     output_path = smoke_dir / "result.json"
-    write_reference_xlsx(data_path)
-    output_path.unlink(missing_ok=True)
+    if evidence_boundary is None:
+        write_reference_xlsx(data_path)
+        output_path.unlink(missing_ok=True)
+        subprocess_output_path = output_path
+    else:
+        token = uuid.uuid4().hex
+        transient_data_path = smoke_dir / f".reference-{token}.xlsx"
+        subprocess_output_path = smoke_dir / f".result-{token}.json"
+        evidence_boundary.revalidate()
+        write_reference_xlsx(transient_data_path)
+        evidence_boundary.require_regular_child(transient_data_path)
+        transient_data_path.rename(data_path)
+        evidence_boundary.require_regular_child(data_path)
     environment = packaged_subprocess_environment(
         "packaged-engine-runtime",
         state_root=state_root,
     )
     expected_cache_path = Path(environment["MODORI_CACHE_DIR"])
     expected_cache_dir = expected_cache_path.resolve()
+    if evidence_boundary is not None:
+        evidence_boundary.revalidate()
     completed = subprocess.run(
         [
             str(exe_path),
             "--engine-smoke",
-            str(data_path.resolve()),
-            str(output_path.resolve()),
+            str(data_path.resolve() if evidence_boundary is None else data_path),
+            str(
+                subprocess_output_path.resolve()
+                if evidence_boundary is None
+                else subprocess_output_path
+            ),
         ],
         check=False,
         timeout=timeout_seconds,
         env=environment,
     )
+    if evidence_boundary is not None:
+        evidence_boundary.revalidate()
     if completed.returncode != 0:
         return completed.returncode
-    if not output_path.is_file():
+    if evidence_boundary is not None:
+        evidence_boundary.require_regular_child(subprocess_output_path)
+    elif not subprocess_output_path.is_file():
         print("Packaged engine smoke did not produce a fresh result", file=sys.stderr)
         return 1
 
-    payload = json.loads(output_path.read_text(encoding="utf-8"))
-    v1_statistics_smoke = payload.get("v1_statistics_smoke")
+    payload = json.loads(subprocess_output_path.read_text(encoding="utf-8"))
     if (
-        payload.get("ok") is not True
-        or payload.get("cache_dir") != str(expected_cache_dir)
+        not engine_payload_has_contract(
+            payload,
+            expected_cache_dir=expected_cache_dir,
+        )
         or is_link_or_junction(expected_cache_path)
         or not expected_cache_path.is_dir()
-        or not isinstance(v1_statistics_smoke, dict)
-        or v1_statistics_smoke.get("ok") is not True
     ):
         print(json.dumps(payload, ensure_ascii=False, sort_keys=True), file=sys.stderr)
         return 1
+    if evidence_boundary is not None:
+        evidence_boundary.revalidate()
+        subprocess_output_path.rename(output_path)
+        evidence_boundary.require_regular_child(output_path)
     print("package-engine-smoke-ok")
     return 0
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Smoke-test the packaged Modori engine path.")
+    parser = argparse.ArgumentParser(
+        description="Smoke-test the packaged Modori engine path."
+    )
     parser.add_argument(
         "executable",
         nargs="?",
@@ -120,12 +171,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     parser.add_argument("--timeout", type=float, default=60.0)
     parser.add_argument("--state-root")
+    parser.add_argument("--evidence-dir")
     args = parser.parse_args(argv)
 
     return run_engine_smoke(
         args.executable,
         timeout_seconds=args.timeout,
         state_root=args.state_root,
+        evidence_dir=args.evidence_dir,
     )
 
 

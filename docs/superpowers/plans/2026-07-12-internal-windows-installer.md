@@ -2,6 +2,18 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **Implementation amendment (2026-07-12):** This plan records the original
+> task sequence, but the implemented CLI is stricter. Bare
+> `build_installer.py` is rejected before mutation, `--staging-only` is always
+> nonpublishing, and only `--with-installed-smoke` without staging-only may
+> publish. Final publication uses a validated hidden sibling followed by an
+> atomic canonical promotion and rollback on validation failure. Installed
+> engine/public-data JSON is preserved under the unique lifecycle run root and
+> exact file SHA256 snapshots are revalidated at the end. Later snippets in
+> this historical plan that show a bare publishing command or a direct
+> candidate-to-final rename are superseded by this amendment and the design
+> specification.
+
 **Goal:** Build, verify, and publish a traceable unsigned Inno Setup installer for internal Modori testing without allowing stale package reuse or automated smoke tests to touch a real Modori installation.
 
 **Architecture:** Keep PyInstaller packaging, Inno compilation, installed lifecycle testing, and quality-gate orchestration as separate boundaries. A pure installer-contract module owns version, path-budget, hash, and manifest rules; `build_installer.py` rebuilds and smokes the package before compiling; `installer_smoke.py` accepts only the isolated smoke AppId and verifies install, stale-file cleanup, downgrade rejection, repair, and uninstall before the production evidence directory is published.
@@ -19,7 +31,8 @@
 - The package path check requires `90 + 1 + longest_relative_path_chars <= 240`.
 - `[InstallDelete]` may delete only `{app}\Modori`; `%LocalAppData%\Modori`, datasets, projects, and reports are never installer deletion targets.
 - The `.iss` source uses `AppId={{{#AppIdValue}}`, `PrivilegesRequired=lowest`, `CloseApplications=yes`, and `RestartApplications=no`.
-- Published evidence is an immutable same-volume directory rename to `dist/installer/<version>-g<commit>/`.
+- Published evidence uses same-volume hidden-sibling validation followed by an
+  immutable canonical rename to `dist/installer/<version>-g<commit>/`.
 - The internal installer is offline and unsigned. No certificate, password, token, network downloader, auto-updater, file association, service, or shell extension is added.
 
 ---

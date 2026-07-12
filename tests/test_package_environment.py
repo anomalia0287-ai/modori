@@ -6,7 +6,10 @@ import subprocess
 
 import pytest
 
-from scripts.package_environment import packaged_subprocess_environment
+from scripts.package_environment import (
+    ExplicitDirectoryBoundary,
+    packaged_subprocess_environment,
+)
 
 
 def _create_directory_junction(link: Path, target: Path) -> None:
@@ -116,7 +119,9 @@ def test_explicit_state_root_rejects_real_junction_before_resolution(
     assert list(outside.iterdir()) == []
 
 
-def test_packaged_environment_keeps_default_namespace_root(tmp_path: Path, monkeypatch) -> None:
+def test_packaged_environment_keeps_default_namespace_root(
+    tmp_path: Path, monkeypatch
+) -> None:
     original_directory = Path.cwd()
     monkeypatch.chdir(tmp_path)
 
@@ -129,3 +134,24 @@ def test_packaged_environment_keeps_default_namespace_root(tmp_path: Path, monke
     assert env["MODORI_CACHE_DIR"] == str(resolved_root / "cache")
     assert env["MODORI_SETTINGS_PATH"] == str(resolved_root / "settings.json")
     assert env["MPLCONFIGDIR"] == str(resolved_root / "matplotlib")
+
+
+def test_explicit_directory_boundary_rejects_junction_replacement(
+    tmp_path: Path,
+) -> None:
+    evidence = tmp_path / "evidence"
+    evidence.mkdir()
+    boundary = ExplicitDirectoryBoundary.capture(evidence)
+    original = tmp_path / "evidence-original"
+    evidence.rename(original)
+    outside = tmp_path / "outside-evidence"
+    outside.mkdir()
+    marker = outside / "preserve.txt"
+    marker.write_text("keep", encoding="utf-8")
+    _create_directory_junction(evidence, outside)
+
+    with pytest.raises(RuntimeError, match="boundary was replaced"):
+        boundary.revalidate()
+
+    assert marker.read_text(encoding="utf-8") == "keep"
+    assert sorted(path.name for path in outside.iterdir()) == ["preserve.txt"]

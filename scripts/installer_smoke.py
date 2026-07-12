@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -21,12 +22,20 @@ if __package__:
         SMOKE_APP_ID,
         sha256_file,
     )
+    from scripts.package_smoke_contract import (
+        engine_payload_has_contract,
+        public_data_payload_has_contract,
+    )
 else:
     from installer_contract import (  # type: ignore[import-not-found]
         DOWNGRADE_PROBE_VERSION,
         SAFE_PATH_BUDGET_CHARS,
         SMOKE_APP_ID,
         sha256_file,
+    )
+    from package_smoke_contract import (  # type: ignore[import-not-found]
+        engine_payload_has_contract,
+        public_data_payload_has_contract,
     )
 
 WORKSPACE = Path(__file__).resolve().parents[1]
@@ -39,6 +48,372 @@ _UNINSTALL_POLL_INTERVAL_SECONDS = 0.05
 # first phase; keep the condition wait finite with ample evidence-safe margin.
 _UNINSTALL_WAIT_TIMEOUT_SECONDS = 10.0
 _REPARSE_POINT_ATTRIBUTE = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)
+_ENGINE_EVIDENCE_DIRECTORY = "engine-smoke"
+_PUBLIC_DATA_EVIDENCE_DIRECTORY = "public-data-smoke"
+_ENGINE_EVIDENCE_FILES = frozenset({"reference.xlsx", "result.json"})
+_PUBLIC_DATA_EVIDENCE_FILES = frozenset({"result.json"})
+
+
+def _absolute_lexical_path(path: Path) -> Path:
+    return Path(os.path.abspath(path))
+
+
+def _configured_smoke_paths() -> tuple[Path, Path, Path]:
+    workspace = _absolute_lexical_path(WORKSPACE)
+    temporary_root = workspace / ".tmp"
+    smoke_root = temporary_root / "installer-smoke"
+    if _absolute_lexical_path(SMOKE_ROOT) != smoke_root:
+        raise RuntimeError("Smoke root must be WORKSPACE/.tmp/installer-smoke")
+    return workspace, temporary_root, smoke_root
+
+
+def _validated_directory(
+    path: Path,
+    *,
+    resolved_parent: Path | None = None,
+) -> Path:
+    try:
+        status = path.lstat()
+    except FileNotFoundError as exc:
+        raise RuntimeError(f"Smoke boundary directory is missing: {path}") from exc
+    except OSError as exc:
+        raise RuntimeError(
+            f"Smoke boundary directory could not be inspected: {path}"
+        ) from exc
+    attributes = getattr(status, "st_file_attributes", 0)
+    if (
+        stat.S_ISLNK(status.st_mode)
+        or bool(attributes & _REPARSE_POINT_ATTRIBUTE)
+        or not stat.S_ISDIR(status.st_mode)
+    ):
+        raise RuntimeError(
+            "Smoke boundary component is a link, junction/reparse point, "
+            f"or non-directory: {path}"
+        )
+    try:
+        resolved = path.resolve(strict=True)
+    except OSError as exc:
+        raise RuntimeError(
+            f"Smoke boundary directory could not be resolved: {path}"
+        ) from exc
+    if resolved_parent is not None and resolved.parent != resolved_parent:
+        raise RuntimeError(f"Smoke boundary directory escaped its parent: {path}")
+    return resolved
+
+
+def _prepare_smoke_root() -> Path:
+    workspace, temporary_root, smoke_root = _configured_smoke_paths()
+    resolved_workspace = _validated_directory(workspace)
+    resolved_parent = resolved_workspace
+    for component in (temporary_root, smoke_root):
+        try:
+            component.lstat()
+        except FileNotFoundError:
+            component.mkdir()
+        except OSError as exc:
+            raise RuntimeError(
+                f"Smoke boundary component could not be inspected: {component}"
+            ) from exc
+        resolved_parent = _validated_directory(
+            component,
+            resolved_parent=resolved_parent,
+        )
+    return resolved_parent
+
+
+def _validate_smoke_run_root(run_root: Path) -> Path:
+    workspace, temporary_root, smoke_root = _configured_smoke_paths()
+    resolved_workspace = _validated_directory(workspace)
+    resolved_temporary_root = _validated_directory(
+        temporary_root,
+        resolved_parent=resolved_workspace,
+    )
+    resolved_smoke_root = _validated_directory(
+        smoke_root,
+        resolved_parent=resolved_temporary_root,
+    )
+    lexical_run_root = _absolute_lexical_path(run_root)
+    if (
+        lexical_run_root.parent != smoke_root
+        or _RUN_ROOT_PATTERN.fullmatch(lexical_run_root.name) is None
+    ):
+        raise RuntimeError("Smoke run root is not a UUID child of the smoke root")
+    return _validated_directory(
+        lexical_run_root,
+        resolved_parent=resolved_smoke_root,
+    )
+
+
+def _directory_identity(path: Path) -> tuple[int, int]:
+    try:
+        status = path.lstat()
+    except OSError as exc:
+        raise RuntimeError(
+            f"Smoke boundary identity could not be inspected: {path}"
+        ) from exc
+    return status.st_dev, status.st_ino
+
+
+@dataclass(frozen=True)
+class _SmokeRunBoundary:
+    run_root: Path
+    identities: tuple[tuple[int, int], ...]
+
+    @property
+    def paths(self) -> tuple[Path, ...]:
+        return (*_configured_smoke_paths(), self.run_root)
+
+    @classmethod
+    def capture(cls, run_root: Path) -> _SmokeRunBoundary:
+        lexical_run_root = _absolute_lexical_path(run_root)
+        _validate_smoke_run_root(lexical_run_root)
+        boundary = cls(
+            run_root=lexical_run_root,
+            identities=tuple(
+                _directory_identity(path)
+                for path in (*_configured_smoke_paths(), lexical_run_root)
+            ),
+        )
+        boundary.revalidate()
+        return boundary
+
+    def revalidate(self) -> None:
+        _validate_smoke_run_root(self.run_root)
+        if tuple(_directory_identity(path) for path in self.paths) != self.identities:
+            raise RuntimeError("Smoke root or run directory was replaced")
+
+
+@dataclass(frozen=True)
+class _SmokeEvidenceBoundary:
+    run_boundary: _SmokeRunBoundary
+    directory: Path
+    identity: tuple[int, int]
+
+    @classmethod
+    def create(
+        cls,
+        run_boundary: _SmokeRunBoundary,
+        name: str,
+    ) -> _SmokeEvidenceBoundary:
+        if name not in {
+            _ENGINE_EVIDENCE_DIRECTORY,
+            _PUBLIC_DATA_EVIDENCE_DIRECTORY,
+        }:
+            raise ValueError(f"Unknown smoke evidence directory: {name}")
+        run_boundary.revalidate()
+        directory = run_boundary.run_root / name
+        if _path_entry_exists(directory):
+            raise RuntimeError(f"Smoke evidence directory collision: {directory}")
+        try:
+            directory.mkdir()
+        except FileExistsError as exc:
+            raise RuntimeError(
+                f"Smoke evidence directory collision: {directory}"
+            ) from exc
+        run_boundary.revalidate()
+        resolved_run_root = _validate_smoke_run_root(run_boundary.run_root)
+        _validated_directory(directory, resolved_parent=resolved_run_root)
+        evidence_boundary = cls(
+            run_boundary=run_boundary,
+            directory=directory,
+            identity=_directory_identity(directory),
+        )
+        evidence_boundary.revalidate()
+        return evidence_boundary
+
+    def revalidate(self) -> Path:
+        self.run_boundary.revalidate()
+        resolved_run_root = _validate_smoke_run_root(self.run_boundary.run_root)
+        resolved_directory = _validated_directory(
+            self.directory,
+            resolved_parent=resolved_run_root,
+        )
+        if _directory_identity(self.directory) != self.identity:
+            raise RuntimeError("Smoke evidence directory was replaced")
+        return resolved_directory
+
+    def _capture_exact_files(
+        self,
+        expected_names: frozenset[str],
+    ) -> tuple[dict[str, bytes], tuple[tuple[str, int, str], ...]]:
+        resolved_directory = self.revalidate()
+        try:
+            entries = list(self.directory.iterdir())
+        except OSError as exc:
+            raise RuntimeError(
+                f"Durable smoke evidence could not be inventoried: {self.directory}"
+            ) from exc
+        actual_names = {entry.name for entry in entries}
+        if len(entries) != len(actual_names) or actual_names != expected_names:
+            raise RuntimeError(
+                "Durable smoke evidence inventory mismatch: "
+                f"expected={sorted(expected_names)}; actual={sorted(actual_names)}"
+            )
+
+        contents: dict[str, bytes] = {}
+        final_signatures: dict[str, tuple[int, int, int, int, int, int, int]] = {}
+        for entry in entries:
+            try:
+                before = entry.lstat()
+                attributes = getattr(before, "st_file_attributes", 0)
+                if (
+                    stat.S_ISLNK(before.st_mode)
+                    or bool(attributes & _REPARSE_POINT_ATTRIBUTE)
+                    or not stat.S_ISREG(before.st_mode)
+                ):
+                    raise RuntimeError(
+                        "Durable smoke evidence entry is not a regular "
+                        f"non-reparse file: {entry}"
+                    )
+                resolved_entry = entry.resolve(strict=True)
+                if resolved_entry.parent != resolved_directory:
+                    raise RuntimeError(
+                        f"Durable smoke evidence escaped its directory: {entry}"
+                    )
+                data = entry.read_bytes()
+                after = entry.lstat()
+            except OSError as exc:
+                raise RuntimeError(
+                    f"Durable smoke evidence could not be read: {entry}"
+                ) from exc
+            before_signature = (
+                before.st_dev,
+                before.st_ino,
+                before.st_mode,
+                before.st_size,
+                before.st_mtime_ns,
+                before.st_ctime_ns,
+                getattr(before, "st_file_attributes", 0),
+            )
+            after_signature = (
+                after.st_dev,
+                after.st_ino,
+                after.st_mode,
+                after.st_size,
+                after.st_mtime_ns,
+                after.st_ctime_ns,
+                getattr(after, "st_file_attributes", 0),
+            )
+            if before_signature != after_signature or len(data) != before.st_size:
+                raise RuntimeError(
+                    f"Durable smoke evidence changed while reading: {entry}"
+                )
+            if not data:
+                raise RuntimeError(f"Durable smoke evidence is empty: {entry}")
+            contents[entry.name] = data
+            final_signatures[entry.name] = after_signature
+        try:
+            final_entries = list(self.directory.iterdir())
+        except OSError as exc:
+            raise RuntimeError(
+                f"Durable smoke evidence could not be reinventoried: {self.directory}"
+            ) from exc
+        final_names = {entry.name for entry in final_entries}
+        if len(final_entries) != len(final_names) or final_names != expected_names:
+            raise RuntimeError(
+                "Durable smoke evidence inventory mismatch after reading: "
+                f"expected={sorted(expected_names)}; actual={sorted(final_names)}"
+            )
+        for entry in final_entries:
+            try:
+                status = entry.lstat()
+                attributes = getattr(status, "st_file_attributes", 0)
+                resolved_entry = entry.resolve(strict=True)
+            except OSError as exc:
+                raise RuntimeError(
+                    f"Durable smoke evidence changed after reading: {entry}"
+                ) from exc
+            signature = (
+                status.st_dev,
+                status.st_ino,
+                status.st_mode,
+                status.st_size,
+                status.st_mtime_ns,
+                status.st_ctime_ns,
+                attributes,
+            )
+            if (
+                stat.S_ISLNK(status.st_mode)
+                or bool(attributes & _REPARSE_POINT_ATTRIBUTE)
+                or not stat.S_ISREG(status.st_mode)
+                or resolved_entry.parent != resolved_directory
+                or signature != final_signatures[entry.name]
+            ):
+                raise RuntimeError(
+                    f"Durable smoke evidence changed after reading: {entry}"
+                )
+        self.revalidate()
+        snapshot = tuple(
+            sorted(
+                (
+                    name,
+                    len(data),
+                    hashlib.sha256(data).hexdigest().upper(),
+                )
+                for name, data in contents.items()
+            )
+        )
+        return contents, snapshot
+
+    def require_exact_files(
+        self,
+        expected_names: frozenset[str],
+    ) -> tuple[dict[str, bytes], tuple[tuple[str, int, str], ...]]:
+        first_contents, first_snapshot = self._capture_exact_files(expected_names)
+        second_contents, second_snapshot = self._capture_exact_files(expected_names)
+        if first_snapshot != second_snapshot or first_contents != second_contents:
+            raise RuntimeError(
+                "Durable smoke evidence changed across final exact-file validation"
+            )
+        return second_contents, second_snapshot
+
+
+def _require_durable_smoke_result(
+    evidence: _SmokeEvidenceBoundary,
+    *,
+    expected_files: frozenset[str],
+    smoke_kind: str,
+    expected_cache_dir: Path | None = None,
+    frozen_snapshot: tuple[tuple[str, int, str], ...] | None = None,
+) -> tuple[tuple[str, int, str], ...]:
+    contents, snapshot = evidence.require_exact_files(expected_files)
+    try:
+        payload = json.loads(contents["result.json"].decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise RuntimeError(
+            f"Durable {smoke_kind} smoke evidence is not valid UTF-8 JSON"
+        ) from exc
+    if smoke_kind == "engine":
+        if not engine_payload_has_contract(
+            payload,
+            expected_cache_dir=expected_cache_dir,
+        ):
+            raise RuntimeError(
+                "Durable engine smoke evidence does not match the engine wrapper "
+                "contract"
+            )
+    elif smoke_kind == "public-data":
+        if not public_data_payload_has_contract(payload):
+            raise RuntimeError(
+                "Durable public-data smoke evidence does not match the hardened "
+                "public-data contract"
+            )
+    else:
+        raise ValueError(f"Unknown durable smoke kind: {smoke_kind}")
+    if frozen_snapshot is not None and snapshot != frozen_snapshot:
+        raise RuntimeError(
+            f"Durable {smoke_kind} smoke evidence changed after initial validation"
+        )
+    return snapshot
+
+
+def _run_at_validated_boundary(
+    boundary: _SmokeRunBoundary,
+    runner: Callable[[list[str]], int],
+    command: list[str],
+) -> int:
+    boundary.revalidate()
+    return runner(command)
 
 
 def _is_link_or_junction(path: Path) -> bool:
@@ -64,12 +439,28 @@ def _path_entry_exists(path: Path) -> bool:
     return True
 
 
+@dataclass(frozen=True)
+class _UserStateEntry:
+    path: Path
+    is_directory: bool
+    identity: tuple[int, int, int, int]
+
+
+def _user_state_entry_identity(status: os.stat_result) -> tuple[int, int, int, int]:
+    return (
+        status.st_dev,
+        status.st_ino,
+        status.st_mode,
+        getattr(status, "st_file_attributes", 0),
+    )
+
+
 def _validated_user_state_inventory(
     user_state_dir: Path,
     resolved_user_state: Path,
-) -> tuple[list[Path], list[Path]]:
-    files: list[Path] = []
-    directories: list[Path] = []
+) -> tuple[list[_UserStateEntry], list[_UserStateEntry]]:
+    files: list[_UserStateEntry] = []
+    directories: list[_UserStateEntry] = []
     pending = [user_state_dir]
     while pending:
         directory = pending.pop()
@@ -80,15 +471,22 @@ def _validated_user_state_inventory(
                 f"Smoke user-state directory could not be inspected: {directory}"
             ) from exc
         for descendant in descendants:
-            if _is_link_or_junction(descendant):
+            try:
+                status = descendant.lstat()
+            except OSError as exc:
+                raise RuntimeError(
+                    f"Smoke user-state descendant could not be inspected: {descendant}"
+                ) from exc
+            attributes = getattr(status, "st_file_attributes", 0)
+            if stat.S_ISLNK(status.st_mode) or bool(
+                attributes & _REPARSE_POINT_ATTRIBUTE
+            ):
                 raise RuntimeError(
                     "Smoke user-state descendant is a link or junction/reparse "
                     f"point: {descendant}"
                 )
             try:
                 resolved_descendant = descendant.resolve(strict=True)
-                is_directory = descendant.is_dir()
-                is_file = descendant.is_file()
             except OSError as exc:
                 raise RuntimeError(
                     f"Smoke user-state descendant could not be validated: {descendant}"
@@ -97,16 +495,40 @@ def _validated_user_state_inventory(
                 raise RuntimeError(
                     f"Smoke user-state descendant escaped its root: {descendant}"
                 )
-            if is_directory:
-                directories.append(descendant)
+            entry = _UserStateEntry(
+                path=descendant,
+                is_directory=stat.S_ISDIR(status.st_mode),
+                identity=_user_state_entry_identity(status),
+            )
+            if entry.is_directory:
+                directories.append(entry)
                 pending.append(descendant)
-            elif is_file:
-                files.append(descendant)
+            elif stat.S_ISREG(status.st_mode):
+                files.append(entry)
             else:
                 raise RuntimeError(
                     f"Smoke user-state descendant has an unsupported type: {descendant}"
                 )
     return files, directories
+
+
+def _require_same_user_state_entry(entry: _UserStateEntry) -> None:
+    try:
+        status = entry.path.lstat()
+    except OSError as exc:
+        raise RuntimeError(
+            f"Smoke user-state entry changed before cleanup: {entry.path}"
+        ) from exc
+    attributes = getattr(status, "st_file_attributes", 0)
+    if (
+        stat.S_ISLNK(status.st_mode)
+        or bool(attributes & _REPARSE_POINT_ATTRIBUTE)
+        or stat.S_ISDIR(status.st_mode) != entry.is_directory
+        or _user_state_entry_identity(status) != entry.identity
+    ):
+        raise RuntimeError(
+            f"Smoke user-state entry was replaced before cleanup: {entry.path}"
+        )
 
 
 def uninstall_key(app_id: str = SMOKE_APP_ID) -> str:
@@ -190,7 +612,9 @@ class LifecycleAdapter:
     def require_no_existing_registration(self) -> None:
         registration = read_smoke_registration()
         if registration is not None:
-            uninstall_path = registration.get("UninstallString") or "unknown uninstaller"
+            uninstall_path = (
+                registration.get("UninstallString") or "unknown uninstaller"
+            )
             raise RuntimeError(
                 "An existing Modori Installer Smoke registration must be removed "
                 f"first: {uninstall_path}"
@@ -248,9 +672,7 @@ class LifecycleAdapter:
         while True:
             remaining: list[str] = []
             if read_smoke_registration() is not None:
-                remaining.append(
-                    f"registry=HKEY_CURRENT_USER\\{uninstall_key()}"
-                )
+                remaining.append(f"registry=HKEY_CURRENT_USER\\{uninstall_key()}")
             for name, path in (
                 ("install root", self.install_dir),
                 ("Modori subtree", self.install_dir / "Modori"),
@@ -269,39 +691,61 @@ class LifecycleAdapter:
                     f"{_UNINSTALL_WAIT_TIMEOUT_SECONDS:.1f} seconds: "
                     + ", ".join(remaining)
                 )
-            time.sleep(
-                min(_UNINSTALL_POLL_INTERVAL_SECONDS, remaining_seconds)
-            )
+            time.sleep(min(_UNINSTALL_POLL_INTERVAL_SECONDS, remaining_seconds))
 
-    def verify_and_remove_user_state(self) -> None:
-        self.require_user_state_exercised()
+    def verify_and_remove_user_state(
+        self,
+        run_boundary: _SmokeRunBoundary | None = None,
+    ) -> None:
         raw_run_root = self.install_dir.parent
-        resolved_smoke_root = SMOKE_ROOT.resolve()
-        resolved_run_root = raw_run_root.resolve()
-        resolved_user_state = self.user_state_dir.resolve(strict=True)
-        if (
-            not SMOKE_ROOT.is_dir()
-            or _is_link_or_junction(SMOKE_ROOT)
-            or not raw_run_root.is_dir()
-            or _is_link_or_junction(raw_run_root)
-            or resolved_run_root.parent != resolved_smoke_root
-            or _RUN_ROOT_PATTERN.fullmatch(resolved_run_root.name) is None
-        ):
-            raise RuntimeError("Smoke run root is not a UUID child of the smoke root")
-        if (
-            self.user_state_dir.parent.resolve() != resolved_run_root
-            or resolved_user_state.parent != resolved_run_root
-            or _is_link_or_junction(self.user_state_dir)
-        ):
+        active_run_boundary = run_boundary or _SmokeRunBoundary.capture(raw_run_root)
+        active_run_boundary.revalidate()
+        resolved_run_root = _validate_smoke_run_root(raw_run_root)
+        lexical_user_state = _absolute_lexical_path(self.user_state_dir)
+        if lexical_user_state.parent != _absolute_lexical_path(
+            raw_run_root
+        ) or _is_link_or_junction(lexical_user_state):
             raise RuntimeError("Smoke user-state directory escaped the smoke run root")
+        resolved_user_state = _validated_directory(
+            lexical_user_state,
+            resolved_parent=resolved_run_root,
+        )
+        user_state_identity = _directory_identity(lexical_user_state)
+
+        def revalidate_cleanup_boundary() -> None:
+            active_run_boundary.revalidate()
+            current_run_root = _validate_smoke_run_root(raw_run_root)
+            _validated_directory(
+                lexical_user_state,
+                resolved_parent=current_run_root,
+            )
+            if _directory_identity(lexical_user_state) != user_state_identity:
+                raise RuntimeError(
+                    "Smoke user-state directory was replaced during cleanup"
+                )
+
+        revalidate_cleanup_boundary()
+        self.require_user_state_exercised()
         files, directories = _validated_user_state_inventory(
-            self.user_state_dir,
+            lexical_user_state,
             resolved_user_state,
         )
-        for path in files:
-            path.unlink()
-        for path in sorted(directories, key=lambda item: len(item.parts), reverse=True):
-            path.rmdir()
+        revalidate_cleanup_boundary()
+        for entry in files:
+            revalidate_cleanup_boundary()
+            _require_same_user_state_entry(entry)
+            entry.path.unlink()
+            revalidate_cleanup_boundary()
+        for entry in sorted(
+            directories,
+            key=lambda item: len(item.path.parts),
+            reverse=True,
+        ):
+            revalidate_cleanup_boundary()
+            _require_same_user_state_entry(entry)
+            entry.path.rmdir()
+            revalidate_cleanup_boundary()
+        revalidate_cleanup_boundary()
         self.user_state_dir.rmdir()
 
 
@@ -331,17 +775,15 @@ def validate_inputs(
         or probe_payload.get("version") != DOWNGRADE_PROBE_VERSION
     ):
         raise ValueError("Installer smoke input is not isolated smoke evidence")
-    if (
-        installer_payload.get("filename") != installer.name
-        or installer_payload.get("sha256") != sha256_file(installer)
-    ):
+    if installer_payload.get("filename") != installer.name or installer_payload.get(
+        "sha256"
+    ) != sha256_file(installer):
         raise ValueError(
             "Smoke installer identity or SHA256 does not match its manifest"
         )
-    if (
-        probe_payload.get("filename") != probe.name
-        or probe_payload.get("sha256") != sha256_file(probe)
-    ):
+    if probe_payload.get("filename") != probe.name or probe_payload.get(
+        "sha256"
+    ) != sha256_file(probe):
         raise ValueError(
             "Downgrade probe identity or SHA256 does not match its manifest"
         )
@@ -415,8 +857,16 @@ def run_installer_smoke(
         adapter = lifecycle_adapter or LifecycleAdapter.for_real_run(run_root)
         require_smoke_path_budget(payload, adapter.install_dir)
         adapter.require_no_existing_registration()
-        run_root.mkdir(parents=True)
+        _prepare_smoke_root()
+        if _RUN_ROOT_PATTERN.fullmatch(run_root.name) is None:
+            raise RuntimeError("Smoke run root name is not r-<12hex>")
+        try:
+            run_root.mkdir()
+        except FileExistsError as exc:
+            raise RuntimeError(f"Smoke run root collision: {run_root}") from exc
+        boundary = _SmokeRunBoundary.capture(run_root)
         adapter.user_state_dir.mkdir(parents=True)
+        boundary.revalidate()
         (adapter.user_state_dir / "sentinel.json").write_text(
             "preserve",
             encoding="utf-8",
@@ -427,58 +877,109 @@ def run_installer_smoke(
         )
 
         install_log = run_root / "install.log"
-        if runner(setup_command(installer, adapter.install_dir, install_log)) != 0:
+        if (
+            _run_at_validated_boundary(
+                boundary,
+                runner,
+                setup_command(installer, adapter.install_dir, install_log),
+            )
+            != 0
+        ):
             raise RuntimeError("Smoke installer returned nonzero")
         adapter.require_installed(version)
 
         state_root = str(Path(os.path.abspath(adapter.user_state_dir)))
+        expected_cache_dir = adapter.user_state_dir.resolve(strict=True) / "cache"
+        engine_evidence = _SmokeEvidenceBoundary.create(
+            boundary,
+            _ENGINE_EVIDENCE_DIRECTORY,
+        )
+        public_data_evidence = _SmokeEvidenceBoundary.create(
+            boundary,
+            _PUBLIC_DATA_EVIDENCE_DIRECTORY,
+        )
         package_smoke_commands = [
-            [
-                sys.executable,
-                "scripts/package_launch_smoke.py",
-                str(adapter.executable),
-                "--state-root",
-                state_root,
-            ],
-            [
-                sys.executable,
-                "scripts/package_engine_smoke.py",
-                str(adapter.executable),
-                "--state-root",
-                state_root,
-            ],
-            [
-                sys.executable,
-                "scripts/package_public_data_smoke.py",
-                str(adapter.executable),
-                "--state-root",
-                state_root,
-                "--fixture-dir",
-                str(
-                    WORKSPACE
-                    / "tests"
-                    / "fixtures"
-                    / "public_data_formats"
-                ),
-            ],
+            (
+                [
+                    sys.executable,
+                    "scripts/package_launch_smoke.py",
+                    str(adapter.executable),
+                    "--state-root",
+                    state_root,
+                ],
+                None,
+                None,
+                None,
+            ),
+            (
+                [
+                    sys.executable,
+                    "scripts/package_engine_smoke.py",
+                    str(adapter.executable),
+                    "--state-root",
+                    state_root,
+                    "--evidence-dir",
+                    str(engine_evidence.directory),
+                ],
+                engine_evidence,
+                _ENGINE_EVIDENCE_FILES,
+                "engine",
+            ),
+            (
+                [
+                    sys.executable,
+                    "scripts/package_public_data_smoke.py",
+                    str(adapter.executable),
+                    "--state-root",
+                    state_root,
+                    "--evidence-dir",
+                    str(public_data_evidence.directory),
+                    "--fixture-dir",
+                    str(WORKSPACE / "tests" / "fixtures" / "public_data_formats"),
+                ],
+                public_data_evidence,
+                _PUBLIC_DATA_EVIDENCE_FILES,
+                "public-data",
+            ),
         ]
-        for command in package_smoke_commands:
-            if runner(command) != 0:
+        evidence_snapshots: dict[str, tuple[tuple[str, int, str], ...]] = {}
+        for command, evidence, expected_files, smoke_kind in package_smoke_commands:
+            if _run_at_validated_boundary(boundary, runner, command) != 0:
                 raise RuntimeError(
                     f"Installed package smoke failed: {' '.join(command)}"
+                )
+            if evidence is not None:
+                assert expected_files is not None
+                assert smoke_kind is not None
+                evidence_snapshots[smoke_kind] = _require_durable_smoke_result(
+                    evidence,
+                    expected_files=expected_files,
+                    smoke_kind=smoke_kind,
+                    expected_cache_dir=(
+                        expected_cache_dir if smoke_kind == "engine" else None
+                    ),
                 )
 
         adapter.require_user_state_exercised()
         adapter.plant_stale_probe()
         repair_log = run_root / "repair.log"
-        if runner(setup_command(installer, adapter.install_dir, repair_log)) != 0:
+        if (
+            _run_at_validated_boundary(
+                boundary,
+                runner,
+                setup_command(installer, adapter.install_dir, repair_log),
+            )
+            != 0
+        ):
             raise RuntimeError("Repair installer returned nonzero")
         adapter.require_repaired(version)
 
         installed_sha256 = adapter.record_executable_hash()
         downgrade_log = run_root / "downgrade.log"
-        downgrade_result = runner(
-            setup_command(probe, adapter.install_dir, downgrade_log)
+        downgrade_result = _run_at_validated_boundary(
+            boundary,
+            runner,
+            setup_command(probe, adapter.install_dir, downgrade_log),
         )
         if downgrade_result == 0:
             raise RuntimeError("Downgrade probe unexpectedly succeeded")
@@ -491,10 +992,31 @@ def run_installer_smoke(
             "/NORESTART",
             f"/LOG={(run_root / 'uninstall.log').resolve()}",
         ]
-        if runner(uninstall_command) != 0:
+        if (
+            _run_at_validated_boundary(
+                boundary,
+                runner,
+                uninstall_command,
+            )
+            != 0
+        ):
             raise RuntimeError("Smoke uninstaller returned nonzero")
         adapter.require_uninstalled()
-        adapter.verify_and_remove_user_state()
+        boundary.revalidate()
+        adapter.verify_and_remove_user_state(boundary)
+        _require_durable_smoke_result(
+            engine_evidence,
+            expected_files=_ENGINE_EVIDENCE_FILES,
+            smoke_kind="engine",
+            expected_cache_dir=expected_cache_dir,
+            frozen_snapshot=evidence_snapshots["engine"],
+        )
+        _require_durable_smoke_result(
+            public_data_evidence,
+            expected_files=_PUBLIC_DATA_EVIDENCE_FILES,
+            smoke_kind="public-data",
+            frozen_snapshot=evidence_snapshots["public-data"],
+        )
     except (
         FileNotFoundError,
         KeyError,

@@ -1,8 +1,9 @@
 # Internal Windows Installer Design
 
-Status: approved for implementation on 2026-07-12; external review findings
-for stale payload cleanup, downgrade rejection, path budgeting, explicit close
-behavior, AppId escaping, and installer-script hashing are incorporated.
+Status: implemented and hardened on 2026-07-12; external review findings for
+stale payload cleanup, downgrade rejection, path budgeting, explicit close
+behavior, AppId escaping, installer-script hashing, durable lifecycle evidence,
+and fail-closed publication are incorporated.
 
 ## 1. Goal
 
@@ -139,8 +140,10 @@ The release-build orchestrator. Its public CLI is:
 python scripts/build_installer.py --check
 python scripts/build_installer.py --staging-only
 python scripts/build_installer.py --with-installed-smoke
-python scripts/build_installer.py
 ```
+
+A bare `python scripts/build_installer.py` invocation is intentionally rejected
+before build mutation. There is no build-and-publish default.
 
 `--check` validates the current platform, clean source identity, product
 version, PyInstaller availability, Inno Setup compiler, and current
@@ -159,7 +162,12 @@ smoke-identity installer, and passes only the smoke-identity artifact to
 `scripts/installer_smoke.py`. It may be combined with `--staging-only` during
 development; that combination publishes neither installer.
 
-The default command performs this sequence:
+`--with-installed-smoke` without `--staging-only` is the only
+publication-capable invocation. It requires a clean worktree and publishes only
+after the isolated installed lifecycle succeeds. `--staging-only` is always
+nonpublishing, whether or not lifecycle smoke is requested.
+
+The release-acceptance `--with-installed-smoke` command performs this sequence:
 
 1. Require Windows and a clean Git worktree.
 2. Read and validate the version from `pyproject.toml`.
@@ -195,11 +203,18 @@ The default command performs this sequence:
    directory.
 12. Verify that exactly one expected installer exists and returned exit code 0.
 13. Hash the installer and create its release manifest and checksum file.
-14. Atomically publish the verified build directory to
-    `dist/installer/<build-identity>/`.
+14. Revalidate the exact three candidate files and their manifest/checksum
+    relationships after all source and toolchain checks. Capture and revalidate
+    the staging and destination ancestry identities, require a same-volume
+    move, move the candidate first to a unique hidden sibling below
+    `dist/installer/`, validate the bytes again, then atomically promote it to
+    `dist/installer/<build-identity>/`. If post-move validation fails, remove
+    the canonical name by moving the candidate back to its original staging
+    directory; never replace or merge an existing final directory.
 
-When `--with-installed-smoke` is present, publication is deferred until the
-isolated lifecycle smoke passes. A lifecycle-smoke failure publishes nothing.
+For the publication-capable `--with-installed-smoke` invocation, publication is
+deferred until the isolated lifecycle smoke passes. A lifecycle-smoke failure
+publishes nothing; adding `--staging-only` remains nonpublishing.
 
 The build script does not accept a flag that bypasses the package rebuild or
 package smoke gates. This prevents an installer from silently wrapping a stale
@@ -221,6 +236,18 @@ QML, engine, and public-data smoke scripts against the installed executable,
 performs a repair install using the same installer, verifies one uninstall
 registration for the isolated smoke AppId, runs the uninstaller silently, and
 verifies binary removal and user-state preservation.
+
+Before any write, the script validates `WORKSPACE`, `.tmp`,
+`.tmp/installer-smoke`, and the exclusive `r-<12hex>` run root without following
+links or reparse points and captures their directory identities. Installed
+engine evidence is retained under `<run-root>/engine-smoke/` as exactly
+`reference.xlsx` plus `result.json`; public-data evidence is retained under
+`<run-root>/public-data-smoke/` as exactly `result.json`. The wrappers use
+unique transient output names and the same payload validators as the lifecycle
+orchestrator. File sizes and SHA256 values are frozen after each smoke and the
+exact inventories and bytes are revalidated after repair, downgrade,
+uninstall, and test-state cleanup. Logs and both evidence directories remain
+inspectable after success.
 
 The lifecycle input must be a smoke-only installer compiled from the same
 payload and `.iss` file with AppId
@@ -398,18 +425,25 @@ on-disk rollback copy is outside the internal-channel scope.
 - Fatal build failures return nonzero and print a plain-language failure line,
   exit code, and staging/log path.
 - Failed or partial outputs remain under the unique ignored staging directory
-  for diagnosis and are never copied to `dist/installer/`.
+  for diagnosis. Publication uses a verified hidden sibling and rollback, so a
+  failed candidate is never left at the canonical `dist/installer/<build-id>`
+  path.
 - The previously published installer is preserved until all new artifacts pass
   validation.
-- File publication uses a same-volume directory rename so the installer,
-  manifest, and checksum file appear as one evidence set. A final directory is
-  never replaced or merged.
+- File publication captures and revalidates staging/destination ancestry,
+  performs same-volume hidden-sibling and canonical renames, and revalidates
+  candidate bytes at each boundary. A final directory is never replaced or
+  merged.
 - Installed-smoke failures preserve installer, app-smoke, and uninstaller logs
   under `.tmp/installer-smoke/` and stop at the first failed layer.
 - A failed clean refresh may require rerunning the same verified offline
   installer; the build evidence directory and all user state remain available.
 - Cleanup deletes only the test installation directory that the smoke script
   created after verifying it resolves under `.tmp/installer-smoke/`.
+
+These controls implement a path-based fail-closed local-desktop model. They do
+not claim a Windows handle-based sandbox against a malicious local process that
+races the exact filesystem syscall boundary.
 
 ## 10. Security and Signing Boundary
 
@@ -455,8 +489,10 @@ on-disk rollback copy is outside the internal-channel scope.
 
 - `python scripts/build_installer.py --check` exits 0 and identifies Inno Setup
   6.7.3.
-- `python scripts/build_installer.py` rebuilds and smokes the package, compiles
-  the installer, and publishes one complete versioned evidence directory.
+- Bare `python scripts/build_installer.py` exits nonzero before build mutation;
+  publication without installed lifecycle evidence is forbidden.
+- `python scripts/build_installer.py --staging-only` rebuilds, smokes, and
+  compiles only an unpublished candidate under `.tmp/ib/`.
 - `python scripts/build_installer.py --with-installed-smoke` is the release
   acceptance build; it publishes only after the isolated lifecycle smoke passes.
 - Manifest hashes match the final installer and `dist/Modori/Modori.exe`.
@@ -482,7 +518,9 @@ on-disk rollback copy is outside the internal-channel scope.
    reports its exact resolved cache path. Its wrapper constructs the environment
    once, requires that report to equal `MODORI_CACHE_DIR`, and requires the
    lexical cache entry to be a real non-link/junction directory before the
-   lifecycle may continue.
+   lifecycle may continue. Preserve the engine workbook/result and public-data
+   result in separate run-local evidence directories, validate both JSON files
+   with the same wrapper contracts, and freeze exact size/SHA256 snapshots.
 6. Write `orphan-stale-probe.bin` into the installed `{app}\Modori` subtree,
    rerun the same installer, verify the probe is absent, and verify a single
    smoke uninstall registration.
@@ -493,7 +531,11 @@ on-disk rollback copy is outside the internal-channel scope.
 9. Verify installed binaries, smoke shortcuts, and smoke uninstall registration
    are gone.
 10. Verify the smoke user-state directory remains, then remove only the state
-   created by this test and preserve all logs.
+    created by this test while revalidating run-root, user-state, and descendant
+    identities before each deletion.
+11. Reinventory both evidence directories, require the exact original files and
+    SHA256 snapshots, and preserve the four lifecycle logs plus the durable
+    engine/public-data evidence.
 
 No screenshot or manual visual comparison is required for installer acceptance.
 
