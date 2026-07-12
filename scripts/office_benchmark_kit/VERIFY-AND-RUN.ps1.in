@@ -71,7 +71,7 @@ try {
     }
     $python = Join-Path $KitRoot 'runtime\python.exe'
     $runner = Join-Path $KitRoot 'payload\scripts\run_office_research_memory_benchmark.py'
-    & $python -I $runner
+    & $python -B -I $runner
     if ($LASTEXITCODE -ne 0) {
         Stop-ModoriKit ("runner_exit_" + $LASTEXITCODE)
     }

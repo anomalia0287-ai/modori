@@ -21,6 +21,7 @@ import uuid
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 _PAYLOAD_ROOT = _SCRIPT_DIR.parent
+sys.dont_write_bytecode = True
 if str(_PAYLOAD_ROOT) not in sys.path:
     sys.path.insert(0, str(_PAYLOAD_ROOT))
 
@@ -476,6 +477,7 @@ def run_benchmark_child(
     )
     command = [
         str(runtime),
+        "-B",
         "-I",
         str(runner),
         "--child-run",

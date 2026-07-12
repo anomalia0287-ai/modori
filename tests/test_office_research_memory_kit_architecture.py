@@ -107,3 +107,17 @@ def test_kit_has_no_api_that_can_grant_product_claim_authority() -> None:
     assert '"office_hardware_claim_allowed": False' in source
     assert "office_hardware_claim_allowed=True" not in source
     assert "office_hardware_claim_allowed = True" not in source
+
+
+def test_target_runtime_disables_bytecode_before_verifying_inventory() -> None:
+    runner = Path(
+        "scripts/run_office_research_memory_benchmark.py"
+    ).read_text(encoding="utf-8")
+    assert runner.index("sys.dont_write_bytecode = True") < runner.index(
+        "from scripts.office_research_memory_kit"
+    )
+    assert '"-B",\n        "-I"' in runner
+    powershell = Path(
+        "scripts/office_benchmark_kit/VERIFY-AND-RUN.ps1.in"
+    ).read_text(encoding="utf-8")
+    assert "& $python -B -I $runner" in powershell
