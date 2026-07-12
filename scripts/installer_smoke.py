@@ -15,12 +15,14 @@ from pathlib import Path
 if __package__:
     from scripts.installer_contract import (
         DOWNGRADE_PROBE_VERSION,
+        SAFE_PATH_BUDGET_CHARS,
         SMOKE_APP_ID,
         sha256_file,
     )
 else:
     from installer_contract import (  # type: ignore[import-not-found]
         DOWNGRADE_PROBE_VERSION,
+        SAFE_PATH_BUDGET_CHARS,
         SMOKE_APP_ID,
         sha256_file,
     )
@@ -29,7 +31,7 @@ WORKSPACE = Path(__file__).resolve().parents[1]
 SMOKE_ROOT = WORKSPACE / ".tmp" / "installer-smoke"
 UNINSTALL_ROOT = r"Software\Microsoft\Windows\CurrentVersion\Uninstall"
 _VERSION_PATTERN = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+$")
-_RUN_ROOT_PATTERN = re.compile(r"^run-[0-9a-f]{32}$")
+_RUN_ROOT_PATTERN = re.compile(r"^r-[0-9a-f]{12}$")
 
 
 def uninstall_key(app_id: str = SMOKE_APP_ID) -> str:
@@ -70,7 +72,7 @@ class LifecycleAdapter:
     @classmethod
     def for_real_run(cls, root: Path) -> LifecycleAdapter:
         return cls(
-            install_dir=root / "install",
+            install_dir=root / "i",
             user_state_dir=root / "user-state",
             start_menu_shortcut=(
                 Path(os.environ["APPDATA"])
@@ -200,6 +202,7 @@ def validate_inputs(
     payload: dict[str, object] = decoded
     installer_payload = payload.get("installer")
     probe_payload = payload.get("downgrade_probe")
+    path_payload = payload.get("payload_paths")
     version = payload.get("version")
     if (
         payload.get("channel") != "internal-smoke"
@@ -209,6 +212,7 @@ def validate_inputs(
         or _VERSION_PATTERN.fullmatch(version) is None
         or not isinstance(installer_payload, dict)
         or not isinstance(probe_payload, dict)
+        or not isinstance(path_payload, dict)
         or probe_payload.get("version") != DOWNGRADE_PROBE_VERSION
     ):
         raise ValueError("Installer smoke input is not isolated smoke evidence")
@@ -226,7 +230,38 @@ def validate_inputs(
         raise ValueError(
             "Downgrade probe identity or SHA256 does not match its manifest"
         )
+    longest_path = path_payload.get("longest_relative_path")
+    longest_path_chars = path_payload.get("longest_relative_path_chars")
+    if (
+        not isinstance(longest_path, str)
+        or not longest_path
+        or "\\" in longest_path
+        or longest_path.startswith("/")
+        or any(part in ("", ".", "..") for part in longest_path.split("/"))
+        or type(longest_path_chars) is not int
+        or longest_path_chars != len(longest_path)
+    ):
+        raise ValueError("Installer smoke payload path evidence is invalid")
     return payload
+
+
+def require_smoke_path_budget(
+    payload: dict[str, object],
+    install_dir: Path,
+) -> None:
+    path_payload = payload["payload_paths"]
+    assert isinstance(path_payload, dict)
+    longest_path = path_payload["longest_relative_path"]
+    assert isinstance(longest_path, str)
+    destination = install_dir.resolve() / "Modori"
+    for part in longest_path.split("/"):
+        destination /= part
+    computed_chars = len(str(destination))
+    if computed_chars > SAFE_PATH_BUDGET_CHARS:
+        raise ValueError(
+            "Installer smoke path budget exceeded: "
+            f"{computed_chars} > {SAFE_PATH_BUDGET_CHARS}: {destination}"
+        )
 
 
 def setup_command(installer: Path, install_dir: Path, log_path: Path) -> list[str]:
@@ -256,8 +291,9 @@ def run_installer_smoke(
         probe = probe.resolve()
         payload = validate_inputs(installer, manifest_path, probe)
         version = str(payload["version"])
-        run_root = SMOKE_ROOT / f"run-{uuid.uuid4().hex}"
+        run_root = SMOKE_ROOT / f"r-{uuid.uuid4().hex[:12]}"
         adapter = lifecycle_adapter or LifecycleAdapter.for_real_run(run_root)
+        require_smoke_path_budget(payload, adapter.install_dir)
         adapter.require_no_existing_registration()
         run_root.mkdir(parents=True)
         adapter.user_state_dir.mkdir(parents=True)

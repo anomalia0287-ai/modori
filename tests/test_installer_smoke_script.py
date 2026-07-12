@@ -12,14 +12,27 @@ import pytest
 
 from scripts import installer_smoke
 from scripts.installer_contract import (
+    ASSUMED_INSTALL_ROOT_CHARS,
     DOWNGRADE_PROBE_VERSION,
     PRODUCTION_APP_ID,
+    SAFE_PATH_BUDGET_CHARS,
     SMOKE_APP_ID,
     sha256_file,
 )
 
 
-def _manifest_payload(installer: Path, probe: Path) -> dict[str, Any]:
+_LONGEST_RELATIVE_PAYLOAD_PATH = (
+    "_internal/PySide6/qml/QtQuick/Controls/FluentWinUI3/light/images/"
+    "pageindicatordelegate-indicator-delegate-current-pressed@3x.png"
+)
+
+
+def _manifest_payload(
+    installer: Path,
+    probe: Path,
+    *,
+    longest_relative_path: str = _LONGEST_RELATIVE_PAYLOAD_PATH,
+) -> dict[str, Any]:
     return {
         "channel": "internal-smoke",
         "app_id": SMOKE_APP_ID,
@@ -34,6 +47,18 @@ def _manifest_payload(installer: Path, probe: Path) -> dict[str, Any]:
             "filename": probe.name,
             "sha256": sha256_file(probe),
         },
+        "payload_paths": {
+            "file_count": 4376,
+            "longest_relative_path": longest_relative_path,
+            "longest_relative_path_chars": len(longest_relative_path),
+            "assumed_install_root_chars": ASSUMED_INSTALL_ROOT_CHARS,
+            "safe_path_budget_chars": SAFE_PATH_BUDGET_CHARS,
+            "computed_max_chars": (
+                ASSUMED_INSTALL_ROOT_CHARS
+                + 1
+                + len(longest_relative_path)
+            ),
+        },
     }
 
 
@@ -43,8 +68,13 @@ def _manifest(
     probe: Path,
     *,
     app_id: str = SMOKE_APP_ID,
+    longest_relative_path: str = _LONGEST_RELATIVE_PAYLOAD_PATH,
 ) -> dict[str, Any]:
-    payload = _manifest_payload(installer, probe)
+    payload = _manifest_payload(
+        installer,
+        probe,
+        longest_relative_path=longest_relative_path,
+    )
     payload["app_id"] = app_id
     path.write_text(json.dumps(payload), encoding="utf-8")
     return payload
@@ -63,13 +93,22 @@ def _set_nested(payload: dict[str, Any], path: tuple[str, ...], value: object) -
     target[path[-1]] = value
 
 
-def _inputs(tmp_path: Path) -> tuple[Path, Path, Path]:
+def _inputs(
+    tmp_path: Path,
+    *,
+    longest_relative_path: str = _LONGEST_RELATIVE_PAYLOAD_PATH,
+) -> tuple[Path, Path, Path]:
     installer = tmp_path / "smoke.exe"
     probe = tmp_path / "probe.exe"
     manifest = tmp_path / "manifest.json"
     installer.write_bytes(b"smoke")
     probe.write_bytes(b"probe")
-    _manifest(manifest, installer, probe)
+    _manifest(
+        manifest,
+        installer,
+        probe,
+        longest_relative_path=longest_relative_path,
+    )
     return installer, manifest, probe
 
 
@@ -153,6 +192,9 @@ def test_smoke_refuses_production_identity_before_running(tmp_path: Path) -> Non
         (("downgrade_probe", "version"), "0.0.8"),
         (("downgrade_probe", "filename"), "other-probe.exe"),
         (("downgrade_probe", "sha256"), "F" * 64),
+        (("payload_paths",), []),
+        (("payload_paths", "longest_relative_path"), 7),
+        (("payload_paths", "longest_relative_path_chars"), 127),
     ],
     ids=[
         "channel",
@@ -164,6 +206,9 @@ def test_smoke_refuses_production_identity_before_running(tmp_path: Path) -> Non
         "downgrade-version",
         "probe-filename",
         "probe-hash",
+        "payload-paths-shape",
+        "longest-relative-path-shape",
+        "longest-relative-path-length",
     ],
 )
 def test_invalid_manifest_evidence_fails_before_any_runner_call(
@@ -179,6 +224,12 @@ def test_invalid_manifest_evidence_fails_before_any_runner_call(
     smoke_root = tmp_path / "runs"
     monkeypatch.setattr(installer_smoke, "SMOKE_ROOT", smoke_root)
     calls: list[list[str]] = []
+    registrations: list[str] = []
+    monkeypatch.setattr(
+        installer_smoke,
+        "read_smoke_registration",
+        lambda: registrations.append("queried") or None,
+    )
 
     result = installer_smoke.run_installer_smoke(
         installer,
@@ -189,6 +240,7 @@ def test_invalid_manifest_evidence_fails_before_any_runner_call(
 
     assert result == 2
     assert calls == []
+    assert registrations == []
     assert not smoke_root.exists()
 
 
@@ -233,17 +285,44 @@ def test_setup_command_uses_only_isolated_silent_safety_flags(tmp_path: Path) ->
     ]
 
 
+def test_real_run_setup_dir_reduces_observed_267_path_to_budget() -> None:
+    run_uuid = UUID("123456789abcdef0123456789abcdef0")
+    old_install_dir = (
+        installer_smoke.SMOKE_ROOT / f"run-{run_uuid.hex}" / "install"
+    )
+    old_destination = (
+        old_install_dir / "Modori" / _LONGEST_RELATIVE_PAYLOAD_PATH
+    ).resolve()
+    compact_run_root = installer_smoke.SMOKE_ROOT / f"r-{run_uuid.hex[:12]}"
+    adapter = installer_smoke.LifecycleAdapter.for_real_run(compact_run_root)
+    setup = installer_smoke.setup_command(
+        Path("smoke.exe"),
+        adapter.install_dir,
+        compact_run_root / "install.log",
+    )
+    destination = (
+        adapter.install_dir / "Modori" / _LONGEST_RELATIVE_PAYLOAD_PATH
+    ).resolve()
+
+    assert len(_LONGEST_RELATIVE_PAYLOAD_PATH) == 128
+    assert len(str(old_destination)) == 267
+    assert adapter.install_dir == compact_run_root / "i"
+    assert f"/DIR={adapter.install_dir.resolve()}" in setup
+    assert len(str(destination)) == 239
+    assert len(str(destination)) <= SAFE_PATH_BUDGET_CHARS
+
+
 def test_real_adapter_keeps_install_and_user_state_in_separate_run_subtrees(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
     appdata = tmp_path / "appdata"
     monkeypatch.setenv("APPDATA", str(appdata))
-    run_root = tmp_path / "runs" / f"run-{'a' * 32}"
+    run_root = tmp_path / "runs" / f"r-{'a' * 12}"
 
     adapter = installer_smoke.LifecycleAdapter.for_real_run(run_root)
 
-    assert adapter.install_dir == run_root / "install"
+    assert adapter.install_dir == run_root / "i"
     assert adapter.user_state_dir == run_root / "user-state"
     assert adapter.install_dir.parent == adapter.user_state_dir.parent == run_root
     assert adapter.user_state_dir not in adapter.install_dir.parents
@@ -285,10 +364,13 @@ def test_existing_registration_preflight_creates_no_run_evidence_or_state(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    installer, manifest, probe = _inputs(tmp_path)
+    installer, manifest, probe = _inputs(
+        tmp_path,
+        longest_relative_path="Modori.exe",
+    )
     run_uuid = UUID("1" * 32)
     smoke_root = tmp_path / "runs"
-    run_root = smoke_root / f"run-{run_uuid.hex}"
+    run_root = smoke_root / f"r-{run_uuid.hex[:12]}"
     adapter = installer_smoke.LifecycleAdapter.for_test(run_root)
     uninstall_path = tmp_path / "existing-unins000.exe"
     calls: list[list[str]] = []
@@ -314,6 +396,79 @@ def test_existing_registration_preflight_creates_no_run_evidence_or_state(
     assert not run_root.exists()
     assert not adapter.user_state_dir.exists()
     assert str(uninstall_path) in capsys.readouterr().err
+
+
+def test_over_budget_smoke_root_fails_before_registration_state_or_runner(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    installer, manifest, probe = _inputs(tmp_path)
+    payload = _manifest_payload(installer, probe)
+    payload_paths = payload["payload_paths"]
+    assert isinstance(payload_paths, dict)
+    payload_paths["safe_path_budget_chars"] = 10_000
+    _write_manifest(manifest, payload)
+    smoke_root = tmp_path / ("overlong-" + "x" * 180)
+    run_uuid = UUID("3" * 32)
+    events: list[str] = []
+    monkeypatch.setattr(installer_smoke, "SMOKE_ROOT", smoke_root)
+    monkeypatch.setattr(installer_smoke.uuid, "uuid4", lambda: run_uuid)
+    monkeypatch.setattr(
+        installer_smoke,
+        "read_smoke_registration",
+        lambda: events.append("registration") or None,
+    )
+
+    result = installer_smoke.run_installer_smoke(
+        installer,
+        manifest,
+        probe,
+        runner=lambda _command: events.append("runner") or 1,
+    )
+
+    assert result == 2
+    assert events == []
+    assert not smoke_root.exists()
+    assert "path budget" in capsys.readouterr().err
+
+
+def test_compact_run_collision_fails_closed_before_state_or_runner(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    installer, manifest, probe = _inputs(
+        tmp_path,
+        longest_relative_path="Modori.exe",
+    )
+    smoke_root = tmp_path / "runs"
+    run_uuid = UUID("4" * 32)
+    run_root = smoke_root / f"r-{run_uuid.hex[:12]}"
+    run_root.mkdir(parents=True)
+    marker = run_root / "preserve.txt"
+    marker.write_text("existing", encoding="utf-8")
+    registrations: list[str] = []
+    calls: list[list[str]] = []
+    monkeypatch.setattr(installer_smoke, "SMOKE_ROOT", smoke_root)
+    monkeypatch.setattr(installer_smoke.uuid, "uuid4", lambda: run_uuid)
+    monkeypatch.setattr(
+        installer_smoke,
+        "read_smoke_registration",
+        lambda: registrations.append("queried") or None,
+    )
+
+    result = installer_smoke.run_installer_smoke(
+        installer,
+        manifest,
+        probe,
+        runner=lambda command: calls.append(command) or 1,
+    )
+
+    assert result == 1
+    assert registrations == ["queried"]
+    assert calls == []
+    assert marker.read_text(encoding="utf-8") == "existing"
+    assert not (run_root / "user-state").exists()
 
 
 def test_installed_adapter_requires_expected_registration_and_files(
@@ -411,7 +566,7 @@ def test_user_state_cleanup_removes_only_the_sentinel_and_empty_directory(
 ) -> None:
     smoke_root = tmp_path / "runs"
     monkeypatch.setattr(installer_smoke, "SMOKE_ROOT", smoke_root)
-    run_root = smoke_root / f"run-{'a' * 32}"
+    run_root = smoke_root / f"r-{'a' * 12}"
     adapter = installer_smoke.LifecycleAdapter.for_test(run_root)
     adapter.user_state_dir.mkdir(parents=True)
     sentinel = adapter.user_state_dir / "sentinel.json"
@@ -432,7 +587,7 @@ def test_user_state_cleanup_refuses_extra_state_without_removing_evidence(
 ) -> None:
     smoke_root = tmp_path / "runs"
     monkeypatch.setattr(installer_smoke, "SMOKE_ROOT", smoke_root)
-    run_root = smoke_root / f"run-{'b' * 32}"
+    run_root = smoke_root / f"r-{'b' * 12}"
     adapter = installer_smoke.LifecycleAdapter.for_test(run_root)
     adapter.user_state_dir.mkdir(parents=True)
     sentinel = adapter.user_state_dir / "sentinel.json"
@@ -453,7 +608,7 @@ def test_user_state_cleanup_refuses_a_directory_outside_the_run_root(
 ) -> None:
     smoke_root = tmp_path / "runs"
     monkeypatch.setattr(installer_smoke, "SMOKE_ROOT", smoke_root)
-    run_root = smoke_root / f"run-{'c' * 32}"
+    run_root = smoke_root / f"r-{'c' * 12}"
     outside = tmp_path / "outside"
     adapter = installer_smoke.LifecycleAdapter(
         install_dir=run_root / "install",
@@ -473,8 +628,8 @@ def test_user_state_cleanup_refuses_a_directory_outside_the_run_root(
 @pytest.mark.parametrize(
     "run_root",
     [
-        Path("outside") / f"run-{'d' * 32}",
-        Path("runs") / "run-not-a-uuid",
+        Path("outside") / f"r-{'d' * 12}",
+        Path("runs") / "r-not-a-uuid",
     ],
     ids=["outside-smoke-root", "non-uuid-root"],
 )
@@ -502,7 +657,7 @@ def test_user_state_cleanup_requires_the_original_sentinel_contents(
 ) -> None:
     smoke_root = tmp_path / "runs"
     monkeypatch.setattr(installer_smoke, "SMOKE_ROOT", smoke_root)
-    run_root = smoke_root / f"run-{'e' * 32}"
+    run_root = smoke_root / f"r-{'e' * 12}"
     adapter = installer_smoke.LifecycleAdapter.for_test(run_root)
     adapter.user_state_dir.mkdir(parents=True)
     sentinel = adapter.user_state_dir / "sentinel.json"
@@ -518,10 +673,13 @@ def test_smoke_repairs_stale_file_rejects_downgrade_and_uninstalls(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    installer, manifest, probe = _inputs(tmp_path)
+    installer, manifest, probe = _inputs(
+        tmp_path,
+        longest_relative_path="Modori.exe",
+    )
     run_uuid = UUID("2" * 32)
     smoke_root = tmp_path / "runs"
-    run_root = smoke_root / f"run-{run_uuid.hex}"
+    run_root = smoke_root / f"r-{run_uuid.hex[:12]}"
     adapter = installer_smoke.LifecycleAdapter.for_test(run_root)
     timeline: list[str | tuple[str, ...]] = []
     monkeypatch.setattr(installer_smoke, "SMOKE_ROOT", smoke_root)
@@ -685,7 +843,10 @@ def test_successful_downgrade_probe_is_a_lifecycle_failure(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    installer, manifest, probe = _inputs(tmp_path)
+    installer, manifest, probe = _inputs(
+        tmp_path,
+        longest_relative_path="Modori.exe",
+    )
     events: list[str] = []
     calls: list[list[str]] = []
     monkeypatch.setattr(installer_smoke, "SMOKE_ROOT", tmp_path / "runs")
@@ -710,7 +871,10 @@ def test_lifecycle_failure_preserves_logs_and_user_state_for_diagnosis(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    installer, manifest, probe = _inputs(tmp_path)
+    installer, manifest, probe = _inputs(
+        tmp_path,
+        longest_relative_path="Modori.exe",
+    )
     smoke_root = tmp_path / "runs"
     monkeypatch.setattr(installer_smoke, "SMOKE_ROOT", smoke_root)
     adapter = installer_smoke.LifecycleAdapter.for_test(tmp_path / "adapter")
@@ -740,7 +904,7 @@ def test_lifecycle_failure_preserves_logs_and_user_state_for_diagnosis(
         lifecycle_adapter=adapter,
     )
 
-    run_roots = list(smoke_root.glob("run-*"))
+    run_roots = list(smoke_root.glob("r-*"))
     assert result == 1
     assert len(run_roots) == 1
     assert (run_roots[0] / "install.log").read_text(encoding="utf-8") == "diagnostic"
