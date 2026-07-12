@@ -65,6 +65,16 @@ from modori.research_os.p1_catalog import (
     build_p1_method_space,
 )
 from modori.research_os.p1_clarifications import build_p1_clarification_registry
+from modori.research_os.passport import (
+    AbstainPayload,
+    AnalysisPassport,
+    ClaimClass,
+    ClarifyPayload,
+    ComponentRevisionRef,
+    PassportError,
+    RecommendLocalPayload,
+    RouteExternalPayload,
+)
 from modori.research_os.resolver import (
     C1Resolver,
     PrimaryAction,
@@ -82,6 +92,8 @@ from modori.research_os.service import (
 )
 
 __all__ = [
+    "AbstainPayload",
+    "AnalysisPassport",
     "AnswerChoice",
     "AnswerKind",
     "AssignmentMechanism",
@@ -92,10 +104,13 @@ __all__ = [
     "CaptureMode",
     "CausalIntent",
     "ClaimBasis",
+    "ClaimClass",
     "ClarificationError",
     "ClarificationRegistry",
     "ClarificationSpec",
     "ClarificationTrigger",
+    "ClarifyPayload",
+    "ComponentRevisionRef",
     "ContrastKind",
     "ContractError",
     "DataLayout",
@@ -116,9 +131,11 @@ __all__ = [
     "MissingCodeMeaning",
     "QuestionSpec",
     "PredicateKind",
+    "PassportError",
     "PrimaryAction",
     "ProductSurface",
     "RecommendationEvidence",
+    "RecommendLocalPayload",
     "ResearchOsService",
     "ResearchRequest",
     "ResearchServiceError",
@@ -130,6 +147,7 @@ __all__ = [
     "RoleHintBinding",
     "RULESET_VERSION",
     "RouteEvidence",
+    "RouteExternalPayload",
     "RuleMode",
     "RuleEvaluation",
     "RuleSeverity",
