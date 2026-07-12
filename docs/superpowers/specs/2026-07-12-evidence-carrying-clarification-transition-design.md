@@ -194,6 +194,7 @@ binds acceptance, while the fact binds the answer that supplied its value.
 evidence_id
 project_id
 evidence_kind = clarification_answer | revision_acceptance
+event_sequence
 evidence_digest
 subject_digests[]
 ```
