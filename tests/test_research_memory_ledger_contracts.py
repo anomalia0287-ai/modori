@@ -408,6 +408,24 @@ def test_all_nontext_research_os_artifacts_roundtrip_with_separate_identities() 
         )
 
 
+@pytest.mark.parametrize("foreign_state", ["observed", "unknown", "conflict", "stale"])
+def test_imported_assertion_rejects_nonimportable_foreign_fact_states(
+    foreign_state: str,
+) -> None:
+    with pytest.raises(LedgerContractError, match="foreign_fact_state"):
+        ImportedAssertion(
+            assertion_id="assertion:foreign:blocked",
+            project_id="project-1",
+            source_project_id="foreign-project",
+            source_bundle_digest="1" * 64,
+            source_artifact_id="2" * 64,
+            fact_address="study.dependence_structure",
+            foreign_fact_state=foreign_state,
+            value="independent",
+            provenance_refs=("answer:foreign:1",),
+        )
+
+
 def test_artifact_wire_metadata_cannot_be_forged() -> None:
     artifact = LedgerArtifact.from_value(_request().question)
     forged = artifact.to_mapping()

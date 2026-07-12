@@ -67,17 +67,7 @@ _REFERENCE_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]*$")
 _FACT_ADDRESS_RE = re.compile(r"^[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+$")
 _TOKEN_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 _UTC_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?Z$")
-_CURRENT_FOREIGN_STATES = frozenset(
-    {
-        "observed",
-        "inferred",
-        "user_confirmed",
-        "unknown",
-        "conflict",
-        "not_applicable",
-        "stale",
-    }
-)
+_IMPORTABLE_FOREIGN_STATES = frozenset({"inferred", "user_confirmed", "not_applicable"})
 
 
 def _require_exact_keys(
@@ -551,8 +541,8 @@ class ImportedAssertion:
             self.fact_address
         ):
             raise LedgerContractError("fact_address must be a dotted lowercase address")
-        if self.foreign_fact_state not in _CURRENT_FOREIGN_STATES:
-            raise LedgerContractError("foreign_fact_state is unknown")
+        if self.foreign_fact_state not in _IMPORTABLE_FOREIGN_STATES:
+            raise LedgerContractError("foreign_fact_state is not importable")
         if not isinstance(self.provenance_refs, tuple):
             raise LedgerContractError("provenance_refs must be a tuple")
         for reference in self.provenance_refs:
