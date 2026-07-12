@@ -104,6 +104,49 @@ def test_bundle_roundtrip_is_deterministic_and_complete() -> None:
     )
 
 
+def test_every_foreign_event_must_bind_its_own_request_snapshot_subject() -> None:
+    base = _two_event_bundle()
+    question = next(
+        artifact
+        for artifact in base.artifacts
+        if artifact.artifact_kind is LedgerArtifactKind.QUESTION_SPEC
+    )
+    original_first, original_second = base.events
+    forged_first = LedgerEvent.create(
+        project_id=original_first.project_id,
+        event_id=original_first.event_id,
+        sequence=original_first.sequence,
+        event_kind=original_first.event_kind,
+        subject_artifact_ids=original_first.subject_artifact_ids,
+        payload={"resulting_snapshot_artifact_id": question.artifact_id},
+        previous_event_hash=original_first.previous_event_hash,
+        recorded_at_utc=original_first.recorded_at_utc,
+    )
+    forged_second = LedgerEvent.create(
+        project_id=original_second.project_id,
+        event_id=original_second.event_id,
+        sequence=original_second.sequence,
+        event_kind=original_second.event_kind,
+        subject_artifact_ids=original_second.subject_artifact_ids,
+        payload=original_second.payload,
+        previous_event_hash=forged_first.event_hash,
+        recorded_at_utc=original_second.recorded_at_utc,
+    )
+
+    with pytest.raises(EvidenceBundleError) as caught:
+        EvidenceBundle.create(
+            source_project_id=base.source_project_id,
+            head=LedgerHead(
+                sequence=forged_second.sequence,
+                event_hash=forged_second.event_hash,
+            ),
+            artifacts=base.artifacts,
+            events=(forged_first, forged_second),
+            exported_at_utc=None,
+        )
+    assert caught.value.code is EvidenceBundleErrorCode.CHAIN_INVALID
+
+
 def test_bundle_resource_defaults_bound_preparse_allocation() -> None:
     limits = EvidenceBundleLimits()
     assert limits.max_collection_items == 10_000

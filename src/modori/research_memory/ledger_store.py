@@ -768,9 +768,12 @@ class DecisionLedgerStore:
                 raise LedgerIntegrityError("event-artifact relationships do not verify")
             if set(event.subject_artifact_ids) - set(lookup):
                 raise LedgerIntegrityError("event references a missing artifact")
-            snapshot_id = event.payload.get("resulting_snapshot_artifact_id")
-            if not isinstance(snapshot_id, str):
-                raise LedgerIntegrityError("state-bearing event lacks a snapshot")
+            try:
+                snapshot_id = event.require_snapshot_subject(lookup)
+            except LedgerContractError as exc:
+                raise LedgerIntegrityError(
+                    "ledger event snapshot subject is invalid"
+                ) from exc
             if event.event_kind is LedgerEventKind.IMPORT_ACCEPTED_AS_ASSERTIONS:
                 assertion_ids = event.payload["assertion_artifact_ids"]
                 expected_imports.append(

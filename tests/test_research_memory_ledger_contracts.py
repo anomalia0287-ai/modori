@@ -153,15 +153,19 @@ def _request(*, with_evidence: bool = False) -> ResearchRequest:
         missing_code_meanings=(),
     )
     evidence = (
-        DecisionEvidenceRef(
-            evidence_id="evidence:answer:1",
-            project_id="project-1",
-            evidence_kind=DecisionEvidenceKind.CLARIFICATION_ANSWER,
-            event_sequence=1,
-            evidence_digest="c" * 64,
-            subject_digests=tuple(sorted((question.digest(), study.digest()))),
-        ),
-    ) if with_evidence else ()
+        (
+            DecisionEvidenceRef(
+                evidence_id="evidence:answer:1",
+                project_id="project-1",
+                evidence_kind=DecisionEvidenceKind.CLARIFICATION_ANSWER,
+                event_sequence=1,
+                evidence_digest="c" * 64,
+                subject_digests=tuple(sorted((question.digest(), study.digest()))),
+            ),
+        )
+        if with_evidence
+        else ()
+    )
     return ResearchRequest(
         question=question,
         estimand=estimand,
@@ -290,9 +294,12 @@ def test_snapshot_roundtrip_preserves_exact_request_and_order() -> None:
     restored = snapshot.restore(lookup)
     assert restored == request
     assert snapshot.decision_evidence_artifact_ids
-    assert LedgerArtifact.from_mapping(
-        LedgerArtifact.from_value(snapshot).to_mapping()
-    ).decode_value() == snapshot
+    assert (
+        LedgerArtifact.from_mapping(
+            LedgerArtifact.from_value(snapshot).to_mapping()
+        ).decode_value()
+        == snapshot
+    )
 
 
 def test_snapshot_roundtrip_never_adds_imported_assertions_to_request() -> None:
@@ -395,7 +402,9 @@ def test_all_nontext_research_os_artifacts_roundtrip_with_separate_identities() 
         if hasattr(value, "digest"):
             assert artifact.semantic_digest == value.digest()
         assert artifact.artifact_id != artifact.storage_digest
-        assert LedgerArtifact.from_mapping(artifact.to_mapping()).decode_value() == value
+        assert (
+            LedgerArtifact.from_mapping(artifact.to_mapping()).decode_value() == value
+        )
 
 
 def test_artifact_wire_metadata_cannot_be_forged() -> None:
@@ -434,3 +443,51 @@ def test_ledger_commit_requires_consecutive_chain_and_snapshot_subject() -> None
     assert commit.events == (event,)
     with pytest.raises(LedgerContractError, match="expected head"):
         replace(commit, expected_head=LedgerHead(sequence=1, event_hash="f" * 64))
+
+
+def test_every_commit_event_requires_its_own_request_snapshot_subject() -> None:
+    _snapshot, artifacts = ResearchRequestSnapshot.capture(_request())
+    snapshot_artifact = next(
+        artifact
+        for artifact in artifacts
+        if artifact.artifact_kind is LedgerArtifactKind.REQUEST_SNAPSHOT
+    )
+    question_artifact = next(
+        artifact
+        for artifact in artifacts
+        if artifact.artifact_kind is LedgerArtifactKind.QUESTION_SPEC
+    )
+    first = LedgerEvent.create(
+        project_id="project-1",
+        event_id="event:project:1",
+        sequence=1,
+        event_kind=LedgerEventKind.PROJECT_CREATED,
+        subject_artifact_ids=tuple(sorted(item.artifact_id for item in artifacts)),
+        payload={
+            "resulting_snapshot_artifact_id": question_artifact.artifact_id,
+        },
+        previous_event_hash=ZERO_HASH,
+        recorded_at_utc=None,
+    )
+    second = LedgerEvent.create(
+        project_id="project-1",
+        event_id="event:fact:2",
+        sequence=2,
+        event_kind=LedgerEventKind.FACT_INVALIDATED,
+        subject_artifact_ids=(snapshot_artifact.artifact_id,),
+        payload={
+            "fact_address": "study.dependence_structure",
+            "reason_code": "source_changed",
+            "resulting_snapshot_artifact_id": snapshot_artifact.artifact_id,
+        },
+        previous_event_hash=first.event_hash,
+        recorded_at_utc=None,
+    )
+
+    with pytest.raises(LedgerContractError, match="snapshot"):
+        LedgerCommit(
+            expected_head=LedgerHead.genesis(),
+            events=(first, second),
+            artifacts=artifacts,
+            resulting_snapshot_artifact_id=snapshot_artifact.artifact_id,
+        )

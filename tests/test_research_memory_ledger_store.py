@@ -489,6 +489,68 @@ def test_open_rejects_authoritative_or_schema_corruption(
     assert isinstance(ResearchOsService().resolve(_request()).action, PrimaryAction)
 
 
+def test_open_rejects_self_hashed_chain_with_invalid_intermediate_snapshot(
+    tmp_path: Path,
+) -> None:
+    path = _path(tmp_path)
+    with DecisionLedgerStore.create(path, "project-1") as store:
+        store.append(_genesis_commit(_request()))
+        store.append(_commit_from_visible_head(store, event_id="event:fact:2"))
+        first, second = store.events()
+        question = next(
+            artifact
+            for artifact in store.artifacts()
+            if artifact.artifact_kind is LedgerArtifactKind.QUESTION_SPEC
+        )
+    forged_first = LedgerEvent.create(
+        project_id=first.project_id,
+        event_id=first.event_id,
+        sequence=first.sequence,
+        event_kind=first.event_kind,
+        subject_artifact_ids=first.subject_artifact_ids,
+        payload={"resulting_snapshot_artifact_id": question.artifact_id},
+        previous_event_hash=first.previous_event_hash,
+        recorded_at_utc=first.recorded_at_utc,
+    )
+    forged_second = LedgerEvent.create(
+        project_id=second.project_id,
+        event_id=second.event_id,
+        sequence=second.sequence,
+        event_kind=second.event_kind,
+        subject_artifact_ids=second.subject_artifact_ids,
+        payload=second.payload,
+        previous_event_hash=forged_first.event_hash,
+        recorded_at_utc=second.recorded_at_utc,
+    )
+    connection = sqlite3.connect(path)
+    for event in (forged_first, forged_second):
+        connection.execute(
+            "UPDATE ledger_events SET canonical_body=?,body_digest=?,"
+            "previous_event_hash=?,event_hash=? WHERE sequence=?",
+            (
+                event.canonical_body,
+                event.body_digest,
+                event.previous_event_hash,
+                event.event_hash,
+                event.sequence,
+            ),
+        )
+    connection.execute(
+        "UPDATE ledger_head SET event_hash=?",
+        (forged_second.event_hash,),
+    )
+    connection.commit()
+    connection.close()
+
+    reopened: DecisionLedgerStore | None = None
+    try:
+        with pytest.raises(LedgerIntegrityError, match="snapshot"):
+            reopened = DecisionLedgerStore.open(path, "project-1")
+    finally:
+        if reopened is not None:
+            reopened.close()
+
+
 def test_open_binds_file_to_exact_local_project(tmp_path: Path) -> None:
     path = _path(tmp_path)
     with DecisionLedgerStore.create(path, "project-1"):

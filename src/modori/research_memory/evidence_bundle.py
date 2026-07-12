@@ -127,9 +127,7 @@ _FORBIDDEN_KEYS = frozenset(
     }
 )
 _REFERENCE_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]*$")
-_UTC_RE = re.compile(
-    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?Z$"
-)
+_UTC_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?Z$")
 _MAX_SAFE_INTEGER = 9_007_199_254_740_991
 _EVENT_WIRE_OVERHEAD = len(
     canonical_bytes(
@@ -174,7 +172,9 @@ def _parse_integer(raw: str) -> int:
     try:
         value = int(raw)
     except ValueError as exc:
-        raise _InvalidNumber("integer cannot be decoded within its resource limit") from exc
+        raise _InvalidNumber(
+            "integer cannot be decoded within its resource limit"
+        ) from exc
     if not -_MAX_SAFE_INTEGER <= value <= _MAX_SAFE_INTEGER:
         raise _InvalidNumber("integer outside safe range")
     return value
@@ -313,8 +313,7 @@ def _walk_resources(
                     "evidence bundle contains an oversized list",
                 )
             stack.extend(
-                (item, depth + 1, limits.max_collection_items)
-                for item in current
+                (item, depth + 1, limits.max_collection_items) for item in current
             )
 
 
@@ -386,7 +385,7 @@ def _event_error(exc: Exception) -> NoReturn:
         )
     _raise(
         EvidenceBundleErrorCode.CHAIN_INVALID,
-        "evidence event failed typed hash verification",
+        "evidence event failed typed chain verification",
     )
 
 
@@ -464,7 +463,10 @@ class EvidenceBundle:
                 EvidenceBundleErrorCode.INCOMPLETE_HISTORY,
                 "evidence bundle requires a non-empty declared head",
             )
-        if len(self.events) > limits.max_events or len(self.artifacts) > limits.max_artifacts:
+        if (
+            len(self.events) > limits.max_events
+            or len(self.artifacts) > limits.max_artifacts
+        ):
             _raise(
                 EvidenceBundleErrorCode.RESOURCE_LIMIT,
                 "evidence bundle exceeds event or artifact count limits",
@@ -534,10 +536,17 @@ class EvidenceBundle:
                     EvidenceBundleErrorCode.UNRESOLVED_SUBJECT,
                     "event references an unresolved subject artifact",
                 )
+            try:
+                event.require_snapshot_subject(artifact_lookup)
+            except LedgerContractError as exc:
+                _event_error(exc)
             referenced.update(event.subject_artifact_ids)
             previous = event.event_hash
         last = self.events[-1]
-        if self.head.sequence != last.sequence or self.head.event_hash != last.event_hash:
+        if (
+            self.head.sequence != last.sequence
+            or self.head.event_hash != last.event_hash
+        ):
             _raise(
                 EvidenceBundleErrorCode.INCOMPLETE_HISTORY,
                 "declared head does not equal the complete event history",
@@ -684,7 +693,10 @@ class EvidenceBundle:
                 EvidenceBundleErrorCode.SCHEMA_INVALID,
                 "artifacts and events must be arrays",
             )
-        if len(raw_artifacts) > limits.max_artifacts or len(raw_events) > limits.max_events:
+        if (
+            len(raw_artifacts) > limits.max_artifacts
+            or len(raw_events) > limits.max_events
+        ):
             _raise(
                 EvidenceBundleErrorCode.RESOURCE_LIMIT,
                 "evidence bundle exceeds event or artifact count limits",

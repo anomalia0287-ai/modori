@@ -66,9 +66,7 @@ _DIGEST_RE = re.compile(r"^[0-9a-f]{64}$")
 _REFERENCE_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]*$")
 _FACT_ADDRESS_RE = re.compile(r"^[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+$")
 _TOKEN_RE = re.compile(r"^[a-z][a-z0-9_]*$")
-_UTC_RE = re.compile(
-    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?Z$"
-)
+_UTC_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?Z$")
 _CURRENT_FOREIGN_STATES = frozenset(
     {
         "observed",
@@ -89,14 +87,10 @@ def _require_exact_keys(
 ) -> None:
     unknown = sorted(set(payload) - required)
     if unknown:
-        raise LedgerContractError(
-            f"{context} unknown field(s): {', '.join(unknown)}"
-        )
+        raise LedgerContractError(f"{context} unknown field(s): {', '.join(unknown)}")
     missing = sorted(required - set(payload))
     if missing:
-        raise LedgerContractError(
-            f"{context} missing field(s): {', '.join(missing)}"
-        )
+        raise LedgerContractError(f"{context} missing field(s): {', '.join(missing)}")
 
 
 def _require_mapping(value: object, context: str) -> Mapping[str, Any]:
@@ -150,7 +144,9 @@ def _require_utc(value: object, field: str) -> str | None:
 
 def _freeze_json(value: object) -> object:
     if isinstance(value, dict):
-        return MappingProxyType({key: _freeze_json(item) for key, item in value.items()})
+        return MappingProxyType(
+            {key: _freeze_json(item) for key, item in value.items()}
+        )
     if isinstance(value, list):
         return tuple(_freeze_json(item) for item in value)
     return value
@@ -178,9 +174,7 @@ def _decode_canonical_body(body: bytes, context: str) -> Mapping[str, Any]:
 
 
 _PAYLOAD_FIELDS: dict[LedgerEventKind, frozenset[str]] = {
-    LedgerEventKind.PROJECT_CREATED: frozenset(
-        {"resulting_snapshot_artifact_id"}
-    ),
+    LedgerEventKind.PROJECT_CREATED: frozenset({"resulting_snapshot_artifact_id"}),
     LedgerEventKind.CLARIFICATION_ANSWERED: frozenset(
         {
             "answer_artifact_id",
@@ -227,7 +221,9 @@ def _validate_payload(
     payload: Mapping[str, Any],
     subjects: tuple[str, ...],
 ) -> tuple[dict[str, object], bytes]:
-    _require_exact_keys(payload, _PAYLOAD_FIELDS[event_kind], f"{event_kind.value} payload")
+    _require_exact_keys(
+        payload, _PAYLOAD_FIELDS[event_kind], f"{event_kind.value} payload"
+    )
     payload_bytes = canonical_bytes(dict(payload))
     copied = json.loads(payload_bytes.decode("utf-8"))
     artifact_ids: list[str] = []
@@ -236,10 +232,14 @@ def _validate_payload(
             artifact_ids.append(_require_digest(value, key))
         elif key == "assertion_artifact_ids":
             if not isinstance(value, list) or not value:
-                raise LedgerContractError("assertion_artifact_ids must be a non-empty list")
+                raise LedgerContractError(
+                    "assertion_artifact_ids must be a non-empty list"
+                )
             ids = tuple(_require_digest(item, key) for item in value)
             if len(set(ids)) != len(ids):
-                raise LedgerContractError("assertion_artifact_ids cannot contain duplicates")
+                raise LedgerContractError(
+                    "assertion_artifact_ids cannot contain duplicates"
+                )
             if ids != tuple(sorted(ids)):
                 raise LedgerContractError("assertion_artifact_ids must be sorted")
             artifact_ids.extend(ids)
@@ -249,7 +249,9 @@ def _validate_payload(
             _require_reference(value, key)
         elif key == "fact_address":
             if not isinstance(value, str) or not _FACT_ADDRESS_RE.fullmatch(value):
-                raise LedgerContractError("fact_address must be a dotted lowercase address")
+                raise LedgerContractError(
+                    "fact_address must be a dotted lowercase address"
+                )
         elif key == "reason_code":
             if not isinstance(value, str) or not _TOKEN_RE.fullmatch(value):
                 raise LedgerContractError("reason_code must be a lowercase token")
@@ -288,7 +290,9 @@ class LedgerHead:
     @classmethod
     def from_mapping(cls, payload: Mapping[str, Any]) -> LedgerHead:
         payload = _require_mapping(payload, "LedgerHead")
-        _require_exact_keys(payload, frozenset({"sequence", "event_hash"}), "LedgerHead")
+        _require_exact_keys(
+            payload, frozenset({"sequence", "event_hash"}), "LedgerHead"
+        )
         return cls(sequence=payload["sequence"], event_hash=payload["event_hash"])
 
 
@@ -334,11 +338,15 @@ class LedgerEvent:
             raise LedgerContractError("subject_artifact_ids must be sorted")
         if sequence == 1:
             if previous_event_hash != ZERO_HASH:
-                raise LedgerContractError("genesis event must use the zero previous hash")
+                raise LedgerContractError(
+                    "genesis event must use the zero previous hash"
+                )
             if event_kind is not LedgerEventKind.PROJECT_CREATED:
                 raise LedgerContractError("genesis event must be project_created")
         elif previous_event_hash == ZERO_HASH:
-            raise LedgerContractError("non-genesis event cannot use the zero previous hash")
+            raise LedgerContractError(
+                "non-genesis event cannot use the zero previous hash"
+            )
         if sequence != 1 and event_kind is LedgerEventKind.PROJECT_CREATED:
             raise LedgerContractError("project_created is valid only at genesis")
         _require_digest(previous_event_hash, "previous_event_hash")
@@ -396,6 +404,25 @@ class LedgerEvent:
         for field in ("payload_bytes", "canonical_body", "body_digest", "event_hash"):
             if getattr(self, field) != getattr(expected, field):
                 raise LedgerContractError(f"event {field} does not verify")
+
+    def require_snapshot_subject(
+        self,
+        artifact_lookup: Mapping[str, LedgerArtifact],
+    ) -> str:
+        snapshot_id = self.payload["resulting_snapshot_artifact_id"]
+        if snapshot_id not in self.subject_artifact_ids:
+            raise LedgerContractError(
+                "event resulting snapshot must be one of its subject artifacts"
+            )
+        snapshot = artifact_lookup.get(snapshot_id)
+        if (
+            snapshot is None
+            or snapshot.artifact_kind is not LedgerArtifactKind.REQUEST_SNAPSHOT
+        ):
+            raise LedgerContractError(
+                "event resulting snapshot must be a request snapshot artifact"
+            )
+        return snapshot_id
 
     def to_mapping(self) -> dict[str, object]:
         return {
@@ -575,7 +602,9 @@ class ResearchRequestSnapshot:
         for variable_id in self.available_variable_ids:
             _require_text(variable_id, "available variable ID")
         if len(set(self.available_variable_ids)) != len(self.available_variable_ids):
-            raise LedgerContractError("available_variable_ids cannot contain duplicates")
+            raise LedgerContractError(
+                "available_variable_ids cannot contain duplicates"
+            )
         if not isinstance(self.surface, ProductSurface):
             raise LedgerContractError("surface must be a ProductSurface")
         if type(self.question_budget_remaining) is not int or not (
@@ -589,9 +618,7 @@ class ResearchRequestSnapshot:
             "question_artifact_id": self.question_artifact_id,
             "estimand_artifact_id": self.estimand_artifact_id,
             "study_artifact_id": self.study_artifact_id,
-            "decision_evidence_artifact_ids": list(
-                self.decision_evidence_artifact_ids
-            ),
+            "decision_evidence_artifact_ids": list(self.decision_evidence_artifact_ids),
             "current_dataset_fingerprint": self.current_dataset_fingerprint,
             "available_variable_ids": list(self.available_variable_ids),
             "surface": self.surface.value,
@@ -684,7 +711,10 @@ class ResearchRequestSnapshot:
                 raise LedgerContractError(
                     f"snapshot references missing artifact {artifact_id}"
                 ) from exc
-            if not isinstance(artifact, LedgerArtifact) or artifact.artifact_id != artifact_id:
+            if (
+                not isinstance(artifact, LedgerArtifact)
+                or artifact.artifact_id != artifact_id
+            ):
                 raise LedgerContractError("artifact lookup identity mismatch")
             if artifact.artifact_kind is not kind:
                 raise LedgerContractError(
@@ -755,30 +785,79 @@ _ARTIFACT_METADATA: dict[
 }
 
 
-def _artifact_identity(value: object) -> tuple[LedgerArtifactKind, str, str | None, str]:
+def _artifact_identity(
+    value: object,
+) -> tuple[LedgerArtifactKind, str, str | None, str]:
     if isinstance(value, QuestionSpec):
-        return LedgerArtifactKind.QUESTION_SPEC, value.envelope.project_id, value.envelope.object_id, value.digest()
+        return (
+            LedgerArtifactKind.QUESTION_SPEC,
+            value.envelope.project_id,
+            value.envelope.object_id,
+            value.digest(),
+        )
     if isinstance(value, EstimandSpec):
-        return LedgerArtifactKind.ESTIMAND_SPEC, value.envelope.project_id, value.envelope.object_id, value.digest()
+        return (
+            LedgerArtifactKind.ESTIMAND_SPEC,
+            value.envelope.project_id,
+            value.envelope.object_id,
+            value.digest(),
+        )
     if isinstance(value, StudySpec):
-        return LedgerArtifactKind.STUDY_SPEC, value.envelope.project_id, value.envelope.object_id, value.digest()
+        return (
+            LedgerArtifactKind.STUDY_SPEC,
+            value.envelope.project_id,
+            value.envelope.object_id,
+            value.digest(),
+        )
     if isinstance(value, AnalysisPassport):
-        return LedgerArtifactKind.ANALYSIS_PASSPORT, value.envelope.project_id, value.envelope.object_id, value.digest()
+        return (
+            LedgerArtifactKind.ANALYSIS_PASSPORT,
+            value.envelope.project_id,
+            value.envelope.object_id,
+            value.digest(),
+        )
     if isinstance(value, ClarificationAnswerEvent):
         if value.answer_value.kind is AnswerValueKind.TEXT:
             raise LedgerContractError("unsupported_sensitive_payload: text answer")
-        return LedgerArtifactKind.CLARIFICATION_ANSWER, value.project_id, value.event_id, value.digest()
+        return (
+            LedgerArtifactKind.CLARIFICATION_ANSWER,
+            value.project_id,
+            value.event_id,
+            value.digest(),
+        )
     if isinstance(value, RevisionAcceptanceCertificate):
-        return LedgerArtifactKind.REVISION_ACCEPTANCE, value.project_id, value.certificate_id, value.digest()
+        return (
+            LedgerArtifactKind.REVISION_ACCEPTANCE,
+            value.project_id,
+            value.certificate_id,
+            value.digest(),
+        )
     if isinstance(value, DecisionEvidenceRef):
-        return LedgerArtifactKind.DECISION_EVIDENCE_REF, value.project_id, value.evidence_id, value.digest()
+        return (
+            LedgerArtifactKind.DECISION_EVIDENCE_REF,
+            value.project_id,
+            value.evidence_id,
+            value.digest(),
+        )
     if isinstance(value, ResearchRequestSnapshot):
-        return LedgerArtifactKind.REQUEST_SNAPSHOT, value.project_id, None, canonical_digest(value.to_mapping())
+        return (
+            LedgerArtifactKind.REQUEST_SNAPSHOT,
+            value.project_id,
+            None,
+            canonical_digest(value.to_mapping()),
+        )
     if isinstance(value, ImportedAssertion):
-        return LedgerArtifactKind.IMPORTED_ASSERTION, value.project_id, value.assertion_id, canonical_digest(value.to_mapping())
+        return (
+            LedgerArtifactKind.IMPORTED_ASSERTION,
+            value.project_id,
+            value.assertion_id,
+            canonical_digest(value.to_mapping()),
+        )
     if isinstance(value, AnswerValue) and value.kind is AnswerValueKind.TEXT:
         raise LedgerContractError("unsupported_sensitive_payload: text answer")
-    raise LedgerContractError(f"unsupported ledger artifact type: {type(value).__name__}")
+    raise LedgerContractError(
+        f"unsupported ledger artifact type: {type(value).__name__}"
+    )
 
 
 def _artifact_body(value: object) -> Mapping[str, Any]:
@@ -797,7 +876,9 @@ def _artifact_body(value: object) -> Mapping[str, Any]:
         ),
     ):
         return value.to_mapping()
-    raise LedgerContractError(f"unsupported ledger artifact type: {type(value).__name__}")
+    raise LedgerContractError(
+        f"unsupported ledger artifact type: {type(value).__name__}"
+    )
 
 
 def _decode_artifact(kind: LedgerArtifactKind, body: Mapping[str, Any]) -> object:
@@ -825,7 +906,9 @@ class LedgerArtifact:
     @classmethod
     def from_value(cls, value: object) -> LedgerArtifact:
         if isinstance(value, QuestionSpec) and value.local_text is not None:
-            raise LedgerContractError("unsupported_sensitive_payload: local question text")
+            raise LedgerContractError(
+                "unsupported_sensitive_payload: local question text"
+            )
         kind, project_id, object_id, semantic_digest = _artifact_identity(value)
         body = canonical_bytes(dict(_artifact_body(value)))
         schema_id = _ARTIFACT_METADATA[kind][0]
@@ -849,7 +932,9 @@ class LedgerArtifact:
         body = _decode_canonical_body(self.canonical_body, self.artifact_kind.value)
         value = _decode_artifact(self.artifact_kind, body)
         if isinstance(value, QuestionSpec) and value.local_text is not None:
-            raise LedgerContractError("unsupported_sensitive_payload: local question text")
+            raise LedgerContractError(
+                "unsupported_sensitive_payload: local question text"
+            )
         if (
             isinstance(value, ClarificationAnswerEvent)
             and value.answer_value.kind is AnswerValueKind.TEXT
@@ -955,12 +1040,21 @@ class ImportSourceRecord:
         _require_digest(self.source_bundle_digest, "source_bundle_digest")
         if self.disposition != "assertion_ready":
             raise LedgerContractError("import disposition must be assertion_ready")
-        if not isinstance(self.assertion_artifact_ids, tuple) or not self.assertion_artifact_ids:
-            raise LedgerContractError("assertion_artifact_ids must be a non-empty tuple")
+        if (
+            not isinstance(self.assertion_artifact_ids, tuple)
+            or not self.assertion_artifact_ids
+        ):
+            raise LedgerContractError(
+                "assertion_artifact_ids must be a non-empty tuple"
+            )
         for artifact_id in self.assertion_artifact_ids:
             _require_digest(artifact_id, "assertion_artifact_ids")
-        if self.assertion_artifact_ids != tuple(sorted(set(self.assertion_artifact_ids))):
-            raise LedgerContractError("assertion_artifact_ids must be unique and sorted")
+        if self.assertion_artifact_ids != tuple(
+            sorted(set(self.assertion_artifact_ids))
+        ):
+            raise LedgerContractError(
+                "assertion_artifact_ids must be unique and sorted"
+            )
         _require_utc(self.imported_at_utc, "imported_at_utc")
 
 
@@ -983,7 +1077,9 @@ class LedgerCommit:
             self.resulting_snapshot_artifact_id,
             "resulting_snapshot_artifact_id",
         )
-        artifact_lookup = {artifact.artifact_id: artifact for artifact in self.artifacts}
+        artifact_lookup = {
+            artifact.artifact_id: artifact for artifact in self.artifacts
+        }
         if len(artifact_lookup) != len(self.artifacts):
             raise LedgerContractError("artifacts cannot contain duplicate IDs")
         for artifact in self.artifacts:
@@ -1000,18 +1096,29 @@ class LedgerCommit:
             event.verify()
             if event.project_id != project_id:
                 raise LedgerContractError("commit event project IDs must match")
-            if event.sequence != expected_sequence or event.previous_event_hash != previous:
-                raise LedgerContractError("commit events must form one consecutive chain")
+            if (
+                event.sequence != expected_sequence
+                or event.previous_event_hash != previous
+            ):
+                raise LedgerContractError(
+                    "commit events must form one consecutive chain"
+                )
             missing = sorted(set(event.subject_artifact_ids) - set(artifact_lookup))
             if missing:
                 raise LedgerContractError("commit must supply every subject artifact")
+            event.require_snapshot_subject(artifact_lookup)
             previous = event.event_hash
             expected_sequence += 1
         if any(artifact.project_id != project_id for artifact in self.artifacts):
             raise LedgerContractError("commit artifact project IDs must match events")
         snapshot = artifact_lookup.get(self.resulting_snapshot_artifact_id)
-        if snapshot is None or snapshot.artifact_kind is not LedgerArtifactKind.REQUEST_SNAPSHOT:
-            raise LedgerContractError("commit must supply the resulting request snapshot")
+        if (
+            snapshot is None
+            or snapshot.artifact_kind is not LedgerArtifactKind.REQUEST_SNAPSHOT
+        ):
+            raise LedgerContractError(
+                "commit must supply the resulting request snapshot"
+            )
         last_snapshot = self.events[-1].payload.get("resulting_snapshot_artifact_id")
         if last_snapshot != self.resulting_snapshot_artifact_id:
             raise LedgerContractError("last event and commit snapshot IDs must match")
@@ -1019,7 +1126,9 @@ class LedgerCommit:
             if self.import_source.project_id != project_id:
                 raise LedgerContractError("import source project ID must match commit")
             if set(self.import_source.assertion_artifact_ids) - set(artifact_lookup):
-                raise LedgerContractError("import source assertion artifacts are missing")
+                raise LedgerContractError(
+                    "import source assertion artifacts are missing"
+                )
 
 
 @dataclass(frozen=True)
@@ -1033,7 +1142,10 @@ class LedgerReceipt:
         _require_reference(self.project_id, "project_id")
         if not isinstance(self.head, LedgerHead) or self.head.sequence < 1:
             raise LedgerContractError("receipt requires a committed head")
-        if not isinstance(self.committed_event_ids, tuple) or not self.committed_event_ids:
+        if (
+            not isinstance(self.committed_event_ids, tuple)
+            or not self.committed_event_ids
+        ):
             raise LedgerContractError("receipt requires committed event IDs")
         for event_id in self.committed_event_ids:
             _require_reference(event_id, "committed event ID")
