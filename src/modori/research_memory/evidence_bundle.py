@@ -68,7 +68,9 @@ class EvidenceBundleLimits:
     max_event_bytes: int = 8 * 1024
     max_artifact_bytes: int = 128 * 1024
     max_string_length: int = 512
-    max_items: int = 2_000_000
+    max_collection_items: int = 10_000
+    max_preparse_container_items: int = 30_000
+    max_items: int = 1_000_000
 
     def __post_init__(self) -> None:
         for name, value in vars(self).items():
@@ -169,7 +171,10 @@ def _pairs_hook(pairs: list[tuple[str, object]]) -> dict[str, object]:
 
 
 def _parse_integer(raw: str) -> int:
-    value = int(raw)
+    try:
+        value = int(raw)
+    except ValueError as exc:
+        raise _InvalidNumber("integer cannot be decoded within its resource limit") from exc
     if not -_MAX_SAFE_INTEGER <= value <= _MAX_SAFE_INTEGER:
         raise _InvalidNumber("integer outside safe range")
     return value
@@ -179,15 +184,89 @@ def _reject_number(_raw: str) -> NoReturn:
     raise _InvalidNumber("floats and constants are excluded")
 
 
+def _scan_json_structure(raw: bytes, limits: EvidenceBundleLimits) -> None:
+    stack: list[list[int]] = []
+    total_items = 1
+    index = 0
+    while index < len(raw):
+        character = raw[index]
+        if character == 34:
+            if stack:
+                stack[-1][2] = 1
+            search = index + 1
+            while True:
+                closing = raw.find(b'"', search)
+                if closing < 0:
+                    return
+                slash = closing - 1
+                while slash > index and raw[slash] == 92:
+                    slash -= 1
+                if (closing - 1 - slash) % 2 == 0:
+                    index = closing + 1
+                    break
+                search = closing + 1
+            continue
+        if character in (91, 123):
+            if stack:
+                stack[-1][2] = 1
+            stack.append([character, 0, 0])
+            if len(stack) > limits.max_depth:
+                _raise(
+                    EvidenceBundleErrorCode.NESTING_LIMIT,
+                    "evidence bundle exceeds its nesting limit",
+                )
+        elif character == 44 and stack:
+            frame = stack[-1]
+            frame[1] += 1
+            container_limit = (
+                limits.max_collection_items
+                if frame[0] == 123
+                else limits.max_preparse_container_items
+            )
+            if frame[1] + 1 > container_limit:
+                _raise(
+                    EvidenceBundleErrorCode.ITEM_LIMIT,
+                    "evidence bundle contains an oversized container",
+                )
+            total_items += 2 if frame[0] == 123 else 1
+            if total_items > limits.max_items:
+                _raise(
+                    EvidenceBundleErrorCode.ITEM_LIMIT,
+                    "evidence bundle exceeds its total item limit",
+                )
+        elif character in (93, 125) and stack:
+            kind, commas, has_content = stack.pop()
+            if has_content:
+                container_limit = (
+                    limits.max_collection_items
+                    if kind == 123
+                    else limits.max_preparse_container_items
+                )
+                if commas + 1 > container_limit:
+                    _raise(
+                        EvidenceBundleErrorCode.ITEM_LIMIT,
+                        "evidence bundle contains an oversized container",
+                    )
+                total_items += 2 if kind == 123 else 1
+                if total_items > limits.max_items:
+                    _raise(
+                        EvidenceBundleErrorCode.ITEM_LIMIT,
+                        "evidence bundle exceeds its total item limit",
+                    )
+        elif character not in (9, 10, 13, 32) and stack:
+            stack[-1][2] = 1
+        index += 1
+
+
 def _walk_resources(
     value: object,
     *,
     limits: EvidenceBundleLimits,
 ) -> None:
     items = 0
-    stack = [(value, 1)]
+    stack = [(value, 1, limits.max_collection_items)]
     while stack:
-        current, depth = stack.pop()
+        current, depth, collection_limit = stack.pop()
         items += 1
         if items > limits.max_items:
             _raise(
@@ -206,21 +285,37 @@ def _walk_resources(
                     EvidenceBundleErrorCode.NESTING_LIMIT,
                     "evidence bundle exceeds its nesting limit",
                 )
+            if len(current) > limits.max_collection_items:
+                _raise(
+                    EvidenceBundleErrorCode.ITEM_LIMIT,
+                    "evidence bundle contains an oversized mapping",
+                )
             for key, item in current.items():
                 if key in _FORBIDDEN_KEYS:
                     _raise(
                         EvidenceBundleErrorCode.FORBIDDEN_KEY,
                         "evidence bundle contains a forbidden authority-bearing key",
                     )
-                stack.append((key, depth + 1))
-                stack.append((item, depth + 1))
+                child_limit = limits.max_collection_items
+                if depth == 1 and key in {"artifacts", "events"}:
+                    child_limit = limits.max_preparse_container_items
+                stack.append((key, depth + 1, limits.max_collection_items))
+                stack.append((item, depth + 1, child_limit))
         elif isinstance(current, list):
             if depth > limits.max_depth:
                 _raise(
                     EvidenceBundleErrorCode.NESTING_LIMIT,
                     "evidence bundle exceeds its nesting limit",
                 )
-            stack.extend((item, depth + 1) for item in current)
+            if len(current) > collection_limit:
+                _raise(
+                    EvidenceBundleErrorCode.ITEM_LIMIT,
+                    "evidence bundle contains an oversized list",
+                )
+            stack.extend(
+                (item, depth + 1, limits.max_collection_items)
+                for item in current
+            )
 
 
 def _require_exact_top_level(payload: Mapping[str, Any]) -> None:
@@ -525,6 +620,7 @@ class EvidenceBundle:
                 EvidenceBundleErrorCode.INVALID_UTF8,
                 "evidence input is not strict UTF-8",
             )
+        _scan_json_structure(raw, limits)
         try:
             parsed = json.loads(
                 text,

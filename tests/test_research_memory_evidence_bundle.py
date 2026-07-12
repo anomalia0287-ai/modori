@@ -104,6 +104,70 @@ def test_bundle_roundtrip_is_deterministic_and_complete() -> None:
     )
 
 
+def test_bundle_resource_defaults_bound_preparse_allocation() -> None:
+    limits = EvidenceBundleLimits()
+    assert limits.max_collection_items == 10_000
+    assert limits.max_preparse_container_items == 30_000
+    assert limits.max_items == 1_000_000
+
+
+def _decoder_must_not_run(*_args, **_kwargs):
+    pytest.fail("json decoder ran before structural resource rejection")
+
+
+@pytest.mark.parametrize(
+    ("raw", "limits", "code"),
+    [
+        (
+            b"[0,0,0,0,0]",
+            replace(
+                EvidenceBundleLimits(),
+                max_preparse_container_items=4,
+            ),
+            EvidenceBundleErrorCode.ITEM_LIMIT,
+        ),
+        (
+            b"[" * 9 + b"0" + b"]" * 9,
+            EvidenceBundleLimits(),
+            EvidenceBundleErrorCode.NESTING_LIMIT,
+        ),
+        (
+            b"[[{},{},{}],[{},{},{}]]",
+            replace(EvidenceBundleLimits(), max_items=8),
+            EvidenceBundleErrorCode.ITEM_LIMIT,
+        ),
+    ],
+)
+def test_structure_budget_rejects_before_json_allocation(
+    monkeypatch,
+    raw: bytes,
+    limits: EvidenceBundleLimits,
+    code: EvidenceBundleErrorCode,
+) -> None:
+    monkeypatch.setattr(evidence_bundle.json, "loads", _decoder_must_not_run)
+    with pytest.raises(EvidenceBundleError) as caught:
+        EvidenceBundle.from_bytes(raw, limits=limits)
+    assert caught.value.code is code
+
+
+def test_nested_collection_limit_is_distinct_from_top_level_artifacts() -> None:
+    nested = canonical_bytes({"value": [None] * 10_001})
+    with pytest.raises(EvidenceBundleError) as caught:
+        EvidenceBundle.from_bytes(nested)
+    assert caught.value.code is EvidenceBundleErrorCode.ITEM_LIMIT
+
+    top_artifacts = canonical_bytes({"artifacts": [None] * 30_000})
+    with pytest.raises(EvidenceBundleError) as caught:
+        EvidenceBundle.from_bytes(top_artifacts)
+    assert caught.value.code is EvidenceBundleErrorCode.SCHEMA_INVALID
+
+
+def test_oversized_integer_is_a_closed_invalid_number() -> None:
+    with pytest.raises(EvidenceBundleError) as caught:
+        EvidenceBundle.from_bytes(b"9" * 10_000)
+    assert caught.value.code is EvidenceBundleErrorCode.INVALID_NUMBER
+
+
 def test_bundle_depth_is_enforced_without_a_separate_raw_scan(monkeypatch) -> None:
     raw = _bundle().to_bytes()
     monkeypatch.setattr(
