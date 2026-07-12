@@ -364,16 +364,23 @@ schema_version = 1
 canonicalization_id = modori-cjson-v1
 hash_algorithm = sha-256
 source_project_id
-source_head_sequence
-source_head_hash
-dataset_fingerprint
+exported_at_utc | null
+head { sequence, event_hash }
 artifacts[]
 events[]
 ```
 
-The file is a complete chain from genesis through `source_head_sequence`. Partial
+The file is a complete chain from genesis through `head.sequence`. Partial
 chains, external attachments, signatures, paths, URLs, commands, code, tool tokens,
 dataset rows, prompts, completions, and free-text answers are forbidden.
+
+`head.sequence` and `head.event_hash` are the canonical source-head fields. Quarantine
+does not accept a redundant top-level dataset fingerprint. It derives the source
+fingerprint only after verifying the complete chain, restoring the typed
+`ResearchRequestSnapshot`, and proving that the snapshot's current fingerprint equals
+its typed `StudySpec.dataset_fingerprint`; it then compares that derived value with the
+local dataset fingerprint. `exported_at_utc` is optional hash-bound display metadata
+and grants no freshness or authority.
 
 The exact canonical file bytes are the `source_bundle_digest`. Re-encoding the parsed
 mapping must reproduce the input bytes exactly; otherwise the bundle is noncanonical
@@ -388,9 +395,24 @@ Limits are checked before typed object construction:
 - artifacts: 30,000;
 - nesting depth: 8;
 - one canonical event body: 8 KiB;
+- one canonical artifact body: 128 KiB;
 - one ordinary string: 512 Unicode code points;
-- one list or mapping: 10,000 items;
-- total decoded string code points: 4,000,000.
+- one pre-parse container: 30,000 entries;
+- one post-parse non-top-level list or mapping: 10,000 entries;
+- total decoded nodes, including object keys: 1,000,000.
+
+Top-level `artifacts` has the explicit 30,000-item exception and top-level `events`
+uses its 10,000-event ceiling. Every collection inside an event or artifact remains at
+10,000. The 16 MiB source-byte ceiling is also the total decoded-string-code-point
+ceiling: every decoded code point consumes at least one source byte, while JSON escapes
+consume more source bytes per decoded code point. A separate 4,000,000-code-point limit
+would reject the required valid 16 MiB and 10,000-event benchmark, measured at
+15,684,020 string code points.
+
+A byte-level structural preflight enforces depth, the 30,000-entry allocation ceiling,
+and the 1,000,000-node ceiling before `json.loads` constructs the object graph. The
+parsed-value walk then applies the path-aware collection limits, ordinary-string limit,
+and forbidden-key policy before typed artifacts or events are constructed.
 
 The decoder rejects a UTF-8 BOM, invalid UTF-8, duplicate keys, blank or non-ASCII
 keys, non-NFC strings, unsupported JSON values, unknown keys or enums, and values over
