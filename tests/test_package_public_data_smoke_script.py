@@ -145,6 +145,54 @@ def test_package_public_data_smoke_isolates_workspace_reference_runtime(
     assert captured_environment["MODORI_SETTINGS_PATH"]
 
 
+def test_package_public_data_smoke_cli_routes_exact_state_paths(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    original_directory = Path.cwd()
+    monkeypatch.chdir(tmp_path)
+    exe = tmp_path / "Modori.exe"
+    exe.write_text("", encoding="utf-8")
+    fixture_dir = tmp_path / "fixtures"
+    fixture_dir.mkdir()
+    state_root = tmp_path / "state-parent" / ".." / "state"
+    captured_environment: dict[str, str] = {}
+
+    def fake_run(command, check, timeout, env):
+        captured_environment.update(env)
+        output_path = command[3]
+        with open(output_path, "w", encoding="utf-8") as handle:
+            cases = hardened_cases()
+            json.dump({"ok": True, "case_count": len(cases), "cases": cases}, handle)
+        return subprocess.CompletedProcess(command, 0)
+
+    monkeypatch.setattr(package_public_data_smoke.subprocess, "run", fake_run)
+
+    try:
+        result = package_public_data_smoke.main(
+            [
+                str(exe),
+                "--fixture-dir",
+                str(fixture_dir),
+                "--state-root",
+                str(state_root),
+                "--timeout",
+                "0.01",
+            ]
+        )
+    finally:
+        monkeypatch.chdir(original_directory)
+
+    resolved_root = state_root.resolve()
+    assert result == 0
+    assert captured_environment["MODORI_CACHE_DIR"] == str(resolved_root / "cache")
+    assert captured_environment["MODORI_SETTINGS_PATH"] == str(
+        resolved_root / "settings.json"
+    )
+    assert captured_environment["MPLCONFIGDIR"] == str(resolved_root / "matplotlib")
+    assert captured_environment["QT_QPA_PLATFORM"] == "offscreen"
+
+
 def test_package_public_data_smoke_fails_when_contract_payload_is_not_ok(
     monkeypatch,
     tmp_path,

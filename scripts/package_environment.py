@@ -31,7 +31,11 @@ def without_workspace_reference_runtime(
     return env
 
 
-def packaged_subprocess_environment(namespace: str) -> dict[str, str]:
+def packaged_subprocess_environment(
+    namespace: str,
+    *,
+    state_root: str | Path | None = None,
+) -> dict[str, str]:
     namespace_path = Path(namespace)
     if (
         not namespace
@@ -42,11 +46,16 @@ def packaged_subprocess_environment(namespace: str) -> dict[str, str]:
     ):
         raise ValueError("Package runtime namespace must be one safe path segment")
     env = without_workspace_reference_runtime()
-    root = (Path(".tmp") / namespace).resolve()
+    root = (
+        (Path(".tmp") / namespace).resolve()
+        if state_root is None
+        else Path(state_root).resolve()
+    )
     matplotlib_dir = root / "matplotlib"
     cache_dir = root / "cache"
-    matplotlib_dir.mkdir(parents=True, exist_ok=True)
-    cache_dir.mkdir(parents=True, exist_ok=True)
+    if state_root is None:
+        matplotlib_dir.mkdir(parents=True, exist_ok=True)
+        cache_dir.mkdir(parents=True, exist_ok=True)
     env["MPLCONFIGDIR"] = str(matplotlib_dir)
     env["MODORI_CACHE_DIR"] = str(cache_dir)
     env["MODORI_SETTINGS_PATH"] = str(root / "settings.json")

@@ -4,6 +4,7 @@ import argparse
 import json
 import os
 import re
+import stat
 import subprocess
 import sys
 import time
@@ -37,6 +38,75 @@ _UNINSTALL_POLL_INTERVAL_SECONDS = 0.05
 # Inno 6.7.3's second phase completed about 1.1 seconds after signaling the
 # first phase; keep the condition wait finite with ample evidence-safe margin.
 _UNINSTALL_WAIT_TIMEOUT_SECONDS = 10.0
+_REPARSE_POINT_ATTRIBUTE = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)
+
+
+def _is_link_or_junction(path: Path) -> bool:
+    try:
+        is_junction = getattr(path, "is_junction", None)
+        attributes = getattr(path.lstat(), "st_file_attributes", 0)
+        return (
+            path.is_symlink()
+            or bool(is_junction and is_junction())
+            or bool(attributes & _REPARSE_POINT_ATTRIBUTE)
+        )
+    except OSError:
+        return True
+
+
+def _path_entry_exists(path: Path) -> bool:
+    try:
+        path.lstat()
+    except FileNotFoundError:
+        return False
+    except OSError:
+        return True
+    return True
+
+
+def _validated_user_state_inventory(
+    user_state_dir: Path,
+    resolved_user_state: Path,
+) -> tuple[list[Path], list[Path]]:
+    files: list[Path] = []
+    directories: list[Path] = []
+    pending = [user_state_dir]
+    while pending:
+        directory = pending.pop()
+        try:
+            descendants = list(directory.iterdir())
+        except OSError as exc:
+            raise RuntimeError(
+                f"Smoke user-state directory could not be inspected: {directory}"
+            ) from exc
+        for descendant in descendants:
+            if _is_link_or_junction(descendant):
+                raise RuntimeError(
+                    "Smoke user-state descendant is a link or junction/reparse "
+                    f"point: {descendant}"
+                )
+            try:
+                resolved_descendant = descendant.resolve(strict=True)
+                is_directory = descendant.is_dir()
+                is_file = descendant.is_file()
+            except OSError as exc:
+                raise RuntimeError(
+                    f"Smoke user-state descendant could not be validated: {descendant}"
+                ) from exc
+            if resolved_user_state not in resolved_descendant.parents:
+                raise RuntimeError(
+                    f"Smoke user-state descendant escaped its root: {descendant}"
+                )
+            if is_directory:
+                directories.append(descendant)
+                pending.append(descendant)
+            elif is_file:
+                files.append(descendant)
+            else:
+                raise RuntimeError(
+                    f"Smoke user-state descendant has an unsupported type: {descendant}"
+                )
+    return files, directories
 
 
 def uninstall_key(app_id: str = SMOKE_APP_ID) -> str:
@@ -145,6 +215,17 @@ class LifecycleAdapter:
     def plant_stale_probe(self) -> None:
         self.stale_probe.write_bytes(b"must be removed by InstallDelete")
 
+    def require_user_state_exercised(self) -> None:
+        sentinel = self.user_state_dir / "sentinel.json"
+        if not sentinel.is_file():
+            raise RuntimeError("Smoke user state sentinel is missing")
+        if sentinel.read_bytes() != b"preserve":
+            raise RuntimeError("Smoke user state sentinel contents changed")
+        for name in ("cache", "matplotlib"):
+            path = self.user_state_dir / name
+            if not path.is_dir():
+                raise RuntimeError(f"Smoke user state directory is missing: {path}")
+
     def require_repaired(self, expected_version: str) -> None:
         self.require_installed(expected_version)
         if self.stale_probe.exists():
@@ -171,11 +252,12 @@ class LifecycleAdapter:
                     f"registry=HKEY_CURRENT_USER\\{uninstall_key()}"
                 )
             for name, path in (
+                ("install root", self.install_dir),
                 ("Modori subtree", self.install_dir / "Modori"),
                 ("uninstaller", self.uninstaller),
                 ("Start Menu shortcut", self.start_menu_shortcut),
             ):
-                if path.exists():
+                if _path_entry_exists(path):
                     remaining.append(f"{name}={path}")
             if not remaining:
                 return
@@ -192,25 +274,34 @@ class LifecycleAdapter:
             )
 
     def verify_and_remove_user_state(self) -> None:
-        sentinel = self.user_state_dir / "sentinel.json"
+        self.require_user_state_exercised()
+        raw_run_root = self.install_dir.parent
         resolved_smoke_root = SMOKE_ROOT.resolve()
-        resolved_run_root = self.install_dir.resolve().parent
-        resolved_user_state = self.user_state_dir.resolve()
-        resolved_sentinel = sentinel.resolve()
+        resolved_run_root = raw_run_root.resolve()
+        resolved_user_state = self.user_state_dir.resolve(strict=True)
         if (
-            resolved_run_root.parent != resolved_smoke_root
+            not SMOKE_ROOT.is_dir()
+            or _is_link_or_junction(SMOKE_ROOT)
+            or not raw_run_root.is_dir()
+            or _is_link_or_junction(raw_run_root)
+            or resolved_run_root.parent != resolved_smoke_root
             or _RUN_ROOT_PATTERN.fullmatch(resolved_run_root.name) is None
         ):
             raise RuntimeError("Smoke run root is not a UUID child of the smoke root")
-        if resolved_user_state.parent != resolved_run_root:
+        if (
+            self.user_state_dir.parent.resolve() != resolved_run_root
+            or resolved_user_state.parent != resolved_run_root
+            or _is_link_or_junction(self.user_state_dir)
+        ):
             raise RuntimeError("Smoke user-state directory escaped the smoke run root")
-        if resolved_user_state not in resolved_sentinel.parents or not sentinel.is_file():
-            raise RuntimeError("Smoke user-state sentinel was not preserved")
-        if sentinel.read_bytes() != b"preserve":
-            raise RuntimeError("Smoke user-state sentinel contents changed")
-        if set(self.user_state_dir.iterdir()) != {sentinel}:
-            raise RuntimeError("Smoke user-state directory contains unexpected files")
-        sentinel.unlink()
+        files, directories = _validated_user_state_inventory(
+            self.user_state_dir,
+            resolved_user_state,
+        )
+        for path in files:
+            path.unlink()
+        for path in sorted(directories, key=lambda item: len(item.parts), reverse=True):
+            path.rmdir()
         self.user_state_dir.rmdir()
 
 
@@ -340,21 +431,28 @@ def run_installer_smoke(
             raise RuntimeError("Smoke installer returned nonzero")
         adapter.require_installed(version)
 
+        state_root = str(adapter.user_state_dir.resolve())
         package_smoke_commands = [
             [
                 sys.executable,
                 "scripts/package_launch_smoke.py",
                 str(adapter.executable),
+                "--state-root",
+                state_root,
             ],
             [
                 sys.executable,
                 "scripts/package_engine_smoke.py",
                 str(adapter.executable),
+                "--state-root",
+                state_root,
             ],
             [
                 sys.executable,
                 "scripts/package_public_data_smoke.py",
                 str(adapter.executable),
+                "--state-root",
+                state_root,
                 "--fixture-dir",
                 str(
                     WORKSPACE
@@ -370,6 +468,7 @@ def run_installer_smoke(
                     f"Installed package smoke failed: {' '.join(command)}"
                 )
 
+        adapter.require_user_state_exercised()
         adapter.plant_stale_probe()
         repair_log = run_root / "repair.log"
         if runner(setup_command(installer, adapter.install_dir, repair_log)) != 0:

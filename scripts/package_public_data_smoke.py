@@ -28,6 +28,7 @@ def run_public_data_smoke(
     *,
     fixture_dir: str | Path = Path("tests") / "fixtures" / "public_data_formats",
     timeout_seconds: float = 60.0,
+    state_root: str | Path | None = None,
 ) -> int:
     exe_path = Path(executable).resolve()
     if not exe_path.is_file():
@@ -51,7 +52,10 @@ def run_public_data_smoke(
         ],
         check=False,
         timeout=timeout_seconds,
-        env=packaged_subprocess_environment("packaged-public-data-runtime"),
+        env=packaged_subprocess_environment(
+            "packaged-public-data-runtime",
+            state_root=state_root,
+        ),
     )
     if completed.returncode != 0:
         return completed.returncode
@@ -147,12 +151,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         default=str(Path("tests") / "fixtures" / "public_data_formats"),
     )
     parser.add_argument("--timeout", type=float, default=60.0)
+    parser.add_argument("--state-root")
     args = parser.parse_args(argv)
 
     return run_public_data_smoke(
         args.executable,
         fixture_dir=args.fixture_dir,
         timeout_seconds=args.timeout,
+        state_root=args.state_root,
     )
 
 

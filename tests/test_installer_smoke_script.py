@@ -113,6 +113,18 @@ def _inputs(
     return installer, manifest, probe
 
 
+def _write_exercised_user_state(
+    adapter: installer_smoke.LifecycleAdapter,
+) -> None:
+    adapter.user_state_dir.mkdir(parents=True)
+    (adapter.user_state_dir / "sentinel.json").write_text(
+        "preserve",
+        encoding="utf-8",
+    )
+    (adapter.user_state_dir / "cache").mkdir()
+    (adapter.user_state_dir / "matplotlib").mkdir()
+
+
 def _patch_recording_adapter(
     monkeypatch: pytest.MonkeyPatch,
     adapter: installer_smoke.LifecycleAdapter,
@@ -127,6 +139,11 @@ def _patch_recording_adapter(
         adapter,
         "require_installed",
         lambda _version: events.append("installed"),
+    )
+    monkeypatch.setattr(
+        adapter,
+        "require_user_state_exercised",
+        lambda: events.append("state-exercised"),
     )
     monkeypatch.setattr(
         adapter,
@@ -634,6 +651,7 @@ def test_uninstall_waits_for_transient_inno_self_delete(
         elapsed += seconds
         if len(sleeps) == 2:
             adapter.uninstaller.unlink()
+            adapter.install_dir.rmdir()
 
     monkeypatch.setattr(
         installer_smoke,
@@ -682,6 +700,80 @@ def test_uninstall_timeout_names_persistent_owned_path(
     assert 1 < len(sleeps) <= 201
 
 
+def test_uninstall_timeout_rejects_unknown_install_root_residual(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    adapter = installer_smoke.LifecycleAdapter.for_test(tmp_path)
+    residual = adapter.install_dir / "unexpected-residual.bin"
+    residual.parent.mkdir(parents=True)
+    residual.write_bytes(b"persistent")
+    monkeypatch.setattr(installer_smoke, "read_smoke_registration", lambda: None)
+    elapsed = 0.0
+    sleeps: list[float] = []
+
+    def monotonic() -> float:
+        return elapsed
+
+    def sleep(seconds: float) -> None:
+        nonlocal elapsed
+        sleeps.append(seconds)
+        elapsed += seconds
+
+    monkeypatch.setattr(
+        installer_smoke,
+        "time",
+        SimpleNamespace(monotonic=monotonic, sleep=sleep),
+        raising=False,
+    )
+
+    with pytest.raises(RuntimeError) as exc_info:
+        adapter.require_uninstalled()
+
+    assert str(adapter.install_dir) in str(exc_info.value)
+    assert "10.0 seconds" in str(exc_info.value)
+    assert sum(sleeps) == pytest.approx(10.0)
+    assert 1 < len(sleeps) <= 201
+
+
+def test_uninstall_timeout_rejects_dangling_install_root_symlink(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    adapter = installer_smoke.LifecycleAdapter.for_test(tmp_path)
+    adapter.install_dir.symlink_to(
+        tmp_path / "missing-install-target",
+        target_is_directory=True,
+    )
+    assert adapter.install_dir.is_symlink()
+    assert not adapter.install_dir.exists()
+    monkeypatch.setattr(installer_smoke, "read_smoke_registration", lambda: None)
+    elapsed = 0.0
+    sleeps: list[float] = []
+
+    def monotonic() -> float:
+        return elapsed
+
+    def sleep(seconds: float) -> None:
+        nonlocal elapsed
+        sleeps.append(seconds)
+        elapsed += seconds
+
+    monkeypatch.setattr(
+        installer_smoke,
+        "time",
+        SimpleNamespace(monotonic=monotonic, sleep=sleep),
+        raising=False,
+    )
+
+    with pytest.raises(RuntimeError) as exc_info:
+        adapter.require_uninstalled()
+
+    assert str(adapter.install_dir) in str(exc_info.value)
+    assert "10.0 seconds" in str(exc_info.value)
+    assert sum(sleeps) == pytest.approx(10.0)
+
+
 def test_uninstall_check_returns_without_sleep_when_state_is_absent(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -701,7 +793,24 @@ def test_uninstall_check_returns_without_sleep_when_state_is_absent(
     assert sleeps == []
 
 
-def test_user_state_cleanup_removes_only_the_sentinel_and_empty_directory(
+@pytest.mark.parametrize("missing_name", ["sentinel.json", "cache", "matplotlib"])
+def test_user_state_exercised_requires_sentinel_and_routed_directories(
+    tmp_path: Path,
+    missing_name: str,
+) -> None:
+    adapter = installer_smoke.LifecycleAdapter.for_test(tmp_path)
+    _write_exercised_user_state(adapter)
+    missing_path = adapter.user_state_dir / missing_name
+    if missing_path.is_dir():
+        missing_path.rmdir()
+    else:
+        missing_path.unlink()
+
+    with pytest.raises(RuntimeError, match="user state"):
+        adapter.require_user_state_exercised()
+
+
+def test_user_state_cleanup_removes_nested_routed_state_and_preserves_logs(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
@@ -709,20 +818,24 @@ def test_user_state_cleanup_removes_only_the_sentinel_and_empty_directory(
     monkeypatch.setattr(installer_smoke, "SMOKE_ROOT", smoke_root)
     run_root = smoke_root / f"r-{'a' * 12}"
     adapter = installer_smoke.LifecycleAdapter.for_test(run_root)
-    adapter.user_state_dir.mkdir(parents=True)
-    sentinel = adapter.user_state_dir / "sentinel.json"
-    sentinel.write_text("preserve", encoding="utf-8")
+    _write_exercised_user_state(adapter)
+    nested_cache = adapter.user_state_dir / "cache" / "charts" / "preview.png"
+    nested_cache.parent.mkdir()
+    nested_cache.write_bytes(b"chart")
+    matplotlib_state = adapter.user_state_dir / "matplotlib" / "fontlist.json"
+    matplotlib_state.write_text("{}", encoding="utf-8")
+    settings = adapter.user_state_dir / "settings.json"
+    settings.write_text("{}", encoding="utf-8")
     log_path = run_root / "install.log"
     log_path.write_text("evidence", encoding="utf-8")
 
     adapter.verify_and_remove_user_state()
 
-    assert not sentinel.exists()
     assert not adapter.user_state_dir.exists()
     assert log_path.read_text(encoding="utf-8") == "evidence"
 
 
-def test_user_state_cleanup_refuses_extra_state_without_removing_evidence(
+def test_user_state_cleanup_refuses_escaped_symlink_without_removing_state(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
@@ -730,17 +843,57 @@ def test_user_state_cleanup_refuses_extra_state_without_removing_evidence(
     monkeypatch.setattr(installer_smoke, "SMOKE_ROOT", smoke_root)
     run_root = smoke_root / f"r-{'b' * 12}"
     adapter = installer_smoke.LifecycleAdapter.for_test(run_root)
-    adapter.user_state_dir.mkdir(parents=True)
+    _write_exercised_user_state(adapter)
     sentinel = adapter.user_state_dir / "sentinel.json"
-    extra_state = adapter.user_state_dir / "unexpected.json"
-    sentinel.write_text("preserve", encoding="utf-8")
-    extra_state.write_text("keep", encoding="utf-8")
+    outside = tmp_path / "outside-symlink-target"
+    outside.mkdir()
+    outside_marker = outside / "preserve.txt"
+    outside_marker.write_text("keep", encoding="utf-8")
+    escaped_link = adapter.user_state_dir / "cache" / "escaped-link"
+    try:
+        escaped_link.symlink_to(outside, target_is_directory=True)
+    except OSError as exc:
+        pytest.skip(f"directory symlinks are unavailable: {exc}")
 
-    with pytest.raises(RuntimeError, match="unexpected files"):
+    with pytest.raises(RuntimeError, match="link or junction/reparse"):
         adapter.verify_and_remove_user_state()
 
     assert sentinel.is_file()
-    assert extra_state.is_file()
+    assert escaped_link.is_symlink()
+    assert outside_marker.read_text(encoding="utf-8") == "keep"
+
+
+def test_user_state_cleanup_refuses_escaped_junction_without_removing_state(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    smoke_root = tmp_path / "runs"
+    monkeypatch.setattr(installer_smoke, "SMOKE_ROOT", smoke_root)
+    run_root = smoke_root / f"r-{'f' * 12}"
+    adapter = installer_smoke.LifecycleAdapter.for_test(run_root)
+    _write_exercised_user_state(adapter)
+    sentinel = adapter.user_state_dir / "sentinel.json"
+    outside = tmp_path / "outside-junction-target"
+    outside.mkdir()
+    outside_marker = outside / "preserve.txt"
+    outside_marker.write_text("keep", encoding="utf-8")
+    junction = adapter.user_state_dir / "cache" / "escaped-junction"
+    completed = subprocess.run(
+        ["cmd.exe", "/d", "/c", "mklink", "/J", str(junction), str(outside)],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if completed.returncode != 0:
+        pytest.skip(f"directory junctions are unavailable: {completed.stderr}")
+    assert junction.is_junction()
+
+    with pytest.raises(RuntimeError, match="link or junction/reparse"):
+        adapter.verify_and_remove_user_state()
+
+    assert sentinel.is_file()
+    assert junction.is_junction()
+    assert outside_marker.read_text(encoding="utf-8") == "keep"
 
 
 def test_user_state_cleanup_refuses_a_directory_outside_the_run_root(
@@ -750,15 +903,15 @@ def test_user_state_cleanup_refuses_a_directory_outside_the_run_root(
     smoke_root = tmp_path / "runs"
     monkeypatch.setattr(installer_smoke, "SMOKE_ROOT", smoke_root)
     run_root = smoke_root / f"r-{'c' * 12}"
+    run_root.mkdir(parents=True)
     outside = tmp_path / "outside"
     adapter = installer_smoke.LifecycleAdapter(
         install_dir=run_root / "install",
         user_state_dir=outside,
         start_menu_shortcut=run_root / "shortcut.lnk",
     )
-    outside.mkdir()
+    _write_exercised_user_state(adapter)
     sentinel = outside / "sentinel.json"
-    sentinel.write_text("preserve", encoding="utf-8")
 
     with pytest.raises(RuntimeError, match="escaped the smoke run root"):
         adapter.verify_and_remove_user_state()
@@ -782,9 +935,8 @@ def test_user_state_cleanup_requires_a_uuid_root_below_smoke_root(
     smoke_root = tmp_path / "runs"
     monkeypatch.setattr(installer_smoke, "SMOKE_ROOT", smoke_root)
     adapter = installer_smoke.LifecycleAdapter.for_test(tmp_path / run_root)
-    adapter.user_state_dir.mkdir(parents=True)
+    _write_exercised_user_state(adapter)
     sentinel = adapter.user_state_dir / "sentinel.json"
-    sentinel.write_text("preserve", encoding="utf-8")
 
     with pytest.raises(RuntimeError, match="UUID child of the smoke root"):
         adapter.verify_and_remove_user_state()
@@ -800,7 +952,7 @@ def test_user_state_cleanup_requires_the_original_sentinel_contents(
     monkeypatch.setattr(installer_smoke, "SMOKE_ROOT", smoke_root)
     run_root = smoke_root / f"r-{'e' * 12}"
     adapter = installer_smoke.LifecycleAdapter.for_test(run_root)
-    adapter.user_state_dir.mkdir(parents=True)
+    _write_exercised_user_state(adapter)
     sentinel = adapter.user_state_dir / "sentinel.json"
     sentinel.write_text("changed", encoding="utf-8")
 
@@ -834,6 +986,12 @@ def test_smoke_repairs_stale_file_rejects_downgrade_and_uninstalls(
         adapter,
         "require_installed",
         lambda _version: timeline.append("installed"),
+    )
+    monkeypatch.setattr(
+        adapter,
+        "require_user_state_exercised",
+        lambda: timeline.append("state-exercised"),
+        raising=False,
     )
     monkeypatch.setattr(
         adapter,
@@ -875,6 +1033,9 @@ def test_smoke_repairs_stale_file_rejects_downgrade_and_uninstalls(
 
     def runner(command: list[str]) -> int:
         timeline.append(tuple(command))
+        if len(command) > 1 and command[1].startswith("scripts/package_"):
+            (adapter.user_state_dir / "cache").mkdir(exist_ok=True)
+            (adapter.user_state_dir / "matplotlib").mkdir(exist_ok=True)
         log_argument = next(
             (item for item in command if item.startswith("/LOG=")),
             None,
@@ -917,16 +1078,22 @@ def test_smoke_repairs_stale_file_rejects_downgrade_and_uninstalls(
         sys.executable,
         "scripts/package_launch_smoke.py",
         str(adapter.executable),
+        "--state-root",
+        str(adapter.user_state_dir.resolve()),
     )
     engine_command = (
         sys.executable,
         "scripts/package_engine_smoke.py",
         str(adapter.executable),
+        "--state-root",
+        str(adapter.user_state_dir.resolve()),
     )
     public_data_command = (
         sys.executable,
         "scripts/package_public_data_smoke.py",
         str(adapter.executable),
+        "--state-root",
+        str(adapter.user_state_dir.resolve()),
         "--fixture-dir",
         str(
             installer_smoke.WORKSPACE
@@ -949,6 +1116,7 @@ def test_smoke_repairs_stale_file_rejects_downgrade_and_uninstalls(
         launch_command,
         engine_command,
         public_data_command,
+        "state-exercised",
         "plant",
         repair_command,
         "repaired",
@@ -958,6 +1126,7 @@ def test_smoke_repairs_stale_file_rejects_downgrade_and_uninstalls(
         uninstall_command,
         "uninstalled",
         "state-cleanup",
+        "state-exercised",
     ]
     assert adapter.install_dir == run_root / "install"
     assert not (adapter.user_state_dir / "sentinel.json").exists()
@@ -1003,7 +1172,13 @@ def test_successful_downgrade_probe_is_a_lifecycle_failure(
     )
 
     assert result == 1
-    assert events == ["preflight", "installed", "planted", "repaired"]
+    assert events == [
+        "preflight",
+        "installed",
+        "state-exercised",
+        "planted",
+        "repaired",
+    ]
     assert calls[-1][0] == str(probe.resolve())
     assert all(call[0] != str(adapter.uninstaller) for call in calls)
 

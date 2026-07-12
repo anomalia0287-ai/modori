@@ -58,6 +58,7 @@ def run_engine_smoke(
     executable: str | Path,
     *,
     timeout_seconds: float = 60.0,
+    state_root: str | Path | None = None,
 ) -> int:
     exe_path = Path(executable).resolve()
     if not exe_path.is_file():
@@ -78,7 +79,10 @@ def run_engine_smoke(
         ],
         check=False,
         timeout=timeout_seconds,
-        env=packaged_subprocess_environment("packaged-engine-runtime"),
+        env=packaged_subprocess_environment(
+            "packaged-engine-runtime",
+            state_root=state_root,
+        ),
     )
     if completed.returncode != 0:
         return completed.returncode
@@ -107,9 +111,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         default=str(Path("dist") / "Modori" / "Modori.exe"),
     )
     parser.add_argument("--timeout", type=float, default=60.0)
+    parser.add_argument("--state-root")
     args = parser.parse_args(argv)
 
-    return run_engine_smoke(args.executable, timeout_seconds=args.timeout)
+    return run_engine_smoke(
+        args.executable,
+        timeout_seconds=args.timeout,
+        state_root=args.state_root,
+    )
 
 
 if __name__ == "__main__":
