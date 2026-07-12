@@ -189,20 +189,124 @@ def test_check_allows_dirty_staging_only(monkeypatch) -> None:
     assert build_installer.main(["--check", "--staging-only"]) == 0
 
 
-def test_build_mode_remains_unavailable_until_orchestration_lands(
+def test_build_mode_invokes_orchestration(
     monkeypatch,
+    tmp_path: Path,
     capsys,
 ) -> None:
+    candidate = tmp_path / "candidate"
+    observed: list[build_installer.BuildOptions] = []
+
+    def fake_build(options: build_installer.BuildOptions) -> Path:
+        observed.append(options)
+        return candidate
+
+    monkeypatch.setattr(build_installer, "build_release", fake_build)
+
+    result = build_installer.main(["--staging-only", "--with-installed-smoke"])
+
+    assert result == 0
+    assert observed == [
+        build_installer.BuildOptions(staging_only=True, with_installed_smoke=True)
+    ]
+    assert f"installer-build-ok: {candidate}" in capsys.readouterr().out
+
+
+def test_build_release_runs_package_gates_before_compiler(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    calls: list[list[str]] = []
+    monkeypatch.setattr(build_installer, "WORKSPACE", tmp_path)
+    script = tmp_path / "installer" / "modori.iss"
+    script.parent.mkdir(parents=True)
+    script.write_text("[Setup]\n", encoding="utf-8")
     monkeypatch.setattr(
         build_installer,
         "source_identity",
-        lambda **_kwargs: build_installer.make_source_identity("0.1.0", "a" * 40, dirty=False),
+        lambda **_kwargs: build_installer.make_source_identity(
+            "0.1.0", "a" * 40, dirty=False
+        ),
     )
-    monkeypatch.setattr(build_installer, "find_iscc", lambda _env=None: Path("ISCC.exe"))
+    monkeypatch.setattr(
+        build_installer,
+        "find_iscc",
+        lambda _env=None: tmp_path / "ISCC.exe",
+    )
     monkeypatch.setattr(build_installer, "read_inno_version", lambda: "6.7.3")
 
-    with pytest.raises(SystemExit) as exc_info:
-        build_installer.main([])
+    def fake_runner(command: list[str]) -> int:
+        calls.append(command)
+        if any(item.endswith("package_windows.py") for item in command):
+            package = tmp_path / "dist" / "Modori"
+            qml = package / "_internal" / "modori" / "ui" / "qml"
+            qml.mkdir(parents=True)
+            (package / "Modori.exe").write_bytes(b"package")
+            (qml / "Main.qml").write_text("Item {}", encoding="utf-8")
+        if command and str(command[0]).endswith("ISCC.exe"):
+            output_arg = next(item for item in command if item.startswith("/DOutputDir="))
+            name_arg = next(
+                item for item in command if item.startswith("/DOutputBaseFilename=")
+            )
+            output = Path(output_arg.split("=", 1)[1])
+            output.mkdir(parents=True, exist_ok=True)
+            (output / f"{name_arg.split('=', 1)[1]}.exe").write_bytes(b"installer")
+        return 0
 
-    assert exc_info.value.code == 2
-    assert "requires --check" in capsys.readouterr().err
+    result = build_installer.build_release(
+        build_installer.BuildOptions(staging_only=True),
+        runner=fake_runner,
+    )
+
+    flattened = [" ".join(call) for call in calls]
+    package_index = next(
+        i for i, value in enumerate(flattened) if "package_windows.py" in value
+    )
+    public_index = next(
+        i for i, value in enumerate(flattened) if "package_public_data_smoke.py" in value
+    )
+    compiler_index = next(i for i, value in enumerate(flattened) if "ISCC.exe" in value)
+    assert package_index < public_index < compiler_index
+    assert result.is_dir()
+    assert not (tmp_path / "dist" / "installer").exists()
+
+
+def test_failed_package_gate_never_invokes_compiler_or_publishes(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    calls: list[list[str]] = []
+    monkeypatch.setattr(build_installer, "WORKSPACE", tmp_path)
+    script = tmp_path / "installer" / "modori.iss"
+    script.parent.mkdir(parents=True)
+    script.write_text("[Setup]\n", encoding="utf-8")
+    monkeypatch.setattr(
+        build_installer,
+        "source_identity",
+        lambda **_kwargs: build_installer.make_source_identity(
+            "0.1.0", "a" * 40, dirty=False
+        ),
+    )
+    monkeypatch.setattr(
+        build_installer,
+        "find_iscc",
+        lambda _env=None: tmp_path / "ISCC.exe",
+    )
+    monkeypatch.setattr(build_installer, "read_inno_version", lambda: "6.7.3")
+
+    def failing_runner(command: list[str]) -> int:
+        calls.append(command)
+        return (
+            7
+            if any(item.endswith("package_engine_smoke.py") for item in command)
+            else 0
+        )
+
+    with pytest.raises(RuntimeError, match="package_engine_smoke"):
+        build_installer.build_release(
+            build_installer.BuildOptions(),
+            runner=failing_runner,
+        )
+
+    assert not any("ISCC.exe" in " ".join(call) for call in calls)
+    assert not (tmp_path / "dist" / "installer").exists()
