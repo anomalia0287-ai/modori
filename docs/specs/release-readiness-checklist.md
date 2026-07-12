@@ -2,68 +2,96 @@
 
 Status: working release gate document for the `release/readiness-1-9` lane.
 
-Historical internal Windows installer evidence from 2026-07-12:
+Current internal Windows installer evidence from 2026-07-12:
 
-- The `0.1.0-gd23656588dee` candidate is revoked/superseded because it predates
-  the fixed production-root, routed-state, and frozen-input integrity changes.
-  It remains preserved only as historical diagnostic evidence and must not be
-  distributed or installed.
-- A corrected-source attempt at
-  `67ab0815d36456df237802f7a06dda67fd24a4b0` produced no installer or candidate.
-  After package rebuild, frozen snapshot, and all three package smokes, ISCC
-  exited `2` before creating the smoke installer because the old
-  `.tmp/installer-build/<build-id>-<uuid>/snapshot/package` root was `156`
-  characters and the longest `128`-character relative payload produced a
-  `285`-character compiler source path. This is non-release failure evidence,
-  not a passed gate or artifact.
-- A later clean gate at `baa49b20449bec6f3696e4ccb0613dfe5fe56166`
-  built the isolated smoke artifacts under
-  `.tmp/ib/baa49b20449b-8cc41b7f3cb0`, installed into
-  `.tmp/installer-smoke/r-9093f24ff807`, and passed all three installed package
-  smokes. It then stopped before repair because the installed runtime had
-  created routed Matplotlib and settings state but had not exercised the routed
-  `cache` directory. This is non-release failure evidence; no candidate was
-  published. The failed install, registration, shortcut, logs, and state remain
-  preserved pending separately authorized cleanup.
-
-- Source commit: `d23656588deeda7d7bd5001d1bbd78fbfe9a7ed3` on
-  `codex/internal-windows-installer`; the production manifest records
-  `git_dirty: false`.
-- Final live gate:
-  `scripts\quality_gate.py --with-installer-build --with-installed-smoke`
-  completed outside the workspace sandbox with exit code `0` in `898.4 s`;
-  pytest reported `1109 passed, 4 skipped`, all three package smokes passed,
-  lifecycle smoke completed at `.tmp\installer-smoke\r-1802b2989b50`, and the
-  local candidate was published only afterward.
-- Candidate directory:
-  `dist\installer\0.1.0-gd23656588dee`; it contains exactly the setup EXE,
-  `release-manifest.json`, and `SHA256SUMS.txt`.
-- Setup: `Modori-Setup-0.1.0-gd23656588dee.exe`, `173230927` bytes, SHA256
-  `FB9B5038E18D5385EE921E3DC4AE9C38F6C8E824B077E6BC98A235287B5F7057`.
-- Manifest: `1643` bytes, SHA256
-  `0E86E79B8AFAC5C8BAC92AEFA9CF33122EF41FC9354A5F4206BED567AAD585D2`;
-  build time `2026-07-12T16:45:51.810428+09:00`.
-- Checksum evidence: `104` bytes, SHA256
-  `8A0486137EF519B9B42CF0E543E000760F94CF32516EC8CE12F85DFDEA7CA42D`;
-  its setup hash and filename match the candidate bytes exactly.
-- Packaged `Modori.exe`: `30832703` bytes, SHA256
-  `F198A7C265A3D4AF1FA6C0C719644FC458DE495DD629102CA5F61E8F44BEDE65`.
-  `installer\modori.iss`: `3365` bytes, SHA256
-  `CA074DB4F298A693502C09002040D95070E7FEF3D26031B71528ACC2C65D54BE`.
-- Manifest verification records all three package smokes and installed
-  lifecycle smoke as `true`, production AppId
-  `{430f4cea-53ca-4578-800c-f7ce1b6aead2}`, isolated smoke AppId
-  `{97d13afd-818d-40c5-80ee-ce53eea57c0c}`, `4376` payload files, measured
-  maximum `219 <= 240`, and Inno/PyInstaller/Python versions
-  `6.7.3`/`6.21.0`/`3.12.10`.
-- The successful lifecycle removed its install tree, smoke registration,
-  shortcut, and test-only user-state sentinel. Production registration was
-  absent before and after. All three prior diagnostic runs and their logs
-  remain preserved for audit.
-- Slow statistical gate: `3 passed, 1110 deselected in 24.18s`.
+- Source commit: `b4a6fa4a93f454b162aec3ba70387ed19f7d2954` on
+  `codex/internal-windows-installer`; the manifest records `git_dirty: false`,
+  `channel: internal`, `signed: false`, and `smoke_only: false`.
+- Candidate directory: `dist\installer\0.1.0-gb4a6fa4a93f4`; it contains
+  exactly three regular files.
+- Setup: `Modori-Setup-0.1.0-gb4a6fa4a93f4.exe`, `173180855` bytes, SHA256
+  `BE38213A1D457D3898BAD48BF495904B437ED81DDEF5926B92F04A7F1CF8EBC2`,
+  Authenticode status `NotSigned`.
+- Manifest: `1798` bytes, SHA256
+  `436B08D7476AA2F6BC68C635D22D31635759643F2A270A8D26ECE9E638314027`;
+  build time `2026-07-12T22:53:42.737366+09:00`.
+- Checksum file: `104` bytes, SHA256
+  `55A6FFC4FF11A42CA0285775DB854F8A64F5939BB4391AAD9C768BE1A947A7AC`;
+  exact line:
+  `BE38213A1D457D3898BAD48BF495904B437ED81DDEF5926B92F04A7F1CF8EBC2  Modori-Setup-0.1.0-gb4a6fa4a93f4.exe`.
+- Packaged `Modori.exe`: `30832815` bytes, SHA256
+  `6B4A95307FF7D1959FE9D34D52338B33908A66C8489BA8D55C0302FE4E78913D`.
+  `installer\modori.iss`: `3948` bytes, SHA256
+  `A587B51F3B02FC509769306160829B8FC4D4B43B5CF6B482FDE18B31D6B6BD43`.
+- Manifest verification records the installed lifecycle and all three package
+  smokes as `true`, production AppId
+  `{430f4cea-53ca-4578-800c-f7ce1b6aead2}`, and isolated smoke AppId
+  `{97d13afd-818d-40c5-80ee-ce53eea57c0c}`.
+- Tool evidence: Inno Setup product version `6.7.3`, compiler file version
+  `0.0.0.0`, compiler SHA256
+  `0A8757031B33777E4C9CBFFEE40F11A5062B36D25CBE144C1DB73B6102B80AD7`,
+  PyInstaller `6.21.0`, and Python `3.12.10`.
+- Payload evidence: `4376` files, `380` directories, longest relative path
+  `128` characters, manifest install calculation `219 <= 240`, and actual
+  compiler calculation `103 + 1 + 128 = 232 <= 240`.
+- Successful lifecycle root: `.tmp\installer-smoke\r-da7fbcf6d052`; it
+  contains exactly four regular logs:
+  - `install.log`: `2032606` bytes, SHA256
+    `8F63263D8F04667F978A7A0D7295574AA223C75ACF13A69C1E7E597A254B3A25`;
+    install succeeded.
+  - `repair.log`: `2032874` bytes, SHA256
+    `A5DEC0A970DBE9AF3D8B71CFFF509B270F4E65F6B0F0AB7568A3B573C581ECB6`;
+    repair succeeded.
+  - `downgrade.log`: `1865` bytes, SHA256
+    `911F8066E8AFA60656D17850AF8F5E20906B6F4CC007D410722E29D2797B0208`;
+    `InitializeSetup returned False` / `EAbort`.
+  - `uninstall.log`: `1038610` bytes, SHA256
+    `32B74A4F155770CD34CFB812257EE728B068A9B7786D93F1E1527D0D66289BD8`;
+    `Removed all? Yes`.
+- Post-lifecycle state audit found no install tree, `user-state`, stale probe,
+  smoke or production registration, shortcut, production install root, Modori
+  process, uninstaller, or Inno cleanup-helper process.
+- Installed engine result: `2026-07-12T22:49:04.7759268+09:00`, `ok: true`,
+  `status: ready`, routed cache under the lifecycle run root, SHA256
+  `93E7262421AEB613742A4CC78FE667E35D0C7743A44DF6A5496FFB56AE8C558C`.
+  Installed public-data result: `ok: true`, `case_count: 10`, SHA256
+  `6ABC9EC0967FD64F6E21D9BBB0F16C5946568A28952E5D1B00547CA97E958DFA`.
+- Source-head preflight: `1195 passed, 4 skipped`; installer tool check passed.
+  Slow statistical gate: `3 passed, 1196 deselected in 35.16s`.
+- Transparency: the final current-candidate command's output cell was
+  mistakenly detached while its OS process tree continued and exited. Its
+  numeric exit code and stdout were not retained, so there is no captured
+  exit-code-`0` claim. Local publication is evidenced by fail-closed code
+  semantics plus the clean manifest, lifecycle flags, hashes, logs, and state
+  audits.
 - Exact handoff:
   `docs\superpowers\handoffs\2026-07-12-internal-windows-installer-handoff.md`.
-- **Unsigned internal test build; not approved for public distribution**.
+- **Unsigned internal test build; not approved for public distribution**. This
+  evidence makes no signing, publisher-trust, SmartScreen, clean-VM, or public
+  release claim.
+
+Historical/revoked internal Windows installer evidence from 2026-07-12:
+
+- The `0.1.0-gd23656588dee` candidate from
+  `d23656588deeda7d7bd5001d1bbd78fbfe9a7ed3` is revoked/superseded because it
+  predates the fixed production-root, routed-state, and frozen-input integrity
+  changes. It is historical evidence, not an installable or distributable
+  candidate.
+- The corrected-source attempt at
+  `67ab0815d36456df237802f7a06dda67fd24a4b0` produced no installer or candidate.
+  Its `156 + 1 + 128 = 285` compiler source-path failure is non-release
+  diagnostic evidence.
+- The later clean gate at `baa49b20449bec6f3696e4ccb0613dfe5fe56166`
+  preserved isolated smoke artifacts under
+  `.tmp/ib/baa49b20449b-8cc41b7f3cb0` and diagnostic state/logs under
+  `.tmp/installer-smoke/r-9093f24ff807`. It stopped because routed `cache` was
+  absent. This remains non-release failure evidence; no candidate was
+  published. Separately authorized official-uninstaller cleanup recorded
+  `Removed all? Yes` in `failure-cleanup-uninstall.log`, SHA256
+  `E307D43F1C520EE5337C6C3FA4A68CDFCED3D0E8F686E3AE0EBD2331383B9F89`.
+  Smoke registration, shortcut, install tree, production registration/root,
+  and related processes are absent; the cache-absence diagnostic, original
+  state/log, cleanup log, and old baa49 staging root remain preserved.
 
 Current host-verified candidate from 2026-07-11:
 
