@@ -26,6 +26,7 @@ from modori.research_os import (
     AnalysisPassport,
     EstimandSpec,
     Fact,
+    FactState,
     QuestionSpec,
     StudySpec,
     build_p1_method_space,
@@ -62,6 +63,8 @@ class QuarantineReasonCode(str, Enum):
     UNSUPPORTED_SENSITIVE_PAYLOAD = "unsupported_sensitive_payload"
     SOURCE_INTEGRITY = "source_integrity"
     DATASET_MISMATCH = "dataset_mismatch"
+    FOREIGN_FACT_CONFLICT = "foreign_fact_conflict"
+    FOREIGN_FACT_STALE = "foreign_fact_stale"
     STALE_CATALOG = "stale_catalog"
 
 
@@ -108,7 +111,7 @@ class QuarantineResult:
         elif self.stage is QuarantineStage.HELD:
             if (
                 self.disposition is not QuarantineDisposition.HELD
-                or self.dataset_match is not False
+                or type(self.dataset_match) is not bool
                 or self.source_dataset_fingerprint is None
                 or not self.findings
                 or self.imported_assertions
@@ -129,6 +132,20 @@ class QuarantineResult:
 
 
 _FINGERPRINT_RE = re.compile(r"^[0-9a-f]{64}$")
+_ASSERTABLE_FOREIGN_FACT_STATES = frozenset(
+    {FactState.INFERRED, FactState.USER_CONFIRMED, FactState.NOT_APPLICABLE}
+)
+_DISCARDED_FOREIGN_FACT_STATES = frozenset({FactState.OBSERVED, FactState.UNKNOWN})
+_HELD_FOREIGN_FACT_STATES = {
+    FactState.CONFLICT: QuarantineReasonCode.FOREIGN_FACT_CONFLICT,
+    FactState.STALE: QuarantineReasonCode.FOREIGN_FACT_STALE,
+}
+if (
+    _ASSERTABLE_FOREIGN_FACT_STATES
+    | _DISCARDED_FOREIGN_FACT_STATES
+    | frozenset(_HELD_FOREIGN_FACT_STATES)
+) != frozenset(FactState):
+    raise RuntimeError("foreign Fact state downgrade policy is incomplete")
 _ERROR_REASON = {
     EvidenceBundleErrorCode.BYTE_LIMIT: QuarantineReasonCode.BYTE_LIMIT,
     EvidenceBundleErrorCode.FORBIDDEN_FORMAT: QuarantineReasonCode.FORBIDDEN_FORMAT,
@@ -271,7 +288,7 @@ def _extract_assertions(
     estimand: EstimandSpec,
     study_artifact: LedgerArtifact,
     study: StudySpec,
-) -> tuple[ImportedAssertion, ...]:
+) -> tuple[tuple[ImportedAssertion, ...], QuarantineReasonCode | None]:
     addressed: list[tuple[str, LedgerArtifact, Fact[Any]]] = [
         ("question.research_goal", question_artifact, question.research_goal),
         ("question.causal_intent", question_artifact, question.causal_intent),
@@ -312,15 +329,22 @@ def _extract_assertions(
     addresses = [address for address, _artifact, _fact in addressed]
     if len(addresses) != len(set(addresses)):
         raise LedgerContractError("assertion extraction produced a duplicate address")
-    return tuple(
-        _assertion(
-            bundle=bundle,
-            source_bundle_digest=source_bundle_digest,
-            source_artifact=artifact,
-            fact_address=address,
-            fact=fact,
-        )
-        for address, artifact, fact in sorted(addressed, key=lambda item: item[0])
+    for state, reason in _HELD_FOREIGN_FACT_STATES.items():
+        if any(fact.state is state for _address, _artifact, fact in addressed):
+            return (), reason
+    return (
+        tuple(
+            _assertion(
+                bundle=bundle,
+                source_bundle_digest=source_bundle_digest,
+                source_artifact=artifact,
+                fact_address=address,
+                fact=fact,
+            )
+            for address, artifact, fact in sorted(addressed, key=lambda item: item[0])
+            if fact.state in _ASSERTABLE_FOREIGN_FACT_STATES
+        ),
+        None,
     )
 
 
@@ -406,7 +430,7 @@ class EvidenceBundleQuarantine:
                     ),
                     imported_assertions=(),
                 )
-            assertions = _extract_assertions(
+            assertions, held_reason = _extract_assertions(
                 bundle,
                 source_bundle_digest,
                 question_artifact,
@@ -416,6 +440,20 @@ class EvidenceBundleQuarantine:
                 study_artifact,
                 study,
             )
+            if held_reason is not None:
+                return QuarantineResult(
+                    stage=QuarantineStage.HELD,
+                    disposition=QuarantineDisposition.HELD,
+                    source_bundle_digest=source_bundle_digest,
+                    source_project_id=bundle.source_project_id,
+                    source_head=bundle.head,
+                    source_dataset_fingerprint=(
+                        snapshot.current_dataset_fingerprint
+                    ),
+                    dataset_match=True,
+                    findings=(QuarantineFinding(held_reason),),
+                    imported_assertions=(),
+                )
             if not assertions:
                 return _rejected(
                     source_bundle_digest,

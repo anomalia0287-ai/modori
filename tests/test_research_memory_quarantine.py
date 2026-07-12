@@ -24,7 +24,14 @@ from modori.research_memory.quarantine import (
     QuarantineReasonCode,
     QuarantineStage,
 )
-from modori.research_os import MissingCodeMeaning, ResearchOsService, SchemaEnvelope
+from modori.research_os import (
+    DependenceKind,
+    Fact,
+    MissingCodeMeaning,
+    ResearchOsService,
+    SchemaEnvelope,
+    StaleSnapshot,
+)
 from tests.test_research_memory_evidence_bundle import _two_event_bundle
 from tests.test_research_memory_ledger_contracts import _request
 from tests.test_research_memory_ledger_store import _genesis_commit
@@ -147,6 +154,92 @@ def test_foreign_user_confirmation_becomes_external_assertion_only() -> None:
     assert not hasattr(assertion, "local_fact")
     assert not hasattr(result, "research_request")
     assert not hasattr(result, "pipeline")
+
+
+def test_foreign_observed_facts_are_discarded_for_local_recomputation() -> None:
+    result = EvidenceBundleQuarantine.inspect(
+        _raw_bundle(),
+        local_dataset_fingerprint="a" * 64,
+    )
+
+    assert result.stage is QuarantineStage.ASSERTION_READY
+    assert "study.data_layout" not in {
+        item.fact_address for item in result.imported_assertions
+    }
+
+
+def test_foreign_unknown_facts_are_not_imported_as_propositions() -> None:
+    request = _request()
+    request = replace(
+        request,
+        question=replace(
+            request.question,
+            causal_intent=Fact.unknown(reason_code="foreign_unknown"),
+        ),
+    )
+
+    result = EvidenceBundleQuarantine.inspect(
+        _raw_bundle(request),
+        local_dataset_fingerprint="a" * 64,
+    )
+
+    assert result.stage is QuarantineStage.ASSERTION_READY
+    assert "question.causal_intent" not in {
+        item.fact_address for item in result.imported_assertions
+    }
+
+
+def test_foreign_fact_conflict_holds_the_bundle_without_partial_assertions() -> None:
+    request = _request()
+    request = replace(
+        request,
+        study=replace(
+            request.study,
+            dependence_structure=Fact.conflict(
+                (DependenceKind.INDEPENDENT, DependenceKind.CLUSTERED),
+                provenance_refs=("foreign:profile", "foreign:user"),
+                reason_code="foreign_sources_disagree",
+            ),
+        ),
+    )
+
+    result = EvidenceBundleQuarantine.inspect(
+        _raw_bundle(request),
+        local_dataset_fingerprint="a" * 64,
+    )
+
+    assert result.stage is QuarantineStage.HELD
+    assert result.dataset_match is True
+    assert result.findings[0].reason_code.value == "foreign_fact_conflict"
+    assert result.imported_assertions == ()
+
+
+def test_foreign_stale_fact_holds_the_bundle_without_partial_assertions() -> None:
+    request = _request()
+    request = replace(
+        request,
+        study=replace(
+            request.study,
+            dependence_structure=Fact.stale(
+                StaleSnapshot(
+                    value=DependenceKind.INDEPENDENT,
+                    provenance_refs=("foreign:prior",),
+                    invalidation_reason="foreign_context_changed",
+                ),
+                reason_code="foreign_stale",
+            ),
+        ),
+    )
+
+    result = EvidenceBundleQuarantine.inspect(
+        _raw_bundle(request),
+        local_dataset_fingerprint="a" * 64,
+    )
+
+    assert result.stage is QuarantineStage.HELD
+    assert result.dataset_match is True
+    assert result.findings[0].reason_code.value == "foreign_fact_stale"
+    assert result.imported_assertions == ()
 
 
 def test_extraction_covers_closed_c1_addresses_without_importing_authority() -> None:
