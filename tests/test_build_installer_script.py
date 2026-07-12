@@ -94,6 +94,24 @@ def _write_complete_package(root: Path, *, executable_bytes: bytes = b"package")
     (qml / "Main.qml").write_text("Item {}", encoding="utf-8")
 
 
+def _inventory_with_relative_path(relative_path: str) -> build_installer.TreeInventory:
+    return build_installer.TreeInventory(
+        directories=(),
+        files=(
+            build_installer.TreeFile(
+                relative_path=relative_path,
+                size_bytes=1,
+                sha256="A" * 64,
+            ),
+        ),
+        digest="B" * 64,
+    )
+
+
+def _release_staging_directories(workspace: Path) -> list[Path]:
+    return list((workspace / ".tmp" / "ib").iterdir())
+
+
 def _create_directory_junction(link: Path, target: Path) -> None:
     completed = subprocess.run(
         ["cmd.exe", "/d", "/c", "mklink", "/J", str(link), str(target)],
@@ -551,7 +569,7 @@ def test_freeze_release_inputs_rejects_source_mutation_during_copy(
             tree_copier=mutating_copy,
         )
 
-    assert (staging / "snapshot").is_dir()
+    assert (staging / "s").is_dir()
 
 
 def test_freeze_release_inputs_rejects_copied_snapshot_content_mismatch(
@@ -578,7 +596,7 @@ def test_freeze_release_inputs_rejects_copied_snapshot_content_mismatch(
             tree_copier=corrupting_copy,
         )
 
-    assert (staging / "snapshot").is_dir()
+    assert (staging / "s").is_dir()
 
 
 def test_check_rejects_dirty_publishable_source(monkeypatch, capsys) -> None:
@@ -708,6 +726,114 @@ def test_build_release_rejects_publish_without_lifecycle_before_mutation(
     assert calls == []
 
 
+def test_compiler_source_path_budget_uses_actual_resolved_root_arithmetic(
+    tmp_path: Path,
+) -> None:
+    relative = "r" * 128
+    required_root_chars = 241 - 1 - len(relative)
+    padding_chars = max(1, required_root_chars - len(str(tmp_path.resolve())) - 1)
+    package_root = tmp_path / ("p" * padding_chars)
+    package_root.mkdir()
+    inventory = _inventory_with_relative_path(relative)
+
+    evidence = build_installer.compiler_source_path_evidence(package_root, inventory)
+
+    assert evidence.package_root == package_root.resolve()
+    assert evidence.package_root_chars == len(str(package_root.resolve()))
+    assert evidence.longest_relative_path == relative
+    assert evidence.longest_relative_path_chars == 128
+    assert evidence.computed_max_chars == len(str(package_root.resolve())) + 1 + 128
+    assert evidence.computed_max_chars > 240
+    with pytest.raises(ValueError, match="Frozen compiler source path budget exceeded"):
+        build_installer.require_compiler_source_path_budget(package_root, inventory)
+
+
+def test_compact_staging_path_arithmetic_keeps_128_char_source_within_budget() -> None:
+    relative = "r" * 128
+    package_root = Path("C:/w/.tmp/ib/aaaaaaaaaaaa-bbbbbbbbbbbb/s/p")
+
+    evidence = build_installer.compiler_source_path_evidence(
+        package_root,
+        _inventory_with_relative_path(relative),
+    )
+
+    assert evidence.computed_max_chars == len(str(package_root.resolve())) + 1 + 128
+    assert evidence.computed_max_chars <= 240
+
+
+def test_release_staging_collision_fails_without_altering_existing_content(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setattr(build_installer, "WORKSPACE", tmp_path)
+    identity = build_installer.make_source_identity("0.1.0", "a" * 40, dirty=False)
+
+    class FixedUuid:
+        hex = "b" * 32
+
+    monkeypatch.setattr(build_installer.uuid, "uuid4", lambda: FixedUuid())
+    existing = tmp_path / ".tmp" / "ib" / f"{identity.git_commit[:12]}-{'b' * 12}"
+    existing.mkdir(parents=True)
+    sentinel = existing / "preserve.txt"
+    sentinel.write_bytes(b"preserve")
+
+    with pytest.raises(FileExistsError):
+        build_installer.create_release_staging(identity)
+
+    assert sentinel.read_bytes() == b"preserve"
+    assert {path.name for path in existing.iterdir()} == {"preserve.txt"}
+
+
+def test_over_budget_frozen_snapshot_fails_before_smokes_outputs_or_iscc(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    _configure_release_workspace(monkeypatch, tmp_path)
+    calls: list[list[str]] = []
+    relative = "r" * 128
+
+    long_component_chars = max(1, 241 - 1 - len(relative) - len(str(tmp_path)) - 4)
+    package_root = tmp_path / ("x" * long_component_chars) / "s" / "p"
+    _write_complete_package(package_root)
+    long_file = package_root / relative
+    long_file.write_bytes(b"x")
+    frozen_script = package_root.parent / "modori.iss"
+    frozen_script.write_text("[Setup]\n", encoding="utf-8")
+    frozen = build_installer.FrozenReleaseInputs(
+        package_root=package_root.resolve(),
+        installer_script=frozen_script.resolve(),
+        package_inventory=build_installer.inventory_tree(package_root),
+        script_digest=build_installer.file_content_digest(frozen_script),
+    )
+    assert len(str(frozen.package_root)) + 1 + len(relative) > 240
+    monkeypatch.setattr(build_installer, "freeze_release_inputs", lambda **_kwargs: frozen)
+
+    with pytest.raises(ValueError, match="Frozen compiler source path budget exceeded"):
+        build_installer.build_release(
+            build_installer.BuildOptions(
+                staging_only=True,
+                with_installed_smoke=True,
+            ),
+            runner=_release_runner(tmp_path, calls),
+        )
+
+    assert any(item.endswith("package_windows.py") for call in calls for item in call)
+    assert not any(
+        item.endswith(
+            (
+                "package_launch_smoke.py",
+                "package_engine_smoke.py",
+                "package_public_data_smoke.py",
+            )
+        )
+        for call in calls
+        for item in call
+    )
+    assert not any(call and str(call[0]).endswith("ISCC.exe") for call in calls)
+    assert not list((tmp_path / ".tmp" / "ib").glob("*/so"))
+    assert not (tmp_path / "dist" / "installer").exists()
+
+
 def test_build_release_runs_package_gates_before_compiler(
     monkeypatch,
     tmp_path: Path,
@@ -782,6 +908,53 @@ def test_build_release_runs_package_gates_before_compiler(
     assert not (tmp_path / "dist" / "installer").exists()
 
 
+def test_compact_staging_with_128_char_relative_path_reaches_fake_iscc(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    worktree = Path(__file__).resolve().parents[1]
+    short_workspace = next(
+        worktree / ".tmp" / name
+        for name in "tuvwxyz"
+        if not (worktree / ".tmp" / name).exists()
+    )
+    short_workspace.mkdir(parents=True)
+    try:
+        _configure_release_workspace(monkeypatch, short_workspace)
+        calls: list[list[str]] = []
+        relative = "r" * 128
+        base_runner = _release_runner(short_workspace, calls)
+
+        def runner_with_long_payload(command: list[str]) -> int:
+            result = base_runner(command)
+            if any(item.endswith("package_windows.py") for item in command):
+                (short_workspace / "dist" / "Modori" / relative).write_bytes(b"x")
+            return result
+
+        result = build_installer.build_release(
+            build_installer.BuildOptions(staging_only=True),
+            runner=runner_with_long_payload,
+        )
+
+        iscc_call = next(
+            command
+            for command in calls
+            if command and str(command[0]).endswith("ISCC.exe")
+        )
+        package_argument = next(
+            item for item in iscc_call if item.startswith("/DPackageRoot=")
+        )
+        package_root = Path(package_argument.split("=", 1)[1]).resolve()
+        assert package_root.name == "p"
+        assert package_root.parent.name == "s"
+        assert package_root.parent.parent.parent.name == "ib"
+        assert len(str(package_root)) + 1 + len(relative) <= 240
+        assert result.parent.name.startswith("a" * 12 + "-")
+        assert len(result.parent.name) == 25
+    finally:
+        shutil.rmtree(short_workspace)
+
+
 def test_build_release_freezes_inputs_before_all_smokes_and_compilers(
     monkeypatch,
     tmp_path: Path,
@@ -840,9 +1013,11 @@ def test_build_release_freezes_inputs_before_all_smokes_and_compilers(
     ]
     assert package_roots[0] == snapshot_executable.parent
     assert package_roots[2] == snapshot_executable.parent
+    assert package_roots[0].name == "p"
     probe_package = package_roots[1]
     assert probe_package != snapshot_executable.parent
     assert probe_package.is_relative_to(result.parent)
+    assert probe_package.name == "dp"
     assert {path.name for path in probe_package.iterdir()} == {"Modori.exe"}
     assert (probe_package / "Modori.exe").read_bytes() == (
         b"downgrade probe must never install"
@@ -853,6 +1028,18 @@ def test_build_release_freezes_inputs_before_all_smokes_and_compilers(
     assert snapshot_script.is_file()
     assert snapshot_script != (tmp_path / "installer" / "modori.iss").resolve()
     assert snapshot_script.is_relative_to(result.parent)
+    assert snapshot_script.parent.name == "s"
+    assert result.name == "c"
+    assert result.parent.parent.name == "ib"
+    output_directories = [
+        Path(
+            next(item for item in command if item.startswith("/DOutputDir=")).split(
+                "=", 1
+            )[1]
+        ).name
+        for command in iscc_calls
+    ]
+    assert output_directories == ["so", "do", "po"]
 
     package_build_index = calls.index(package_build)
     smoke_indexes = [calls.index(command) for command in package_smokes]
@@ -1074,7 +1261,7 @@ def test_failed_installed_smoke_never_compiles_production_or_publishes(
     assert smoke_manifest["verification"]["installed_lifecycle_app_id"] is None
     assert not (tmp_path / "dist" / "installer" / identity.build_identity).exists()
     assert not list(tmp_path.rglob("release-manifest.json"))
-    assert not list(tmp_path.glob(".tmp/installer-build/*/candidate"))
+    assert not list(tmp_path.glob(".tmp/ib/*/c"))
 
 
 @pytest.mark.parametrize("mutated_input", ["package", "installer script"])
@@ -1109,10 +1296,10 @@ def test_live_input_drift_after_snapshot_prevents_candidate_publication(
         )
 
     assert not (tmp_path / "dist" / "installer" / identity.build_identity).exists()
-    staging_directories = list((tmp_path / ".tmp" / "installer-build").iterdir())
+    staging_directories = _release_staging_directories(tmp_path)
     assert len(staging_directories) == 1
-    assert (staging_directories[0] / "snapshot").is_dir()
-    assert (staging_directories[0] / "candidate").is_dir()
+    assert (staging_directories[0] / "s").is_dir()
+    assert (staging_directories[0] / "c").is_dir()
 
 
 @pytest.mark.parametrize("mutated_input", ["package", "installer script"])
@@ -1149,10 +1336,10 @@ def test_frozen_input_drift_after_snapshot_prevents_candidate_publication(
         )
 
     assert not (tmp_path / "dist" / "installer" / identity.build_identity).exists()
-    staging_directories = list((tmp_path / ".tmp" / "installer-build").iterdir())
+    staging_directories = _release_staging_directories(tmp_path)
     assert len(staging_directories) == 1
-    assert (staging_directories[0] / "snapshot").is_dir()
-    assert (staging_directories[0] / "candidate").is_dir()
+    assert (staging_directories[0] / "s").is_dir()
+    assert (staging_directories[0] / "c").is_dir()
 
 
 @pytest.mark.parametrize(
@@ -1183,10 +1370,10 @@ def test_source_head_or_dirty_drift_before_candidate_return_is_rejected(
             runner=_release_runner(tmp_path, calls),
         )
 
-    staging_directories = list((tmp_path / ".tmp" / "installer-build").iterdir())
+    staging_directories = _release_staging_directories(tmp_path)
     assert len(staging_directories) == 1
-    assert (staging_directories[0] / "snapshot").is_dir()
-    assert (staging_directories[0] / "candidate").is_dir()
+    assert (staging_directories[0] / "s").is_dir()
+    assert (staging_directories[0] / "c").is_dir()
 
 
 @pytest.mark.parametrize(
@@ -1252,10 +1439,10 @@ def test_compiler_drift_at_release_boundaries_fails_closed(
     ]
     assert len(iscc_calls) == expected_iscc_calls
     assert not (tmp_path / "dist" / "installer" / identity.build_identity).exists()
-    staging_directories = list((tmp_path / ".tmp" / "installer-build").iterdir())
+    staging_directories = _release_staging_directories(tmp_path)
     assert len(staging_directories) == 1
-    assert (staging_directories[0] / "snapshot").is_dir()
-    assert not (staging_directories[0] / "candidate").exists()
+    assert (staging_directories[0] / "s").is_dir()
+    assert not (staging_directories[0] / "c").exists()
 
 
 @pytest.mark.parametrize("candidate_fault", ["extra-file", "expected-link"])
@@ -1291,9 +1478,9 @@ def test_candidate_runtime_inventory_rejects_extra_or_reparse_entries(
             runner=_release_runner(tmp_path, calls),
         )
 
-    staging_directories = list((tmp_path / ".tmp" / "installer-build").iterdir())
+    staging_directories = _release_staging_directories(tmp_path)
     assert len(staging_directories) == 1
-    assert (staging_directories[0] / "candidate").is_dir()
+    assert (staging_directories[0] / "c").is_dir()
     assert not (tmp_path / "dist" / "installer").exists()
 
 
@@ -1348,7 +1535,7 @@ def test_post_candidate_drift_prevents_return_or_publication(
             runner=_release_runner(tmp_path, calls),
         )
 
-    staging_directories = list((tmp_path / ".tmp" / "installer-build").iterdir())
+    staging_directories = _release_staging_directories(tmp_path)
     assert len(staging_directories) == 1
-    assert (staging_directories[0] / "candidate").is_dir()
+    assert (staging_directories[0] / "c").is_dir()
     assert not (tmp_path / "dist" / "installer").exists()

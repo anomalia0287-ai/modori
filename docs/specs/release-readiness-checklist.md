@@ -2,7 +2,20 @@
 
 Status: working release gate document for the `release/readiness-1-9` lane.
 
-Current internal Windows installer evidence from 2026-07-12:
+Historical internal Windows installer evidence from 2026-07-12:
+
+- The `0.1.0-gd23656588dee` candidate is revoked/superseded because it predates
+  the fixed production-root, routed-state, and frozen-input integrity changes.
+  It remains preserved only as historical diagnostic evidence and must not be
+  distributed or installed.
+- A corrected-source attempt at
+  `67ab0815d36456df237802f7a06dda67fd24a4b0` produced no installer or candidate.
+  After package rebuild, frozen snapshot, and all three package smokes, ISCC
+  exited `2` before creating the smoke installer because the old
+  `.tmp/installer-build/<build-id>-<uuid>/snapshot/package` root was `156`
+  characters and the longest `128`-character relative payload produced a
+  `285`-character compiler source path. This is non-release failure evidence,
+  not a passed gate or artifact.
 
 - Source commit: `d23656588deeda7d7bd5001d1bbd78fbfe9a7ed3` on
   `codex/internal-windows-installer`; the production manifest records
@@ -267,14 +280,22 @@ environment; the R reference runtime remains limited to pytest and the slow
 statistical gate.
 
 After the package build, the builder creates a frozen snapshot of the complete
-package tree and the exact `.iss` bytes under its unique staging directory. The
+package tree and the exact `.iss` bytes under the unique compact
+`.tmp/ib/<commit12>-<uuid12>` staging directory, using fixed short children
+including `s/p`, `s/modori.iss`, `so`, `po`, `dp`, `do`, and `c`. Exclusive
+run-directory creation makes a collision fail without altering existing
+content. The
 lexical workspace-to-package boundary and every descendant reject any link or
 junction/reparse point before traversal. All three package smokes use the
 snapshot executable. Smoke and production compilation use the full frozen
 package; a staging-owned tiny downgrade payload contains only its sentinel
 `Modori.exe`. All three compiler calls use the same frozen installer script and
 revalidate the exact selected compiler evidence before and after every ISCC
-invocation. The builder, after candidate materialization, requires exactly three
+invocation. Before creating any compiler output directory or invoking ISCC, the
+builder combines the resolved frozen package root with the authenticated
+snapshot inventory and rejects an actual compiler source maximum above `240`
+characters. This is distinct from the manifest's installed-destination path
+budget. The builder, after candidate materialization, requires exactly three
 regular non-reparse candidate files, then freshly rechecks HEAD/dirty identity,
 frozen/live content digests, and compiler evidence immediately before return or
 publication. Any source,

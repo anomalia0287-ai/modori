@@ -51,6 +51,7 @@ else:
 
 WORKSPACE = Path(__file__).resolve().parents[1]
 INNO_REGISTRY_KEY = r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Inno Setup 6_is1"
+COMPILER_SOURCE_PATH_BUDGET_CHARS = 240
 _VS_FIXEDFILEINFO_SIGNATURE = 0xFEEF04BD
 
 
@@ -123,6 +124,16 @@ class TreeInventory:
     @property
     def file_count(self) -> int:
         return len(self.files)
+
+
+@dataclass(frozen=True)
+class CompilerSourcePathEvidence:
+    package_root: Path
+    package_root_chars: int
+    longest_relative_path: str
+    longest_relative_path_chars: int
+    safe_path_budget_chars: int
+    computed_max_chars: int
 
 
 @dataclass(frozen=True)
@@ -305,6 +316,45 @@ def inventory_tree(root: Path) -> TreeInventory:
     )
 
 
+def compiler_source_path_evidence(
+    package_root: Path,
+    inventory: TreeInventory,
+) -> CompilerSourcePathEvidence:
+    if not inventory.files:
+        raise ValueError("Frozen package inventory contains no files")
+    resolved_root = package_root.resolve()
+    longest = max(
+        inventory.files,
+        key=lambda item: (len(item.relative_path), item.relative_path),
+    ).relative_path
+    computed = len(str(resolved_root)) + 1 + len(longest)
+    return CompilerSourcePathEvidence(
+        package_root=resolved_root,
+        package_root_chars=len(str(resolved_root)),
+        longest_relative_path=longest,
+        longest_relative_path_chars=len(longest),
+        safe_path_budget_chars=COMPILER_SOURCE_PATH_BUDGET_CHARS,
+        computed_max_chars=computed,
+    )
+
+
+def require_compiler_source_path_budget(
+    package_root: Path,
+    inventory: TreeInventory,
+) -> CompilerSourcePathEvidence:
+    evidence = compiler_source_path_evidence(package_root, inventory)
+    if evidence.computed_max_chars > evidence.safe_path_budget_chars:
+        raise ValueError(
+            "Frozen compiler source path budget exceeded: "
+            f"{evidence.package_root_chars} + 1 + "
+            f"{evidence.longest_relative_path_chars} = "
+            f"{evidence.computed_max_chars} > "
+            f"{evidence.safe_path_budget_chars}: "
+            f"{evidence.package_root / Path(evidence.longest_relative_path)}"
+        )
+    return evidence
+
+
 def copy_inventory_tree(
     source: Path,
     destination: Path,
@@ -360,9 +410,9 @@ def freeze_release_inputs(
 ) -> FrozenReleaseInputs:
     package_before = inventory_tree(source_package)
     script_before = file_content_digest(source_script)
-    snapshot = staging / "snapshot"
+    snapshot = staging / "s"
     snapshot.mkdir()
-    snapshot_package = snapshot / "package"
+    snapshot_package = snapshot / "p"
     snapshot_script = snapshot / "modori.iss"
     if tree_copier is None:
         copy_inventory_tree(source_package, snapshot_package, package_before)
@@ -634,6 +684,15 @@ def source_identity(*, staging_only: bool) -> SourceIdentity:
     return make_source_identity(version, commit, dirty=dirty)
 
 
+def create_release_staging(identity: SourceIdentity) -> Path:
+    parent = WORKSPACE / ".tmp" / "ib"
+    parent.mkdir(parents=True, exist_ok=True)
+    run_name = f"{identity.git_commit[:12]}-{uuid.uuid4().hex[:12]}"
+    staging = parent / run_name
+    staging.mkdir()
+    return staging
+
+
 def check_payload(root: Path = WORKSPACE / "dist" / "Modori") -> None:
     executable = root / "Modori.exe"
     qml = root / "_internal" / "modori" / "ui" / "qml" / "Main.qml"
@@ -796,13 +855,7 @@ def build_release(
     compiler = find_iscc()
     toolchain = read_tool_versions(compiler)
     tools = toolchain.manifest_tools()
-    staging = (
-        WORKSPACE
-        / ".tmp"
-        / "installer-build"
-        / f"{identity.build_identity}-{uuid.uuid4().hex}"
-    )
-    staging.mkdir(parents=True)
+    staging = create_release_staging(identity)
 
     run_required(package_build_command(), runner)
 
@@ -815,6 +868,7 @@ def build_release(
     )
     package_root = frozen.package_root
     installer_script_path = frozen.installer_script
+    require_compiler_source_path_budget(package_root, frozen.package_inventory)
     check_payload(package_root)
     for command in package_smoke_commands(package_root / "Modori.exe"):
         run_required(command, runner)
@@ -831,7 +885,7 @@ def build_release(
 
     installed_lifecycle_smoke = False
     if options.with_installed_smoke:
-        smoke_output = staging / "smoke-output"
+        smoke_output = staging / "so"
         smoke_output.mkdir(parents=True)
         smoke_name = f"Modori-Installer-Smoke-{identity.build_identity}"
         smoke_installer = compile_installer(
@@ -846,12 +900,12 @@ def build_release(
             allow_custom_dir=True,
             runner=runner,
         )
-        probe_payload = staging / "downgrade-probe-payload"
+        probe_payload = staging / "dp"
         probe_payload.mkdir(parents=True)
         (probe_payload / "Modori.exe").write_bytes(
             b"downgrade probe must never install"
         )
-        probe_output = staging / "downgrade-probe-output"
+        probe_output = staging / "do"
         probe_output.mkdir(parents=True)
         probe_installer = compile_installer(
             inno=toolchain.inno,
@@ -900,7 +954,7 @@ def build_release(
         )
         installed_lifecycle_smoke = True
 
-    production_output = staging / "production-output"
+    production_output = staging / "po"
     production_output.mkdir(parents=True)
     setup_base_name = f"Modori-Setup-{identity.build_identity}"
     production_installer = compile_installer(
@@ -915,7 +969,7 @@ def build_release(
         allow_custom_dir=False,
         runner=runner,
     )
-    candidate = staging / "candidate"
+    candidate = staging / "c"
     candidate.mkdir()
     final_installer = candidate / production_installer.name
     production_installer.replace(final_installer)

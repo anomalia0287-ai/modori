@@ -199,5 +199,8 @@ def test_release_checklist_documents_frozen_lifecycle_publication_boundary() -> 
         "junction/reparse",
         "after candidate materialization",
         "three regular non-reparse",
+        ".tmp/ib/<commit12>-<uuid12>",
+        "compiler source",
+        "240",
     ):
         assert required_text in installer_gate

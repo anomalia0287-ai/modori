@@ -147,9 +147,11 @@ version, PyInstaller availability, Inno Setup compiler, and current
 `dist/Modori/` path budget without building.
 
 `--staging-only` permits an explicitly dirty development worktree, marks the
-evidence `git_dirty: true`, keeps every result under `.tmp/installer-build/`,
-and refuses to publish anything to `dist/installer/`. It exists so the compiler
-and installer contract can be exercised before the implementation commit.
+evidence `git_dirty: true`, keeps every result under the compact
+`.tmp/ib/<commit12>-<uuid12>/` run root, and refuses to publish anything to
+`dist/installer/`. It exists so the compiler and installer contract can be
+exercised before the implementation commit. Run-directory creation is
+exclusive; a collision fails without reusing or changing the existing tree.
 
 `--with-installed-smoke` performs the package rebuild and package smokes,
 compiles both the production-identity installer and an additional unpublished
@@ -162,21 +164,28 @@ The default command performs this sequence:
 1. Require Windows and a clean Git worktree.
 2. Read and validate the version from `pyproject.toml`.
 3. Resolve the full and short Git commit.
-4. Create a unique directory under `.tmp/installer-build/`.
+4. Create a unique `.tmp/ib/<commit12>-<uuid12>/` directory with short fixed
+   children: `s/p`, `s/modori.iss`, `so`, `po`, `dp`, `do`, and `c`.
 5. Run `scripts/package_windows.py` to rebuild `dist/Modori/` from the current
    source.
-6. Run the packaged QML, engine, and public-data smoke scripts against that
-   package.
-7. Reject the package when
+6. Inventory and hash the live package, copy and independently re-inventory the
+   complete frozen `s/p` package plus exact `s/modori.iss`, and require equality.
+7. From the authenticated frozen inventory and the actual resolved `s/p` root,
+   reject when `root_chars + 1 + longest_relative_path_chars > 240`. This
+   compiler-source check runs before any compiler output directory, ISCC call,
+   installer lifecycle, candidate, or publication.
+8. Run the packaged QML, engine, and public-data smoke scripts against the
+   frozen package.
+9. Separately reject the installed payload contract when
    `90 + 1 + longest_payload_relative_path > 240`; record the longest path and
    computed budget.
-8. Hash `dist/Modori/Modori.exe` and `installer/modori.iss`, and capture their
+10. Hash the frozen `Modori.exe` and installer script, and capture their
    byte sizes where applicable.
-9. Invoke `ISCC.exe` with explicit preprocessor definitions and a staging output
+11. Invoke `ISCC.exe` with explicit preprocessor definitions and a staging output
    directory.
-10. Verify that exactly one expected installer exists and returned exit code 0.
-11. Hash the installer and create its release manifest and checksum file.
-12. Atomically publish the verified build directory to
+12. Verify that exactly one expected installer exists and returned exit code 0.
+13. Hash the installer and create its release manifest and checksum file.
+14. Atomically publish the verified build directory to
     `dist/installer/<build-identity>/`.
 
 When `--with-installed-smoke` is present, publication is deferred until the

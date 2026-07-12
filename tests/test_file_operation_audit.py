@@ -104,5 +104,8 @@ def test_installer_builder_audit_documents_frozen_staging_boundary() -> None:
         "after candidate materialization",
         "three regular non-reparse",
         "scandir",
+        ".tmp/ib/<commit12>-<uuid12>",
+        "compiler source",
+        "240",
     ):
         assert required_text in row

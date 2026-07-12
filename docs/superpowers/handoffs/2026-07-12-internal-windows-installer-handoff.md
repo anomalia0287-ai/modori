@@ -23,6 +23,26 @@ d23656588deeda7d7bd5001d1bbd78fbfe9a7ed3
 The production manifest records `git_dirty: false`, `channel: internal`,
 `signed: false`, and `smoke_only: false`.
 
+## Corrected Rebuild Diagnostic — No Release Artifact
+
+The historical `0.1.0-gd23656588dee` candidate is revoked/superseded because it
+predates the fixed production-root, routed-state, and frozen-input integrity
+changes. It remains preserved only for audit and is not an installable or
+distributable candidate.
+
+A corrected-source live-gate attempt at
+`67ab0815d36456df237802f7a06dda67fd24a4b0` rebuilt the package, froze an exact
+snapshot, and completed the launch, engine, and public-data package smokes on
+that snapshot. It then stopped before any installer output, installation, HKCU
+mutation, or candidate publication. The preserved staging root was `139`
+characters, its `snapshot\package` root was `156`, and the longest relative
+payload was `128`, yielding an actual compiler source path of `285` characters.
+ISCC 6.7.3 exited `2` with path-not-found at the frozen `modori.iss` and
+`Compile aborted.` The frozen and live inventories were identical: `4376`
+files, `624392981` bytes, digest
+`FDC653DE4FEB86F2A5CC990EEB30A4314628637359FF5CB0C90B08EE2E7F02CF`.
+This is non-release failure evidence; no corrected installer exists yet.
+
 ## Final Live Gate
 
 The approved live gate ran outside the Codex workspace sandbox with
