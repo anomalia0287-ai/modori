@@ -47,7 +47,7 @@ def test_quality_gate_can_check_installer_toolchain() -> None:
 
 
 def test_quality_gate_builds_installer_with_optional_lifecycle() -> None:
-    assert ["scripts/build_installer.py"] in quality_commands(
+    assert ["scripts/build_installer.py", "--staging-only"] in quality_commands(
         include_installer_build=True
     )
     assert ["scripts/build_installer.py", "--with-installed-smoke"] in quality_commands(
@@ -172,3 +172,27 @@ def test_release_checklist_documents_dependency_release_gate() -> None:
     assert ".pip-audit-cache" in text
     assert "default gate" in text
     assert "offline" in text
+
+
+def test_release_checklist_documents_frozen_lifecycle_publication_boundary() -> None:
+    text = Path("docs/specs/release-readiness-checklist.md").read_text(
+        encoding="utf-8"
+    )
+    installer_gate = " ".join(
+        text.split("## Internal Installer Gate", 1)[1].split("##", 1)[0].split()
+    )
+
+    for required_text in (
+        "build_installer.py --staging-only",
+        "frozen snapshot",
+        "same frozen package",
+        "same frozen installer script",
+        "cannot publish",
+        "installed lifecycle",
+        "preserved on failure",
+        "registered Inno Setup version",
+        "actual fixed file version",
+        "compiler SHA256",
+        "recorded separately",
+    ):
+        assert required_text in installer_gate

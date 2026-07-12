@@ -229,25 +229,52 @@ engine check marked `ok: true`.
 ## Internal Installer Gate
 
 The installer gate is opt-in and does not change the default offline quality
-gate. Preflight the local Inno Setup toolchain and current packaged payload with:
+gate. During development, preflight the local toolchain and current packaged
+payload without requiring a clean worktree with:
 
 ```powershell
-.\.venv\Scripts\python.exe scripts\build_installer.py --check
+.\.venv\Scripts\python.exe scripts\build_installer.py --check --staging-only
 ```
 
-Build the internal installer and exercise its installed lifecycle with:
+The check requires the selected `ISCC.exe` to equal the registered Inno Setup 6
+`InstallLocation\ISCC.exe`. The registered Inno Setup version, actual fixed file
+version, and compiler SHA256 are recorded separately; a vendor fixed version
+such as `0.0.0.0` is never relabeled as the registered `6.7.3`. The check also
+requires and prints the PyInstaller distribution and Python versions.
+
+Build an unpublished, build-only quality candidate with:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\build_installer.py --staging-only
+```
+
+Build the internal installer, exercise its installed lifecycle, and publish
+only after that lifecycle succeeds with:
 
 ```powershell
 .\.venv\Scripts\python.exe scripts\build_installer.py --with-installed-smoke
 ```
 
 The same operations can be appended to the quality gate with
-`--with-installer-check` or with
-`--with-installer-build --with-installed-smoke`. Installed smoke requires the
-installer build. Do not combine `--with-package-build` and
-`--with-installer-build`, because the installer build already rebuilds and
-smoke-tests the package. Installer commands use the base environment; the R
-reference runtime remains limited to pytest and the slow statistical gate.
+`--with-installer-check`, `--with-installer-build`, or
+`--with-installer-build --with-installed-smoke`. A build-only
+`--with-installer-build` invocation always passes `--staging-only` and cannot
+publish. Adding installed lifecycle smoke selects the publication-capable
+command; installed smoke requires the installer build. Do not combine
+`--with-package-build` and `--with-installer-build`, because the installer build
+already rebuilds and smoke-tests the package. Installer commands use the base
+environment; the R reference runtime remains limited to pytest and the slow
+statistical gate.
+
+After the package build, the builder creates a frozen snapshot of the complete
+package tree and the exact `.iss` bytes under its unique staging directory. All
+three package smokes use the snapshot executable. Smoke, downgrade-probe, and
+production compilation use the same frozen package and the same frozen
+installer script. Before candidate creation, the builder freshly rechecks
+HEAD/dirty identity plus both frozen and live content digests. Any source,
+snapshot, or live-input drift fails closed; the unique staging tree is preserved
+on failure. Manifest evidence comes from snapshot bytes while retaining the
+logical `dist/Modori/Modori.exe` and `installer/modori.iss` display paths.
 
 This artifact contract is unsigned, offline, per-user, internal-only, and not a
 public-distribution trust claim. The manifest records `signed: false`; the Inno
@@ -273,7 +300,9 @@ Required installer identity and evidence:
   `dist\installer\<build-id>\SHA256SUMS.txt` evidence beside the installer. The
   manifest records source identity, tool versions, AppId, measured payload-path
   evidence, file sizes and hashes, and the installed-lifecycle result; the
-  checksum file records the final installer bytes.
+  checksum file records the final installer bytes. Publication is forbidden
+  without a successful installed lifecycle, and the candidate inventory is
+  exactly the setup EXE, manifest, and checksum.
 - Inno `[InstallDelete]` is deliberately narrow: repair deletes only the
   installer-owned `{app}\Modori` payload tree. Product user state lives at
   `%LocalAppData%\Modori\cache`, outside the install tree, and is not deleted by

@@ -47,6 +47,8 @@ def quality_commands(
         installer_command = ["scripts/build_installer.py"]
         if include_installed_smoke:
             installer_command.append("--with-installed-smoke")
+        else:
+            installer_command.append("--staging-only")
         commands.append(installer_command)
     if include_packaged_launch:
         commands.append(["scripts/package_launch_smoke.py"])

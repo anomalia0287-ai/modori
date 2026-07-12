@@ -30,7 +30,8 @@ AUDITED_FILE_OPERATION_FILES = {
 }
 
 FILE_OPERATION_PATTERN = re.compile(
-    r"\.(?:write_text|write_bytes|mkdir|unlink|replace|rmdir|resolve|lstat)\s*\("
+    r"(?:\.(?:write_text|write_bytes|mkdir|unlink|replace|rmdir|resolve|lstat)"
+    r"|shutil\.(?:copyfile|copytree))\s*\("
 )
 AUDIT_DOCUMENT = Path("docs/security/file-operations-audit-2026-06-29.md")
 
@@ -75,5 +76,26 @@ def test_installer_smoke_audit_documents_bounded_recursive_state_cleanup() -> No
         "symlink/junction/reparse",
         "recursive",
         "sibling logs",
+    ):
+        assert required_text in row
+
+
+def test_installer_builder_audit_documents_frozen_staging_boundary() -> None:
+    row = next(
+        line
+        for line in AUDIT_DOCUMENT.read_text(encoding="utf-8").splitlines()
+        if "`scripts/build_installer.py`" in line
+    )
+
+    for required_text in (
+        "full-tree snapshot",
+        "exact installer script",
+        "content SHA",
+        "installed lifecycle",
+        "staging-only",
+        "preserved on failure",
+        "selected compiler",
+        "fixed file version",
+        "SHA256",
     ):
         assert required_text in row
