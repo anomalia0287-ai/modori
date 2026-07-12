@@ -101,9 +101,7 @@ def _validly_hashed_unresolved_subject_raw() -> bytes:
         event_id=original.event_id,
         sequence=1,
         event_kind=LedgerEventKind.PROJECT_CREATED,
-        subject_artifact_ids=tuple(
-            sorted((*original.subject_artifact_ids, "f" * 64))
-        ),
+        subject_artifact_ids=tuple(sorted((*original.subject_artifact_ids, "f" * 64))),
         payload={"resulting_snapshot_artifact_id": snapshot_id},
         previous_event_hash=original.previous_event_hash,
         recorded_at_utc=None,
@@ -189,6 +187,54 @@ def test_foreign_unknown_facts_are_not_imported_as_propositions() -> None:
     }
 
 
+def test_valid_bundle_with_no_importable_propositions_is_held_not_rejected() -> None:
+    request = _request()
+    request = replace(
+        request,
+        question=replace(
+            request.question,
+            research_goal=Fact.unknown(reason_code="foreign_unknown"),
+            causal_intent=Fact.unknown(reason_code="foreign_unknown"),
+        ),
+        estimand=replace(
+            request.estimand,
+            template=Fact.unknown(reason_code="foreign_unknown"),
+            claim_basis=Fact.unknown(reason_code="foreign_unknown"),
+            target_population=Fact.unknown(reason_code="foreign_unknown"),
+            unit_of_analysis=Fact.unknown(reason_code="foreign_unknown"),
+            contrast=Fact.unknown(reason_code="foreign_unknown"),
+            time_scope=Fact.unknown(reason_code="foreign_unknown"),
+            effect_scale=Fact.unknown(reason_code="foreign_unknown"),
+            association_target=Fact.unknown(reason_code="foreign_unknown"),
+        ),
+        study=replace(
+            request.study,
+            unit_of_observation=Fact.unknown(reason_code="foreign_unknown"),
+            unit_of_analysis=Fact.unknown(reason_code="foreign_unknown"),
+            design_family=Fact.unknown(reason_code="foreign_unknown"),
+            data_layout=Fact.observed(
+                request.study.data_layout.value,
+                provenance_refs=("foreign:profile",),
+            ),
+            temporal_structure=Fact.unknown(reason_code="foreign_unknown"),
+            dependence_structure=Fact.unknown(reason_code="foreign_unknown"),
+            assignment_mechanism=Fact.unknown(reason_code="foreign_unknown"),
+            sampling_design=Fact.unknown(reason_code="foreign_unknown"),
+            repeated_measure_order=Fact.unknown(reason_code="foreign_unknown"),
+        ),
+    )
+
+    result = EvidenceBundleQuarantine.inspect(
+        _raw_bundle(request),
+        local_dataset_fingerprint="a" * 64,
+    )
+
+    assert result.stage is QuarantineStage.HELD
+    assert result.dataset_match is True
+    assert result.findings[0].reason_code.value == "no_importable_assertions"
+    assert result.imported_assertions == ()
+
+
 def test_foreign_fact_conflict_holds_the_bundle_without_partial_assertions() -> None:
     request = _request()
     request = replace(
@@ -257,7 +303,10 @@ def test_extraction_covers_closed_c1_addresses_without_importing_authority() -> 
         "study.dependence_structure",
     } <= set(addresses)
     assert len(addresses) == len(set(addresses))
-    assert all(item.source_bundle_digest == result.source_bundle_digest for item in result.imported_assertions)
+    assert all(
+        item.source_bundle_digest == result.source_bundle_digest
+        for item in result.imported_assertions
+    )
 
 
 def test_dataset_mismatch_is_held_without_partial_assertions() -> None:
@@ -297,7 +346,9 @@ def test_internally_inconsistent_source_dataset_is_rejected_not_held() -> None:
     assert result.findings[0].reason_code is QuarantineReasonCode.SOURCE_INTEGRITY
 
 
-def test_current_passport_is_ignored_as_authority_but_stale_catalog_is_rejected() -> None:
+def test_current_passport_is_ignored_as_authority_but_stale_catalog_is_rejected() -> (
+    None
+):
     current = EvidenceBundleQuarantine.inspect(
         _passport_bundle(stale=False),
         local_dataset_fingerprint="a" * 64,
@@ -415,9 +466,7 @@ def _mutation_corpus() -> tuple[_Mutation, ...]:
             item = b"\xef\xbb\xbf" + raw
             reason = QuarantineReasonCode.INVALID_UTF8
         elif variant == 2:
-            item = (
-                b'{"schema_id":"duplicate_' + str(index).encode() + b'",' + raw[1:]
-            )
+            item = b'{"schema_id":"duplicate_' + str(index).encode() + b'",' + raw[1:]
             reason = QuarantineReasonCode.DUPLICATE_KEY
         elif variant == 3:
             nfd = unicodedata.normalize("NFD", nfc) + str(index)
@@ -588,9 +637,7 @@ def _mutation_corpus() -> tuple[_Mutation, ...]:
             )
             reason = QuarantineReasonCode.ARTIFACT_INVALID
         elif variant == 1:
-            fact = artifact(payload, "study_spec")["body"][
-                "dependence_structure"
-            ]
+            fact = artifact(payload, "study_spec")["body"]["dependence_structure"]
             fact.update(
                 {
                     "state": "user_confirmed",
@@ -600,9 +647,9 @@ def _mutation_corpus() -> tuple[_Mutation, ...]:
             )
             reason = QuarantineReasonCode.ARTIFACT_INVALID
         elif variant == 2:
-            artifact(payload, "analysis_passport")["body"][
-                "method_space_digest"
-            ] = f"{index + 1:064x}"
+            artifact(payload, "analysis_passport")["body"]["method_space_digest"] = (
+                f"{index + 1:064x}"
+            )
             reason = QuarantineReasonCode.ARTIFACT_INVALID
         elif variant == 3:
             artifact(payload, "analysis_passport")["semantic_digest"] = (

@@ -65,6 +65,7 @@ class QuarantineReasonCode(str, Enum):
     DATASET_MISMATCH = "dataset_mismatch"
     FOREIGN_FACT_CONFLICT = "foreign_fact_conflict"
     FOREIGN_FACT_STALE = "foreign_fact_stale"
+    NO_IMPORTABLE_ASSERTIONS = "no_importable_assertions"
     STALE_CATALOG = "stale_catalog"
 
 
@@ -377,9 +378,9 @@ class EvidenceBundleQuarantine:
     ) -> QuarantineResult:
         if not isinstance(raw, bytes):
             raise TypeError("quarantine input must be bytes")
-        if not isinstance(local_dataset_fingerprint, str) or not _FINGERPRINT_RE.fullmatch(
-            local_dataset_fingerprint
-        ):
+        if not isinstance(
+            local_dataset_fingerprint, str
+        ) or not _FINGERPRINT_RE.fullmatch(local_dataset_fingerprint):
             raise ValueError(
                 "local_dataset_fingerprint must be a lowercase SHA-256 digest"
             )
@@ -421,9 +422,7 @@ class EvidenceBundleQuarantine:
                     source_bundle_digest=source_bundle_digest,
                     source_project_id=bundle.source_project_id,
                     source_head=bundle.head,
-                    source_dataset_fingerprint=(
-                        snapshot.current_dataset_fingerprint
-                    ),
+                    source_dataset_fingerprint=(snapshot.current_dataset_fingerprint),
                     dataset_match=False,
                     findings=(
                         QuarantineFinding(QuarantineReasonCode.DATASET_MISMATCH),
@@ -447,18 +446,26 @@ class EvidenceBundleQuarantine:
                     source_bundle_digest=source_bundle_digest,
                     source_project_id=bundle.source_project_id,
                     source_head=bundle.head,
-                    source_dataset_fingerprint=(
-                        snapshot.current_dataset_fingerprint
-                    ),
+                    source_dataset_fingerprint=(snapshot.current_dataset_fingerprint),
                     dataset_match=True,
                     findings=(QuarantineFinding(held_reason),),
                     imported_assertions=(),
                 )
             if not assertions:
-                return _rejected(
-                    source_bundle_digest,
-                    QuarantineReasonCode.SOURCE_INTEGRITY,
-                    bundle=bundle,
+                return QuarantineResult(
+                    stage=QuarantineStage.HELD,
+                    disposition=QuarantineDisposition.HELD,
+                    source_bundle_digest=source_bundle_digest,
+                    source_project_id=bundle.source_project_id,
+                    source_head=bundle.head,
+                    source_dataset_fingerprint=(snapshot.current_dataset_fingerprint),
+                    dataset_match=True,
+                    findings=(
+                        QuarantineFinding(
+                            QuarantineReasonCode.NO_IMPORTABLE_ASSERTIONS
+                        ),
+                    ),
+                    imported_assertions=(),
                 )
         except (KeyError, TypeError, ValueError, LedgerContractError):
             return _rejected(
