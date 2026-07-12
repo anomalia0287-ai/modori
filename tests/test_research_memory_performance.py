@@ -38,6 +38,26 @@ def test_repeated_full_sync_appends_stay_below_generous_regression_ceiling(
     assert max(timings) < 1_000_000
 
 
+def test_authoritative_replay_reads_event_relationships_in_one_query(
+    tmp_path: Path,
+) -> None:
+    path = (tmp_path / "relationship-query" / "decision-ledger.sqlite3").resolve()
+    _build_batched_ledger(path, event_count=100)
+    with DecisionLedgerStore.open(path, "benchmark-project") as store:
+        statements: list[str] = []
+        store._connection.set_trace_callback(statements.append)  # type: ignore[attr-defined]
+        try:
+            store.verify()
+        finally:
+            store._connection.set_trace_callback(None)  # type: ignore[attr-defined]
+    relationship_reads = [
+        statement
+        for statement in statements
+        if statement.startswith("SELECT") and "FROM event_artifacts" in statement
+    ]
+    assert len(relationship_reads) == 1
+
+
 def test_benchmark_payload_is_integer_only_and_records_environment(
     tmp_path: Path,
 ) -> None:
@@ -54,6 +74,8 @@ def test_benchmark_payload_is_integer_only_and_records_environment(
     assert payload["durable_append"]["count"] == 10
     assert payload["parser_near_limit"]["input_bytes"] <= 100_000
     assert payload["environment"]["sqlite_version"]
+    effective_cpu_count = payload["environment"]["effective_logical_cpu_count"]
+    assert 1 <= effective_cpu_count <= payload["environment"]["logical_cpu_count"]
     assert payload["open_replay"]["process_peak_working_set_bytes"] > 0
 
     def assert_no_float(value: object) -> None:

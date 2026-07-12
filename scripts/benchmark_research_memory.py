@@ -249,6 +249,46 @@ def _physical_memory_bytes() -> int:
     return int(status.total_physical)
 
 
+def _effective_logical_cpu_count() -> int:
+    """Return CPUs this process can actually run on, not the host inventory."""
+    if os.name != "nt":
+        get_affinity = getattr(os, "sched_getaffinity", None)
+        if get_affinity is not None:
+            count = len(get_affinity(0))
+        else:
+            count = os.cpu_count() or 1
+        if count < 1:
+            raise RuntimeError("process exposes no effective logical CPUs")
+        return count
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    get_current_process = kernel32.GetCurrentProcess
+    get_current_process.argtypes = []
+    get_current_process.restype = ctypes.c_void_p
+    get_process_affinity_mask = kernel32.GetProcessAffinityMask
+    get_process_affinity_mask.argtypes = [
+        ctypes.c_void_p,
+        ctypes.POINTER(ctypes.c_size_t),
+        ctypes.POINTER(ctypes.c_size_t),
+    ]
+    get_process_affinity_mask.restype = ctypes.c_int
+    process_mask = ctypes.c_size_t()
+    system_mask = ctypes.c_size_t()
+    if not get_process_affinity_mask(
+        get_current_process(),
+        ctypes.byref(process_mask),
+        ctypes.byref(system_mask),
+    ):
+        raise OSError(
+            ctypes.get_last_error(),
+            "GetProcessAffinityMask failed while recording benchmark evidence",
+        )
+    count = process_mask.value.bit_count()
+    if count < 1:
+        raise RuntimeError("process exposes no effective logical CPUs")
+    return count
+
+
 def _peak_working_set_bytes() -> int:
     if os.name != "nt":
         import resource
@@ -460,6 +500,7 @@ def run_benchmark(
             "machine": platform.machine() or "unknown",
             "processor": platform.processor() or "unknown",
             "logical_cpu_count": os.cpu_count() or 1,
+            "effective_logical_cpu_count": _effective_logical_cpu_count(),
             "physical_memory_bytes": _physical_memory_bytes(),
             "storage_type": "unclassified",
         },

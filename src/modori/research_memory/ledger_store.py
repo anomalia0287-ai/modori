@@ -661,6 +661,16 @@ class DecisionLedgerStore:
         expected_sequence = 1
         expected_imports: list[tuple[object, ...]] = []
         snapshot_id: str | None = None
+        relationship_rows = self._connection.execute(
+            "SELECT sequence,ordinal,artifact_id FROM event_artifacts "
+            "WHERE project_id=? ORDER BY sequence,ordinal",
+            (self._project_id,),
+        ).fetchall()
+        relationships_by_sequence: dict[int, list[tuple[int, str]]] = {}
+        for sequence, ordinal, artifact_id in relationship_rows:
+            relationships_by_sequence.setdefault(sequence, []).append(
+                (ordinal, artifact_id)
+            )
         for event in events:
             if (
                 event.project_id != self._project_id
@@ -668,11 +678,7 @@ class DecisionLedgerStore:
                 or event.previous_event_hash != previous
             ):
                 raise LedgerIntegrityError("ledger event chain is discontinuous")
-            relationships = self._connection.execute(
-                "SELECT ordinal,artifact_id FROM event_artifacts "
-                "WHERE project_id=? AND sequence=? ORDER BY ordinal",
-                (self._project_id, event.sequence),
-            ).fetchall()
+            relationships = relationships_by_sequence.pop(event.sequence, [])
             expected_relationships = tuple(enumerate(event.subject_artifact_ids))
             if tuple(relationships) != expected_relationships:
                 raise LedgerIntegrityError("event-artifact relationships do not verify")
@@ -695,6 +701,8 @@ class DecisionLedgerStore:
                 )
             previous = event.event_hash
             expected_sequence += 1
+        if relationships_by_sequence:
+            raise LedgerIntegrityError("orphaned event-artifact relationships exist")
         head = (
             LedgerHead.genesis()
             if not events
