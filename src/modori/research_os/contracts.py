@@ -926,6 +926,18 @@ class EstimandSpec:
     def digest(self) -> str:
         return canonical_digest(self.to_mapping())
 
+    def validate_variable_references(self, available: Set[str]) -> None:
+        referenced: set[str] = set()
+        for binding in self.target_roles:
+            if binding.variable_ids.state in _CURRENT_STATES:
+                referenced.update(binding.variable_ids.value or ())
+            elif binding.variable_ids.state is FactState.CONFLICT:
+                for alternative in binding.variable_ids.alternatives:
+                    referenced.update(alternative)
+        unknown = sorted(referenced - set(available))
+        if unknown:
+            raise ContractError(f"unknown variable reference(s): {', '.join(unknown)}")
+
     @classmethod
     def from_mapping(cls, payload: Mapping[str, Any]) -> EstimandSpec:
         payload = _require_mapping(payload, "EstimandSpec")

@@ -50,6 +50,11 @@ from modori.research_os.method_space import (
     SupportStatus,
     TrustFloor,
 )
+from modori.research_os.p1_catalog import (
+    METHOD_SPACE_VERSION,
+    RULESET_VERSION,
+    build_p1_method_space,
+)
 from modori.research_os.resolver import (
     C1Resolver,
     PrimaryAction,
@@ -59,6 +64,11 @@ from modori.research_os.resolver import (
     ResolverError,
     RuleEvaluation,
     RuleTrace,
+)
+from modori.research_os.service import (
+    ResearchOsService,
+    ResearchRequest,
+    ResearchServiceError,
 )
 
 __all__ = [
@@ -84,6 +94,7 @@ __all__ = [
     "Language",
     "HardRule",
     "LifecycleStatus",
+    "METHOD_SPACE_VERSION",
     "MethodSpace",
     "MethodSpaceError",
     "MissingCodeMeaning",
@@ -92,12 +103,16 @@ __all__ = [
     "PrimaryAction",
     "ProductSurface",
     "RecommendationEvidence",
+    "ResearchOsService",
+    "ResearchRequest",
+    "ResearchServiceError",
     "ResolutionContext",
     "ResolutionDecision",
     "ResolverError",
     "ResearchGoal",
     "RoleHint",
     "RoleHintBinding",
+    "RULESET_VERSION",
     "RouteEvidence",
     "RuleMode",
     "RuleEvaluation",
@@ -116,4 +131,5 @@ __all__ = [
     "UnitKind",
     "TrustFloor",
     "canonical_digest",
+    "build_p1_method_space",
 ]

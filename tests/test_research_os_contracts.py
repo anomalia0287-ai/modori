@@ -361,6 +361,15 @@ def test_estimand_spec_rejects_duplicate_target_roles() -> None:
         )
 
 
+def test_estimand_spec_validates_all_target_variable_ids() -> None:
+    spec = _estimand_spec()
+
+    with pytest.raises(ContractError, match="unknown variable.*stress"):
+        spec.validate_variable_references({"sleep"})
+
+    spec.validate_variable_references({"stress", "sleep"})
+
+
 def test_study_spec_digest_is_independent_of_mapping_key_order() -> None:
     payload = _study_spec().to_mapping()
     reordered = dict(reversed(tuple(payload.items())))
