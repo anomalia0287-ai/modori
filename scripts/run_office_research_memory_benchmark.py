@@ -442,13 +442,14 @@ def write_result_files(
     return paths
 
 
-def _parse_child_payload(raw: str) -> Mapping[str, object]:
-    if not raw or len(raw.encode("utf-8")) > 32 * 1024 * 1024:
+def _parse_child_payload(raw: bytes) -> Mapping[str, object]:
+    if not isinstance(raw, bytes) or not raw or len(raw) > 32 * 1024 * 1024:
         raise OfficeBenchmarkError("benchmark_child_output_invalid")
-    encoded = raw.strip().encode("utf-8")
+    encoded = raw.strip()
     try:
-        parsed = json.loads(encoded.decode("utf-8"), object_pairs_hook=_pairs_hook)
-    except (_DuplicateKey, json.JSONDecodeError) as exc:
+        decoded = encoded.decode("utf-8", errors="strict")
+        parsed = json.loads(decoded, object_pairs_hook=_pairs_hook)
+    except (_DuplicateKey, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise OfficeBenchmarkError("benchmark_child_output_invalid") from exc
     if not isinstance(parsed, dict):
         raise OfficeBenchmarkError("benchmark_child_output_invalid")
@@ -489,6 +490,9 @@ def run_benchmark_child(
         for key in ("COMSPEC", "PATHEXT", "SystemRoot", "WINDIR")
         if key in os.environ
     }
+    owned_temp = str(verified.root / "work")
+    minimal_environment["TEMP"] = owned_temp
+    minimal_environment["TMP"] = owned_temp
     creation_flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
     try:
         completed = subprocess.run(
@@ -497,14 +501,12 @@ def run_benchmark_child(
             env=minimal_environment,
             capture_output=True,
             check=False,
-            encoding="utf-8",
-            errors="strict",
             timeout=1800,
             creationflags=creation_flags,
         )
     except subprocess.TimeoutExpired as exc:
         raise OfficeBenchmarkError("benchmark_child_timeout") from exc
-    except (OSError, UnicodeError) as exc:
+    except OSError as exc:
         raise OfficeBenchmarkError("benchmark_child_start_failed") from exc
     if completed.returncode != 0 or completed.stderr.strip():
         raise OfficeBenchmarkError(f"benchmark_child_exit_{completed.returncode}")

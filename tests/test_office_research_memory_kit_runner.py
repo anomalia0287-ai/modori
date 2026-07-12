@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import subprocess
 
 import pytest
 
@@ -12,6 +13,7 @@ from scripts.office_research_memory_kit import (
 from scripts.run_office_research_memory_benchmark import (
     OfficeBenchmarkError,
     parse_hardware_probe,
+    run_benchmark_child,
     run_office_measurement,
     write_result_files,
 )
@@ -181,3 +183,54 @@ def test_measurement_does_not_leak_absolute_paths_or_host_identifiers(
     assert str(tmp_path) not in encoded
     assert "computer_name" not in encoded
     assert "user_name" not in encoded
+
+
+def test_child_uses_owned_temp_and_keeps_localized_stderr_as_bytes(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root = _fake_kit(tmp_path)
+    captured: dict[str, object] = {}
+
+    def completed(command, **kwargs):
+        captured["command"] = command
+        captured.update(kwargs)
+        return subprocess.CompletedProcess(
+            command,
+            0,
+            stdout=canonical_json_bytes(_run()) + b"\n",
+            stderr=b"",
+        )
+
+    monkeypatch.setattr(subprocess, "run", completed)
+    from scripts.verify_office_research_memory_kit import verify_kit
+
+    payload = run_benchmark_child(verify_kit(root), "f" * 32, 1)
+    assert payload["schema_id"] == "modori.research_memory_benchmark"
+    assert "encoding" not in captured
+    assert "errors" not in captured
+    environment = captured["env"]
+    assert environment["TEMP"] == str(root / "work")
+    assert environment["TMP"] == str(root / "work")
+    assert captured["command"][1:3] == ["-B", "-I"]
+
+
+def test_child_binary_stderr_is_reduced_to_a_typed_exit_code(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root = _fake_kit(tmp_path)
+
+    def failed(command, **_kwargs):
+        return subprocess.CompletedProcess(
+            command,
+            1,
+            stdout=b"",
+            stderr=b"\xc8localized",
+        )
+
+    monkeypatch.setattr(subprocess, "run", failed)
+    from scripts.verify_office_research_memory_kit import verify_kit
+
+    with pytest.raises(OfficeBenchmarkError, match="benchmark_child_exit_1"):
+        run_benchmark_child(verify_kit(root), "f" * 32, 1)
