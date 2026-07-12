@@ -472,9 +472,11 @@ def freeze_release_inputs(
     tree_copier: Callable[[Path, Path], object] | None = None,
     file_copier: Callable[[Path, Path], object] = shutil.copyfile,
 ) -> FrozenReleaseInputs:
+    staging_root = _require_safe_staging_ancestry(staging)
     package_before = inventory_tree(source_package)
     script_before = file_content_digest(source_script)
-    snapshot = staging / "s"
+    _require_safe_staging_ancestry(staging_root)
+    snapshot = staging_root / "s"
     snapshot.mkdir()
     snapshot_package = snapshot / "p"
     snapshot_script = snapshot / "modori.iss"
@@ -772,6 +774,25 @@ def _create_or_validate_staging_directory(
     return _require_safe_staging_directory(selected, resolved_workspace)
 
 
+def _require_safe_staging_ancestry(staging: Path) -> Path:
+    workspace = _lexical_absolute(WORKSPACE)
+    workspace_metadata = _tree_lstat(workspace)
+    if not stat.S_ISDIR(workspace_metadata.st_mode):
+        raise ValueError(f"Workspace boundary is not a directory: {workspace}")
+    resolved_workspace = workspace.resolve(strict=True)
+    selected = _lexical_absolute(staging)
+    try:
+        relative = selected.relative_to(workspace)
+    except ValueError as exc:
+        raise ValueError(f"Staging path is outside the workspace: {selected}") from exc
+    component = workspace
+    _require_safe_staging_directory(component, resolved_workspace)
+    for part in relative.parts:
+        component /= part
+        _require_safe_staging_directory(component, resolved_workspace)
+    return selected
+
+
 def create_release_staging(identity: SourceIdentity) -> Path:
     workspace = _lexical_absolute(WORKSPACE)
     workspace_metadata = _tree_lstat(workspace)
@@ -792,9 +813,7 @@ def create_release_staging(identity: SourceIdentity) -> Path:
     run_name = f"{identity.git_commit[:12]}-{uuid.uuid4().hex[:12]}"
     staging = parent / run_name
     staging.mkdir()
-    for component in (workspace, temp_root, parent, staging):
-        _require_safe_staging_directory(component, resolved_workspace)
-    return _lexical_absolute(staging)
+    return _require_safe_staging_ancestry(staging)
 
 
 def check_payload(root: Path = WORKSPACE / "dist" / "Modori") -> None:

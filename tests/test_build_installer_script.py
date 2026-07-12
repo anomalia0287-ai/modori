@@ -918,6 +918,77 @@ def test_release_staging_revalidates_new_run_root_before_return(
     assert list(outside.iterdir()) == []
 
 
+@pytest.mark.parametrize("replaced_component", ["ib", "run"])
+def test_build_release_revalidates_staging_after_package_build_before_snapshot(
+    monkeypatch,
+    tmp_path: Path,
+    replaced_component: str,
+) -> None:
+    identity = _configure_release_workspace(monkeypatch, tmp_path)
+    calls: list[list[str]] = []
+
+    class FixedUuid:
+        hex = "b" * 32
+
+    monkeypatch.setattr(build_installer.uuid, "uuid4", lambda: FixedUuid())
+    run_name = f"{identity.git_commit[:12]}-{'b' * 12}"
+    staging_parent = tmp_path / ".tmp" / "ib"
+    staging = staging_parent / run_name
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    base_runner = _release_runner(tmp_path, calls)
+    expected_outside_snapshot: Path
+
+    def replacing_runner(command: list[str]) -> int:
+        result = base_runner(command)
+        if any(item.endswith("package_windows.py") for item in command):
+            staging.rmdir()
+            if replaced_component == "run":
+                _create_directory_junction(staging, outside)
+            else:
+                staging_parent.rmdir()
+                outside_run = outside / run_name
+                outside_run.mkdir()
+                (outside_run / "preserve.txt").write_bytes(b"preserve")
+                _create_directory_junction(staging_parent, outside)
+        return result
+
+    expected_outside_snapshot = (
+        outside / "s"
+        if replaced_component == "run"
+        else outside / run_name / "s"
+    )
+
+    with pytest.raises(ValueError, match="link or junction/reparse"):
+        build_installer.build_release(
+            build_installer.BuildOptions(staging_only=True),
+            runner=replacing_runner,
+        )
+
+    assert not expected_outside_snapshot.exists()
+    if replaced_component == "run":
+        assert list(outside.iterdir()) == []
+    else:
+        outside_run = outside / run_name
+        assert {path.name for path in outside.iterdir()} == {run_name}
+        assert {path.name for path in outside_run.iterdir()} == {"preserve.txt"}
+        assert (outside_run / "preserve.txt").read_bytes() == b"preserve"
+    assert any(item.endswith("package_windows.py") for call in calls for item in call)
+    assert not any(
+        item.endswith(
+            (
+                "package_launch_smoke.py",
+                "package_engine_smoke.py",
+                "package_public_data_smoke.py",
+            )
+        )
+        for call in calls
+        for item in call
+    )
+    assert not any(call and str(call[0]).endswith("ISCC.exe") for call in calls)
+    assert not (tmp_path / "dist" / "installer").exists()
+
+
 def test_over_budget_frozen_snapshot_fails_before_smokes_outputs_or_iscc(
     monkeypatch,
     tmp_path: Path,

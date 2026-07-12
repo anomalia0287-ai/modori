@@ -172,8 +172,12 @@ The default command performs this sequence:
    `so`, `po`, `dp`, `do`, and `c`.
 5. Run `scripts/package_windows.py` to rebuild `dist/Modori/` from the current
    source.
-6. Inventory and hash the live package, copy and independently re-inventory the
-   complete frozen `s/p` package plus exact `s/modori.iss`, and require equality.
+6. At frozen-input entry after package-build return, and again immediately
+   before snapshot creation, revalidate the supplied staging ancestry
+   component-by-component with `lstat` without following links and require
+   resolved workspace containment. Then inventory and hash the live package,
+   copy and independently re-inventory the complete frozen `s/p` package plus
+   exact `s/modori.iss`, and require equality.
 7. From the authenticated frozen inventory and the actual resolved `s/p` root,
    compute source search lengths in strict UTF-16 code units. Include files,
    directories, the root wildcard, and each recursive directory search suffix

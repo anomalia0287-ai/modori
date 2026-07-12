@@ -46,8 +46,11 @@ This is non-release failure evidence; no corrected installer exists yet.
 The subsequent review hardening does not add live release evidence. Compact
 staging now validates `WORKSPACE`, `.tmp`, `.tmp/ib`, and the new run root
 component-by-component without following links before snapshot writes. The
-authenticated compiler-source preflight counts strict UTF-16 code units across
-files, directories, the root wildcard, and recursive directory `\*` search
+supplied staging ancestry is revalidated at frozen-input entry after
+package-build return and again immediately before snapshot creation, so
+component replacement during the package build fails before any snapshot
+write. The authenticated compiler-source preflight counts strict UTF-16 code
+units across files, directories, the root wildcard, and recursive directory `\*` search
 paths. The historical failure measurements contain only BMP characters, so its
 `156 + 1 + 128 = 285` diagnosis remains unchanged. No corrected live installer
 has been compiled or published by this hardening work.

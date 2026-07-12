@@ -109,6 +109,8 @@ def test_installer_builder_audit_documents_frozen_staging_boundary() -> None:
         "240",
         "component-by-component",
         "without following links",
+        "after package-build return",
+        "immediately before snapshot creation",
         "UTF-16 code units",
         "files, directories, and directory search wildcards",
     ):

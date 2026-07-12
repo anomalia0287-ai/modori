@@ -284,11 +284,16 @@ package tree and the exact `.iss` bytes under the unique compact
 `.tmp/ib/<commit12>-<uuid12>` staging directory, using fixed short children
 including `s/p`, `s/modori.iss`, `so`, `po`, `dp`, `do`, and `c`. Exclusive
 run-directory creation makes a collision fail without altering existing
-content. Before any run-root or snapshot write, `WORKSPACE`, `.tmp`, and
-`.tmp/ib` are validated component-by-component with `lstat` without following
-links; symlinks, junction/reparse points, non-directories, and resolved escapes
-are rejected. Missing components are created individually and revalidated, and
-the new run root is revalidated immediately after exclusive creation. The
+content. At frozen-input entry after package-build return, and again
+immediately before snapshot creation, the builder revalidates the supplied
+staging ancestry component-by-component with `lstat` without following links;
+replacement after staging creation or during package build therefore fails
+before any snapshot write. Before any run-root or snapshot write, `WORKSPACE`,
+`.tmp`, and `.tmp/ib` are validated component-by-component with `lstat` without
+following links; symlinks, junction/reparse points, non-directories, and
+resolved escapes are rejected. Missing components are created individually and
+revalidated, and the new run root is revalidated immediately after exclusive
+creation. The
 lexical workspace-to-package boundary and every descendant reject any link or
 junction/reparse point before traversal. All three package smokes use the
 snapshot executable. Smoke and production compilation use the full frozen

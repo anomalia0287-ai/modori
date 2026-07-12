@@ -204,6 +204,8 @@ def test_release_checklist_documents_frozen_lifecycle_publication_boundary() -> 
         "240",
         "component-by-component",
         "without following links",
+        "after package-build return",
+        "immediately before snapshot creation",
         "UTF-16 code units",
         "files, directories, and directory search wildcards",
     ):
