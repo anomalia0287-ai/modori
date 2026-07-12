@@ -5,6 +5,7 @@ import json
 
 import pytest
 
+import modori.research_memory.evidence_bundle as evidence_bundle
 from modori.research_memory.canonical import canonical_bytes
 from modori.research_memory.evidence_bundle import (
     EvidenceBundle,
@@ -101,6 +102,24 @@ def test_bundle_roundtrip_is_deterministic_and_complete() -> None:
     assert _event_wire_size(restored.events[0]) == len(
         canonical_bytes(restored.events[0].to_mapping())
     )
+
+
+def test_bundle_depth_is_enforced_without_a_separate_raw_scan(monkeypatch) -> None:
+    raw = _bundle().to_bytes()
+    monkeypatch.setattr(
+        evidence_bundle,
+        "_scan_depth",
+        lambda *_args: pytest.fail("separate raw depth scan was called"),
+        raising=False,
+    )
+    assert EvidenceBundle.from_bytes(raw).to_bytes() == raw
+
+
+def test_bundle_decoder_recursion_is_closed_as_nesting_limit() -> None:
+    raw = b"[" * 2048 + b"0" + b"]" * 2048
+    with pytest.raises(EvidenceBundleError) as caught:
+        EvidenceBundle.from_bytes(raw)
+    assert caught.value.code is EvidenceBundleErrorCode.NESTING_LIMIT
 
 
 @pytest.mark.parametrize(

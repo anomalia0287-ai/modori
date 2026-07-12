@@ -179,41 +179,15 @@ def _reject_number(_raw: str) -> NoReturn:
     raise _InvalidNumber("floats and constants are excluded")
 
 
-def _scan_depth(text: str, maximum: int) -> None:
-    depth = 0
-    in_string = False
-    escaped = False
-    for character in text:
-        if in_string:
-            if escaped:
-                escaped = False
-            elif character == "\\":
-                escaped = True
-            elif character == '"':
-                in_string = False
-            continue
-        if character == '"':
-            in_string = True
-        elif character in "[{":
-            depth += 1
-            if depth > maximum:
-                _raise(
-                    EvidenceBundleErrorCode.NESTING_LIMIT,
-                    "evidence bundle exceeds its nesting limit",
-                )
-        elif character in "]}":
-            depth -= 1
-
-
 def _walk_resources(
     value: object,
     *,
     limits: EvidenceBundleLimits,
 ) -> None:
     items = 0
-    stack = [value]
+    stack = [(value, 1)]
     while stack:
-        current = stack.pop()
+        current, depth = stack.pop()
         items += 1
         if items > limits.max_items:
             _raise(
@@ -227,16 +201,26 @@ def _walk_resources(
                     "evidence bundle contains an oversized string",
                 )
         elif isinstance(current, Mapping):
+            if depth > limits.max_depth:
+                _raise(
+                    EvidenceBundleErrorCode.NESTING_LIMIT,
+                    "evidence bundle exceeds its nesting limit",
+                )
             for key, item in current.items():
                 if key in _FORBIDDEN_KEYS:
                     _raise(
                         EvidenceBundleErrorCode.FORBIDDEN_KEY,
                         "evidence bundle contains a forbidden authority-bearing key",
                     )
-                stack.append(key)
-                stack.append(item)
+                stack.append((key, depth + 1))
+                stack.append((item, depth + 1))
         elif isinstance(current, list):
-            stack.extend(current)
+            if depth > limits.max_depth:
+                _raise(
+                    EvidenceBundleErrorCode.NESTING_LIMIT,
+                    "evidence bundle exceeds its nesting limit",
+                )
+            stack.extend((item, depth + 1) for item in current)
 
 
 def _require_exact_top_level(payload: Mapping[str, Any]) -> None:
@@ -369,7 +353,6 @@ class EvidenceBundle:
                 EvidenceBundleErrorCode.BYTE_LIMIT,
                 "evidence bundle exceeds its byte limit",
             )
-        _scan_depth(raw.decode("utf-8"), limits.max_depth)
         _walk_resources(bundle_mapping, limits=limits)
         return bundle
 
@@ -542,7 +525,6 @@ class EvidenceBundle:
                 EvidenceBundleErrorCode.INVALID_UTF8,
                 "evidence input is not strict UTF-8",
             )
-        _scan_depth(text, limits.max_depth)
         try:
             parsed = json.loads(
                 text,
@@ -550,6 +532,11 @@ class EvidenceBundle:
                 parse_int=_parse_integer,
                 parse_float=_reject_number,
                 parse_constant=_reject_number,
+            )
+        except RecursionError:
+            _raise(
+                EvidenceBundleErrorCode.NESTING_LIMIT,
+                "evidence bundle exceeds its nesting limit",
             )
         except _DuplicateKey:
             _raise(
