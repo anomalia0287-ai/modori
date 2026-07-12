@@ -31,7 +31,11 @@ from modori.research_memory.ledger_store import (
     LedgerRuntimeError,
     LedgerStoreError,
     LedgerVerificationReport,
+    MemoryOpenResult,
+    MemoryOpenStatus,
+    MemoryUnavailableReason,
     default_ledger_path,
+    open_decision_memory,
 )
 from modori.research_memory.evidence_bundle import (
     EvidenceBundle,
@@ -80,6 +84,9 @@ __all__ = [
     "LedgerRuntimeError",
     "LedgerStoreError",
     "LedgerVerificationReport",
+    "MemoryOpenResult",
+    "MemoryOpenStatus",
+    "MemoryUnavailableReason",
     "ResearchRequestSnapshot",
     "QuarantineDisposition",
     "QuarantineFinding",
@@ -94,4 +101,5 @@ __all__ = [
     "canonical_digest",
     "default_ledger_path",
     "event_hash",
+    "open_decision_memory",
 ]

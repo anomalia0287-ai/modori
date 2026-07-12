@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import dataclass
+from enum import Enum
 import hashlib
 import json
 import os
@@ -53,6 +54,18 @@ class LedgerIntegrityError(LedgerStoreError):
 
 class LedgerRuntimeError(LedgerStoreError):
     """Raised when required Python/SQLite hardening controls are absent."""
+
+
+class MemoryOpenStatus(str, Enum):
+    AVAILABLE = "available"
+    MEMORY_UNAVAILABLE = "memory_unavailable"
+
+
+class MemoryUnavailableReason(str, Enum):
+    PATH_UNAVAILABLE = "path_unavailable"
+    RUNTIME_UNAVAILABLE = "runtime_unavailable"
+    INTEGRITY_FAILURE = "integrity_failure"
+    STORE_FAILURE = "store_failure"
 
 
 _APPLICATION_ID = 0x4D4F444F
@@ -535,10 +548,16 @@ class DecisionLedgerStore:
             connection.set_authorizer(_authorizer)
             store.verify()
             return store
-        except (LedgerStoreError, sqlite3.DatabaseError):
+        except LedgerStoreError:
             if connection is not None:
                 connection.close()
             raise
+        except sqlite3.DatabaseError as exc:
+            if connection is not None:
+                connection.close()
+            raise LedgerIntegrityError(
+                "Decision Ledger could not be verified"
+            ) from exc
 
     @property
     def path(self) -> Path:
@@ -934,3 +953,48 @@ class DecisionLedgerStore:
             if isinstance(exc, (LedgerContractError, sqlite3.DatabaseError, KeyError)):
                 raise LedgerIntegrityError("atomic ledger append failed") from exc
             raise
+
+
+@dataclass(frozen=True)
+class MemoryOpenResult:
+    status: MemoryOpenStatus
+    store: DecisionLedgerStore | None
+    reason_code: MemoryUnavailableReason | None
+
+    def __post_init__(self) -> None:
+        if self.status is MemoryOpenStatus.AVAILABLE:
+            if not isinstance(self.store, DecisionLedgerStore) or self.reason_code is not None:
+                raise ValueError("available memory result requires only a verified store")
+        elif self.status is MemoryOpenStatus.MEMORY_UNAVAILABLE:
+            if self.store is not None or not isinstance(
+                self.reason_code, MemoryUnavailableReason
+            ):
+                raise ValueError("memory_unavailable result requires a closed reason")
+        else:
+            raise ValueError("memory result has an unknown status")
+
+
+def open_decision_memory(path: str | Path, project_id: str) -> MemoryOpenResult:
+    """Open verified memory or return a path-free, typed unavailable result."""
+
+    try:
+        store = DecisionLedgerStore.open(path, project_id)
+    except LedgerPathError:
+        reason = MemoryUnavailableReason.PATH_UNAVAILABLE
+    except LedgerRuntimeError:
+        reason = MemoryUnavailableReason.RUNTIME_UNAVAILABLE
+    except LedgerIntegrityError:
+        reason = MemoryUnavailableReason.INTEGRITY_FAILURE
+    except (LedgerStoreError, OSError, sqlite3.DatabaseError):
+        reason = MemoryUnavailableReason.STORE_FAILURE
+    else:
+        return MemoryOpenResult(
+            status=MemoryOpenStatus.AVAILABLE,
+            store=store,
+            reason_code=None,
+        )
+    return MemoryOpenResult(
+        status=MemoryOpenStatus.MEMORY_UNAVAILABLE,
+        store=None,
+        reason_code=reason,
+    )

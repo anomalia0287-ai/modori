@@ -5,7 +5,9 @@ import sqlite3
 
 import pytest
 
+import modori.research_memory as research_memory
 import modori.research_memory.ledger_store as ledger_store
+from modori.core import Dataset, Pipeline
 from modori.research_memory.canonical import ZERO_HASH
 from modori.research_memory.ledger_contracts import (
     LedgerArtifactKind,
@@ -21,7 +23,11 @@ from modori.research_memory.ledger_store import (
     LedgerIntegrityError,
     LedgerPathError,
     LedgerRuntimeError,
+    MemoryOpenResult,
+    MemoryOpenStatus,
+    MemoryUnavailableReason,
     default_ledger_path,
+    open_decision_memory,
 )
 from modori.research_os import PrimaryAction, ResearchOsService, ResearchRequest
 from tests.test_research_memory_ledger_contracts import _request
@@ -150,6 +156,90 @@ def test_open_rejects_foreign_sqlite_without_mutating_its_bytes(tmp_path: Path) 
     assert path.read_bytes() == before
     assert not path.with_name(path.name + "-wal").exists()
     assert not path.with_name(path.name + "-shm").exists()
+
+
+def test_open_normalizes_malformed_database_bytes_without_mutating_source(
+    tmp_path: Path,
+) -> None:
+    path = _path(tmp_path)
+    path.parent.mkdir(parents=True)
+    path.write_bytes(b"not a sqlite database")
+    before = path.read_bytes()
+
+    with pytest.raises(LedgerIntegrityError, match="could not be verified"):
+        DecisionLedgerStore.open(path, "project-1")
+
+    assert path.read_bytes() == before
+    assert not path.with_name(path.name + "-wal").exists()
+    assert not path.with_name(path.name + "-shm").exists()
+
+
+def test_safe_open_returns_typed_memory_unavailable_and_core_still_resolves(
+    tmp_path: Path,
+) -> None:
+    path = _path(tmp_path)
+    path.parent.mkdir(parents=True)
+    path.write_bytes(b"not a sqlite database")
+
+    result = open_decision_memory(path, "project-1")
+
+    assert result.status is MemoryOpenStatus.MEMORY_UNAVAILABLE
+    assert result.reason_code is MemoryUnavailableReason.INTEGRITY_FAILURE
+    assert result.store is None
+    assert not hasattr(result, "path")
+    assert not hasattr(result, "error_message")
+    assert isinstance(ResearchOsService().resolve(_request()).action, PrimaryAction)
+    pipeline = Pipeline(Dataset.empty())
+    pipeline.recompute(dirty_from=None)
+    assert pipeline.current_dataset.df.empty
+    assert pipeline.current_dataset.variables == {}
+
+
+def test_safe_open_returns_only_a_verified_live_store_when_available(
+    tmp_path: Path,
+) -> None:
+    path = _path(tmp_path)
+    with DecisionLedgerStore.create(path, "project-1"):
+        pass
+
+    result = open_decision_memory(path, "project-1")
+
+    assert result.status is MemoryOpenStatus.AVAILABLE
+    assert result.reason_code is None
+    assert isinstance(result.store, DecisionLedgerStore)
+    with result.store as store:
+        assert store.verify().project_id == "project-1"
+
+
+def test_safe_open_maps_path_and_runtime_failures_to_closed_reasons(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    missing = open_decision_memory(_path(tmp_path), "project-1")
+    assert missing.status is MemoryOpenStatus.MEMORY_UNAVAILABLE
+    assert missing.reason_code is MemoryUnavailableReason.PATH_UNAVAILABLE
+
+    monkeypatch.setattr(ledger_store, "_has_required_runtime", lambda: False)
+    runtime = open_decision_memory(_path(tmp_path), "project-1")
+    assert runtime.status is MemoryOpenStatus.MEMORY_UNAVAILABLE
+    assert runtime.reason_code is MemoryUnavailableReason.RUNTIME_UNAVAILABLE
+
+
+def test_memory_unavailable_result_has_no_authority_bearing_fields() -> None:
+    result = MemoryOpenResult(
+        status=MemoryOpenStatus.MEMORY_UNAVAILABLE,
+        store=None,
+        reason_code=MemoryUnavailableReason.STORE_FAILURE,
+    )
+    assert set(result.__annotations__) == {"status", "store", "reason_code"}
+    assert result.store is None
+
+
+def test_memory_open_contract_is_exposed_by_the_research_memory_boundary() -> None:
+    assert research_memory.MemoryOpenResult is MemoryOpenResult
+    assert research_memory.MemoryOpenStatus is MemoryOpenStatus
+    assert research_memory.MemoryUnavailableReason is MemoryUnavailableReason
+    assert research_memory.open_decision_memory is open_decision_memory
 
 
 def test_default_path_uses_hashed_project_directory(
