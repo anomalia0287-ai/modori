@@ -1,11 +1,73 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
 
 from scripts import build_installer
-from scripts.installer_contract import PRODUCTION_APP_ID
+from scripts.installer_contract import (
+    DOWNGRADE_PROBE_VERSION,
+    PRODUCTION_APP_ID,
+    SMOKE_APP_ID,
+)
+
+
+def _configure_release_workspace(monkeypatch, tmp_path: Path):
+    monkeypatch.setattr(build_installer, "WORKSPACE", tmp_path)
+    script = tmp_path / "installer" / "modori.iss"
+    script.parent.mkdir(parents=True)
+    script.write_text("[Setup]\n", encoding="utf-8")
+    identity = build_installer.make_source_identity("0.1.0", "a" * 40, dirty=False)
+    monkeypatch.setattr(
+        build_installer,
+        "source_identity",
+        lambda **_kwargs: identity,
+    )
+    monkeypatch.setattr(
+        build_installer,
+        "find_iscc",
+        lambda _env=None: tmp_path / "ISCC.exe",
+    )
+    monkeypatch.setattr(build_installer, "read_inno_version", lambda: "6.7.3")
+    monkeypatch.setattr(
+        build_installer.importlib.metadata,
+        "version",
+        lambda name: "6.21.0"
+        if name == "pyinstaller"
+        else pytest.fail(f"unexpected package metadata lookup: {name}"),
+    )
+    return identity
+
+
+def _release_runner(
+    tmp_path: Path,
+    calls: list[list[str]],
+    *,
+    installer_smoke_exit: int = 0,
+):
+    def fake_runner(command: list[str]) -> int:
+        calls.append(command)
+        if any(item.endswith("package_windows.py") for item in command):
+            package = tmp_path / "dist" / "Modori"
+            qml = package / "_internal" / "modori" / "ui" / "qml"
+            qml.mkdir(parents=True)
+            (package / "Modori.exe").write_bytes(b"package")
+            (qml / "Main.qml").write_text("Item {}", encoding="utf-8")
+        if command and str(command[0]).endswith("ISCC.exe"):
+            output_arg = next(item for item in command if item.startswith("/DOutputDir="))
+            name_arg = next(
+                item for item in command if item.startswith("/DOutputBaseFilename=")
+            )
+            output = Path(output_arg.split("=", 1)[1])
+            output.mkdir(parents=True, exist_ok=True)
+            name = name_arg.split("=", 1)[1]
+            (output / f"{name}.exe").write_bytes(f"installer:{name}".encode())
+        if any(item.endswith("installer_smoke.py") for item in command):
+            return installer_smoke_exit
+        return 0
+
+    return fake_runner
 
 
 def test_find_iscc_prefers_explicit_environment(tmp_path: Path) -> None:
@@ -310,3 +372,146 @@ def test_failed_package_gate_never_invokes_compiler_or_publishes(
 
     assert not any("ISCC.exe" in " ".join(call) for call in calls)
     assert not (tmp_path / "dist" / "installer").exists()
+
+
+def test_installed_smoke_success_uses_isolated_identity_and_marks_production(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    identity = _configure_release_workspace(monkeypatch, tmp_path)
+    calls: list[list[str]] = []
+
+    result = build_installer.build_release(
+        build_installer.BuildOptions(with_installed_smoke=True),
+        runner=_release_runner(tmp_path, calls),
+    )
+
+    iscc_calls = [
+        command
+        for command in calls
+        if command and str(command[0]).endswith("ISCC.exe")
+    ]
+    assert len(iscc_calls) == 3
+    app_ids = [
+        next(item for item in command if item.startswith("/DAppIdValue=")).split(
+            "=", 1
+        )[1]
+        for command in iscc_calls
+    ]
+    assert app_ids == [
+        SMOKE_APP_ID.strip("{}"),
+        SMOKE_APP_ID.strip("{}"),
+        PRODUCTION_APP_ID.strip("{}"),
+    ]
+    versions = [
+        next(item for item in command if item.startswith("/DAppVersionValue=")).split(
+            "=", 1
+        )[1]
+        for command in iscc_calls
+    ]
+    assert versions == ["0.1.0", DOWNGRADE_PROBE_VERSION, "0.1.0"]
+    output_names = [
+        next(
+            item for item in command if item.startswith("/DOutputBaseFilename=")
+        ).split("=", 1)[1]
+        for command in iscc_calls
+    ]
+    assert output_names == [
+        f"Modori-Installer-Smoke-{identity.build_identity}",
+        "Modori-Installer-Smoke-Downgrade-0.0.9",
+        f"Modori-Setup-{identity.build_identity}",
+    ]
+
+    smoke_command = next(
+        command
+        for command in calls
+        if any(item.endswith("installer_smoke.py") for item in command)
+    )
+    assert calls.index(iscc_calls[1]) < calls.index(smoke_command) < calls.index(
+        iscc_calls[2]
+    )
+    smoke_installer = Path(smoke_command[2])
+    smoke_manifest_path = Path(
+        smoke_command[smoke_command.index("--manifest") + 1]
+    )
+    probe_installer = Path(
+        smoke_command[smoke_command.index("--downgrade-probe") + 1]
+    )
+    assert smoke_installer.is_file()
+    assert probe_installer.is_file()
+    smoke_manifest = json.loads(smoke_manifest_path.read_text(encoding="utf-8"))
+    assert smoke_manifest["app_id"] == SMOKE_APP_ID
+    assert smoke_manifest["channel"] == "internal-smoke"
+    assert smoke_manifest["smoke_only"] is True
+    assert smoke_manifest["verification"]["installed_lifecycle_smoke"] is False
+    assert smoke_manifest["verification"]["installed_lifecycle_app_id"] is None
+    probe_evidence = build_installer.FileEvidence.from_path(
+        probe_installer.name,
+        probe_installer,
+    )
+    assert smoke_manifest["downgrade_probe"] == {
+        "version": DOWNGRADE_PROBE_VERSION,
+        "filename": probe_installer.name,
+        "size_bytes": probe_evidence.size_bytes,
+        "sha256": probe_evidence.sha256,
+    }
+
+    assert result == tmp_path / "dist" / "installer" / identity.build_identity
+    production_manifest = json.loads(
+        (result / "release-manifest.json").read_text(encoding="utf-8")
+    )
+    assert production_manifest["app_id"] == PRODUCTION_APP_ID
+    assert production_manifest["verification"]["installed_lifecycle_smoke"] is True
+    assert (
+        production_manifest["verification"]["installed_lifecycle_app_id"]
+        == SMOKE_APP_ID
+    )
+
+
+def test_failed_installed_smoke_never_compiles_production_or_publishes(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    identity = _configure_release_workspace(monkeypatch, tmp_path)
+    calls: list[list[str]] = []
+
+    with pytest.raises(RuntimeError, match="installer_smoke.py"):
+        build_installer.build_release(
+            build_installer.BuildOptions(with_installed_smoke=True),
+            runner=_release_runner(tmp_path, calls, installer_smoke_exit=9),
+        )
+
+    iscc_calls = [
+        command
+        for command in calls
+        if command and str(command[0]).endswith("ISCC.exe")
+    ]
+    assert len(iscc_calls) == 2
+    assert all(
+        f"/DAppIdValue={SMOKE_APP_ID.strip('{}')}" in command
+        for command in iscc_calls
+    )
+    assert not any(
+        f"/DAppIdValue={PRODUCTION_APP_ID.strip('{}')}" in command
+        for command in iscc_calls
+    )
+    assert not any(
+        item.startswith("/DOutputBaseFilename=Modori-Setup-")
+        for command in iscc_calls
+        for item in command
+    )
+    smoke_commands = [
+        command
+        for command in calls
+        if any(item.endswith("installer_smoke.py") for item in command)
+    ]
+    assert len(smoke_commands) == 1
+    smoke_manifest_path = Path(
+        smoke_commands[0][smoke_commands[0].index("--manifest") + 1]
+    )
+    smoke_manifest = json.loads(smoke_manifest_path.read_text(encoding="utf-8"))
+    assert smoke_manifest["verification"]["installed_lifecycle_smoke"] is False
+    assert smoke_manifest["verification"]["installed_lifecycle_app_id"] is None
+    assert not (tmp_path / "dist" / "installer" / identity.build_identity).exists()
+    assert not list(tmp_path.rglob("release-manifest.json"))
+    assert not list(tmp_path.glob(".tmp/installer-build/*/candidate"))
