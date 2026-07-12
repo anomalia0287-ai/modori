@@ -117,16 +117,26 @@ def test_package_engine_smoke_cli_routes_exact_state_paths(
     exe = tmp_path / "Modori.exe"
     exe.write_text("", encoding="utf-8")
     state_root = tmp_path / "state-parent" / ".." / "state"
+    state_root.mkdir(parents=True)
     evidence_dir = tmp_path / "engine-evidence"
     evidence_dir.mkdir()
     captured_environment: dict[str, str] = {}
     subprocess_outputs: list[Path] = []
+    subprocess_inputs: list[Path] = []
 
     def fake_run(command, check, timeout, env):
         captured_environment.update(env)
         cache_path = Path(env["MODORI_CACHE_DIR"])
         assert not cache_path.exists()
         cache_path.mkdir(parents=True)
+        input_path = Path(command[2])
+        subprocess_inputs.append(input_path)
+        assert input_path.read_bytes() == (
+            evidence_dir / "reference.xlsx"
+        ).read_bytes()
+        report_dir = input_path.parent / "modori-output"
+        report_dir.mkdir()
+        (report_dir / "report.docx").write_bytes(b"report")
         output_path = Path(command[3])
         subprocess_outputs.append(output_path)
         with open(output_path, "w", encoding="utf-8") as handle:
@@ -165,6 +175,11 @@ def test_package_engine_smoke_cli_routes_exact_state_paths(
     )
     assert captured_environment["MPLCONFIGDIR"] == str(resolved_root / "matplotlib")
     assert captured_environment["QT_QPA_PLATFORM"] == "offscreen"
+    assert len(subprocess_inputs) == 1
+    assert subprocess_inputs[0].parent.parent == resolved_root
+    assert subprocess_inputs[0].parent.name.startswith("engine-smoke-input-")
+    assert subprocess_inputs[0].parent != evidence_dir
+    assert (subprocess_inputs[0].parent / "modori-output" / "report.docx").is_file()
     assert len(subprocess_outputs) == 1
     assert subprocess_outputs[0].parent == evidence_dir
     assert subprocess_outputs[0].name.startswith(".result-")

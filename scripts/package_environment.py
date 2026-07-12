@@ -162,6 +162,31 @@ class ExplicitDirectoryBoundary:
             )
         self.revalidate()
 
+    def create_direct_child(self, name: str) -> ExplicitDirectoryBoundary:
+        selected_name = Path(name)
+        if (
+            not name
+            or name in {".", ".."}
+            or selected_name.is_absolute()
+            or len(selected_name.parts) != 1
+            or selected_name.name != name
+        ):
+            raise ValueError("Explicit package child must be one safe path segment")
+        self.revalidate()
+        child = self.lexical_directory / name
+        if os.path.lexists(child):
+            raise RuntimeError(f"Explicit package child already exists: {child}")
+        try:
+            child.mkdir()
+        except FileExistsError as exc:
+            raise RuntimeError(
+                f"Explicit package child already exists: {child}"
+            ) from exc
+        self.revalidate()
+        child_boundary = ExplicitDirectoryBoundary.capture(child)
+        child_boundary.revalidate()
+        return child_boundary
+
 
 def without_workspace_reference_runtime(
     source: Mapping[str, str] | None = None,

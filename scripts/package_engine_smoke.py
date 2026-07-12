@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import shutil
 import subprocess
 import sys
 import uuid
@@ -95,11 +96,17 @@ def run_engine_smoke(
         evidence_boundary.require_empty()
     data_path = smoke_dir / "reference.xlsx"
     output_path = smoke_dir / "result.json"
+    runtime_input_boundary: ExplicitDirectoryBoundary | None = None
     if evidence_boundary is None:
         write_reference_xlsx(data_path)
         output_path.unlink(missing_ok=True)
         subprocess_output_path = output_path
+        subprocess_data_path = data_path
     else:
+        if state_root is None:
+            raise ValueError(
+                "Explicit engine evidence requires an explicit runtime state root"
+            )
         token = uuid.uuid4().hex
         transient_data_path = smoke_dir / f".reference-{token}.xlsx"
         subprocess_output_path = smoke_dir / f".result-{token}.json"
@@ -108,6 +115,15 @@ def run_engine_smoke(
         evidence_boundary.require_regular_child(transient_data_path)
         transient_data_path.rename(data_path)
         evidence_boundary.require_regular_child(data_path)
+        state_boundary = ExplicitDirectoryBoundary.capture(state_root)
+        runtime_input_boundary = state_boundary.create_direct_child(
+            f"engine-smoke-input-{token}"
+        )
+        subprocess_data_path = (
+            runtime_input_boundary.lexical_directory / "reference.xlsx"
+        )
+        shutil.copyfile(data_path, subprocess_data_path)
+        runtime_input_boundary.require_regular_child(subprocess_data_path)
     environment = packaged_subprocess_environment(
         "packaged-engine-runtime",
         state_root=state_root,
@@ -116,11 +132,17 @@ def run_engine_smoke(
     expected_cache_dir = expected_cache_path.resolve()
     if evidence_boundary is not None:
         evidence_boundary.revalidate()
+        assert runtime_input_boundary is not None
+        runtime_input_boundary.revalidate()
     completed = subprocess.run(
         [
             str(exe_path),
             "--engine-smoke",
-            str(data_path.resolve() if evidence_boundary is None else data_path),
+            str(
+                subprocess_data_path.resolve()
+                if evidence_boundary is None
+                else subprocess_data_path
+            ),
             str(
                 subprocess_output_path.resolve()
                 if evidence_boundary is None
@@ -133,6 +155,8 @@ def run_engine_smoke(
     )
     if evidence_boundary is not None:
         evidence_boundary.revalidate()
+        assert runtime_input_boundary is not None
+        runtime_input_boundary.revalidate()
     if completed.returncode != 0:
         return completed.returncode
     if evidence_boundary is not None:
