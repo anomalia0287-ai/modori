@@ -12,7 +12,7 @@ from pathlib import Path
 import re
 import sqlite3
 import sys
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from modori.path_policy import resolve_secure_file_path
 from modori.research_memory.canonical import (
@@ -34,6 +34,9 @@ from modori.research_memory.ledger_contracts import (
     ResearchRequestSnapshot,
 )
 from modori.research_os import ResearchRequest
+
+if TYPE_CHECKING:
+    from modori.research_memory.evidence_bundle import EvidenceBundle
 
 
 class LedgerStoreError(RuntimeError):
@@ -701,6 +704,27 @@ class DecisionLedgerStore:
             raise LedgerIntegrityError(
                 "materialized request cannot be restored"
             ) from exc
+
+    def export_evidence_bundle(
+        self,
+        *,
+        exported_at_utc: str | None,
+    ) -> EvidenceBundle:
+        """Create portable evidence only after a full physical integrity check."""
+
+        from modori.research_memory.evidence_bundle import EvidenceBundle
+
+        self.verify(full_integrity=True)
+        artifacts = self.artifacts()
+        events = self.events()
+        head = self.head
+        return EvidenceBundle.create(
+            source_project_id=self._project_id,
+            head=head,
+            artifacts=artifacts,
+            events=events,
+            exported_at_utc=exported_at_utc,
+        )
 
     def _validate_header_and_schema(self) -> tuple[str, str]:
         application_id = self._connection.execute("PRAGMA application_id").fetchone()[0]

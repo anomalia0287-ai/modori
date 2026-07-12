@@ -319,6 +319,29 @@ def test_append_commits_events_artifacts_and_snapshot_atomically(
         assert report.full_integrity_check is True
 
 
+def test_export_runs_full_integrity_before_emitting_a_complete_bundle(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    with DecisionLedgerStore.create(_path(tmp_path), "project-1") as store:
+        store.append(_genesis_commit(_request()))
+        observed_checks: list[bool] = []
+        real_verify = store.verify
+
+        def recording_verify(*, full_integrity: bool = False):
+            observed_checks.append(full_integrity)
+            return real_verify(full_integrity=full_integrity)
+
+        monkeypatch.setattr(store, "verify", recording_verify)
+        bundle = store.export_evidence_bundle(exported_at_utc=None)
+
+        assert observed_checks == [True]
+        assert bundle.source_project_id == "project-1"
+        assert bundle.head == store.head
+        assert bundle.events == store.events()
+        assert bundle.verify() is None
+
+
 def test_stale_expected_head_rolls_back_every_write(tmp_path: Path) -> None:
     path = _path(tmp_path)
     first = DecisionLedgerStore.create(path, "project-1")
