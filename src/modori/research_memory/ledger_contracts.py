@@ -226,9 +226,10 @@ def _validate_payload(
     event_kind: LedgerEventKind,
     payload: Mapping[str, Any],
     subjects: tuple[str, ...],
-) -> dict[str, object]:
+) -> tuple[dict[str, object], bytes]:
     _require_exact_keys(payload, _PAYLOAD_FIELDS[event_kind], f"{event_kind.value} payload")
-    copied = json.loads(canonical_bytes(dict(payload)).decode("utf-8"))
+    payload_bytes = canonical_bytes(dict(payload))
+    copied = json.loads(payload_bytes.decode("utf-8"))
     artifact_ids: list[str] = []
     for key, value in copied.items():
         if key.endswith("_artifact_id"):
@@ -260,7 +261,7 @@ def _validate_payload(
     if event_kind is LedgerEventKind.MIGRATION_APPLIED:
         if copied["to_schema_version"] <= copied["from_schema_version"]:
             raise LedgerContractError("migration must increase schema version")
-    return copied
+    return copied, payload_bytes
 
 
 @dataclass(frozen=True)
@@ -342,7 +343,7 @@ class LedgerEvent:
             raise LedgerContractError("project_created is valid only at genesis")
         _require_digest(previous_event_hash, "previous_event_hash")
         recorded_at_utc = _require_utc(recorded_at_utc, "recorded_at_utc")
-        payload_mapping = _validate_payload(
+        payload_mapping, canonical_payload = _validate_payload(
             event_kind,
             _require_mapping(payload, "event payload"),
             subject_artifact_ids,
@@ -366,7 +367,7 @@ class LedgerEvent:
             sequence=sequence,
             event_kind=event_kind,
             subject_artifact_ids=subject_artifact_ids,
-            payload_bytes=canonical_bytes(payload_mapping),
+            payload_bytes=canonical_payload,
             recorded_at_utc=recorded_at_utc,
             canonical_body=body_bytes,
             body_digest=body_digest,

@@ -4,6 +4,7 @@ from dataclasses import replace
 
 import pytest
 
+import modori.research_memory.ledger_contracts as ledger_contracts
 from modori.research_memory.canonical import ZERO_HASH
 from modori.research_memory.ledger_contracts import (
     ImportedAssertion,
@@ -187,6 +188,31 @@ def test_event_body_is_content_addressed_and_chained() -> None:
     assert event.verify() is None
     assert event.previous_event_hash == ZERO_HASH
     assert event.event_hash != event.body_digest
+    assert LedgerEvent.from_mapping(event.to_mapping()) == event
+
+
+def test_event_create_reuses_the_single_canonical_payload(monkeypatch) -> None:
+    calls: list[object] = []
+    original = ledger_contracts.canonical_bytes
+
+    def counted(value: object) -> bytes:
+        calls.append(value)
+        return original(value)
+
+    monkeypatch.setattr(ledger_contracts, "canonical_bytes", counted)
+    payload = {"resulting_snapshot_artifact_id": "a" * 64}
+    event = LedgerEvent.create(
+        project_id="project-1",
+        event_id="event:project:1",
+        sequence=1,
+        event_kind=LedgerEventKind.PROJECT_CREATED,
+        subject_artifact_ids=("a" * 64,),
+        payload=payload,
+        previous_event_hash=ZERO_HASH,
+        recorded_at_utc=None,
+    )
+    assert len(calls) == 2
+    assert event.payload_bytes == original(payload)
     assert LedgerEvent.from_mapping(event.to_mapping()) == event
 
 
