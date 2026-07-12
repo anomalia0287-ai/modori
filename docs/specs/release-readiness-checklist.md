@@ -267,14 +267,21 @@ environment; the R reference runtime remains limited to pytest and the slow
 statistical gate.
 
 After the package build, the builder creates a frozen snapshot of the complete
-package tree and the exact `.iss` bytes under its unique staging directory. All
-three package smokes use the snapshot executable. Smoke, downgrade-probe, and
-production compilation use the same frozen package and the same frozen
-installer script. Before candidate creation, the builder freshly rechecks
-HEAD/dirty identity plus both frozen and live content digests. Any source,
-snapshot, or live-input drift fails closed; the unique staging tree is preserved
-on failure. Manifest evidence comes from snapshot bytes while retaining the
-logical `dist/Modori/Modori.exe` and `installer/modori.iss` display paths.
+package tree and the exact `.iss` bytes under its unique staging directory. The
+lexical workspace-to-package boundary and every descendant reject any link or
+junction/reparse point before traversal. All three package smokes use the
+snapshot executable. Smoke and production compilation use the full frozen
+package; a staging-owned tiny downgrade payload contains only its sentinel
+`Modori.exe`. All three compiler calls use the same frozen installer script and
+revalidate the exact selected compiler evidence before and after every ISCC
+invocation. The builder, after candidate materialization, requires exactly three
+regular non-reparse candidate files, then freshly rechecks HEAD/dirty identity,
+frozen/live content digests, and compiler evidence immediately before return or
+publication. Any source,
+snapshot, toolchain, or live-input drift fails closed; the unique staging tree
+is preserved on failure. Manifest evidence comes from snapshot bytes while
+retaining the logical `dist/Modori/Modori.exe` and `installer/modori.iss`
+display paths.
 
 This artifact contract is unsigned, offline, per-user, internal-only, and not a
 public-distribution trust claim. The manifest records `signed: false`; the Inno

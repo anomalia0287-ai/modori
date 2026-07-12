@@ -31,7 +31,7 @@ AUDITED_FILE_OPERATION_FILES = {
 
 FILE_OPERATION_PATTERN = re.compile(
     r"(?:\.(?:write_text|write_bytes|mkdir|unlink|replace|rmdir|resolve|lstat)"
-    r"|shutil\.(?:copyfile|copytree))\s*\("
+    r"|shutil\.(?:copyfile|copytree)|os\.scandir)\s*\("
 )
 AUDIT_DOCUMENT = Path("docs/security/file-operations-audit-2026-06-29.md")
 
@@ -97,5 +97,12 @@ def test_installer_builder_audit_documents_frozen_staging_boundary() -> None:
         "selected compiler",
         "fixed file version",
         "SHA256",
+        "before and after every ISCC",
+        "tiny downgrade",
+        "lexical",
+        "junction/reparse",
+        "after candidate materialization",
+        "three regular non-reparse",
+        "scandir",
     ):
         assert required_text in row

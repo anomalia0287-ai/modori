@@ -185,7 +185,7 @@ def test_release_checklist_documents_frozen_lifecycle_publication_boundary() -> 
     for required_text in (
         "build_installer.py --staging-only",
         "frozen snapshot",
-        "same frozen package",
+        "staging-owned tiny downgrade payload",
         "same frozen installer script",
         "cannot publish",
         "installed lifecycle",
@@ -194,5 +194,10 @@ def test_release_checklist_documents_frozen_lifecycle_publication_boundary() -> 
         "actual fixed file version",
         "compiler SHA256",
         "recorded separately",
+        "before and after every ISCC",
+        "lexical",
+        "junction/reparse",
+        "after candidate materialization",
+        "three regular non-reparse",
     ):
         assert required_text in installer_gate

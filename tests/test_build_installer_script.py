@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -91,6 +92,19 @@ def _write_complete_package(root: Path, *, executable_bytes: bytes = b"package")
     qml.mkdir(parents=True)
     (root / "Modori.exe").write_bytes(executable_bytes)
     (qml / "Main.qml").write_text("Item {}", encoding="utf-8")
+
+
+def _create_directory_junction(link: Path, target: Path) -> None:
+    completed = subprocess.run(
+        ["cmd.exe", "/d", "/c", "mklink", "/J", str(link), str(target)],
+        check=False,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+    )
+    if completed.returncode != 0:
+        pytest.skip(f"directory junctions are unavailable: {completed.stderr}")
+    assert link.is_junction()
 
 
 def _mock_inno_registration(
@@ -438,6 +452,81 @@ def test_tree_inventory_digest_detects_same_count_same_size_byte_mutation(
     assert before.digest != after.digest
 
 
+def test_tree_inventory_rejects_package_root_junction(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    real_package = tmp_path / "real-package"
+    real_package.mkdir()
+    (real_package / "payload.bin").write_bytes(b"payload")
+    package_link = workspace / "package"
+    _create_directory_junction(package_link, real_package)
+    monkeypatch.setattr(build_installer, "WORKSPACE", workspace)
+
+    with pytest.raises(ValueError, match="link or junction/reparse"):
+        build_installer.inventory_tree(package_link)
+
+
+def test_tree_inventory_rejects_workspace_relative_ancestor_junction(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    real_dist = tmp_path / "real-dist"
+    package = real_dist / "Modori"
+    package.mkdir(parents=True)
+    (package / "payload.bin").write_bytes(b"payload")
+    dist_link = workspace / "dist"
+    _create_directory_junction(dist_link, real_dist)
+    monkeypatch.setattr(build_installer, "WORKSPACE", workspace)
+
+    with pytest.raises(ValueError, match="link or junction/reparse"):
+        build_installer.inventory_tree(dist_link / "Modori")
+
+
+def test_tree_inventory_rejects_descendant_junction(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    workspace = tmp_path / "workspace"
+    package = workspace / "package"
+    package.mkdir(parents=True)
+    (package / "payload.bin").write_bytes(b"payload")
+    outside = tmp_path / "outside-junction"
+    outside.mkdir()
+    (outside / "escaped.bin").write_bytes(b"escaped")
+    _create_directory_junction(package / "escaped", outside)
+    monkeypatch.setattr(build_installer, "WORKSPACE", workspace)
+
+    with pytest.raises(ValueError, match="link or junction/reparse"):
+        build_installer.inventory_tree(package)
+
+
+def test_tree_inventory_rejects_descendant_directory_symlink(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    workspace = tmp_path / "workspace"
+    package = workspace / "package"
+    package.mkdir(parents=True)
+    (package / "payload.bin").write_bytes(b"payload")
+    outside = tmp_path / "outside-symlink"
+    outside.mkdir()
+    (outside / "escaped.bin").write_bytes(b"escaped")
+    escaped = package / "escaped"
+    try:
+        escaped.symlink_to(outside, target_is_directory=True)
+    except OSError as exc:
+        pytest.skip(f"directory symlinks are unavailable: {exc}")
+    monkeypatch.setattr(build_installer, "WORKSPACE", workspace)
+
+    with pytest.raises(ValueError, match="link or junction/reparse"):
+        build_installer.inventory_tree(package)
+
+
 def test_freeze_release_inputs_rejects_source_mutation_during_copy(
     tmp_path: Path,
 ) -> None:
@@ -741,15 +830,23 @@ def test_build_release_freezes_inputs_before_all_smokes_and_compilers(
         if command and str(command[0]).endswith("ISCC.exe")
     ]
     assert len(iscc_calls) == 3
-    snapshot_package_roots = {
+    package_roots = [
         Path(
             next(item for item in command if item.startswith("/DPackageRoot=")).split(
                 "=", 1
             )[1]
         ).resolve()
         for command in iscc_calls
-    }
-    assert snapshot_package_roots == {snapshot_executable.parent}
+    ]
+    assert package_roots[0] == snapshot_executable.parent
+    assert package_roots[2] == snapshot_executable.parent
+    probe_package = package_roots[1]
+    assert probe_package != snapshot_executable.parent
+    assert probe_package.is_relative_to(result.parent)
+    assert {path.name for path in probe_package.iterdir()} == {"Modori.exe"}
+    assert (probe_package / "Modori.exe").read_bytes() == (
+        b"downgrade probe must never install"
+    )
     snapshot_scripts = {Path(command[-1]).resolve() for command in iscc_calls}
     assert len(snapshot_scripts) == 1
     snapshot_script = snapshot_scripts.pop()
@@ -1015,7 +1112,7 @@ def test_live_input_drift_after_snapshot_prevents_candidate_publication(
     staging_directories = list((tmp_path / ".tmp" / "installer-build").iterdir())
     assert len(staging_directories) == 1
     assert (staging_directories[0] / "snapshot").is_dir()
-    assert not (staging_directories[0] / "candidate").exists()
+    assert (staging_directories[0] / "candidate").is_dir()
 
 
 @pytest.mark.parametrize("mutated_input", ["package", "installer script"])
@@ -1055,7 +1152,7 @@ def test_frozen_input_drift_after_snapshot_prevents_candidate_publication(
     staging_directories = list((tmp_path / ".tmp" / "installer-build").iterdir())
     assert len(staging_directories) == 1
     assert (staging_directories[0] / "snapshot").is_dir()
-    assert not (staging_directories[0] / "candidate").exists()
+    assert (staging_directories[0] / "candidate").is_dir()
 
 
 @pytest.mark.parametrize(
@@ -1089,4 +1186,169 @@ def test_source_head_or_dirty_drift_before_candidate_return_is_rejected(
     staging_directories = list((tmp_path / ".tmp" / "installer-build").iterdir())
     assert len(staging_directories) == 1
     assert (staging_directories[0] / "snapshot").is_dir()
+    assert (staging_directories[0] / "candidate").is_dir()
+
+
+@pytest.mark.parametrize(
+    ("mutation_boundary", "expected_iscc_calls"),
+    [
+        ("after-package-build", 0),
+        ("after-smoke-compile", 1),
+        ("between-smoke-and-production", 2),
+    ],
+)
+def test_compiler_drift_at_release_boundaries_fails_closed(
+    monkeypatch,
+    tmp_path: Path,
+    mutation_boundary: str,
+    expected_iscc_calls: int,
+) -> None:
+    identity = _configure_release_workspace(monkeypatch, tmp_path)
+    compiler = tmp_path / "ISCC.exe"
+    binding = {"sha256": "A" * 64}
+
+    def read_binding(selected: Path) -> build_installer.InnoToolchainEvidence:
+        assert selected == compiler
+        return build_installer.InnoToolchainEvidence(
+            compiler=compiler.resolve(),
+            registered_version="6.7.3",
+            compiler_file_version="0.0.0.0",
+            compiler_sha256=binding["sha256"],
+        )
+
+    monkeypatch.setattr(build_installer, "read_inno_version", read_binding)
+    calls: list[list[str]] = []
+    base_runner = _release_runner(tmp_path, calls)
+
+    def drifting_runner(command: list[str]) -> int:
+        result = base_runner(command)
+        is_iscc = bool(command and str(command[0]).endswith("ISCC.exe"))
+        iscc_count = sum(
+            bool(call and str(call[0]).endswith("ISCC.exe")) for call in calls
+        )
+        if (
+            mutation_boundary == "after-package-build"
+            and any(item.endswith("package_windows.py") for item in command)
+        ):
+            binding["sha256"] = "B" * 64
+        elif mutation_boundary == "after-smoke-compile" and is_iscc and iscc_count == 1:
+            binding["sha256"] = "B" * 64
+        elif mutation_boundary == "between-smoke-and-production" and any(
+            item.endswith("installer_smoke.py") for item in command
+        ):
+            binding["sha256"] = "B" * 64
+        return result
+
+    with pytest.raises(RuntimeError, match="compiler.*changed"):
+        build_installer.build_release(
+            build_installer.BuildOptions(with_installed_smoke=True),
+            runner=drifting_runner,
+        )
+
+    iscc_calls = [
+        command
+        for command in calls
+        if command and str(command[0]).endswith("ISCC.exe")
+    ]
+    assert len(iscc_calls) == expected_iscc_calls
+    assert not (tmp_path / "dist" / "installer" / identity.build_identity).exists()
+    staging_directories = list((tmp_path / ".tmp" / "installer-build").iterdir())
+    assert len(staging_directories) == 1
+    assert (staging_directories[0] / "snapshot").is_dir()
     assert not (staging_directories[0] / "candidate").exists()
+
+
+@pytest.mark.parametrize("candidate_fault", ["extra-file", "expected-link"])
+def test_candidate_runtime_inventory_rejects_extra_or_reparse_entries(
+    monkeypatch,
+    tmp_path: Path,
+    candidate_fault: str,
+) -> None:
+    _configure_release_workspace(monkeypatch, tmp_path)
+    calls: list[list[str]] = []
+    original_checksum = build_installer.write_checksum_file
+
+    def inject_candidate_fault(path: Path, evidence) -> None:
+        original_checksum(path, evidence)
+        candidate = path.parent
+        if candidate_fault == "extra-file":
+            (candidate / "unexpected.bin").write_bytes(b"unexpected")
+            return
+        outside = tmp_path / "outside-manifest.json"
+        outside.write_bytes(b"outside")
+        manifest = candidate / "release-manifest.json"
+        manifest.unlink()
+        try:
+            manifest.symlink_to(outside)
+        except OSError as exc:
+            pytest.skip(f"file symlinks are unavailable: {exc}")
+
+    monkeypatch.setattr(build_installer, "write_checksum_file", inject_candidate_fault)
+
+    with pytest.raises(RuntimeError, match="candidate"):
+        build_installer.build_release(
+            build_installer.BuildOptions(staging_only=True),
+            runner=_release_runner(tmp_path, calls),
+        )
+
+    staging_directories = list((tmp_path / ".tmp" / "installer-build").iterdir())
+    assert len(staging_directories) == 1
+    assert (staging_directories[0] / "candidate").is_dir()
+    assert not (tmp_path / "dist" / "installer").exists()
+
+
+@pytest.mark.parametrize(
+    "drifted_input",
+    ["source", "package", "installer-script", "compiler"],
+)
+def test_post_candidate_drift_prevents_return_or_publication(
+    monkeypatch,
+    tmp_path: Path,
+    drifted_input: str,
+) -> None:
+    identity = _configure_release_workspace(monkeypatch, tmp_path)
+    state = {"source_drift": False, "compiler_sha256": "A" * 64}
+    drifted_identity = build_installer.make_source_identity(
+        "0.1.0", "b" * 40, dirty=False
+    )
+    monkeypatch.setattr(
+        build_installer,
+        "source_identity",
+        lambda **_kwargs: drifted_identity if state["source_drift"] else identity,
+    )
+    monkeypatch.setattr(
+        build_installer,
+        "read_inno_version",
+        lambda selected: build_installer.InnoToolchainEvidence(
+            compiler=selected.resolve(),
+            registered_version="6.7.3",
+            compiler_file_version="0.0.0.0",
+            compiler_sha256=state["compiler_sha256"],
+        ),
+    )
+    original_checksum = build_installer.write_checksum_file
+
+    def drift_after_candidate(path: Path, evidence) -> None:
+        original_checksum(path, evidence)
+        if drifted_input == "source":
+            state["source_drift"] = True
+        elif drifted_input == "package":
+            (tmp_path / "dist" / "Modori" / "Modori.exe").write_bytes(b"mutated")
+        elif drifted_input == "installer-script":
+            (tmp_path / "installer" / "modori.iss").write_bytes(b"[Files]\n")
+        else:
+            state["compiler_sha256"] = "B" * 64
+
+    monkeypatch.setattr(build_installer, "write_checksum_file", drift_after_candidate)
+    calls: list[list[str]] = []
+
+    with pytest.raises(RuntimeError, match="drift|changed"):
+        build_installer.build_release(
+            build_installer.BuildOptions(staging_only=True),
+            runner=_release_runner(tmp_path, calls),
+        )
+
+    staging_directories = list((tmp_path / ".tmp" / "installer-build").iterdir())
+    assert len(staging_directories) == 1
+    assert (staging_directories[0] / "candidate").is_dir()
+    assert not (tmp_path / "dist" / "installer").exists()

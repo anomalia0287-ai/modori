@@ -8,6 +8,7 @@ import importlib.metadata
 import os
 import platform
 import shutil
+import stat
 import subprocess
 import sys
 import uuid
@@ -93,6 +94,20 @@ class InnoToolchainEvidence:
 
 
 @dataclass(frozen=True)
+class ToolchainEvidence:
+    inno: InnoToolchainEvidence
+    pyinstaller_version: str
+    python_version: str
+
+    def manifest_tools(self) -> dict[str, str]:
+        return {
+            **self.inno.manifest_tools(),
+            "pyinstaller": self.pyinstaller_version,
+            "python": self.python_version,
+        }
+
+
+@dataclass(frozen=True)
 class TreeFile:
     relative_path: str
     size_bytes: int
@@ -145,26 +160,124 @@ def file_content_digest(path: Path) -> FileContentDigest:
     return FileContentDigest(size_bytes=after.st_size, sha256=digest)
 
 
-def inventory_tree(root: Path) -> TreeInventory:
-    selected_root = root.resolve()
-    if not selected_root.is_dir():
-        raise ValueError(f"Tree root does not exist: {selected_root}")
-    entries = sorted(
-        selected_root.rglob("*"),
-        key=lambda path: path.relative_to(selected_root).as_posix(),
+def _lexical_absolute(path: Path) -> Path:
+    return Path(os.path.abspath(path))
+
+
+def _is_reparse_point(metadata: os.stat_result) -> bool:
+    reparse_attribute = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)
+    return stat.S_ISLNK(metadata.st_mode) or bool(
+        getattr(metadata, "st_file_attributes", 0) & reparse_attribute
     )
-    directories: list[str] = []
+
+
+def _tree_lstat(path: Path) -> os.stat_result:
+    metadata = path.lstat()
+    if _is_reparse_point(metadata):
+        raise ValueError(f"Tree path contains a link or junction/reparse point: {path}")
+    return metadata
+
+
+def _require_resolved_inside(path: Path, resolved_root: Path) -> None:
+    resolved = path.resolve(strict=True)
+    try:
+        resolved.relative_to(resolved_root)
+    except ValueError as exc:
+        raise ValueError(
+            f"Tree entry resolves outside its lexical root: {path} -> {resolved}"
+        ) from exc
+
+
+def _validated_tree_root(root: Path) -> tuple[Path, Path]:
+    boundary = _lexical_absolute(WORKSPACE)
+    selected_root = _lexical_absolute(root)
+    try:
+        relative = selected_root.relative_to(boundary)
+    except ValueError as exc:
+        raise ValueError(
+            f"Tree root is outside the workspace boundary: {selected_root}"
+        ) from exc
+
+    component = boundary
+    boundary_metadata = _tree_lstat(component)
+    if not stat.S_ISDIR(boundary_metadata.st_mode):
+        raise ValueError(f"Workspace boundary is not a directory: {boundary}")
+    for part in relative.parts:
+        component /= part
+        component_metadata = _tree_lstat(component)
+        if not stat.S_ISDIR(component_metadata.st_mode):
+            raise ValueError(f"Tree root component is not a directory: {component}")
+    resolved_root = selected_root.resolve(strict=True)
+    return selected_root, resolved_root
+
+
+def _safe_tree_file_digest(path: Path, resolved_root: Path) -> FileContentDigest:
+    before = _tree_lstat(path)
+    if not stat.S_ISREG(before.st_mode):
+        raise ValueError(f"Tree entry is not a regular file: {path}")
+    _require_resolved_inside(path, resolved_root)
+    content = file_content_digest(path)
+    after = _tree_lstat(path)
+    before_signature = (
+        before.st_mode,
+        before.st_size,
+        before.st_mtime_ns,
+        before.st_ctime_ns,
+        before.st_ino,
+        getattr(before, "st_file_attributes", 0),
+    )
+    after_signature = (
+        after.st_mode,
+        after.st_size,
+        after.st_mtime_ns,
+        after.st_ctime_ns,
+        after.st_ino,
+        getattr(after, "st_file_attributes", 0),
+    )
+    if before_signature != after_signature:
+        raise RuntimeError(f"Tree file changed while hashing: {path}")
+    return content
+
+
+def inventory_tree(root: Path) -> TreeInventory:
+    selected_root, resolved_root = _validated_tree_root(root)
+    pending = [selected_root]
+    directory_paths: list[Path] = []
+    file_paths: list[Path] = []
+    while pending:
+        directory = pending.pop()
+        directory_metadata = _tree_lstat(directory)
+        if not stat.S_ISDIR(directory_metadata.st_mode):
+            raise ValueError(f"Tree entry is not a directory: {directory}")
+        _require_resolved_inside(directory, resolved_root)
+        with os.scandir(directory) as scanned:
+            entries = sorted(scanned, key=lambda entry: entry.name)
+        for entry in entries:
+            path = directory / entry.name
+            metadata = entry.stat(follow_symlinks=False)
+            if _is_reparse_point(metadata):
+                raise ValueError(
+                    f"Tree path contains a link or junction/reparse point: {path}"
+                )
+            _require_resolved_inside(path, resolved_root)
+            if stat.S_ISDIR(metadata.st_mode):
+                directory_paths.append(path)
+                pending.append(path)
+            elif stat.S_ISREG(metadata.st_mode):
+                file_paths.append(path)
+            else:
+                raise ValueError(f"Tree contains an unsupported entry: {path}")
+
+    directories = sorted(
+        path.relative_to(selected_root).as_posix() for path in directory_paths
+    )
     files: list[TreeFile] = []
-    for path in entries:
+    for path in sorted(
+        file_paths,
+        key=lambda item: item.relative_to(selected_root).as_posix(),
+    ):
         relative = path.relative_to(selected_root).as_posix()
-        if path.is_symlink():
-            raise ValueError(f"Tree contains a symbolic link: {path}")
-        if path.is_dir():
-            directories.append(relative)
-            continue
-        if not path.is_file():
-            raise ValueError(f"Tree contains an unsupported entry: {path}")
-        content = file_content_digest(path)
+        content = _safe_tree_file_digest(path, resolved_root)
         files.append(
             TreeFile(
                 relative_path=relative,
@@ -192,12 +305,57 @@ def inventory_tree(root: Path) -> TreeInventory:
     )
 
 
+def copy_inventory_tree(
+    source: Path,
+    destination: Path,
+    inventory: TreeInventory,
+) -> None:
+    source_root, resolved_root = _validated_tree_root(source)
+    destination_root = _lexical_absolute(destination)
+    destination_root.mkdir()
+    for relative in inventory.directories:
+        source_directory = source_root / Path(relative)
+        metadata = _tree_lstat(source_directory)
+        if not stat.S_ISDIR(metadata.st_mode):
+            raise RuntimeError(
+                f"Snapshot source directory changed before copy: {source_directory}"
+            )
+        _require_resolved_inside(source_directory, resolved_root)
+        (destination_root / Path(relative)).mkdir(parents=True)
+    for file in inventory.files:
+        source_file = source_root / Path(file.relative_path)
+        before = _tree_lstat(source_file)
+        if not stat.S_ISREG(before.st_mode):
+            raise RuntimeError(f"Snapshot source file changed before copy: {source_file}")
+        _require_resolved_inside(source_file, resolved_root)
+        destination_file = destination_root / Path(file.relative_path)
+        destination_file.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(source_file, destination_file)
+        after = _tree_lstat(source_file)
+        if _is_reparse_point(after) or (
+            before.st_mode,
+            before.st_size,
+            before.st_mtime_ns,
+            before.st_ctime_ns,
+            before.st_ino,
+            getattr(before, "st_file_attributes", 0),
+        ) != (
+            after.st_mode,
+            after.st_size,
+            after.st_mtime_ns,
+            after.st_ctime_ns,
+            after.st_ino,
+            getattr(after, "st_file_attributes", 0),
+        ):
+            raise RuntimeError(f"Snapshot source file changed during copy: {source_file}")
+
+
 def freeze_release_inputs(
     *,
     source_package: Path,
     source_script: Path,
     staging: Path,
-    tree_copier: Callable[[Path, Path], object] = shutil.copytree,
+    tree_copier: Callable[[Path, Path], object] | None = None,
     file_copier: Callable[[Path, Path], object] = shutil.copyfile,
 ) -> FrozenReleaseInputs:
     package_before = inventory_tree(source_package)
@@ -206,7 +364,10 @@ def freeze_release_inputs(
     snapshot.mkdir()
     snapshot_package = snapshot / "package"
     snapshot_script = snapshot / "modori.iss"
-    tree_copier(source_package, snapshot_package)
+    if tree_copier is None:
+        copy_inventory_tree(source_package, snapshot_package, package_before)
+    else:
+        tree_copier(source_package, snapshot_package)
     file_copier(source_script, snapshot_script)
 
     package_after = inventory_tree(source_package)
@@ -237,6 +398,7 @@ def require_release_inputs_unchanged(
     live_package: Path,
     live_script: Path,
     frozen: FrozenReleaseInputs,
+    inno: InnoToolchainEvidence,
 ) -> None:
     try:
         current_identity = source_identity(staging_only=staging_only)
@@ -278,6 +440,7 @@ def require_release_inputs_unchanged(
             f"initial={frozen.script_digest.sha256}; "
             f"current={current_script.sha256}"
         )
+    require_inno_toolchain_unchanged(inno)
 
 
 def find_iscc(environment: Mapping[str, str] | None = None) -> Path:
@@ -419,7 +582,16 @@ def read_inno_version(compiler: Path) -> InnoToolchainEvidence:
     )
 
 
-def read_tool_versions(compiler: Path) -> dict[str, str]:
+def require_inno_toolchain_unchanged(expected: InnoToolchainEvidence) -> None:
+    current = read_inno_version(expected.compiler)
+    if current != expected:
+        raise RuntimeError(
+            "Selected compiler binding changed during installer build: "
+            f"expected={expected}; current={current}"
+        )
+
+
+def read_tool_versions(compiler: Path) -> ToolchainEvidence:
     try:
         pyinstaller_version = importlib.metadata.version("pyinstaller")
     except importlib.metadata.PackageNotFoundError as exc:
@@ -428,11 +600,11 @@ def read_tool_versions(compiler: Path) -> dict[str, str]:
     if not python_version:
         raise RuntimeError("Python version metadata is empty")
     inno = read_inno_version(compiler)
-    return {
-        **inno.manifest_tools(),
-        "pyinstaller": pyinstaller_version,
-        "python": python_version,
-    }
+    return ToolchainEvidence(
+        inno=inno,
+        pyinstaller_version=pyinstaller_version,
+        python_version=python_version,
+    )
 
 
 def git_output(command: str, *arguments: str) -> str:
@@ -513,7 +685,7 @@ def run_required(command: list[str], runner=run_command) -> None:
 
 def compile_installer(
     *,
-    compiler: Path,
+    inno: InnoToolchainEvidence,
     installer_script: Path,
     identity: SourceIdentity,
     app_id: str,
@@ -527,7 +699,7 @@ def compile_installer(
 ) -> Path:
     selected_version = identity.version if version is None else version
     command = build_iscc_command(
-        compiler=compiler,
+        compiler=inno.compiler,
         script=installer_script,
         app_id=app_id,
         app_name=app_name,
@@ -538,7 +710,13 @@ def compile_installer(
         output_base_filename=output_base_filename,
         allow_custom_dir=allow_custom_dir,
     )
-    run_required(command, runner)
+    require_inno_toolchain_unchanged(inno)
+    try:
+        result = runner(command)
+    finally:
+        require_inno_toolchain_unchanged(inno)
+    if result != 0:
+        raise RuntimeError(f"Command failed with exit code {result}: {' '.join(command)}")
     installers = sorted(output_dir.glob("*.exe"))
     expected = output_dir / f"{output_base_filename}.exe"
     if installers != [expected] or not expected.is_file():
@@ -577,6 +755,34 @@ def publish_directory(staged: Path, final: Path) -> None:
     staged.replace(final)
 
 
+def require_candidate_inventory(candidate: Path, installer_name: str) -> None:
+    expected = {installer_name, "release-manifest.json", "SHA256SUMS.txt"}
+    try:
+        lexical_candidate, resolved_candidate = _validated_tree_root(candidate)
+        with os.scandir(lexical_candidate) as scanned:
+            entries = sorted(scanned, key=lambda entry: entry.name)
+    except (OSError, ValueError) as exc:
+        raise RuntimeError(f"Installer candidate boundary is invalid: {exc}") from exc
+    actual = {entry.name for entry in entries}
+    if actual != expected:
+        raise RuntimeError(
+            "Installer candidate inventory mismatch: "
+            f"expected={sorted(expected)}; actual={sorted(actual)}"
+        )
+    for entry in entries:
+        path = lexical_candidate / entry.name
+        metadata = entry.stat(follow_symlinks=False)
+        if _is_reparse_point(metadata) or not stat.S_ISREG(metadata.st_mode):
+            raise RuntimeError(
+                "Installer candidate entry is not a regular non-reparse file: "
+                f"{path}"
+            )
+        try:
+            _require_resolved_inside(path, resolved_candidate)
+        except ValueError as exc:
+            raise RuntimeError(f"Installer candidate entry is invalid: {exc}") from exc
+
+
 def build_release(
     options: BuildOptions,
     *,
@@ -588,7 +794,8 @@ def build_release(
         )
     identity = source_identity(staging_only=options.staging_only)
     compiler = find_iscc()
-    tools = read_tool_versions(compiler)
+    toolchain = read_tool_versions(compiler)
+    tools = toolchain.manifest_tools()
     staging = (
         WORKSPACE
         / ".tmp"
@@ -628,7 +835,7 @@ def build_release(
         smoke_output.mkdir(parents=True)
         smoke_name = f"Modori-Installer-Smoke-{identity.build_identity}"
         smoke_installer = compile_installer(
-            compiler=compiler,
+            inno=toolchain.inno,
             installer_script=installer_script_path,
             identity=identity,
             app_id=SMOKE_APP_ID,
@@ -639,15 +846,20 @@ def build_release(
             allow_custom_dir=True,
             runner=runner,
         )
+        probe_payload = staging / "downgrade-probe-payload"
+        probe_payload.mkdir(parents=True)
+        (probe_payload / "Modori.exe").write_bytes(
+            b"downgrade probe must never install"
+        )
         probe_output = staging / "downgrade-probe-output"
         probe_output.mkdir(parents=True)
         probe_installer = compile_installer(
-            compiler=compiler,
+            inno=toolchain.inno,
             installer_script=installer_script_path,
             identity=identity,
             app_id=SMOKE_APP_ID,
             app_name="Modori Installer Smoke",
-            package_root=package_root,
+            package_root=probe_payload,
             output_dir=probe_output,
             output_base_filename="Modori-Installer-Smoke-Downgrade-0.0.9",
             allow_custom_dir=True,
@@ -692,7 +904,7 @@ def build_release(
     production_output.mkdir(parents=True)
     setup_base_name = f"Modori-Setup-{identity.build_identity}"
     production_installer = compile_installer(
-        compiler=compiler,
+        inno=toolchain.inno,
         installer_script=installer_script_path,
         identity=identity,
         app_id=PRODUCTION_APP_ID,
@@ -702,13 +914,6 @@ def build_release(
         output_base_filename=setup_base_name,
         allow_custom_dir=False,
         runner=runner,
-    )
-    require_release_inputs_unchanged(
-        identity=identity,
-        staging_only=options.staging_only,
-        live_package=live_package_root,
-        live_script=live_installer_script,
-        frozen=frozen,
     )
     candidate = staging / "candidate"
     candidate.mkdir()
@@ -736,6 +941,15 @@ def build_release(
         candidate / "SHA256SUMS.txt",
         FileEvidence.from_path(final_installer.name, final_installer),
     )
+    require_candidate_inventory(candidate, final_installer.name)
+    require_release_inputs_unchanged(
+        identity=identity,
+        staging_only=options.staging_only,
+        live_package=live_package_root,
+        live_script=live_installer_script,
+        frozen=frozen,
+        inno=toolchain.inno,
+    )
     if options.staging_only:
         return candidate
     final = WORKSPACE / "dist" / "installer" / identity.build_identity
@@ -753,7 +967,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         try:
             identity = source_identity(staging_only=args.staging_only)
             compiler = find_iscc()
-            tools = read_tool_versions(compiler)
+            toolchain = read_tool_versions(compiler)
+            tools = toolchain.manifest_tools()
             check_payload()
         except (FileNotFoundError, KeyError, OSError, RuntimeError, ValueError) as exc:
             print(f"installer-check-failed: {exc}", file=sys.stderr)
