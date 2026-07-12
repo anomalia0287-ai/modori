@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import re
 from typing import Any
+import unicodedata
 
 from modori.research_os.contracts import (
     CausalIntent,
@@ -50,20 +51,34 @@ class ResearchRequest:
             raise ResearchServiceError("estimand must be an EstimandSpec")
         if not isinstance(self.study, StudySpec):
             raise ResearchServiceError("study must be a StudySpec")
-        if not _FINGERPRINT_RE.fullmatch(self.current_dataset_fingerprint):
+        if not isinstance(self.current_dataset_fingerprint, str) or not _FINGERPRINT_RE.fullmatch(
+            self.current_dataset_fingerprint
+        ):
             raise ResearchServiceError(
                 "current_dataset_fingerprint must be a lowercase SHA-256 digest"
+            )
+        if type(self.question_budget_remaining) is not int:
+            raise ResearchServiceError(
+                "question_budget_remaining must be an integer"
             )
         if self.question_budget_remaining < 0:
             raise ResearchServiceError(
                 "question_budget_remaining cannot be negative"
             )
+        if self.question_budget_remaining > 3:
+            raise ResearchServiceError("question_budget_remaining cannot exceed 3")
+        if not isinstance(self.available_variable_ids, tuple):
+            raise ResearchServiceError("available_variable_ids must be a tuple")
         if len(set(self.available_variable_ids)) != len(self.available_variable_ids):
             raise ResearchServiceError("available_variable_ids cannot contain duplicates")
         for variable_id in self.available_variable_ids:
             if not isinstance(variable_id, str) or not variable_id.strip():
                 raise ResearchServiceError(
                     "available_variable_ids must contain non-empty strings"
+                )
+            if variable_id != unicodedata.normalize("NFC", variable_id):
+                raise ResearchServiceError(
+                    "available_variable_ids must use canonical NFC Unicode"
                 )
 
 

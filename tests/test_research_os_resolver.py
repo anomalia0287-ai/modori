@@ -26,6 +26,7 @@ from modori.research_os.resolver import (
     PrimaryAction,
     ProductSurface,
     ResolutionContext,
+    ResolverError,
     RuleEvaluation,
 )
 
@@ -200,6 +201,46 @@ def test_integrity_failure_precedes_every_candidate() -> None:
     assert decision.reason_codes == ("integrity:mixed_ruleset",)
 
 
+def test_integrity_failure_does_not_evaluate_malformed_fact_value() -> None:
+    context = _context(integrity_errors=("corrupt_context",))
+    malformed_facts = dict(context.facts)
+    malformed_facts["question.research_goal"] = Fact.user_confirmed(
+        object(),
+        provenance_refs=("corrupt:value",),
+    )
+
+    decision = C1Resolver(_space()).resolve(
+        ResolutionContext(
+            facts=malformed_facts,
+            surface=ProductSurface.EXPERIMENTAL,
+            integrity_errors=("corrupt_context",),
+        )
+    )
+
+    assert decision.action is PrimaryAction.ABSTAIN
+    assert decision.reason_codes == ("integrity:corrupt_context",)
+    assert decision.rule_trace == ()
+
+
+def test_malformed_rule_value_fails_closed_instead_of_raising() -> None:
+    context = _context()
+    malformed_facts = dict(context.facts)
+    malformed_facts["question.research_goal"] = Fact.user_confirmed(
+        object(),
+        provenance_refs=("corrupt:value",),
+    )
+
+    decision = C1Resolver(_space()).resolve(
+        ResolutionContext(
+            facts=malformed_facts,
+            surface=ProductSurface.EXPERIMENTAL,
+        )
+    )
+
+    assert decision.action is PrimaryAction.ABSTAIN
+    assert decision.reason_codes == ("integrity:invalid_fact_value",)
+
+
 def test_unknown_human_fact_clarifies_before_recommendation() -> None:
     decision = C1Resolver(_space()).resolve(
         _context(dependence=Fact.unknown(reason_code="not_answered"))
@@ -292,6 +333,15 @@ def test_exhausted_question_budget_abstains_instead_of_looping() -> None:
     assert decision.action is PrimaryAction.ABSTAIN
     assert decision.clarification_ids == ()
     assert "clarification_budget_exhausted" in decision.reason_codes
+
+
+def test_resolution_context_rejects_boolean_question_budget() -> None:
+    with pytest.raises(ResolverError, match="question_budget_remaining must be an integer"):
+        ResolutionContext(
+            facts=_context().facts,
+            surface=ProductSurface.EXPERIMENTAL,
+            question_budget_remaining=True,
+        )
 
 
 def _route_space(route_evidence: RouteEvidence) -> MethodSpace:

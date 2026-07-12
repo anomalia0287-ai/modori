@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import replace
+import unicodedata
 
 import modori.research_os as research_os
+import pytest
 from modori.research_os.contracts import (
     AssignmentMechanism,
     AssociationTarget,
@@ -31,7 +33,11 @@ from modori.research_os.contracts import (
     UnitKind,
 )
 from modori.research_os.resolver import PrimaryAction, ProductSurface
-from modori.research_os.service import ResearchOsService, ResearchRequest
+from modori.research_os.service import (
+    ResearchOsService,
+    ResearchRequest,
+    ResearchServiceError,
+)
 
 
 DATASET_FINGERPRINT = "a" * 64
@@ -495,3 +501,20 @@ def test_p1_service_is_exposed_from_research_os_package() -> None:
     assert research_os.ResearchOsService is ResearchOsService
     assert research_os.ResearchRequest is ResearchRequest
     assert callable(research_os.build_p1_method_space)
+
+
+def test_research_request_rejects_noncanonical_variable_identifier() -> None:
+    decomposed = unicodedata.normalize("NFD", "변수")
+    request = _independent_mean_request()
+
+    with pytest.raises(ResearchServiceError, match="canonical NFC Unicode"):
+        replace(request, available_variable_ids=(decomposed, "score"))
+
+
+def test_research_request_rejects_boolean_or_oversized_question_budget() -> None:
+    request = _independent_mean_request()
+
+    with pytest.raises(ResearchServiceError, match="question_budget_remaining must be an integer"):
+        replace(request, question_budget_remaining=True)
+    with pytest.raises(ResearchServiceError, match="cannot exceed 3"):
+        replace(request, question_budget_remaining=4)

@@ -111,6 +111,35 @@ def test_capability_identity_rejects_generic_or_auto_tokens() -> None:
         )
 
 
+def test_method_space_versions_reject_boolean_integers() -> None:
+    with pytest.raises(MethodSpaceError, match="role_schema_version must be an integer"):
+        CapabilityIdentity(
+            family_id="bivariate_association",
+            variant_id="pearson_product_moment",
+            estimand_template_id="association_correlation",
+            design_id="independent_unweighted",
+            role_schema_version=True,
+        )
+
+    identity = _pearson_identity()
+    with pytest.raises(MethodSpaceError, match="rule_version must be an integer"):
+        HardRule(
+            rule_id="p1.boolean-version",
+            rule_version=False,
+            ruleset_version="c1-p1-v1",
+            capability_key=identity.key,
+            fact_address="estimand.association_target",
+            mode=RuleMode.REQUIRE,
+            predicate=PredicateKind.IN,
+            expected_values=("product_moment",),
+            trust_floor=TrustFloor.USER_CONFIRMED,
+            clarification_id="confirm_association_target",
+            severity=RuleSeverity.E4,
+            source_refs=("source:fay-proschan-2010",),
+            test_refs=("tests:test_pearson_target",),
+        )
+
+
 def test_method_space_rejects_duplicate_capability_identity() -> None:
     identity = _pearson_identity()
     capability = _capability(identity)

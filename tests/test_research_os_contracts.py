@@ -135,6 +135,30 @@ def test_schema_envelope_rejects_blank_identifiers() -> None:
         )
 
 
+def test_schema_envelope_rejects_boolean_integer_fields() -> None:
+    with pytest.raises(ContractError, match="schema_version must be an integer"):
+        SchemaEnvelope(
+            schema_id="modori.study_spec",
+            schema_version=True,
+            project_id="project-1",
+            object_id="study-1",
+            revision=1,
+            supersedes_revision=None,
+            created_event_ref="event:1",
+        )
+
+    with pytest.raises(ContractError, match="revision must be an integer"):
+        SchemaEnvelope(
+            schema_id="modori.study_spec",
+            schema_version=1,
+            project_id="project-1",
+            object_id="study-1",
+            revision=False,
+            supersedes_revision=None,
+            created_event_ref="event:1",
+        )
+
+
 def _envelope(schema_id: str, object_id: str) -> SchemaEnvelope:
     return SchemaEnvelope(
         schema_id=schema_id,
@@ -358,6 +382,17 @@ def test_estimand_spec_rejects_duplicate_target_roles() -> None:
             time_scope=source.time_scope,
             effect_scale=source.effect_scale,
             association_target=source.association_target,
+        )
+
+
+def test_target_role_rejects_blank_variable_identifier() -> None:
+    with pytest.raises(ContractError, match="variable ID must be a non-empty string"):
+        TargetRoleBinding(
+            role=TargetRole.OUTCOME,
+            variable_ids=Fact.user_confirmed(
+                ("",),
+                provenance_refs=("answer:outcome",),
+            ),
         )
 
 

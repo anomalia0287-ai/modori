@@ -71,8 +71,12 @@ class ResolutionContext:
             if not isinstance(fact, Fact):
                 raise ResolverError(f"fact at {address} must be a Fact")
             normalized[address] = fact
+        if type(self.question_budget_remaining) is not int:
+            raise ResolverError("question_budget_remaining must be an integer")
         if self.question_budget_remaining < 0:
             raise ResolverError("question_budget_remaining cannot be negative")
+        if self.question_budget_remaining > 3:
+            raise ResolverError("question_budget_remaining cannot exceed 3")
         if len(set(self.integrity_errors)) != len(self.integrity_errors):
             raise ResolverError("integrity_errors cannot contain duplicates")
         for error in self.integrity_errors:
@@ -165,27 +169,32 @@ class C1Resolver:
         self._rules = {rule.rule_id: rule for rule in method_space.rules}
 
     def resolve(self, context: ResolutionContext) -> ResolutionDecision:
-        evaluations = tuple(
-            self._evaluate_capability(capability, context)
-            for capability in sorted(
-                self._method_space.capabilities,
-                key=lambda item: item.identity.key,
-            )
-        )
-        traces = tuple(
-            trace
-            for evaluation in evaluations
-            for trace in evaluation.traces
-        )
-
         if context.integrity_errors:
             return ResolutionDecision(
                 action=PrimaryAction.ABSTAIN,
                 reason_codes=tuple(
                     f"integrity:{error}" for error in sorted(context.integrity_errors)
                 ),
-                rule_trace=traces,
             )
+
+        try:
+            evaluations = tuple(
+                self._evaluate_capability(capability, context)
+                for capability in sorted(
+                    self._method_space.capabilities,
+                    key=lambda item: item.identity.key,
+                )
+            )
+        except ResolverError:
+            return ResolutionDecision(
+                action=PrimaryAction.ABSTAIN,
+                reason_codes=("integrity:invalid_fact_value",),
+            )
+        traces = tuple(
+            trace
+            for evaluation in evaluations
+            for trace in evaluation.traces
+        )
 
         stable_local = tuple(
             evaluation.capability.identity.key

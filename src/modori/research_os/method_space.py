@@ -116,6 +116,8 @@ class CapabilityIdentity:
         _require_token(self.variant_id, "variant_id")
         _require_token(self.estimand_template_id, "estimand_template_id")
         _require_token(self.design_id, "design_id")
+        if type(self.role_schema_version) is not int:
+            raise MethodSpaceError("role_schema_version must be an integer")
         if self.role_schema_version < 1:
             raise MethodSpaceError("role_schema_version must be at least 1")
 
@@ -159,6 +161,8 @@ class HardRule:
 
     def __post_init__(self) -> None:
         _require_reference(self.rule_id, "rule_id")
+        if type(self.rule_version) is not int:
+            raise MethodSpaceError("rule_version must be an integer")
         if self.rule_version < 1:
             raise MethodSpaceError("rule_version must be at least 1")
         _require_reference(self.ruleset_version, "ruleset_version")

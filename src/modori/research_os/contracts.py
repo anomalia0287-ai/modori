@@ -72,6 +72,8 @@ def _decode_string_tuple(value: Any) -> tuple[str, ...]:
     if not isinstance(value, list):
         raise ContractError("fact value must be a list of strings")
     decoded = tuple(_decode_text(item) for item in value)
+    for item in decoded:
+        _require_nonblank(item, "variable ID")
     if len(set(decoded)) != len(decoded):
         raise ContractError("fact value cannot contain duplicate variable IDs")
     return decoded
@@ -389,6 +391,12 @@ class SchemaEnvelope:
         _require_nonblank(self.project_id, "project_id")
         _require_nonblank(self.object_id, "object_id")
         _require_nonblank(self.created_event_ref, "created_event_ref")
+        if type(self.schema_version) is not int:
+            raise ContractError("schema_version must be an integer")
+        if type(self.revision) is not int:
+            raise ContractError("revision must be an integer")
+        if self.supersedes_revision is not None and type(self.supersedes_revision) is not int:
+            raise ContractError("supersedes_revision must be an integer or null")
         if self.schema_version < 1:
             raise ContractError("schema_version must be at least 1")
         if self.revision < 1:
@@ -427,11 +435,11 @@ class SchemaEnvelope:
         )
         _require_exact_keys(payload, allowed, "SchemaEnvelope")
         supersedes = payload["supersedes_revision"]
-        if supersedes is not None and not isinstance(supersedes, int):
+        if supersedes is not None and type(supersedes) is not int:
             raise ContractError("supersedes_revision must be an integer or null")
-        if not isinstance(payload["schema_version"], int):
+        if type(payload["schema_version"]) is not int:
             raise ContractError("schema_version must be an integer")
-        if not isinstance(payload["revision"], int):
+        if type(payload["revision"]) is not int:
             raise ContractError("revision must be an integer")
         return cls(
             schema_id=_decode_text(payload["schema_id"]),
@@ -679,14 +687,41 @@ class RoleHintBinding:
         )
 
 
+def _validate_variable_id_fact(
+    fact: Fact[tuple[str, ...]],
+    *,
+    field_name: str,
+    allow_empty: bool,
+) -> None:
+    sequences: tuple[tuple[str, ...], ...] = ()
+    if fact.state in _CURRENT_STATES:
+        if not isinstance(fact.value, tuple):
+            raise ContractError(f"{field_name} variable IDs must be a tuple")
+        sequences = (fact.value,)
+    elif fact.state is FactState.CONFLICT:
+        if not all(isinstance(item, tuple) for item in fact.alternatives):
+            raise ContractError(f"{field_name} alternatives must contain tuples")
+        sequences = fact.alternatives
+    for sequence in sequences:
+        if not allow_empty and not sequence:
+            raise ContractError(f"{field_name} requires a variable")
+        if len(set(sequence)) != len(sequence):
+            raise ContractError(f"{field_name} cannot repeat a variable ID")
+        for variable_id in sequence:
+            _require_nonblank(variable_id, "variable ID")
+
+
 @dataclass(frozen=True)
 class TargetRoleBinding:
     role: TargetRole
     variable_ids: Fact[tuple[str, ...]]
 
     def __post_init__(self) -> None:
-        if self.variable_ids.state in _CURRENT_STATES and not self.variable_ids.value:
-            raise ContractError(f"target role {self.role.value} requires a variable")
+        _validate_variable_id_fact(
+            self.variable_ids,
+            field_name=f"target role {self.role.value}",
+            allow_empty=False,
+        )
 
     def to_mapping(self) -> dict[str, Any]:
         return {"role": self.role.value, "variable_ids": self.variable_ids.to_mapping()}
@@ -712,6 +747,13 @@ class TargetRoleBinding:
 class StudyRoleBinding:
     role: StudyRole
     variable_ids: Fact[tuple[str, ...]]
+
+    def __post_init__(self) -> None:
+        _validate_variable_id_fact(
+            self.variable_ids,
+            field_name=f"study role {self.role.value}",
+            allow_empty=True,
+        )
 
     def to_mapping(self) -> dict[str, Any]:
         return {"role": self.role.value, "variable_ids": self.variable_ids.to_mapping()}
@@ -1037,6 +1079,11 @@ class StudySpec:
         roles = [binding.role for binding in self.design_roles]
         if len(set(roles)) != len(roles):
             raise ContractError("StudySpec contains duplicate design role")
+        _validate_variable_id_fact(
+            self.repeated_measure_order,
+            field_name="repeated_measure_order",
+            allow_empty=False,
+        )
         missing_keys = [
             (meaning.variable_id, meaning.code)
             for meaning in self.missing_code_meanings
