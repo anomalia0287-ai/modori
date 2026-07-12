@@ -43,6 +43,15 @@ files, `624392981` bytes, digest
 `FDC653DE4FEB86F2A5CC990EEB30A4314628637359FF5CB0C90B08EE2E7F02CF`.
 This is non-release failure evidence; no corrected installer exists yet.
 
+The subsequent review hardening does not add live release evidence. Compact
+staging now validates `WORKSPACE`, `.tmp`, `.tmp/ib`, and the new run root
+component-by-component without following links before snapshot writes. The
+authenticated compiler-source preflight counts strict UTF-16 code units across
+files, directories, the root wildcard, and recursive directory `\*` search
+paths. The historical failure measurements contain only BMP characters, so its
+`156 + 1 + 128 = 285` diagnosis remains unchanged. No corrected live installer
+has been compiled or published by this hardening work.
+
 ## Final Live Gate
 
 The approved live gate ran outside the Codex workspace sandbox with

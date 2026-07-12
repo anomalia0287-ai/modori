@@ -284,7 +284,11 @@ package tree and the exact `.iss` bytes under the unique compact
 `.tmp/ib/<commit12>-<uuid12>` staging directory, using fixed short children
 including `s/p`, `s/modori.iss`, `so`, `po`, `dp`, `do`, and `c`. Exclusive
 run-directory creation makes a collision fail without altering existing
-content. The
+content. Before any run-root or snapshot write, `WORKSPACE`, `.tmp`, and
+`.tmp/ib` are validated component-by-component with `lstat` without following
+links; symlinks, junction/reparse points, non-directories, and resolved escapes
+are rejected. Missing components are created individually and revalidated, and
+the new run root is revalidated immediately after exclusive creation. The
 lexical workspace-to-package boundary and every descendant reject any link or
 junction/reparse point before traversal. All three package smokes use the
 snapshot executable. Smoke and production compilation use the full frozen
@@ -294,8 +298,11 @@ revalidate the exact selected compiler evidence before and after every ISCC
 invocation. Before creating any compiler output directory or invoking ISCC, the
 builder combines the resolved frozen package root with the authenticated
 snapshot inventory and rejects an actual compiler source maximum above `240`
-characters. This is distinct from the manifest's installed-destination path
-budget. The builder, after candidate materialization, requires exactly three
+strict UTF-16 code units. The maximum covers files, directories, and directory
+search wildcards, including the root and each recursive directory `\*`; an
+inventory with no files fails closed. This is distinct from the manifest's
+installed-destination path budget. The builder, after candidate materialization,
+requires exactly three
 regular non-reparse candidate files, then freshly rechecks HEAD/dirty identity,
 frozen/live content digests, and compiler evidence immediately before return or
 publication. Any source,

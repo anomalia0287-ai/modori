@@ -107,5 +107,9 @@ def test_installer_builder_audit_documents_frozen_staging_boundary() -> None:
         ".tmp/ib/<commit12>-<uuid12>",
         "compiler source",
         "240",
+        "component-by-component",
+        "without following links",
+        "UTF-16 code units",
+        "files, directories, and directory search wildcards",
     ):
         assert required_text in row

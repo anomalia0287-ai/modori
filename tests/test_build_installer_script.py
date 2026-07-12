@@ -726,29 +726,46 @@ def test_build_release_rejects_publish_without_lifecycle_before_mutation(
     assert calls == []
 
 
-def test_compiler_source_path_budget_uses_actual_resolved_root_arithmetic(
-    tmp_path: Path,
-) -> None:
-    relative = "r" * 128
-    required_root_chars = 241 - 1 - len(relative)
-    padding_chars = max(1, required_root_chars - len(str(tmp_path.resolve())) - 1)
-    package_root = tmp_path / ("p" * padding_chars)
-    package_root.mkdir()
-    inventory = _inventory_with_relative_path(relative)
-
-    evidence = build_installer.compiler_source_path_evidence(package_root, inventory)
-
-    assert evidence.package_root == package_root.resolve()
-    assert evidence.package_root_chars == len(str(package_root.resolve()))
-    assert evidence.longest_relative_path == relative
-    assert evidence.longest_relative_path_chars == 128
-    assert evidence.computed_max_chars == len(str(package_root.resolve())) + 1 + 128
-    assert evidence.computed_max_chars > 240
-    with pytest.raises(ValueError, match="Frozen compiler source path budget exceeded"):
-        build_installer.require_compiler_source_path_budget(package_root, inventory)
+def test_windows_path_utf16_units_counts_non_bmp_and_rejects_unpaired_surrogate() -> None:
+    assert len("😀") == 1
+    assert build_installer.windows_path_utf16_units("😀") == 2
+    with pytest.raises(ValueError, match="UTF-16"):
+        build_installer.windows_path_utf16_units("\ud800")
 
 
-def test_compact_staging_path_arithmetic_keeps_128_char_source_within_budget() -> None:
+def test_compiler_source_path_budget_uses_utf16_units_at_exact_boundaries() -> None:
+    package_root = Path("C:/w")
+    root_units = build_installer.windows_path_utf16_units(
+        str(package_root.resolve())
+    )
+
+    passing_relative_units = 240 - root_units - 1
+    passing_relative = "a" * (passing_relative_units - 2) + "😀"
+    passing = build_installer.require_compiler_source_path_budget(
+        package_root,
+        _inventory_with_relative_path(passing_relative),
+    )
+    assert passing.package_root_utf16_units == root_units
+    assert passing.longest_relative_path_utf16_units == passing_relative_units
+    assert passing.computed_max_utf16_units == 240
+    assert len(str(package_root.resolve())) + 1 + len(passing_relative) == 239
+
+    rejected_relative_units = 241 - root_units - 1
+    rejected_relative = "a" * (rejected_relative_units - 2) + "😀"
+    rejected = build_installer.compiler_source_path_evidence(
+        package_root,
+        _inventory_with_relative_path(rejected_relative),
+    )
+    assert rejected.computed_max_utf16_units == 241
+    assert len(str(package_root.resolve())) + 1 + len(rejected_relative) == 240
+    with pytest.raises(ValueError, match="241 > 240"):
+        build_installer.require_compiler_source_path_budget(
+            package_root,
+            _inventory_with_relative_path(rejected_relative),
+        )
+
+
+def test_compact_staging_path_arithmetic_keeps_128_unit_source_within_budget() -> None:
     relative = "r" * 128
     package_root = Path("C:/w/.tmp/ib/aaaaaaaaaaaa-bbbbbbbbbbbb/s/p")
 
@@ -757,8 +774,54 @@ def test_compact_staging_path_arithmetic_keeps_128_char_source_within_budget() -
         _inventory_with_relative_path(relative),
     )
 
-    assert evidence.computed_max_chars == len(str(package_root.resolve())) + 1 + 128
-    assert evidence.computed_max_chars <= 240
+    expected = (
+        build_installer.windows_path_utf16_units(str(package_root.resolve()))
+        + 1
+        + 128
+    )
+    assert evidence.longest_entry_kind == "file"
+    assert evidence.computed_max_utf16_units == expected
+    assert evidence.computed_max_utf16_units <= 240
+
+
+def test_compiler_source_path_budget_counts_empty_directory_search_wildcard() -> None:
+    package_root = Path("C:/w")
+    directory = "nested/empty"
+    inventory = build_installer.TreeInventory(
+        directories=(directory,),
+        files=(
+            build_installer.TreeFile(
+                relative_path="Modori.exe",
+                size_bytes=1,
+                sha256="A" * 64,
+            ),
+        ),
+        digest="B" * 64,
+    )
+
+    evidence = build_installer.compiler_source_path_evidence(package_root, inventory)
+
+    assert evidence.longest_entry_kind == "directory"
+    assert evidence.longest_relative_path == directory
+    assert evidence.search_suffix == "\\*"
+    assert evidence.search_suffix_utf16_units == 2
+    assert evidence.computed_max_utf16_units == (
+        build_installer.windows_path_utf16_units(str(package_root.resolve()))
+        + 1
+        + build_installer.windows_path_utf16_units(directory)
+        + 2
+    )
+
+
+def test_compiler_source_path_budget_rejects_inventory_without_files() -> None:
+    inventory = build_installer.TreeInventory(
+        directories=("empty",),
+        files=(),
+        digest="A" * 64,
+    )
+
+    with pytest.raises(ValueError, match="contains no files"):
+        build_installer.compiler_source_path_evidence(Path("C:/w"), inventory)
 
 
 def test_release_staging_collision_fails_without_altering_existing_content(
@@ -782,6 +845,77 @@ def test_release_staging_collision_fails_without_altering_existing_content(
 
     assert sentinel.read_bytes() == b"preserve"
     assert {path.name for path in existing.iterdir()} == {"preserve.txt"}
+
+
+@pytest.mark.parametrize("junction_component", [".tmp", ".tmp/ib"])
+def test_release_staging_rejects_junction_components_without_outside_creation(
+    monkeypatch,
+    tmp_path: Path,
+    junction_component: str,
+) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    monkeypatch.setattr(build_installer, "WORKSPACE", workspace)
+    identity = build_installer.make_source_identity("0.1.0", "a" * 40, dirty=False)
+    link = workspace / Path(junction_component)
+    link.parent.mkdir(parents=True, exist_ok=True)
+    _create_directory_junction(link, outside)
+
+    with pytest.raises(ValueError, match="link or junction/reparse"):
+        build_installer.create_release_staging(identity)
+
+    assert list(outside.iterdir()) == []
+
+
+def test_release_staging_rejects_reparse_workspace_without_outside_creation(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    workspace_link = tmp_path / "workspace"
+    _create_directory_junction(workspace_link, outside)
+    monkeypatch.setattr(build_installer, "WORKSPACE", workspace_link)
+    identity = build_installer.make_source_identity("0.1.0", "a" * 40, dirty=False)
+
+    with pytest.raises(ValueError, match="link or junction/reparse"):
+        build_installer.create_release_staging(identity)
+
+    assert list(outside.iterdir()) == []
+
+
+def test_release_staging_revalidates_new_run_root_before_return(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    monkeypatch.setattr(build_installer, "WORKSPACE", workspace)
+    identity = build_installer.make_source_identity("0.1.0", "a" * 40, dirty=False)
+
+    class FixedUuid:
+        hex = "b" * 32
+
+    monkeypatch.setattr(build_installer.uuid, "uuid4", lambda: FixedUuid())
+    expected = workspace / ".tmp" / "ib" / f"{'a' * 12}-{'b' * 12}"
+    original_mkdir = Path.mkdir
+
+    def replacing_mkdir(path: Path, *args, **kwargs) -> None:
+        original_mkdir(path, *args, **kwargs)
+        if path == expected:
+            path.rmdir()
+            _create_directory_junction(path, outside)
+
+    monkeypatch.setattr(Path, "mkdir", replacing_mkdir)
+
+    with pytest.raises(ValueError, match="link or junction/reparse"):
+        build_installer.create_release_staging(identity)
+
+    assert list(outside.iterdir()) == []
 
 
 def test_over_budget_frozen_snapshot_fails_before_smokes_outputs_or_iscc(
@@ -808,7 +942,10 @@ def test_over_budget_frozen_snapshot_fails_before_smokes_outputs_or_iscc(
     assert len(str(frozen.package_root)) + 1 + len(relative) > 240
     monkeypatch.setattr(build_installer, "freeze_release_inputs", lambda **_kwargs: frozen)
 
-    with pytest.raises(ValueError, match="Frozen compiler source path budget exceeded"):
+    with pytest.raises(
+        ValueError,
+        match="Frozen compiler source path budget exceeded",
+    ) as captured:
         build_installer.build_release(
             build_installer.BuildOptions(
                 staging_only=True,
@@ -816,6 +953,69 @@ def test_over_budget_frozen_snapshot_fails_before_smokes_outputs_or_iscc(
             ),
             runner=_release_runner(tmp_path, calls),
         )
+
+    assert "(file)" in str(captured.value)
+
+    assert any(item.endswith("package_windows.py") for call in calls for item in call)
+    assert not any(
+        item.endswith(
+            (
+                "package_launch_smoke.py",
+                "package_engine_smoke.py",
+                "package_public_data_smoke.py",
+            )
+        )
+        for call in calls
+        for item in call
+    )
+    assert not any(call and str(call[0]).endswith("ISCC.exe") for call in calls)
+    assert not list((tmp_path / ".tmp" / "ib").glob("*/so"))
+    assert not (tmp_path / "dist" / "installer").exists()
+
+
+def test_over_budget_empty_directory_fails_before_smokes_outputs_or_iscc(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    _configure_release_workspace(monkeypatch, tmp_path)
+    calls: list[list[str]] = []
+    package_root = tmp_path / "f" / "s" / "p"
+    _write_complete_package(package_root)
+    root_units = len(str(package_root.resolve()).encode("utf-16-le")) // 2
+    directory_units = 241 - root_units - 1 - 2
+    relative_directory = "d" * directory_units
+    (package_root / relative_directory).mkdir()
+    frozen_script = package_root.parent / "modori.iss"
+    frozen_script.write_text("[Setup]\n", encoding="utf-8")
+    frozen = build_installer.FrozenReleaseInputs(
+        package_root=package_root.resolve(),
+        installer_script=frozen_script.resolve(),
+        package_inventory=build_installer.inventory_tree(package_root),
+        script_digest=build_installer.file_content_digest(frozen_script),
+    )
+    monkeypatch.setattr(build_installer, "freeze_release_inputs", lambda **_kwargs: frozen)
+    base_runner = _release_runner(tmp_path, calls)
+
+    def runner_with_empty_directory(command: list[str]) -> int:
+        result = base_runner(command)
+        if any(item.endswith("package_windows.py") for item in command):
+            (tmp_path / "dist" / "Modori" / relative_directory).mkdir()
+        return result
+
+    with pytest.raises(
+        ValueError,
+        match="Frozen compiler source path budget exceeded",
+    ) as captured:
+        build_installer.build_release(
+            build_installer.BuildOptions(
+                staging_only=True,
+                with_installed_smoke=True,
+            ),
+            runner=runner_with_empty_directory,
+        )
+
+    assert "(directory)" in str(captured.value)
+    assert str(captured.value).endswith("\\*")
 
     assert any(item.endswith("package_windows.py") for call in calls for item in call)
     assert not any(
@@ -908,51 +1108,61 @@ def test_build_release_runs_package_gates_before_compiler(
     assert not (tmp_path / "dist" / "installer").exists()
 
 
-def test_compact_staging_with_128_char_relative_path_reaches_fake_iscc(
+def test_compact_staging_with_128_unit_relative_path_reaches_fake_iscc(
     monkeypatch,
     tmp_path: Path,
 ) -> None:
-    worktree = Path(__file__).resolve().parents[1]
-    short_workspace = next(
-        worktree / ".tmp" / name
-        for name in "tuvwxyz"
-        if not (worktree / ".tmp" / name).exists()
+    identity = _configure_release_workspace(monkeypatch, tmp_path)
+    calls: list[list[str]] = []
+    relative = "r" * 128
+
+    class FixedUuid:
+        hex = "b" * 32
+
+    monkeypatch.setattr(build_installer.uuid, "uuid4", lambda: FixedUuid())
+    expected_package = (
+        tmp_path
+        / ".tmp"
+        / "ib"
+        / f"{identity.git_commit[:12]}-{'b' * 12}"
+        / "s"
+        / "p"
+    ).resolve()
+    test_budget = (
+        len(str(expected_package).encode("utf-16-le")) // 2 + 1 + len(relative)
     )
-    short_workspace.mkdir(parents=True)
-    try:
-        _configure_release_workspace(monkeypatch, short_workspace)
-        calls: list[list[str]] = []
-        relative = "r" * 128
-        base_runner = _release_runner(short_workspace, calls)
+    base_runner = _release_runner(tmp_path, calls)
 
-        def runner_with_long_payload(command: list[str]) -> int:
-            result = base_runner(command)
-            if any(item.endswith("package_windows.py") for item in command):
-                (short_workspace / "dist" / "Modori" / relative).write_bytes(b"x")
-            return result
+    def runner_with_long_payload(command: list[str]) -> int:
+        result = base_runner(command)
+        if any(item.endswith("package_windows.py") for item in command):
+            (tmp_path / "dist" / "Modori" / relative).write_bytes(b"x")
+        return result
 
-        result = build_installer.build_release(
-            build_installer.BuildOptions(staging_only=True),
-            runner=runner_with_long_payload,
-        )
+    result = build_installer.build_release(
+        build_installer.BuildOptions(staging_only=True),
+        runner=runner_with_long_payload,
+        compiler_source_path_budget_utf16_units=test_budget,
+    )
 
-        iscc_call = next(
-            command
-            for command in calls
-            if command and str(command[0]).endswith("ISCC.exe")
-        )
-        package_argument = next(
-            item for item in iscc_call if item.startswith("/DPackageRoot=")
-        )
-        package_root = Path(package_argument.split("=", 1)[1]).resolve()
-        assert package_root.name == "p"
-        assert package_root.parent.name == "s"
-        assert package_root.parent.parent.parent.name == "ib"
-        assert len(str(package_root)) + 1 + len(relative) <= 240
-        assert result.parent.name.startswith("a" * 12 + "-")
-        assert len(result.parent.name) == 25
-    finally:
-        shutil.rmtree(short_workspace)
+    iscc_call = next(
+        command
+        for command in calls
+        if command and str(command[0]).endswith("ISCC.exe")
+    )
+    package_argument = next(
+        item for item in iscc_call if item.startswith("/DPackageRoot=")
+    )
+    package_root = Path(package_argument.split("=", 1)[1]).resolve()
+    assert package_root == expected_package
+    assert package_root.name == "p"
+    assert package_root.parent.name == "s"
+    assert package_root.parent.parent.parent.name == "ib"
+    assert (
+        len(str(package_root).encode("utf-16-le")) // 2 + 1 + len(relative)
+        == test_budget
+    )
+    assert result.parent.name == f"{'a' * 12}-{'b' * 12}"
 
 
 def test_build_release_freezes_inputs_before_all_smokes_and_compilers(

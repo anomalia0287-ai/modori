@@ -164,16 +164,22 @@ The default command performs this sequence:
 1. Require Windows and a clean Git worktree.
 2. Read and validate the version from `pyproject.toml`.
 3. Resolve the full and short Git commit.
-4. Create a unique `.tmp/ib/<commit12>-<uuid12>/` directory with short fixed
-   children: `s/p`, `s/modori.iss`, `so`, `po`, `dp`, `do`, and `c`.
+4. Validate non-reparse `WORKSPACE`, `.tmp`, and `.tmp/ib`
+   component-by-component with `lstat` without following links. Create missing
+   components individually, require resolved containment, exclusively create a
+   unique `.tmp/ib/<commit12>-<uuid12>/` directory, and revalidate it before
+   returning it for writes. Use short fixed children: `s/p`, `s/modori.iss`,
+   `so`, `po`, `dp`, `do`, and `c`.
 5. Run `scripts/package_windows.py` to rebuild `dist/Modori/` from the current
    source.
 6. Inventory and hash the live package, copy and independently re-inventory the
    complete frozen `s/p` package plus exact `s/modori.iss`, and require equality.
 7. From the authenticated frozen inventory and the actual resolved `s/p` root,
-   reject when `root_chars + 1 + longest_relative_path_chars > 240`. This
-   compiler-source check runs before any compiler output directory, ISCC call,
-   installer lifecycle, candidate, or publication.
+   compute source search lengths in strict UTF-16 code units. Include files,
+   directories, the root wildcard, and each recursive directory search suffix
+   `\*`; reject an inventory with no files and reject a maximum above `240`.
+   This compiler-source check runs before any compiler output directory, ISCC
+   call, installer lifecycle, candidate, or publication.
 8. Run the packaged QML, engine, and public-data smoke scripts against the
    frozen package.
 9. Separately reject the installed payload contract when

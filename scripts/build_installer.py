@@ -51,7 +51,7 @@ else:
 
 WORKSPACE = Path(__file__).resolve().parents[1]
 INNO_REGISTRY_KEY = r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Inno Setup 6_is1"
-COMPILER_SOURCE_PATH_BUDGET_CHARS = 240
+COMPILER_SOURCE_PATH_BUDGET_UTF16_UNITS = 240
 _VS_FIXEDFILEINFO_SIGNATURE = 0xFEEF04BD
 
 
@@ -129,11 +129,15 @@ class TreeInventory:
 @dataclass(frozen=True)
 class CompilerSourcePathEvidence:
     package_root: Path
-    package_root_chars: int
+    package_root_utf16_units: int
+    longest_entry_kind: str
     longest_relative_path: str
-    longest_relative_path_chars: int
-    safe_path_budget_chars: int
-    computed_max_chars: int
+    longest_relative_path_utf16_units: int
+    relative_separator_utf16_units: int
+    search_suffix: str
+    search_suffix_utf16_units: int
+    safe_path_budget_utf16_units: int
+    computed_max_utf16_units: int
 
 
 @dataclass(frozen=True)
@@ -316,41 +320,101 @@ def inventory_tree(root: Path) -> TreeInventory:
     )
 
 
+def windows_path_utf16_units(value: str | Path) -> int:
+    try:
+        encoded = str(value).encode("utf-16-le", errors="strict")
+    except UnicodeEncodeError as exc:
+        raise ValueError(f"Windows path is not valid UTF-16: {value!r}") from exc
+    return len(encoded) // 2
+
+
 def compiler_source_path_evidence(
     package_root: Path,
     inventory: TreeInventory,
+    *,
+    safe_path_budget_utf16_units: int = COMPILER_SOURCE_PATH_BUDGET_UTF16_UNITS,
 ) -> CompilerSourcePathEvidence:
     if not inventory.files:
         raise ValueError("Frozen package inventory contains no files")
     resolved_root = package_root.resolve()
-    longest = max(
-        inventory.files,
-        key=lambda item: (len(item.relative_path), item.relative_path),
-    ).relative_path
-    computed = len(str(resolved_root)) + 1 + len(longest)
+    root_units = windows_path_utf16_units(resolved_root)
+    candidates: list[tuple[int, str, str, int, int, str, int]] = [
+        (root_units + 2, "root", "", 0, 0, "\\*", 2),
+    ]
+    for relative in inventory.directories:
+        relative_units = windows_path_utf16_units(relative)
+        candidates.append(
+            (
+                root_units + 1 + relative_units + 2,
+                "directory",
+                relative,
+                relative_units,
+                1,
+                "\\*",
+                2,
+            )
+        )
+    for file in inventory.files:
+        relative_units = windows_path_utf16_units(file.relative_path)
+        candidates.append(
+            (
+                root_units + 1 + relative_units,
+                "file",
+                file.relative_path,
+                relative_units,
+                1,
+                "",
+                0,
+            )
+        )
+    (
+        computed,
+        entry_kind,
+        longest,
+        longest_units,
+        separator_units,
+        suffix,
+        suffix_units,
+    ) = max(candidates, key=lambda item: (item[0], item[2], item[1]))
     return CompilerSourcePathEvidence(
         package_root=resolved_root,
-        package_root_chars=len(str(resolved_root)),
+        package_root_utf16_units=root_units,
+        longest_entry_kind=entry_kind,
         longest_relative_path=longest,
-        longest_relative_path_chars=len(longest),
-        safe_path_budget_chars=COMPILER_SOURCE_PATH_BUDGET_CHARS,
-        computed_max_chars=computed,
+        longest_relative_path_utf16_units=longest_units,
+        relative_separator_utf16_units=separator_units,
+        search_suffix=suffix,
+        search_suffix_utf16_units=suffix_units,
+        safe_path_budget_utf16_units=safe_path_budget_utf16_units,
+        computed_max_utf16_units=computed,
     )
 
 
 def require_compiler_source_path_budget(
     package_root: Path,
     inventory: TreeInventory,
+    *,
+    safe_path_budget_utf16_units: int = COMPILER_SOURCE_PATH_BUDGET_UTF16_UNITS,
 ) -> CompilerSourcePathEvidence:
-    evidence = compiler_source_path_evidence(package_root, inventory)
-    if evidence.computed_max_chars > evidence.safe_path_budget_chars:
+    evidence = compiler_source_path_evidence(
+        package_root,
+        inventory,
+        safe_path_budget_utf16_units=safe_path_budget_utf16_units,
+    )
+    if evidence.computed_max_utf16_units > evidence.safe_path_budget_utf16_units:
+        source = str(evidence.package_root)
+        if evidence.longest_relative_path:
+            source += "\\" + evidence.longest_relative_path.replace("/", "\\")
+        source += evidence.search_suffix
         raise ValueError(
-            "Frozen compiler source path budget exceeded: "
-            f"{evidence.package_root_chars} + 1 + "
-            f"{evidence.longest_relative_path_chars} = "
-            f"{evidence.computed_max_chars} > "
-            f"{evidence.safe_path_budget_chars}: "
-            f"{evidence.package_root / Path(evidence.longest_relative_path)}"
+            "Frozen compiler source path budget exceeded in UTF-16 code units: "
+            f"{evidence.package_root_utf16_units} + "
+            f"{evidence.relative_separator_utf16_units} + "
+            f"{evidence.longest_relative_path_utf16_units} + "
+            f"{evidence.search_suffix_utf16_units} = "
+            f"{evidence.computed_max_utf16_units} > "
+            f"{evidence.safe_path_budget_utf16_units} "
+            f"({evidence.longest_entry_kind}): {source}"
         )
     return evidence
 
@@ -684,13 +748,53 @@ def source_identity(*, staging_only: bool) -> SourceIdentity:
     return make_source_identity(version, commit, dirty=dirty)
 
 
+def _require_safe_staging_directory(
+    path: Path,
+    resolved_workspace: Path,
+) -> Path:
+    selected = _lexical_absolute(path)
+    metadata = _tree_lstat(selected)
+    if not stat.S_ISDIR(metadata.st_mode):
+        raise ValueError(f"Staging path is not a directory: {selected}")
+    _require_resolved_inside(selected, resolved_workspace)
+    return selected
+
+
+def _create_or_validate_staging_directory(
+    path: Path,
+    resolved_workspace: Path,
+) -> Path:
+    selected = _lexical_absolute(path)
+    try:
+        selected.mkdir()
+    except FileExistsError:
+        pass
+    return _require_safe_staging_directory(selected, resolved_workspace)
+
+
 def create_release_staging(identity: SourceIdentity) -> Path:
-    parent = WORKSPACE / ".tmp" / "ib"
-    parent.mkdir(parents=True, exist_ok=True)
+    workspace = _lexical_absolute(WORKSPACE)
+    workspace_metadata = _tree_lstat(workspace)
+    if not stat.S_ISDIR(workspace_metadata.st_mode):
+        raise ValueError(f"Workspace boundary is not a directory: {workspace}")
+    resolved_workspace = workspace.resolve(strict=True)
+    _require_safe_staging_directory(workspace, resolved_workspace)
+    temp_root = _create_or_validate_staging_directory(
+        workspace / ".tmp",
+        resolved_workspace,
+    )
+    parent = _create_or_validate_staging_directory(
+        temp_root / "ib",
+        resolved_workspace,
+    )
+    for component in (workspace, temp_root, parent):
+        _require_safe_staging_directory(component, resolved_workspace)
     run_name = f"{identity.git_commit[:12]}-{uuid.uuid4().hex[:12]}"
     staging = parent / run_name
     staging.mkdir()
-    return staging
+    for component in (workspace, temp_root, parent, staging):
+        _require_safe_staging_directory(component, resolved_workspace)
+    return _lexical_absolute(staging)
 
 
 def check_payload(root: Path = WORKSPACE / "dist" / "Modori") -> None:
@@ -846,6 +950,9 @@ def build_release(
     options: BuildOptions,
     *,
     runner=run_command,
+    compiler_source_path_budget_utf16_units: int = (
+        COMPILER_SOURCE_PATH_BUDGET_UTF16_UNITS
+    ),
 ) -> Path:
     if not options.staging_only and not options.with_installed_smoke:
         raise ValueError(
@@ -868,7 +975,11 @@ def build_release(
     )
     package_root = frozen.package_root
     installer_script_path = frozen.installer_script
-    require_compiler_source_path_budget(package_root, frozen.package_inventory)
+    require_compiler_source_path_budget(
+        package_root,
+        frozen.package_inventory,
+        safe_path_budget_utf16_units=compiler_source_path_budget_utf16_units,
+    )
     check_payload(package_root)
     for command in package_smoke_commands(package_root / "Modori.exe"):
         run_required(command, runner)
