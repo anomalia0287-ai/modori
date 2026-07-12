@@ -124,7 +124,10 @@ def test_ready_answer_returns_only_after_durable_commit(tmp_path: Path) -> None:
             passport,
             answer,
         )
-        assert receipt.request.decision_evidence_refs[-1].evidence_digest == answer.digest()
+        assert (
+            receipt.request.decision_evidence_refs[-1].evidence_digest
+            == answer.digest()
+        )
         assert receipt.ledger_receipt.head.sequence == 2
         assert store.load_request() == receipt.request
         assert [event.event_kind for event in store.events()] == [
@@ -156,11 +159,13 @@ def test_accepted_answer_appends_two_events_in_one_committed_transition(
             LedgerEventKind.REVISION_ACCEPTED,
         ]
         events = store.events()
-        assert events[1].payload["resulting_snapshot_artifact_id"] == (
-            events[0].payload["resulting_snapshot_artifact_id"]
-        )
-        assert events[2].payload["resulting_snapshot_artifact_id"] != (
+        assert (
             events[1].payload["resulting_snapshot_artifact_id"]
+            == (events[0].payload["resulting_snapshot_artifact_id"])
+        )
+        assert (
+            events[2].payload["resulting_snapshot_artifact_id"]
+            != (events[1].payload["resulting_snapshot_artifact_id"])
         )
         assert store.load_request() == receipt.request
         assert len(receipt.request.decision_evidence_refs) == 2
@@ -228,26 +233,36 @@ def test_import_promotion_keeps_assertions_outside_active_request(
         assert receipt.request.decision_evidence_refs == ()
         assert receipt.imported_assertions
         assert all(
-            item.project_id == "local-project"
-            for item in receipt.imported_assertions
+            item.project_id == "local-project" for item in receipt.imported_assertions
         )
         assert all(
             reference.project_id == "local-project"
             for reference in receipt.request.decision_evidence_refs
         )
-        assert ResearchOsService().resolve(receipt.request).action is PrimaryAction.CLARIFY
+        assert (
+            ResearchOsService().resolve(receipt.request).action is PrimaryAction.CLARIFY
+        )
         assert store.load_request() == local
         assert [event.event_kind for event in store.events()] == [
             LedgerEventKind.PROJECT_CREATED,
             LedgerEventKind.IMPORT_ACCEPTED_AS_ASSERTIONS,
         ]
+        import_event = store.events()[1]
+        assert quarantine.source_head is not None
+        assert (
+            import_event.payload["source_head_hash"]
+            == quarantine.source_head.event_hash
+        )
+        persisted_source_head = store._connection.execute(
+            "SELECT source_head_hash FROM import_sources"
+        ).fetchone()[0]
+        assert persisted_source_head == quarantine.source_head.event_hash
         imported_artifacts = [
             artifact
             for artifact in store.artifacts()
             if artifact.artifact_kind is LedgerArtifactKind.IMPORTED_ASSERTION
         ]
         assert len(imported_artifacts) == len(receipt.imported_assertions)
-        assert quarantine.source_head is not None
         assert all(
             event.event_hash != quarantine.source_head.event_hash
             for event in store.events()
@@ -306,7 +321,9 @@ def test_import_promotion_rejects_unsafe_preconditions_without_writes(
             current_dataset_fingerprint="d" * 64,
             study=replace(local.study, dataset_fingerprint="d" * 64),
         )
-    store = DecisionLedgerStore.create(_path(tmp_path), local.question.envelope.project_id)
+    store = DecisionLedgerStore.create(
+        _path(tmp_path), local.question.envelope.project_id
+    )
     try:
         if condition == "nonempty":
             ResearchMemoryCoordinator().initialize(

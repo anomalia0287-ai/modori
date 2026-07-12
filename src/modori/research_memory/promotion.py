@@ -369,7 +369,9 @@ class ResearchMemoryCoordinator:
                 resulting_snapshot_artifact_id=new_snapshot_artifact.artifact_id,
             )
         except (TransitionError, LedgerContractError, ValueError, TypeError) as exc:
-            raise PromotionError("accepted clarification transition was rejected") from exc
+            raise PromotionError(
+                "accepted clarification transition was rejected"
+            ) from exc
         return self._append(store, commit, committed_request)
 
     def promote_imported_assertions(
@@ -390,9 +392,16 @@ class ResearchMemoryCoordinator:
         if not isinstance(result, QuarantineResult):
             raise PromotionError("result must be a QuarantineResult")
         if result.stage is not QuarantineStage.ASSERTION_READY:
-            raise PromotionError("only assertion-ready quarantine results can be promoted")
-        if result.source_project_id is None or result.source_project_id == local_project_id:
+            raise PromotionError(
+                "only assertion-ready quarantine results can be promoted"
+            )
+        if (
+            result.source_project_id is None
+            or result.source_project_id == local_project_id
+        ):
             raise PromotionError("import requires a fresh local project identity")
+        if result.source_head is None:
+            raise PromotionError("import requires a verified foreign source head")
         if (
             result.source_dataset_fingerprint
             != local_request.current_dataset_fingerprint
@@ -460,6 +469,7 @@ class ResearchMemoryCoordinator:
                 ),
                 payload={
                     "source_bundle_digest": result.source_bundle_digest,
+                    "source_head_hash": result.source_head.event_hash,
                     "source_project_id": result.source_project_id,
                     "assertion_artifact_ids": list(assertion_artifact_ids),
                     "resulting_snapshot_artifact_id": snapshot_artifact.artifact_id,
@@ -472,6 +482,7 @@ class ResearchMemoryCoordinator:
                 project_id=local_project_id,
                 source_project_id=result.source_project_id,
                 source_bundle_digest=result.source_bundle_digest,
+                source_head_hash=result.source_head.event_hash,
                 assertion_artifact_ids=assertion_artifact_ids,
                 imported_at_utc=recorded_at_utc,
             )
@@ -483,7 +494,9 @@ class ResearchMemoryCoordinator:
                 import_source=import_source,
             )
         except (LedgerContractError, ValueError, TypeError) as exc:
-            raise PromotionError("authority-free assertion promotion was rejected") from exc
+            raise PromotionError(
+                "authority-free assertion promotion was rejected"
+            ) from exc
         return self._append(
             store,
             commit,

@@ -162,6 +162,7 @@ FOREIGN KEY(snapshot_artifact_id,project_id) REFERENCES ledger_artifacts(artifac
 source_bundle_digest TEXT PRIMARY KEY CHECK(length(source_bundle_digest)=64 AND source_bundle_digest NOT GLOB '*[^0-9a-f]*'),
 project_id TEXT NOT NULL REFERENCES ledger_meta(project_id),
 source_project_id TEXT NOT NULL,
+source_head_hash TEXT NOT NULL CHECK(length(source_head_hash)=64 AND source_head_hash NOT GLOB '*[^0-9a-f]*'),
 assertion_artifact_ids BLOB NOT NULL,
 disposition TEXT NOT NULL CHECK(disposition='assertion_ready'),
 imported_at_utc TEXT
@@ -769,7 +770,7 @@ class DecisionLedgerStore:
             if set(event.subject_artifact_ids) - set(lookup):
                 raise LedgerIntegrityError("event references a missing artifact")
             try:
-                snapshot_id = event.require_snapshot_subject(lookup)
+                snapshot_id = event.require_typed_artifact_subjects(lookup)
             except LedgerContractError as exc:
                 raise LedgerIntegrityError(
                     "ledger event snapshot subject is invalid"
@@ -781,6 +782,7 @@ class DecisionLedgerStore:
                         event.payload["source_bundle_digest"],
                         self._project_id,
                         event.payload["source_project_id"],
+                        event.payload["source_head_hash"],
                         canonical_bytes(assertion_ids),
                         "assertion_ready",
                         event.recorded_at_utc,
@@ -835,11 +837,11 @@ class DecisionLedgerStore:
         ).fetchone()
         import_rows = self._connection.execute(
             "SELECT source_bundle_digest,project_id,source_project_id,"
-            "assertion_artifact_ids,disposition,imported_at_utc "
+            "source_head_hash,assertion_artifact_ids,disposition,imported_at_utc "
             "FROM import_sources ORDER BY source_bundle_digest"
         ).fetchall()
         normalized_imports = tuple(
-            (row[0], row[1], row[2], bytes(row[3]), row[4], row[5])
+            (row[0], row[1], row[2], row[3], bytes(row[4]), row[5], row[6])
             for row in import_rows
         )
         return (
@@ -869,7 +871,7 @@ class DecisionLedgerStore:
                 )
             self._connection.execute("DELETE FROM import_sources")
             self._connection.executemany(
-                "INSERT INTO import_sources VALUES(?,?,?,?,?,?)",
+                "INSERT INTO import_sources VALUES(?,?,?,?,?,?,?)",
                 imports,
             )
             self._connection.commit()
@@ -1048,11 +1050,12 @@ class DecisionLedgerStore:
             if commit.import_source is not None:
                 source = commit.import_source
                 self._connection.execute(
-                    "INSERT INTO import_sources VALUES(?,?,?,?,?,?)",
+                    "INSERT INTO import_sources VALUES(?,?,?,?,?,?,?)",
                     (
                         source.source_bundle_digest,
                         source.project_id,
                         source.source_project_id,
+                        source.source_head_hash,
                         canonical_bytes(list(source.assertion_artifact_ids)),
                         source.disposition,
                         source.imported_at_utc,

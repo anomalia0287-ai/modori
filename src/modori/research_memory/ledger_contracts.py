@@ -201,6 +201,7 @@ _PAYLOAD_FIELDS: dict[LedgerEventKind, frozenset[str]] = {
     LedgerEventKind.IMPORT_ACCEPTED_AS_ASSERTIONS: frozenset(
         {
             "source_bundle_digest",
+            "source_head_hash",
             "source_project_id",
             "assertion_artifact_ids",
             "resulting_snapshot_artifact_id",
@@ -214,6 +215,31 @@ _PAYLOAD_FIELDS: dict[LedgerEventKind, frozenset[str]] = {
         }
     ),
 }
+_EVENT_ARTIFACT_ROLES: dict[
+    LedgerEventKind,
+    Mapping[str, LedgerArtifactKind],
+] = {
+    LedgerEventKind.PROJECT_CREATED: {},
+    LedgerEventKind.CLARIFICATION_ANSWERED: {
+        "answer_artifact_id": LedgerArtifactKind.CLARIFICATION_ANSWER,
+        "evidence_ref_artifact_id": LedgerArtifactKind.DECISION_EVIDENCE_REF,
+    },
+    LedgerEventKind.REVISION_ACCEPTED: {
+        "acceptance_artifact_id": LedgerArtifactKind.REVISION_ACCEPTANCE,
+        "evidence_ref_artifact_id": LedgerArtifactKind.DECISION_EVIDENCE_REF,
+    },
+    LedgerEventKind.FACT_INVALIDATED: {},
+    LedgerEventKind.PASSPORT_COMMITTED: {
+        "passport_artifact_id": LedgerArtifactKind.ANALYSIS_PASSPORT,
+    },
+    LedgerEventKind.DECISION_RETRACTED: {},
+    LedgerEventKind.IMPORT_ACCEPTED_AS_ASSERTIONS: {
+        "assertion_artifact_ids": LedgerArtifactKind.IMPORTED_ASSERTION,
+    },
+    LedgerEventKind.MIGRATION_APPLIED: {},
+}
+if frozenset(_EVENT_ARTIFACT_ROLES) != frozenset(LedgerEventKind):
+    raise RuntimeError("event artifact role policy is incomplete")
 
 
 def _validate_payload(
@@ -243,7 +269,7 @@ def _validate_payload(
             if ids != tuple(sorted(ids)):
                 raise LedgerContractError("assertion_artifact_ids must be sorted")
             artifact_ids.extend(ids)
-        elif key in {"source_bundle_digest"}:
+        elif key in {"source_bundle_digest", "source_head_hash"}:
             _require_digest(value, key)
         elif key in {"source_project_id", "retracted_event_id"}:
             _require_reference(value, key)
@@ -422,6 +448,23 @@ class LedgerEvent:
             raise LedgerContractError(
                 "event resulting snapshot must be a request snapshot artifact"
             )
+        return snapshot_id
+
+    def require_typed_artifact_subjects(
+        self,
+        artifact_lookup: Mapping[str, LedgerArtifact],
+    ) -> str:
+        snapshot_id = self.require_snapshot_subject(artifact_lookup)
+        payload = self.payload
+        for field, expected_kind in _EVENT_ARTIFACT_ROLES[self.event_kind].items():
+            raw_ids = payload[field]
+            artifact_ids = raw_ids if isinstance(raw_ids, list) else [raw_ids]
+            for artifact_id in artifact_ids:
+                artifact = artifact_lookup.get(artifact_id)
+                if artifact is None or artifact.artifact_kind is not expected_kind:
+                    raise LedgerContractError(
+                        f"{field} must reference artifact kind {expected_kind.value}"
+                    )
         return snapshot_id
 
     def to_mapping(self) -> dict[str, object]:
@@ -1030,6 +1073,7 @@ class ImportSourceRecord:
     project_id: str
     source_project_id: str
     source_bundle_digest: str
+    source_head_hash: str
     assertion_artifact_ids: tuple[str, ...]
     disposition: str = "assertion_ready"
     imported_at_utc: str | None = None
@@ -1038,6 +1082,7 @@ class ImportSourceRecord:
         _require_reference(self.project_id, "project_id")
         _require_reference(self.source_project_id, "source_project_id")
         _require_digest(self.source_bundle_digest, "source_bundle_digest")
+        _require_digest(self.source_head_hash, "source_head_hash")
         if self.disposition != "assertion_ready":
             raise LedgerContractError("import disposition must be assertion_ready")
         if (
@@ -1106,7 +1151,7 @@ class LedgerCommit:
             missing = sorted(set(event.subject_artifact_ids) - set(artifact_lookup))
             if missing:
                 raise LedgerContractError("commit must supply every subject artifact")
-            event.require_snapshot_subject(artifact_lookup)
+            event.require_typed_artifact_subjects(artifact_lookup)
             previous = event.event_hash
             expected_sequence += 1
         if any(artifact.project_id != project_id for artifact in self.artifacts):
@@ -1122,12 +1167,41 @@ class LedgerCommit:
         last_snapshot = self.events[-1].payload.get("resulting_snapshot_artifact_id")
         if last_snapshot != self.resulting_snapshot_artifact_id:
             raise LedgerContractError("last event and commit snapshot IDs must match")
+        import_events = tuple(
+            event
+            for event in self.events
+            if event.event_kind is LedgerEventKind.IMPORT_ACCEPTED_AS_ASSERTIONS
+        )
+        if len(import_events) > 1 or bool(import_events) != (
+            self.import_source is not None
+        ):
+            raise LedgerContractError(
+                "import event requires exactly one matching import source record"
+            )
         if self.import_source is not None:
-            if self.import_source.project_id != project_id:
+            source = self.import_source
+            if source.project_id != project_id:
                 raise LedgerContractError("import source project ID must match commit")
-            if set(self.import_source.assertion_artifact_ids) - set(artifact_lookup):
+            if source.source_project_id == project_id:
+                raise LedgerContractError(
+                    "import source requires a fresh local project"
+                )
+            if set(source.assertion_artifact_ids) - set(artifact_lookup):
                 raise LedgerContractError(
                     "import source assertion artifacts are missing"
+                )
+            event = import_events[0]
+            payload = event.payload
+            if (
+                payload["source_bundle_digest"] != source.source_bundle_digest
+                or payload["source_head_hash"] != source.source_head_hash
+                or payload["source_project_id"] != source.source_project_id
+                or tuple(payload["assertion_artifact_ids"])
+                != source.assertion_artifact_ids
+                or event.recorded_at_utc != source.imported_at_utc
+            ):
+                raise LedgerContractError(
+                    "import source record does not match its authoritative event"
                 )
 
 

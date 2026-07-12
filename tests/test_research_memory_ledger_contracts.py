@@ -8,6 +8,7 @@ import modori.research_memory.ledger_contracts as ledger_contracts
 from modori.research_memory.canonical import ZERO_HASH
 from modori.research_memory.ledger_contracts import (
     ImportedAssertion,
+    ImportSourceRecord,
     LedgerArtifact,
     LedgerArtifactKind,
     LedgerCommit,
@@ -490,4 +491,141 @@ def test_every_commit_event_requires_its_own_request_snapshot_subject() -> None:
             events=(first, second),
             artifacts=artifacts,
             resulting_snapshot_artifact_id=snapshot_artifact.artifact_id,
+        )
+
+
+def test_event_artifact_ids_must_bind_to_their_declared_artifact_roles() -> None:
+    _snapshot, artifacts = ResearchRequestSnapshot.capture(_request())
+    snapshot_artifact = next(
+        artifact
+        for artifact in artifacts
+        if artifact.artifact_kind is LedgerArtifactKind.REQUEST_SNAPSHOT
+    )
+    question_artifact = next(
+        artifact
+        for artifact in artifacts
+        if artifact.artifact_kind is LedgerArtifactKind.QUESTION_SPEC
+    )
+    estimand_artifact = next(
+        artifact
+        for artifact in artifacts
+        if artifact.artifact_kind is LedgerArtifactKind.ESTIMAND_SPEC
+    )
+    first = LedgerEvent.create(
+        project_id="project-1",
+        event_id="event:project:1",
+        sequence=1,
+        event_kind=LedgerEventKind.PROJECT_CREATED,
+        subject_artifact_ids=tuple(sorted(item.artifact_id for item in artifacts)),
+        payload={
+            "resulting_snapshot_artifact_id": snapshot_artifact.artifact_id,
+        },
+        previous_event_hash=ZERO_HASH,
+        recorded_at_utc=None,
+    )
+    forged_answer = LedgerEvent.create(
+        project_id="project-1",
+        event_id="event:answer:2",
+        sequence=2,
+        event_kind=LedgerEventKind.CLARIFICATION_ANSWERED,
+        subject_artifact_ids=tuple(
+            sorted(
+                {
+                    question_artifact.artifact_id,
+                    estimand_artifact.artifact_id,
+                    snapshot_artifact.artifact_id,
+                }
+            )
+        ),
+        payload={
+            "answer_artifact_id": question_artifact.artifact_id,
+            "evidence_ref_artifact_id": estimand_artifact.artifact_id,
+            "resulting_snapshot_artifact_id": snapshot_artifact.artifact_id,
+        },
+        previous_event_hash=first.event_hash,
+        recorded_at_utc=None,
+    )
+
+    with pytest.raises(LedgerContractError, match="artifact kind"):
+        LedgerCommit(
+            expected_head=LedgerHead.genesis(),
+            events=(first, forged_answer),
+            artifacts=artifacts,
+            resulting_snapshot_artifact_id=snapshot_artifact.artifact_id,
+        )
+
+
+def test_import_event_requires_an_exact_matching_import_source_record() -> None:
+    _snapshot, base_artifacts = ResearchRequestSnapshot.capture(_request())
+    snapshot_artifact = next(
+        artifact
+        for artifact in base_artifacts
+        if artifact.artifact_kind is LedgerArtifactKind.REQUEST_SNAPSHOT
+    )
+    assertion = ImportedAssertion(
+        assertion_id="assertion:foreign:1",
+        project_id="project-1",
+        source_project_id="foreign-project",
+        source_bundle_digest="1" * 64,
+        source_artifact_id="2" * 64,
+        fact_address="study.dependence_structure",
+        foreign_fact_state="user_confirmed",
+        value="independent",
+        provenance_refs=("answer:foreign:1",),
+    )
+    assertion_artifact = LedgerArtifact.from_value(assertion)
+    artifacts = tuple(
+        sorted((*base_artifacts, assertion_artifact), key=lambda item: item.artifact_id)
+    )
+    genesis = LedgerEvent.create(
+        project_id="project-1",
+        event_id="event:project:1",
+        sequence=1,
+        event_kind=LedgerEventKind.PROJECT_CREATED,
+        subject_artifact_ids=tuple(sorted(item.artifact_id for item in base_artifacts)),
+        payload={"resulting_snapshot_artifact_id": snapshot_artifact.artifact_id},
+        previous_event_hash=ZERO_HASH,
+        recorded_at_utc=None,
+    )
+    imported = LedgerEvent.create(
+        project_id="project-1",
+        event_id="event:import:2",
+        sequence=2,
+        event_kind=LedgerEventKind.IMPORT_ACCEPTED_AS_ASSERTIONS,
+        subject_artifact_ids=tuple(
+            sorted({snapshot_artifact.artifact_id, assertion_artifact.artifact_id})
+        ),
+        payload={
+            "source_bundle_digest": "1" * 64,
+            "source_head_hash": "3" * 64,
+            "source_project_id": "foreign-project",
+            "assertion_artifact_ids": [assertion_artifact.artifact_id],
+            "resulting_snapshot_artifact_id": snapshot_artifact.artifact_id,
+        },
+        previous_event_hash=genesis.event_hash,
+        recorded_at_utc=None,
+    )
+
+    with pytest.raises(LedgerContractError, match="import source"):
+        LedgerCommit(
+            expected_head=LedgerHead.genesis(),
+            events=(genesis, imported),
+            artifacts=artifacts,
+            resulting_snapshot_artifact_id=snapshot_artifact.artifact_id,
+        )
+
+    mismatched = ImportSourceRecord(
+        project_id="project-1",
+        source_project_id="foreign-project",
+        source_bundle_digest="1" * 64,
+        source_head_hash="4" * 64,
+        assertion_artifact_ids=(assertion_artifact.artifact_id,),
+    )
+    with pytest.raises(LedgerContractError, match="import source"):
+        LedgerCommit(
+            expected_head=LedgerHead.genesis(),
+            events=(genesis, imported),
+            artifacts=artifacts,
+            resulting_snapshot_artifact_id=snapshot_artifact.artifact_id,
+            import_source=mismatched,
         )

@@ -537,7 +537,7 @@ class EvidenceBundle:
                     "event references an unresolved subject artifact",
                 )
             try:
-                event.require_snapshot_subject(artifact_lookup)
+                event.require_typed_artifact_subjects(artifact_lookup)
             except LedgerContractError as exc:
                 _event_error(exc)
             referenced.update(event.subject_artifact_ids)
