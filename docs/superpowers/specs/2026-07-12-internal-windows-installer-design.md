@@ -1,6 +1,8 @@
 # Internal Windows Installer Design
 
-Status: approved for implementation on 2026-07-12.
+Status: approved for implementation on 2026-07-12; external review findings
+for stale payload cleanup, downgrade rejection, path budgeting, explicit close
+behavior, AppId escaping, and installer-script hashing are incorporated.
 
 ## 1. Goal
 
@@ -15,6 +17,10 @@ without replacing the installer identity, layout, or upgrade path.
   `scripts/package_windows.py`.
 - The package contains 4,376 files and is approximately 595.5 MiB before Inno
   Setup compression.
+- The measured longest payload-relative path is 128 characters:
+  `_internal\PySide6\qml\QtQuick\Controls\FluentWinUI3\light\images\pageindicatordelegate-indicator-delegate-current-hovered@2x.png`.
+  With the conservative 90-character install-root allowance and one separator,
+  the current path budget is 219 characters.
 - Host package launch, engine smoke, and public-data smoke already pass.
 - Inno Setup 6.7.3 is installed at
   `C:\Program Files (x86)\Inno Setup 6\ISCC.exe`.
@@ -105,10 +111,17 @@ root, and staging output directory.
 
 Required setup behavior:
 
+- AppId preprocessor inputs are bare GUID values; the `.iss` line uses
+  `AppId={{{#AppIdValue}}` so Inno Setup's literal opening brace is escaped as
+  `{{`.
 - `DefaultDirName={localappdata}\Programs\Modori`
 - `PrivilegesRequired=lowest`
 - x64-compatible Windows only
+- `CloseApplications=yes` and `RestartApplications=no`
 - modern wizard, LZMA2 compression, and solid compression
+- `[InstallDelete]` removes only `{app}\Modori` before `[Files]` copies the new
+  PyInstaller payload, preventing removed DLL, Python, or QML files from a prior
+  build from surviving an upgrade
 - complete recursive copy of `dist/Modori/` into `{app}\Modori\`
 - start-menu shortcut to `{app}\Modori\Modori.exe`
 - optional desktop shortcut
@@ -130,7 +143,8 @@ python scripts/build_installer.py
 ```
 
 `--check` validates the current platform, clean source identity, product
-version, PyInstaller availability, and Inno Setup compiler without building.
+version, PyInstaller availability, Inno Setup compiler, and current
+`dist/Modori/` path budget without building.
 
 `--staging-only` permits an explicitly dirty development worktree, marks the
 evidence `git_dirty: true`, keeps every result under `.tmp/installer-build/`,
@@ -153,12 +167,16 @@ The default command performs this sequence:
    source.
 6. Run the packaged QML, engine, and public-data smoke scripts against that
    package.
-7. Hash `dist/Modori/Modori.exe` and capture its byte size.
-8. Invoke `ISCC.exe` with explicit preprocessor definitions and a staging output
+7. Reject the package when
+   `90 + 1 + longest_payload_relative_path > 240`; record the longest path and
+   computed budget.
+8. Hash `dist/Modori/Modori.exe` and `installer/modori.iss`, and capture their
+   byte sizes where applicable.
+9. Invoke `ISCC.exe` with explicit preprocessor definitions and a staging output
    directory.
-9. Verify that exactly one expected installer exists and returned exit code 0.
-10. Hash the installer and create its release manifest and checksum file.
-11. Atomically publish the verified build directory to
+10. Verify that exactly one expected installer exists and returned exit code 0.
+11. Hash the installer and create its release manifest and checksum file.
+12. Atomically publish the verified build directory to
     `dist/installer/<build-identity>/`.
 
 When `--with-installed-smoke` is present, publication is deferred until the
@@ -243,6 +261,14 @@ dist\installer\<version>-g<commit>\
 | `package_executable.path` | String `dist/Modori/Modori.exe`. |
 | `package_executable.size_bytes` | Measured positive integer. |
 | `package_executable.sha256` | Exact 64-character uppercase hexadecimal digest. |
+| `installer_script.path` | String `installer/modori.iss`. |
+| `installer_script.sha256` | Exact SHA256 of the UTF-8 `.iss` bytes used by ISCC. |
+| `payload_paths.file_count` | Measured positive payload file count. |
+| `payload_paths.longest_relative_path` | Exact longest relative path using `/` separators. |
+| `payload_paths.longest_relative_path_chars` | Measured character count. |
+| `payload_paths.assumed_install_root_chars` | Integer `90`. |
+| `payload_paths.safe_path_budget_chars` | Integer `240`. |
+| `payload_paths.computed_max_chars` | Root allowance plus one separator plus longest relative-path length. |
 | `installer.filename` | Exact version-and-commit installer filename. |
 | `installer.size_bytes` | Measured positive integer. |
 | `installer.sha256` | Exact 64-character uppercase hexadecimal digest. |
@@ -297,16 +323,33 @@ created them.
 ### Upgrade and repair
 
 - The same AppId and default path are used for every version.
-- If `Modori.exe` is running, Setup requests a clean close. If the process
-  cannot close, Setup stops rather than replacing in-use files.
+- `CloseApplications=yes` uses Windows Restart Manager to request a clean close
+  of `Modori.exe`; `RestartApplications=no` prevents Setup from relaunching it.
+  The design does not use `CloseApplications=force`; any nonzero Setup outcome
+  caused by files remaining in use is a failed install, not permission to force
+  termination.
+- Immediately before copying `[Files]`, `[InstallDelete]` removes only the fixed
+  installer-owned `{app}\Modori` subtree. This is mandatory because Inno Setup
+  does not remove files that existed only in an older PyInstaller `onedir`
+  payload.
 - Reinstalling the same build is a repair operation and must not create a second
-  uninstall registration.
+  uninstall registration. It must also remove an unexpected sentinel file
+  placed in the installed `Modori` subtree before repair.
 - Installing a higher version is an in-place upgrade.
-- Installing a lower version over a higher version is rejected. A deliberate
-  downgrade requires uninstalling first.
-- The installer-owned `Modori` subtree may be refreshed, but no cleanup rule may
-  target `%LocalAppData%\Modori`, user-selected paths, or a computed path outside
-  the fixed install root.
+- Installing a lower version over a higher version is rejected by
+  `InitializeSetup`. It reads `DisplayVersion` from the permanent current-user
+  uninstall key, parses both numeric versions with `StrToVersion`, and compares
+  them with `ComparePackedVersion`. Missing registration allows installation;
+  an unreadable existing version fails closed. A deliberate downgrade requires
+  uninstalling first.
+- No cleanup rule may target `%LocalAppData%\Modori`, user-selected paths, or a
+  computed path outside the fixed install root.
+
+`[InstallDelete]` is intentionally a clean-refresh policy, not a binary rollback
+mechanism. If installation fails after the prior package subtree is removed,
+the user reruns the same verified offline installer; the previously published
+installer evidence directory remains available. Adding a second 595.5 MiB
+on-disk rollback copy is outside the internal-channel scope.
 
 ### Uninstall
 
@@ -334,6 +377,8 @@ created them.
   never replaced or merged.
 - Installed-smoke failures preserve installer, app-smoke, and uninstaller logs
   under `.tmp/installer-smoke/` and stop at the first failed layer.
+- A failed clean refresh may require rerunning the same verified offline
+  installer; the build evidence directory and all user state remain available.
 - Cleanup deletes only the test installation directory that the smoke script
   created after verifying it resolves under `.tmp/installer-smoke/`.
 
@@ -361,11 +406,18 @@ created them.
 - Git clean-state enforcement and commit normalization.
 - ISCC discovery and explicit command construction.
 - Inno contract: permanent AppId, `PrivilegesRequired=lowest`, fixed install
-  root, recursive package copy, shortcuts, uninstall metadata, offline scope,
-  and absence of user-state deletion.
+  root, `AppId={{{#AppIdValue}}` brace escaping, `CloseApplications=yes`,
+  `RestartApplications=no`, fixed-subtree `[InstallDelete]`, recursive package
+  copy, shortcuts, uninstall metadata, offline scope, and absence of user-state
+  deletion.
+- Downgrade guard contract and numeric version parsing, including missing,
+  equal, higher, lower, and malformed installed `DisplayVersion` cases.
+- Path-budget pass at the current measured 128-character longest relative path
+  and failure when `90 + 1 + relative_length` exceeds `240`.
 - Staging isolation and no publication on each failure class.
 - Exact manifest schema, positive byte sizes, uppercase SHA256 values, stable
-  JSON formatting, and checksum-line formatting.
+  JSON formatting, `.iss` source hash, path-budget evidence, and checksum-line
+  formatting.
 - Quality-gate flag ordering and invalid-combination rejection.
 - File-operation audit registration for every new build or cleanup boundary.
 
@@ -382,8 +434,9 @@ created them.
 
 ### Installed lifecycle smoke
 
-1. Compile an unpublished installer with the isolated smoke AppId and display
-   name, and verify its manifest contains `smoke_only: true`.
+1. Compile an unpublished full-payload installer version `0.1.0` with the
+   isolated smoke AppId and display name, plus a tiny same-AppId downgrade probe
+   version `0.0.9`; verify both are marked `smoke_only: true`.
 2. Create a uniquely named smoke root and a user-state directory outside the
    smoke install directory.
 3. Install silently without elevation into the smoke install directory.
@@ -391,12 +444,16 @@ created them.
    registration, and isolated smoke AppId.
 5. Run packaged QML, engine, and public-data smokes against the installed path
    with cache and settings redirected to the smoke user-state directory.
-6. Run the same installer again and verify a single smoke uninstall
-   registration.
-7. Uninstall silently.
-8. Verify installed binaries, smoke shortcuts, and smoke uninstall registration
+6. Write `orphan-stale-probe.bin` into the installed `{app}\Modori` subtree,
+   rerun the same installer, verify the probe is absent, and verify a single
+   smoke uninstall registration.
+7. Record the installed `Modori.exe` hash, run the `0.0.9` downgrade probe,
+   require a nonzero exit, verify `DisplayVersion` remains `0.1.0`, and verify
+   the installed executable hash is unchanged.
+8. Uninstall silently.
+9. Verify installed binaries, smoke shortcuts, and smoke uninstall registration
    are gone.
-9. Verify the smoke user-state directory remains, then remove only the state
+10. Verify the smoke user-state directory remains, then remove only the state
    created by this test and preserve all logs.
 
 No screenshot or manual visual comparison is required for installer acceptance.
@@ -410,11 +467,17 @@ No screenshot or manual visual comparison is required for installer acceptance.
 - Setup runs as the current user without a UAC prompt.
 - Start-menu and optional desktop shortcuts target the installed executable.
 - Installed QML, engine, and public-data smokes pass.
-- Repair installation does not duplicate product registration.
+- Repair installation deletes the planted stale-file probe and does not
+  duplicate product registration.
+- The lower-version smoke probe is rejected without changing the registered
+  version or installed executable hash.
+- The package path preflight records the current 128-character maximum and
+  stays within the conservative 240-character budget.
 - Automated host lifecycle testing uses the isolated smoke identity and cannot
   modify a real Modori installation.
 - Uninstall removes installer-owned artifacts and preserves user state.
-- Installer and internal executable hashes match the manifest.
+- Installer, internal executable, and `installer/modori.iss` hashes match the
+  manifest.
 - The distributed build manifest records
   `verification.installed_lifecycle_smoke: true` and the isolated smoke AppId.
 - Existing default, slow-statistical, package, and security gates remain green.
@@ -427,6 +490,16 @@ No screenshot or manual visual comparison is required for installer acceptance.
   https://jrsoftware.org/ishelp/topic_setup_appid.htm
 - Inno Setup `PrivilegesRequired`:
   https://jrsoftware.org/ishelp/topic_setup_privilegesrequired.htm
+- Inno Setup `[InstallDelete]`:
+  https://jrsoftware.org/ishelp/topic_installdeletesection.htm
+- Inno Setup installation order:
+  https://jrsoftware.org/ishelp/topic_installorder.htm
+- Inno Setup `CloseApplications`:
+  https://jrsoftware.org/ishelp/topic_setup_closeapplications.htm
+- Inno Setup setup event functions:
+  https://jrsoftware.org/ishelp/topic_scriptevents.htm
+- Inno Setup Pascal version comparison:
+  https://jrsoftware.org/ishelp/topic_isxfunc_comparepackedversion.htm
 - Microsoft MSIX signing overview:
   https://learn.microsoft.com/windows/msix/package/signing-package-overview
 - Microsoft SignTool:
