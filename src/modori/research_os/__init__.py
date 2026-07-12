@@ -1,5 +1,14 @@
 """Deterministic, estimand-aware Research OS foundation."""
 
+from modori.research_os.clarification import (
+    AnswerChoice,
+    AnswerKind,
+    ClarificationError,
+    ClarificationRegistry,
+    ClarificationSpec,
+    ClarificationTrigger,
+)
+
 from modori.research_os.contracts import (
     AssignmentMechanism,
     AssociationTarget,
@@ -55,6 +64,7 @@ from modori.research_os.p1_catalog import (
     RULESET_VERSION,
     build_p1_method_space,
 )
+from modori.research_os.p1_clarifications import build_p1_clarification_registry
 from modori.research_os.resolver import (
     C1Resolver,
     PrimaryAction,
@@ -72,6 +82,8 @@ from modori.research_os.service import (
 )
 
 __all__ = [
+    "AnswerChoice",
+    "AnswerKind",
     "AssignmentMechanism",
     "AssociationTarget",
     "C1Resolver",
@@ -80,6 +92,10 @@ __all__ = [
     "CaptureMode",
     "CausalIntent",
     "ClaimBasis",
+    "ClarificationError",
+    "ClarificationRegistry",
+    "ClarificationSpec",
+    "ClarificationTrigger",
     "ContrastKind",
     "ContractError",
     "DataLayout",
@@ -131,5 +147,6 @@ __all__ = [
     "UnitKind",
     "TrustFloor",
     "canonical_digest",
+    "build_p1_clarification_registry",
     "build_p1_method_space",
 ]
