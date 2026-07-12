@@ -625,7 +625,7 @@ git commit -m "feat: define internal Windows installer"
 
 **Interfaces:**
 - Consumes: `installer_contract` values, Windows registry Inno Setup metadata, Git CLI, and `installer/modori.iss`.
-- Produces: `BuildOptions`, `InstallerDefinition`, `find_iscc()`, `read_inno_version()`, `source_identity()`, `build_iscc_command()`, and `main()` with `--check`, `--staging-only`, and `--with-installed-smoke`.
+- Produces: `BuildOptions`, `find_iscc()`, `read_inno_version()`, `source_identity()`, `build_iscc_command()`, and `main()` with `--check`, `--staging-only`, and `--with-installed-smoke`.
 
 - [ ] **Step 1: Write failing preflight and command tests**
 
