@@ -19,6 +19,14 @@
 #ifndef OutputBaseFilename
   #error OutputBaseFilename is required
 #endif
+#ifndef AllowCustomDirValue
+  #error AllowCustomDirValue is required
+#endif
+#if Int(AllowCustomDirValue) != 0
+  #if Int(AllowCustomDirValue) != 1
+    #error AllowCustomDirValue must be 0 or 1
+  #endif
+#endif
 
 [Setup]
 AppId={{{#AppIdValue}}
@@ -35,7 +43,9 @@ CloseApplications=yes
 RestartApplications=no
 ChangesAssociations=no
 ChangesEnvironment=no
+DisableDirPage=yes
 DisableProgramGroupPage=yes
+UsePreviousAppDir=no
 OutputDir={#OutputDir}
 OutputBaseFilename={#OutputBaseFilename}
 Compression=lzma2/ultra64
@@ -74,6 +84,16 @@ function ExistingVersionKey: String;
 begin
   Result := 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{' +
     '{#AppIdValue}' + '}_is1';
+end;
+
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+begin
+  Result := '';
+#if Int(AllowCustomDirValue) == 0
+  if CompareText(WizardDirValue(), ExpandConstant('{localappdata}\Programs\Modori')) <> 0 then
+    Result := 'Modori must be installed in ' +
+      ExpandConstant('{localappdata}\Programs\Modori') + '.';
+#endif
 end;
 
 function InitializeSetup: Boolean;

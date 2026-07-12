@@ -24,6 +24,39 @@ def test_inno_script_has_permanent_safe_install_contract() -> None:
         assert expected in text
 
 
+def test_inno_script_requires_boolean_custom_dir_compile_definition() -> None:
+    text = _text()
+
+    assert "#ifndef AllowCustomDirValue" in text
+    assert "#error AllowCustomDirValue is required" in text
+    assert "Int(AllowCustomDirValue) != 0" in text
+    assert "Int(AllowCustomDirValue) != 1" in text
+
+
+def test_inno_script_locks_final_production_directory() -> None:
+    text = _text()
+
+    assert "DisableDirPage=yes" in text
+    assert "UsePreviousAppDir=no" in text
+
+    code = text.split("[Code]", 1)[1]
+    signature = "function PrepareToInstall(var NeedsRestart: Boolean): String;"
+    assert signature in code
+    prepare_to_install = code.split(signature, 1)[1].split(
+        "function InitializeSetup", 1
+    )[0]
+
+    for expected in [
+        "Result := '';",
+        "#if Int(AllowCustomDirValue) == 0",
+        "CompareText(WizardDirValue(), ExpandConstant(",
+        r"{localappdata}\Programs\Modori",
+        "<> 0",
+        "Result := 'Modori must be installed in '",
+    ]:
+        assert expected in prepare_to_install
+
+
 def test_inno_delete_boundary_never_targets_user_state() -> None:
     text = _text()
     install_delete = text.split("[InstallDelete]", 1)[1].split("[", 1)[0]

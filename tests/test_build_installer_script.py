@@ -101,6 +101,7 @@ def test_build_iscc_command_contains_all_explicit_definitions(tmp_path: Path) ->
         package_root=package,
         output_dir=output,
         output_base_filename="Modori-Setup-0.1.0-gaaaaaaaaaaaa",
+        allow_custom_dir=False,
     )
 
     assert command[0] == str(compiler)
@@ -111,6 +112,7 @@ def test_build_iscc_command_contains_all_explicit_definitions(tmp_path: Path) ->
     assert f"/DPackageRoot={package.resolve()}" in command
     assert f"/DOutputDir={output.resolve()}" in command
     assert "/DOutputBaseFilename=Modori-Setup-0.1.0-gaaaaaaaaaaaa" in command
+    assert "/DAllowCustomDirValue=0" in command
     assert command[-1] == str(script.resolve())
 
 
@@ -125,6 +127,7 @@ def test_build_iscc_command_strips_braces_only_from_app_id(tmp_path: Path) -> No
         package_root=tmp_path / "{Modori}",
         output_dir=tmp_path / "{output}",
         output_base_filename="{Modori-Setup}",
+        allow_custom_dir=False,
     )
 
     assert "/DAppIdValue=app-id" in command
@@ -132,6 +135,26 @@ def test_build_iscc_command_strips_braces_only_from_app_id(tmp_path: Path) -> No
     assert "/DAppVersionValue={0.1.0}" in command
     assert "/DWindowsFileVersionValue={0.1.0.0}" in command
     assert "/DOutputBaseFilename={Modori-Setup}" in command
+
+
+@pytest.mark.parametrize("allow_custom_dir", [None, 0, 1, "0", "1"])
+def test_build_iscc_command_rejects_non_boolean_custom_dir_modes(
+    tmp_path: Path,
+    allow_custom_dir: object,
+) -> None:
+    with pytest.raises(TypeError, match="allow_custom_dir must be a bool"):
+        build_installer.build_iscc_command(
+            compiler=tmp_path / "ISCC.exe",
+            script=tmp_path / "modori.iss",
+            app_id=PRODUCTION_APP_ID,
+            app_name="Modori",
+            version="0.1.0",
+            windows_file_version="0.1.0.0",
+            package_root=tmp_path / "Modori",
+            output_dir=tmp_path / "output",
+            output_base_filename="Modori-Setup",
+            allow_custom_dir=allow_custom_dir,
+        )
 
 
 def test_read_inno_version_strips_registry_value(monkeypatch) -> None:
@@ -329,6 +352,17 @@ def test_build_release_runs_package_gates_before_compiler(
     )
     compiler_index = next(i for i, value in enumerate(flattened) if "ISCC.exe" in value)
     assert package_index < public_index < compiler_index
+    iscc_calls = [
+        command
+        for command in calls
+        if command and str(command[0]).endswith("ISCC.exe")
+    ]
+    assert [
+        item
+        for command in iscc_calls
+        for item in command
+        if item.startswith("/DAllowCustomDirValue=")
+    ] == ["/DAllowCustomDirValue=0"]
     assert result.is_dir()
     assert not (tmp_path / "dist" / "installer").exists()
 
@@ -410,6 +444,15 @@ def test_installed_smoke_success_uses_isolated_identity_and_marks_production(
         for command in iscc_calls
     ]
     assert versions == ["0.1.0", DOWNGRADE_PROBE_VERSION, "0.1.0"]
+    allow_custom_dir_values = [
+        next(
+            item
+            for item in command
+            if item.startswith("/DAllowCustomDirValue=")
+        ).split("=", 1)[1]
+        for command in iscc_calls
+    ]
+    assert allow_custom_dir_values == ["1", "1", "0"]
     output_names = [
         next(
             item for item in command if item.startswith("/DOutputBaseFilename=")
@@ -491,6 +534,7 @@ def test_failed_installed_smoke_never_compiles_production_or_publishes(
         f"/DAppIdValue={SMOKE_APP_ID.strip('{}')}" in command
         for command in iscc_calls
     )
+    assert all("/DAllowCustomDirValue=1" in command for command in iscc_calls)
     assert not any(
         f"/DAppIdValue={PRODUCTION_APP_ID.strip('{}')}" in command
         for command in iscc_calls

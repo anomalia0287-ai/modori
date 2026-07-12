@@ -121,7 +121,10 @@ def build_iscc_command(
     package_root: Path,
     output_dir: Path,
     output_base_filename: str,
+    allow_custom_dir: bool,
 ) -> list[str]:
+    if not isinstance(allow_custom_dir, bool):
+        raise TypeError("allow_custom_dir must be a bool")
     return [
         str(compiler),
         "/Qp",
@@ -132,6 +135,7 @@ def build_iscc_command(
         f"/DPackageRoot={package_root.resolve()}",
         f"/DOutputDir={output_dir.resolve()}",
         f"/DOutputBaseFilename={output_base_filename}",
+        f"/DAllowCustomDirValue={int(allow_custom_dir)}",
         str(script.resolve()),
     ]
 
@@ -156,6 +160,7 @@ def compile_installer(
     package_root: Path,
     output_dir: Path,
     output_base_filename: str,
+    allow_custom_dir: bool,
     runner=run_command,
     version: str | None = None,
 ) -> Path:
@@ -170,6 +175,7 @@ def compile_installer(
         package_root=package_root,
         output_dir=output_dir,
         output_base_filename=output_base_filename,
+        allow_custom_dir=allow_custom_dir,
     )
     run_required(command, runner)
     installers = sorted(output_dir.glob("*.exe"))
@@ -244,6 +250,7 @@ def build_release(
             package_root=package_root,
             output_dir=smoke_output,
             output_base_filename=smoke_name,
+            allow_custom_dir=True,
             runner=runner,
         )
         probe_payload = staging / "downgrade-probe-payload"
@@ -261,6 +268,7 @@ def build_release(
             package_root=probe_payload,
             output_dir=probe_output,
             output_base_filename="Modori-Installer-Smoke-Downgrade-0.0.9",
+            allow_custom_dir=True,
             runner=runner,
             version=DOWNGRADE_PROBE_VERSION,
         )
@@ -309,6 +317,7 @@ def build_release(
         package_root=package_root,
         output_dir=production_output,
         output_base_filename=setup_base_name,
+        allow_custom_dir=False,
         runner=runner,
     )
     candidate = staging / "candidate"
