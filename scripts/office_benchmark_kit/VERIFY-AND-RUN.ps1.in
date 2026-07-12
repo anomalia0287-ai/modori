@@ -3,6 +3,20 @@ $KitRoot = [System.IO.Path]::GetFullPath($PSScriptRoot)
 $Results = Join-Path $KitRoot 'results'
 $ExpectedManifestDigest = '__MANIFEST_SHA256__'
 
+function Get-ModoriSha256([string]$LiteralPath) {
+    $stream = [System.IO.File]::OpenRead($LiteralPath)
+    try {
+        $algorithm = [System.Security.Cryptography.SHA256]::Create()
+        try {
+            return ([System.BitConverter]::ToString($algorithm.ComputeHash($stream))).Replace('-', '').ToLowerInvariant()
+        } finally {
+            $algorithm.Dispose()
+        }
+    } finally {
+        $stream.Dispose()
+    }
+}
+
 function Stop-ModoriKit([string]$Code) {
     Write-Host ("오류 코드: " + $Code)
     try {
@@ -29,7 +43,7 @@ try {
     if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
         Stop-ModoriKit 'manifest_missing'
     }
-    $manifestDigest = (Get-FileHash -LiteralPath $manifestPath -Algorithm SHA256).Hash.ToLowerInvariant()
+    $manifestDigest = Get-ModoriSha256 $manifestPath
     if ($manifestDigest -ne $ExpectedManifestDigest) {
         Stop-ModoriKit 'manifest_digest_mismatch'
     }
@@ -50,7 +64,7 @@ try {
         if ([int64]$item.Length -ne [int64]$entry.size_bytes) {
             Stop-ModoriKit 'manifest_size_mismatch'
         }
-        $digest = (Get-FileHash -LiteralPath $candidate -Algorithm SHA256).Hash.ToLowerInvariant()
+        $digest = Get-ModoriSha256 $candidate
         if ($digest -ne [string]$entry.sha256) {
             Stop-ModoriKit 'manifest_file_digest_mismatch'
         }

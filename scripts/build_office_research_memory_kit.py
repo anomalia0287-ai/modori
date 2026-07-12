@@ -305,6 +305,11 @@ def _render_template(raw: bytes, token: bytes, replacement: str) -> bytes:
     return rendered
 
 
+def _windows_command_bytes(raw: bytes) -> bytes:
+    normalized = raw.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+    return normalized.replace(b"\n", b"\r\n")
+
+
 def _identity_bytes(snapshot: SourceSnapshot, runtime_spec: RuntimeSpec) -> bytes:
     return canonical_json_bytes(
         {
@@ -455,10 +460,12 @@ def build_kit(request: BuildRequest) -> BuildResult:
             hashlib.sha256(manifest).hexdigest(),
         )
         _write_new(kit_root / "VERIFY-AND-RUN.ps1", powershell)
-        command = _render_template(
-            request.snapshot.files[TEMPLATE_SOURCE_FILES["cmd"]],
-            b"__POWERSHELL_SHA256__",
-            hashlib.sha256(powershell).hexdigest(),
+        command = _windows_command_bytes(
+            _render_template(
+                request.snapshot.files[TEMPLATE_SOURCE_FILES["cmd"]],
+                b"__POWERSHELL_SHA256__",
+                hashlib.sha256(powershell).hexdigest(),
+            )
         )
         _write_new(kit_root / "RUN-MODORI-BENCHMARK.cmd", command)
         _write_deterministic_zip(

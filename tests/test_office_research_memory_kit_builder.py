@@ -141,6 +141,8 @@ def test_builder_creates_a_complete_hash_chain(tmp_path: Path) -> None:
     assert powershell_digest in command
     assert b"__MANIFEST_SHA256__" not in powershell
     assert b"__POWERSHELL_SHA256__" not in command
+    assert b"\r\n" in command
+    assert b"\n" not in command.replace(b"\r\n", b"")
     entries = parse_manifest(manifest)
     paths = {entry.path for entry in entries}
     assert {

@@ -74,6 +74,8 @@ def test_powershell_and_cmd_templates_have_no_network_elevation_or_host_mutation
         "userprofile",
     }
     assert not {item for item in forbidden if item in source}
+    assert "get-filehash" not in source
+    assert source.count("system.security.cryptography.sha256") >= 2
 
 
 def test_hardware_probe_uses_only_approved_windows_inventory_commands() -> None:
