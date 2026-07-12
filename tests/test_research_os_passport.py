@@ -196,6 +196,31 @@ def test_passport_strict_roundtrip_preserves_digest() -> None:
         AnalysisPassport.from_mapping(passport.to_mapping() | {"execute": True})
 
 
+def test_passport_decision_evidence_digests_are_ordered_unique_hashes() -> None:
+    passport = _valid_recommend_passport()
+
+    assert passport.decision_evidence_digests == ()
+    with_evidence = replace(
+        passport,
+        decision_evidence_digests=("d" * 64, "e" * 64),
+    )
+    assert AnalysisPassport.from_mapping(with_evidence.to_mapping()) == with_evidence
+    assert with_evidence.digest() != passport.digest()
+    assert replace(
+        with_evidence,
+        decision_evidence_digests=tuple(
+            reversed(with_evidence.decision_evidence_digests)
+        ),
+    ).digest() != with_evidence.digest()
+    with pytest.raises(PassportError, match="duplicates"):
+        replace(
+            passport,
+            decision_evidence_digests=("d" * 64, "d" * 64),
+        )
+    with pytest.raises(PassportError, match="lowercase SHA-256"):
+        replace(passport, decision_evidence_digests=("invalid",))
+
+
 def test_every_action_roundtrips_without_mixed_authority() -> None:
     passports = (
         _valid_recommend_passport(),

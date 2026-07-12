@@ -40,6 +40,10 @@ from modori.research_os.method_space import (
     RouteEvidence,
     SupportStatus,
 )
+from modori.research_os.decision_evidence import (
+    DecisionEvidenceKind,
+    DecisionEvidenceRef,
+)
 from modori.research_os.p1_catalog import build_p1_method_space
 from modori.research_os.passport import ClaimClass
 from modori.research_os.resolver import PrimaryAction, ResolutionDecision
@@ -392,6 +396,33 @@ def test_identical_semantic_decision_has_stable_digest() -> None:
 
     assert left.resolver_decision_digest == right.resolver_decision_digest
     assert left.digest() != right.digest()
+
+
+def test_plan_binds_request_decision_evidence_in_event_order() -> None:
+    first = DecisionEvidenceRef(
+        evidence_id="answer:goal:2",
+        project_id="project-1",
+        evidence_kind=DecisionEvidenceKind.CLARIFICATION_ANSWER,
+        event_sequence=2,
+        evidence_digest="d" * 64,
+        subject_digests=("1" * 64,),
+    )
+    second = DecisionEvidenceRef(
+        evidence_id="acceptance:goal:3",
+        project_id="project-1",
+        evidence_kind=DecisionEvidenceKind.REVISION_ACCEPTANCE,
+        event_sequence=3,
+        evidence_digest="e" * 64,
+        subject_digests=("2" * 64,),
+    )
+    request = replace(
+        _request(),
+        decision_evidence_refs=(first, second),
+    )
+
+    passport = ResearchOsService().plan(request, _passport_envelope())
+
+    assert passport.decision_evidence_digests == ("d" * 64, "e" * 64)
 
 
 def test_planning_service_is_exposed_from_package() -> None:

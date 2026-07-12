@@ -261,6 +261,10 @@ def _clarify_passport(
         method_space_digest=method_space.digest(),
         ruleset_version=method_space.ruleset_version,
         resolver_decision_digest="c" * 64,
+        decision_evidence_digests=tuple(
+            reference.evidence_digest
+            for reference in request.decision_evidence_refs
+        ),
         clarify=ClarifyPayload(
             question_ids=(question_id,),
             blocking_fact_addresses=(question.fact_address,),
@@ -821,6 +825,32 @@ def test_reserved_acceptance_id_cannot_reuse_existing_evidence_id() -> None:
             ),
             acceptance_certificate_id="acceptance:effect-scale:1",
         )
+
+
+def test_answer_cannot_use_passport_with_omitted_decision_evidence() -> None:
+    prior = DecisionEvidenceRef(
+        evidence_id="answer:prior:1",
+        project_id="project-1",
+        evidence_kind=DecisionEvidenceKind.CLARIFICATION_ANSWER,
+        event_sequence=1,
+        evidence_digest="d" * 64,
+        subject_digests=("e" * 64,),
+    )
+    request = replace(_request(), decision_evidence_refs=(prior,))
+    proper = _clarify_passport(request, "confirm_dependence")
+    tampered = replace(proper, decision_evidence_digests=())
+    answer = replace(
+        _answer(
+            request,
+            "confirm_dependence",
+            _choice("independent"),
+            event_sequence=2,
+        ),
+        source_passport_digest=tampered.digest(),
+    )
+
+    with pytest.raises(TransitionError, match="decision evidence"):
+        ClarificationTransitionService().propose(request, tampered, answer)
 
 
 def test_candidate_cannot_commit_after_decision_evidence_changes() -> None:

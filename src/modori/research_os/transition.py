@@ -456,6 +456,13 @@ class ClarificationTransitionService:
             raise TransitionError("source component revision no longer matches passport")
         if passport.dataset_fingerprint != request.current_dataset_fingerprint:
             raise TransitionError("source dataset fingerprint no longer matches passport")
+        request_evidence_digests = tuple(
+            reference.evidence_digest for reference in request.decision_evidence_refs
+        )
+        if passport.decision_evidence_digests != request_evidence_digests:
+            raise TransitionError(
+                "source decision evidence no longer matches passport"
+            )
         if request.question_budget_remaining == 0:
             raise TransitionError("clarification question budget is exhausted")
         if any(

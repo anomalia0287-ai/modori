@@ -275,6 +275,10 @@ class ResearchOsService:
             resolver_decision_digest=canonical_digest(
                 {"semantic_signature": decision.semantic_signature}
             ),
+            decision_evidence_digests=tuple(
+                reference.evidence_digest
+                for reference in request.decision_evidence_refs
+            ),
             recommend_local=recommend_local,
             clarify=clarify,
             route_external=route_external,

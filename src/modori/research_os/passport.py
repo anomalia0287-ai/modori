@@ -360,6 +360,7 @@ class AnalysisPassport:
     method_space_digest: str
     ruleset_version: str
     resolver_decision_digest: str
+    decision_evidence_digests: tuple[str, ...] = ()
     recommend_local: RecommendLocalPayload | None = None
     clarify: ClarifyPayload | None = None
     route_external: RouteExternalPayload | None = None
@@ -393,6 +394,16 @@ class AnalysisPassport:
             self.resolver_decision_digest,
             "resolver_decision_digest",
         )
+        if not isinstance(self.decision_evidence_digests, tuple):
+            raise PassportError("decision_evidence_digests must be a tuple")
+        for digest in self.decision_evidence_digests:
+            _require_digest(digest, "decision_evidence_digests")
+        if len(set(self.decision_evidence_digests)) != len(
+            self.decision_evidence_digests
+        ):
+            raise PassportError(
+                "decision_evidence_digests cannot contain duplicates"
+            )
         payloads = (
             self.recommend_local,
             self.clarify,
@@ -432,6 +443,7 @@ class AnalysisPassport:
             "method_space_digest": self.method_space_digest,
             "ruleset_version": self.ruleset_version,
             "resolver_decision_digest": self.resolver_decision_digest,
+            "decision_evidence_digests": list(self.decision_evidence_digests),
             "recommend_local": (
                 None
                 if self.recommend_local is None
@@ -460,6 +472,7 @@ class AnalysisPassport:
                 "method_space_digest",
                 "ruleset_version",
                 "resolver_decision_digest",
+                "decision_evidence_digests",
                 "recommend_local",
                 "clarify",
                 "route_external",
@@ -467,6 +480,9 @@ class AnalysisPassport:
             }
         )
         _require_exact_keys(payload, allowed, "AnalysisPassport")
+        raw_evidence_digests = payload["decision_evidence_digests"]
+        if not isinstance(raw_evidence_digests, list):
+            raise PassportError("decision_evidence_digests must be a list")
         try:
             envelope = SchemaEnvelope.from_mapping(
                 _require_mapping(payload["envelope"], "passport envelope")
@@ -509,6 +525,10 @@ class AnalysisPassport:
             resolver_decision_digest=_require_digest(
                 payload["resolver_decision_digest"],
                 "resolver_decision_digest",
+            ),
+            decision_evidence_digests=tuple(
+                _require_digest(digest, "decision_evidence_digests")
+                for digest in raw_evidence_digests
             ),
             recommend_local=optional_payload(
                 "recommend_local", RecommendLocalPayload
