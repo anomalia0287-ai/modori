@@ -1,31 +1,19 @@
-# 2026-07-12 Internal Windows Installer Evidence Handoff
+# 2026-07-12–13 Internal Windows Installer Evidence Handoff
 
 ## Status and Scope
 
-This handoff now records a **superseded/revoked** pre-hardening candidate from
-`b4a6fa4a93f454b162aec3ba70387ed19f7d2954`; it is not the current internal
-installer. Whole-branch review found that its installed engine and public-data
-results used shared workspace paths and ordinary tests overwrote them. The
-surviving shared files are failure/empty fixtures, not the successful lifecycle
-bytes: engine SHA256
-`804534DC82794AD30A62743219A689DD617AE367D25F3E476F101F8DEFE5B9B2` and
-public-data SHA256
-`A14D136AB1543E5D12DC23357252639EC3F649EF74C870DA1DBB6A96DC91AEE5`.
-The b4 source also predates final candidate-byte revalidation, identity-bound
-smoke roots, durable per-run evidence, and two-stage publication rollback.
-Its artifact and success claims are historical audit information only; do not
-install or distribute it.
+This handoff records the current **unsigned internal/friends-test candidate**
+built from clean source `c88c567d17fa99fd88433d0a8d48c657fcd4b49f` and the
+historical failures and revoked candidates that led to it. The current
+candidate completed a captured exit-code-`0` publication run with durable
+per-run evidence, identity-bound test state, stale-file removal, downgrade
+rejection, and complete uninstall. Later documentation-only commits are not
+artifact sources.
 
-No internal installer candidate is currently approved; a replacement clean
-build from the hardened source is pending.
-
-Before this hardening began, branch HEAD
-`0060ca0cb0b47e39515f17e20387fca22d97d62a` was a docs-only descendant of
-the b4 artifact source. A replacement candidate must record its own clean
-artifact source commit, separately from later evidence-only documentation
-commits.
-
-**Revoked unsigned internal build; do not install or distribute**.
+The former b4 candidate from
+`b4a6fa4a93f454b162aec3ba70387ed19f7d2954` remains revoked historical
+evidence. Its physical candidate/staging/run directories were removed only
+after the replacement passed; do not reconstruct, install, or distribute it.
 
 This evidence does not claim publisher authentication, code-signing trust,
 SmartScreen reputation, clean-VM validation, or permission to publish the
@@ -36,21 +24,146 @@ Source workspace and branch:
 ```text
 C:\Users\V\Desktop\TongTong\.worktrees\internal-windows-installer
 codex/internal-windows-installer
-b4a6fa4a93f454b162aec3ba70387ed19f7d2954
+c88c567d17fa99fd88433d0a8d48c657fcd4b49f
 ```
 
 The production manifest records `git_dirty: false`, `channel: internal`,
 `signed: false`, and `smoke_only: false`.
 
-## Superseded b4 Candidate Identity — Do Not Use
+## Current Candidate Identity
 
 Candidate directory:
+
+```text
+dist\installer\0.1.0-gc88c567d17fa
+```
+
+The same three verified bytes are preserved for owner use at the host project
+path:
+
+```text
+C:\Users\V\Desktop\TongTong\dist\installer\0.1.0-gc88c567d17fa
+```
+
+It contains exactly three regular, non-reparse files:
+
+| File | Bytes | SHA256 |
+|---|---:|---|
+| `Modori-Setup-0.1.0-gc88c567d17fa.exe` | 173194904 | `D0F50BD9948094F0C8D56035EBA33F2E8C3240BE6A699519C41A0BFF16857608` |
+| `release-manifest.json` | 1798 | `FE0730448D9F2C5ADC7A34B5E3659DB03130A2D62ADB019FC454F20A42B8D835` |
+| `SHA256SUMS.txt` | 104 | `CD6BD2B6A0C5F019BEF0E42B10441053A48EBD084F44672BF94EC85DC383A66E` |
+
+The checksum file contains exactly:
+
+```text
+D0F50BD9948094F0C8D56035EBA33F2E8C3240BE6A699519C41A0BFF16857608  Modori-Setup-0.1.0-gc88c567d17fa.exe
+```
+
+Authenticode status is `NotSigned`, matching manifest `signed: false` and the
+approved unsigned internal-test scope. Manifest-tracked build inputs match:
+
+| Input | Bytes | SHA256 |
+|---|---:|---|
+| `dist\Modori\Modori.exe` | 30832815 | `281DBD3B68157D28503AC8ED90A3B2A137B229C0A5D2FE738A4993D7F5816BAC` |
+| `installer\modori.iss` | 3948 | `A587B51F3B02FC509769306160829B8FC4D4B43B5CF6B482FDE18B31D6B6BD43` |
+
+## Current Manifest, Gate, and Path Contract
+
+- Build time: `2026-07-13T04:53:13.797359+09:00`.
+- Source: `c88c567d17fa99fd88433d0a8d48c657fcd4b49f`, clean.
+- Production AppId: `{430f4cea-53ca-4578-800c-f7ce1b6aead2}`.
+- Isolated lifecycle AppId: `{97d13afd-818d-40c5-80ee-ce53eea57c0c}`.
+- Installed lifecycle and package launch/engine/public-data flags: all `true`.
+- Tools: Inno Setup `6.7.3`, ISCC file version `0.0.0.0`, ISCC SHA256
+  `0A8757031B33777E4C9CBFFEE40F11A5062B36D25CBE144C1DB73B6102B80AD7`,
+  PyInstaller `6.21.0`, Python `3.12.10`.
+- Payload: `4376` files, `380` directories, `624393093` bytes. Four files tie
+  at the maximum relative-path length of `128`; the manifest-selected path is
+  present and has that exact length. Installation budget:
+  `90 + 1 + 128 = 219 <= 240`.
+- Non-live gate: exit `0`; Ruff, Bandit, launch smoke, pip check, installer tool
+  check, and `1228 passed, 12 skipped`.
+- Publication gate:
+  `scripts\quality_gate.py --with-installer-build --with-installed-smoke`,
+  exit `0`; `1228 passed, 12 skipped`; all package smokes; lifecycle; and
+  `installer-build-ok` for this exact final path.
+- Slow statistical reference gate: exit `0`; another clean base gate followed
+  by `3 passed, 1237 deselected in 19.63s`.
+
+## Current Installed Lifecycle Evidence
+
+Successful run root:
+
+```text
+.tmp\installer-smoke\r-cb0756629cd2
+```
+
+| Evidence | Bytes | SHA256 | Result |
+|---|---:|---|---|
+| `install.log` | 2032677 | `58444182F55BC2031CA1A5527EA38C4C9A16262F9BCAAFBDB9D15D4381F2DDA5` | Install succeeded |
+| `repair.log` | 2032946 | `32299982F88A24F230E78331A6A7CC8901E86A01271AD98B229EBEACFC1D5BD6` | Repair succeeded; stale probe absent |
+| `downgrade.log` | 1937 | `CEF9F22E40DCF4D316C2A8D294303F6B5F1F9660F45692CBF884EF91B6FD0AB7` | Newer version detected; `InitializeSetup returned False` |
+| `uninstall.log` | 1038608 | `856C6B68D53BF373FB296D6EFA45518CAED849FE61A45FB9F3660690C3585309` | `Removed all? Yes` |
+| `engine-smoke/reference.xlsx` | 5514 | `9288AA40D82CBE305F659951E46C1D10639DA809F1C0CD63E28CCEEB5A1F6585` | Exact durable input |
+| `engine-smoke/result.json` | 2836 | `6BED2D5DECCA64DC437EAFB16A8F682D7A81953C5EC4DED111F37295260DD2D7` | `ok: true`, `status: ready`, all V1 checks pass |
+| `public-data-smoke/result.json` | 14249 | `6ABC9EC0967FD64F6E21D9BBB0F16C5946568A28952E5D1B00547CA97E958DFA` | `ok: true`, `case_count: 10` |
+
+The engine evidence directory contains exactly `reference.xlsx` and
+`result.json`; the public-data evidence directory contains exactly
+`result.json`. The routed cache was below the run-local `user-state`, which was
+removed after validation. Post-lifecycle audit found no install tree,
+user-state, smoke or production registration, production install root,
+shortcut, Modori process, hidden publication directory, or current-user
+installation residue. The shared host-smoke JSON SHA256 values were unchanged
+across publication.
+
+## Sidecar Failure, Repair, and Cleanup
+
+The first hardened live run from
+`19853df24d6dcbf7d90e98f273129e7e947c76be` exited `1` before publication.
+Installed launch and engine execution passed, but normal report generation
+created `modori-output/report.docx` beside the durable workbook, so exact
+evidence inventory validation rejected the extra directory. Public-data smoke
+had not started, production identity was untouched, and no candidate was
+published.
+
+The diagnostic root `.tmp\installer-smoke\r-547add96090d` is retained. Its
+successful engine result SHA256 is
+`4E774C346A76C7AF879575F79CDA4666478357FF35D21BB7EDE8757A71792634`,
+report SHA256 is
+`4DC9F48E91E88A24054F768E199A3A98448DCAE834CBA1D28B9B69CF1C8E0250`,
+and official-uninstaller cleanup log SHA256 is
+`49CECB17ECC19149CE9E0A073207C30B34C62338E8833EC85FD984040F1E4DA6`.
+The install tree and registration are absent.
+
+Commit `c88c567d17fa99fd88433d0a8d48c657fcd4b49f` copies the verified workbook
+into a unique identity-bound test-state child before launching the application;
+sidecars are now disposable state and durable evidence remains exact. Its
+regression asserts both the sidecar topology and byte-for-byte workbook copy.
+Focused `27` tests and independent review passed before the successful rerun.
+
+After replacement verification, worktree cleanup removed four staging roots,
+the revoked b4 candidate, six obsolete smoke-evidence roots, and seventeen
+empty pytest cache directories: `28` directories and `3394542120` measured
+bytes. After the current bytes were copied and rehashed in the host project,
+the revoked host d236 candidate was also removed (`173232674` bytes). Combined
+cleanup was `29` directories and `3567774794` measured bytes. `.tmp\ib` is
+empty. The current candidate, current success evidence, and the single
+sidecar-failure diagnostic are the only retained installer artifacts in their
+respective worktree roots; the host installer root contains only the current
+candidate.
+
+## Superseded b4 Candidate Identity — Do Not Use
+
+Former candidate directory:
 
 ```text
 dist\installer\0.1.0-gb4a6fa4a93f4
 ```
 
-It contains exactly three regular files:
+It contained exactly three regular files. The physical directory was removed
+after the replacement passed and the replacement bytes were copied to the host
+project:
 
 | File | Bytes | SHA256 |
 |---|---:|---|
@@ -91,14 +204,15 @@ Manifest-tracked build inputs are:
 
 ## Superseded b4 Installed Lifecycle Record
 
-Successful run root:
+Former successful run root:
 
 ```text
 .tmp\installer-smoke\r-da7fbcf6d052
 ```
 
 It retained four regular log files, but not durable run-local engine/public
-result files:
+result files. The physical historical run root was pruned after replacement
+verification:
 
 | Log | Bytes | SHA256 | Result |
 |---|---:|---|---|
@@ -141,14 +255,15 @@ as historical context and is insufficient for approval after the later review.
 
 The historical `0.1.0-gd23656588dee` candidate is revoked/superseded because it
 predates the fixed production-root, routed-state, and frozen-input integrity
-changes. It remains preserved only for audit and is not an installable or
-distributable candidate.
+changes. Its recorded hashes remain audit history, but its physical host
+directory was removed after the verified replacement was copied; it is not an
+installable or distributable candidate.
 
 A corrected-source live-gate attempt at
 `67ab0815d36456df237802f7a06dda67fd24a4b0` rebuilt the package, froze an exact
 snapshot, and completed the launch, engine, and public-data package smokes on
 that snapshot. It then stopped before any installer output, installation, HKCU
-mutation, or candidate publication. The preserved staging root was `139`
+mutation, or candidate publication. The recorded staging root was `139`
 characters, its `snapshot\package` root was `156`, and the longest relative
 payload was `128`, yielding an actual compiler source path of `285` characters.
 ISCC 6.7.3 exited `2` with path-not-found at the frozen `modori.iss` and
@@ -199,14 +314,15 @@ Preserved hashes from that failure are:
 The installed and frozen payload inventories were identical: `380`
 directories, `4376` files, `624392981` bytes, digest
 `5889CC1D5D6C8FB6A327B908EB5559449E9F32DD0B0737D2E58611DDA54CD72C`.
-The original `install.log` and routed diagnostic `user-state` remain preserved.
+The original `install.log` and routed diagnostic `user-state` were preserved
+through root-cause analysis.
 Separately authorized cleanup used the official uninstaller and produced
 `failure-cleanup-uninstall.log`, SHA256
 `E307D43F1C520EE5337C6C3FA4A68CDFCED3D0E8F686E3AE0EBD2331383B9F89`,
 with `Removed all? Yes`. The smoke registration, shortcut, install tree,
 production registration/root, and related processes are now absent. The
-missing cache remains the preserved diagnostic, and the old baa49 staging root
-remains preserved.
+obsolete baa49 staging and run roots were pruned after replacement
+verification; the hashes above remain the non-release diagnostic record.
 
 The subsequent code hardening makes the installed engine-smoke process create
 and report the real selected cache, requires its wrapper to match that report
@@ -249,13 +365,14 @@ public-data evidence was written at `2026-07-12T16:41:12+09:00` with
 
 ## Historical Revoked d236 Candidate Identity
 
-Revoked historical candidate directory:
+Former revoked historical candidate directory:
 
 ```text
 C:\Users\V\Desktop\TongTong\dist\installer\0.1.0-gd23656588dee
 ```
 
-It contains exactly three files:
+It contained exactly three files. Once the current candidate was copied to the
+host project and its hashes revalidated, this revoked directory was removed:
 
 | File | Bytes | SHA256 |
 |---|---:|---|
@@ -296,7 +413,7 @@ The independent candidate audit ended with `candidate_failure_count=0`.
 
 ## Historical Revoked d236 Installed Lifecycle
 
-Successful run root:
+Former successful run root:
 
 ```text
 .tmp\installer-smoke\r-1802b2989b50
@@ -316,7 +433,7 @@ start uninstall. No separate pre/post installed hash was emitted, but these
 synchronous checks passed before the published manifest could record
 `installed_lifecycle_smoke: true`.
 
-Current read-only state confirms:
+The historical read-only audit at the time confirmed:
 
 - the successful run contains only its four logs;
 - `i`, `Modori`, `unins000.exe`, and `orphan-stale-probe.bin` are absent;
@@ -328,10 +445,11 @@ Current read-only state confirms:
 
 The lifecycle audit ended with `lifecycle_failure_count=0`.
 
-## Diagnostic Trail and Preserved Evidence
+## Diagnostic Trail — Recorded Then Pruned
 
-The three older diagnostic runs listed below remain under
-`.tmp\installer-smoke`; no cleanup was performed on those three runs.
+The three older diagnostic runs listed below were retained through root-cause
+analysis and then pruned after the current replacement passed. Their hashes are
+kept as historical records:
 
 1. `run-087ae0630e5d4582aba1b0dce1cdabe5` on
    `d433330327fb831b72b546db5fc29f480f541a1d`: the long smoke run root produced
@@ -356,10 +474,10 @@ The three older diagnostic runs listed below remain under
    downgrade `C55F791782C72BBF978C0A603CA529A5D1B72ADC70DFD70DD16C5232CE4399BF`,
    and uninstall `D20F2A1A3715E8AC19EA48ADD92981D175DDD0316E507FD82A7C5D85853F5840`.
 
-Each failed run still has its `preserve` sentinel, SHA256
+Each failed run had its `preserve` sentinel, SHA256
 `1DAF82F62247F3A1D148C2D88B1828C9EFA2D5F087D7059E98650AAFE7AFDEA3`.
-The historical revoked d236 successful run is preserved alongside them with
-its four logs.
+The historical revoked d236 successful run and its four logs were pruned in
+the same post-replacement cleanup.
 
 ## Supporting Gates
 
@@ -369,5 +487,6 @@ its four logs.
 - The final b4-candidate command's numeric exit code and stdout were not
   retained; no exit-code claim is made for it.
 
-The superseded candidate and historical evidence remain local. No artifact was
-signed or published externally, and no branch was pushed.
+The current candidate and the two explicitly retained current/failure evidence
+roots remain local. No artifact was signed or published externally, and no
+branch was pushed.

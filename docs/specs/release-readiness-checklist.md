@@ -2,14 +2,105 @@
 
 Status: working release gate document for the `release/readiness-1-9` lane.
 
-Current internal Windows installer status from 2026-07-12:
+Current internal Windows installer status from 2026-07-13:
 
-- No internal installer candidate is currently approved. A replacement clean
-  build is pending from the hardened source.
-- The branch entered hardening at docs-only HEAD
-  `0060ca0cb0b47e39515f17e20387fca22d97d62a`; this is not an artifact source
-  commit. The replacement artifact source and any later docs-only HEAD must be
-  recorded separately.
+- The current **unsigned internal/friends-test candidate** was built from clean
+  artifact source `c88c567d17fa99fd88433d0a8d48c657fcd4b49f` on
+  `codex/internal-windows-installer`. Later evidence-only documentation commits
+  are not artifact sources.
+- Candidate directory:
+  `dist\installer\0.1.0-gc88c567d17fa`; it contains exactly three regular,
+  non-reparse files and no directory or hidden publication residue:
+  - `Modori-Setup-0.1.0-gc88c567d17fa.exe`: `173194904` bytes, SHA256
+    `D0F50BD9948094F0C8D56035EBA33F2E8C3240BE6A699519C41A0BFF16857608`,
+    Authenticode `NotSigned`.
+  - `release-manifest.json`: `1798` bytes, SHA256
+    `FE0730448D9F2C5ADC7A34B5E3659DB03130A2D62ADB019FC454F20A42B8D835`.
+  - `SHA256SUMS.txt`: `104` bytes, SHA256
+    `CD6BD2B6A0C5F019BEF0E42B10441053A48EBD084F44672BF94EC85DC383A66E`;
+    its exact installer line matches the setup SHA256 above.
+- The same three bytes were copied through a verified hidden sibling and
+  rehashed at the owner-facing host path
+  `C:\Users\V\Desktop\TongTong\dist\installer\0.1.0-gc88c567d17fa`.
+  The host installer root now contains only this candidate.
+- The manifest records build time `2026-07-13T04:53:13.797359+09:00`, clean
+  source, channel `internal`, `signed: false`, production AppId
+  `{430f4cea-53ca-4578-800c-f7ce1b6aead2}`, isolated smoke AppId
+  `{97d13afd-818d-40c5-80ee-ce53eea57c0c}`, and all package/lifecycle smoke
+  flags `true`.
+- Manifest-tracked inputs independently match: packaged `Modori.exe`
+  `30832815` bytes / SHA256
+  `281DBD3B68157D28503AC8ED90A3B2A137B229C0A5D2FE738A4993D7F5816BAC`;
+  `installer/modori.iss` `3948` bytes / SHA256
+  `A587B51F3B02FC509769306160829B8FC4D4B43B5CF6B482FDE18B31D6B6BD43`.
+- Payload audit: `4376` files, `380` directories, `624393093` bytes; maximum
+  relative path length `128`; manifest installation calculation
+  `90 + 1 + 128 = 219 <= 240`. Four paths tie for the maximum, and the
+  manifest-selected path exists and has that exact length.
+- Canonical non-live gate passed with exit code `0`: Ruff, Bandit, launch
+  smoke, dependency check, installer tool check, and
+  `1228 passed, 12 skipped`. Tool identity: Inno Setup `6.7.3`, ISCC file
+  version `0.0.0.0`, ISCC SHA256
+  `0A8757031B33777E4C9CBFFEE40F11A5062B36D25CBE144C1DB73B6102B80AD7`,
+  PyInstaller `6.21.0`, Python `3.12.10`.
+- The captured publication command
+  `scripts\quality_gate.py --with-installer-build --with-installed-smoke`
+  exited `0` after `1228 passed, 12 skipped`, package launch/engine/public-data
+  smokes, install, repair with stale-probe removal, downgrade rejection, and
+  uninstall. It printed `installer-smoke-ok` and `installer-build-ok` for this
+  exact candidate.
+- Durable lifecycle evidence is
+  `.tmp\installer-smoke\r-cb0756629cd2`: exact engine evidence
+  `reference.xlsx` plus `result.json`, exact public evidence `result.json`, and
+  four logs. Engine result is `ok: true`, `status: ready`, all V1 checks pass;
+  public result is `ok: true`, `case_count: 10`. `downgrade.log` records
+  `A newer Modori version is installed` and `InitializeSetup returned False`;
+  `uninstall.log` records `Removed all? Yes`.
+- Post-lifecycle audit found no isolated install tree, routed user state, smoke
+  or production registration, production install root, shortcut, Modori
+  process, hidden publication directory, or other current-user installation
+  residue. The global host-smoke JSON hashes were unchanged across publication.
+- Slow statistical reference gate passed separately on the artifact source:
+  `3 passed, 1237 deselected in 19.63s` after another clean
+  `1228 passed, 12 skipped` base gate.
+- Worktree cleanup after replacement verification removed four obsolete
+  staging roots, the revoked b4 candidate directory, six obsolete
+  smoke-evidence roots, and seventeen empty pytest cache directories: `28`
+  directories / `3394542120` measured bytes. After the current bytes were
+  copied and rehashed in the host project, the revoked host d236 candidate was
+  also removed (`173232674` bytes). Combined cleanup: `29` directories /
+  `3567774794` bytes. The staging root is now empty; only the current candidate,
+  current success evidence, and the `r-547add96090d` sidecar-failure evidence
+  remain in the worktree installer roots.
+- This is an unsigned internal-test artifact. It makes no publisher-trust,
+  SmartScreen-reputation, clean-VM, or public-release claim.
+
+Hardened-build failure and repair evidence from 2026-07-13:
+
+- The first live run from clean source
+  `19853df24d6dcbf7d90e98f273129e7e947c76be` correctly exited `1` before
+  candidate publication. Installed launch and engine execution passed, but the
+  lifecycle evidence check reported
+  `expected=['reference.xlsx', 'result.json']; actual=['modori-output',
+  'reference.xlsx', 'result.json']`.
+- Root cause was in the verifier: it passed the durable evidence workbook to
+  the application in place, and normal report generation created
+  `modori-output/report.docx` beside it. This was neither a product-engine
+  failure nor a production installation. Public-data lifecycle smoke had not
+  started, and no `0.1.0-g19853df24d6d` candidate was published.
+- Preserved diagnostic root: `.tmp\installer-smoke\r-547add96090d`. Its engine
+  `result.json` remains successful (SHA256
+  `4E774C346A76C7AF879575F79CDA4666478357FF35D21BB7EDE8757A71792634`),
+  and the generated report remains present (SHA256
+  `4DC9F48E91E88A24054F768E199A3A98448DCAE834CBA1D28B9B69CF1C8E0250`).
+  Authorized official-uninstaller cleanup succeeded; its log SHA256 is
+  `49CECB17ECC19149CE9E0A073207C30B34C62338E8833EC85FD984040F1E4DA6`.
+- Commit `c88c567d17fa99fd88433d0a8d48c657fcd4b49f` fixes the verifier by keeping
+  durable evidence exact while copying the input into a unique identity-bound
+  test-state child, where report sidecars are disposable. The regression test
+  reproduces the sidecar and also asserts byte-for-byte workbook equality;
+  focused `27` tests and independent review passed before the successful live
+  rerun.
 
 Superseded/revoked b4 internal Windows installer evidence:
 
@@ -17,8 +108,10 @@ Superseded/revoked b4 internal Windows installer evidence:
   `b4a6fa4a93f454b162aec3ba70387ed19f7d2954` on
   `codex/internal-windows-installer`; the manifest records `git_dirty: false`,
   `channel: internal`, `signed: false`, and `smoke_only: false`.
-- Candidate directory: `dist\installer\0.1.0-gb4a6fa4a93f4`; it contains
-  exactly three regular files.
+- Former candidate directory: `dist\installer\0.1.0-gb4a6fa4a93f4`; it
+  contained exactly three regular files. The physical revoked directory was
+  removed on 2026-07-13 only after the replacement candidate passed its full
+  lifecycle and post-build artifact audit.
 - Setup: `Modori-Setup-0.1.0-gb4a6fa4a93f4.exe`, `173180855` bytes, SHA256
   `BE38213A1D457D3898BAD48BF495904B437ED81DDEF5926B92F04A7F1CF8EBC2`,
   Authenticode status `NotSigned`.
@@ -88,7 +181,8 @@ Superseded/revoked b4 internal Windows installer evidence:
   `docs\superpowers\handoffs\2026-07-12-internal-windows-installer-handoff.md`.
 - **Revoked unsigned internal build; do not install or distribute**. This
   evidence makes no signing, publisher-trust, SmartScreen, clean-VM, or public
-  release claim.
+  release claim. Its former local lifecycle evidence directory was pruned in
+  the post-replacement cleanup; the hashes below remain historical records.
 
 Historical/revoked internal Windows installer evidence from 2026-07-12:
 
@@ -110,8 +204,9 @@ Historical/revoked internal Windows installer evidence from 2026-07-12:
   `Removed all? Yes` in `failure-cleanup-uninstall.log`, SHA256
   `E307D43F1C520EE5337C6C3FA4A68CDFCED3D0E8F686E3AE0EBD2331383B9F89`.
   Smoke registration, shortcut, install tree, production registration/root,
-  and related processes are absent; the cache-absence diagnostic, original
-  state/log, cleanup log, and old baa49 staging root remain preserved.
+  and related processes are absent. The obsolete baa49 staging and run roots
+  were pruned after the verified replacement was published; their recorded
+  hashes remain historical non-release evidence.
 
 Current host-verified candidate from 2026-07-11:
 
