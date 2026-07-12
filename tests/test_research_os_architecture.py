@@ -6,6 +6,12 @@ from pathlib import Path
 
 from modori.recommendations import RecommendationService
 from modori.research_os.clarification import ClarificationSpec
+from modori.research_os.decision_evidence import (
+    AnswerValue,
+    ClarificationAnswerEvent,
+    DecisionEvidenceRef,
+    RevisionAcceptanceCertificate,
+)
 from modori.research_os.passport import (
     AbstainPayload,
     AnalysisPassport,
@@ -14,6 +20,10 @@ from modori.research_os.passport import (
     RouteExternalPayload,
 )
 from modori.research_os.service import ResearchOsService, ResearchRequest
+from modori.research_os.transition import (
+    ClarificationTransitionService,
+    RevisionCandidate,
+)
 
 
 RESEARCH_OS_ROOT = Path("src/modori/research_os")
@@ -116,6 +126,7 @@ def test_structure_only_request_has_no_dataset_or_execution_field() -> None:
         "available_variable_ids",
         "surface",
         "question_budget_remaining",
+        "decision_evidence_refs",
     )
 
 
@@ -140,6 +151,7 @@ def test_passport_and_payload_field_sets_cannot_gain_execution_authority() -> No
         "method_space_digest",
         "ruleset_version",
         "resolver_decision_digest",
+        "decision_evidence_digests",
         "recommend_local",
         "clarify",
         "route_external",
@@ -179,6 +191,75 @@ def test_clarification_contract_cannot_embed_a_recommendation() -> None:
     }
 
     assert fields.isdisjoint(forbidden)
+
+
+def test_transition_service_exposes_planning_transitions_only() -> None:
+    public_methods = {
+        name
+        for name, member in inspect.getmembers(ClarificationTransitionService)
+        if callable(member) and not name.startswith("_")
+    }
+
+    assert public_methods == {
+        "build_acceptance_certificate",
+        "commit_accepted",
+        "commit_ready",
+        "propose",
+    }
+
+
+def test_decision_evidence_and_candidate_fields_are_exactly_locked() -> None:
+    assert tuple(AnswerValue.__dataclass_fields__) == (
+        "kind",
+        "choice_value",
+        "variable_ids",
+        "text_value",
+    )
+    assert tuple(ClarificationAnswerEvent.__dataclass_fields__) == (
+        "event_id",
+        "project_id",
+        "event_sequence",
+        "source_passport_digest",
+        "question_id",
+        "question_version",
+        "question_digest",
+        "fact_address",
+        "answer_value",
+    )
+    assert tuple(RevisionAcceptanceCertificate.__dataclass_fields__) == (
+        "certificate_id",
+        "project_id",
+        "event_sequence",
+        "candidate_digest",
+        "answer_event_digest",
+        "accepted_component_digests",
+    )
+    assert tuple(DecisionEvidenceRef.__dataclass_fields__) == (
+        "evidence_id",
+        "project_id",
+        "evidence_kind",
+        "event_sequence",
+        "evidence_digest",
+        "subject_digests",
+    )
+    assert tuple(RevisionCandidate.__dataclass_fields__) == (
+        "project_id",
+        "source_passport_digest",
+        "answer_event_id",
+        "answer_event_sequence",
+        "answer_event_digest",
+        "base_question_ref",
+        "base_estimand_ref",
+        "base_study_ref",
+        "base_evidence_digests",
+        "dataset_fingerprint",
+        "proposed_question",
+        "proposed_estimand",
+        "proposed_study",
+        "next_question_budget_remaining",
+        "requires_acceptance",
+        "acceptance_certificate_id",
+    )
 
 
 def test_existing_recommendation_service_signature_is_unchanged() -> None:

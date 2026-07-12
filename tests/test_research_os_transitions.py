@@ -306,6 +306,16 @@ def _variables(*variable_ids: str) -> AnswerValue:
     )
 
 
+def _all_mapping_keys(value: object) -> set[str]:
+    if isinstance(value, dict):
+        return set(value) | {
+            key for item in value.values() for key in _all_mapping_keys(item)
+        }
+    if isinstance(value, list):
+        return {key for item in value for key in _all_mapping_keys(item)}
+    return set()
+
+
 def _candidate_fact(candidate: RevisionCandidate, fact_address: str) -> Fact[object]:
     if fact_address == "question.research_goal":
         assert candidate.proposed_question is not None
@@ -928,6 +938,65 @@ def test_estimand_bundle_cannot_commit_without_matching_acceptance() -> None:
     assert committed.decision_evidence_refs[-1].evidence_kind is (
         DecisionEvidenceKind.REVISION_ACCEPTANCE
     )
+
+
+def test_accepted_goal_change_must_freshly_clarify_staled_estimand() -> None:
+    request = _request()
+    transition = ClarificationTransitionService()
+    candidate = transition.propose(
+        request,
+        _clarify_passport(request, "confirm_research_goal"),
+        _answer(request, "confirm_research_goal", _choice("compare")),
+        acceptance_certificate_id="acceptance:goal:1",
+    )
+    certificate = transition.build_acceptance_certificate(
+        candidate,
+        event_sequence=2,
+    )
+
+    committed = transition.commit_accepted(request, candidate, certificate)
+    decision = ResearchOsService().resolve(committed)
+
+    assert decision.action is PrimaryAction.CLARIFY
+    assert decision.capability_keys == ()
+    assert decision.clarification_ids
+    assert committed.estimand.template.state is FactState.STALE
+    assert set(decision.clarification_ids).issubset(
+        {
+            "confirm_estimand_template",
+            "confirm_claim_basis",
+            "confirm_effect_scale",
+            "confirm_association_target",
+            "confirm_contrast",
+            "confirm_outcome_role",
+            "confirm_focal_predictor_role",
+            "confirm_group_role",
+            "confirm_repeated_measure_role",
+        }
+    )
+
+
+def test_candidate_mapping_carries_no_execution_authority() -> None:
+    request = _request(
+        study=_study(Fact.unknown(reason_code="dependence_not_confirmed"))
+    )
+    candidate = ClarificationTransitionService().propose(
+        request,
+        _clarify_passport(request, "confirm_dependence"),
+        _answer(request, "confirm_dependence", _choice("independent")),
+    )
+    forbidden = {
+        "command",
+        "worker_token",
+        "path",
+        "url",
+        "execute",
+        "pipeline_mutation",
+        "dataset",
+        "dataframe",
+    }
+
+    assert _all_mapping_keys(candidate.to_mapping()).isdisjoint(forbidden)
 
 
 def test_acceptance_sequence_and_candidate_digest_attacks_fail_closed() -> None:
