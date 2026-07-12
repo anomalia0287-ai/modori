@@ -3,9 +3,59 @@ from __future__ import annotations
 from collections.abc import Mapping
 import os
 from pathlib import Path
+import stat
+
+from modori.path_policy import resolve_secure_directory_path
 
 
 _R_ENVIRONMENT_KEYS = ("R_HOME", "R_LIBS", "R_LIBS_USER")
+_REPARSE_POINT_ATTRIBUTE = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)
+
+
+def _is_reparse_point(metadata: os.stat_result) -> bool:
+    return stat.S_ISLNK(metadata.st_mode) or bool(
+        getattr(metadata, "st_file_attributes", 0) & _REPARSE_POINT_ATTRIBUTE
+    )
+
+
+def _require_safe_lexical_state_components(state_root: Path) -> None:
+    component = Path(state_root.anchor)
+    components = [component]
+    for part in state_root.parts[1:]:
+        component /= part
+        components.append(component)
+
+    for component in components:
+        try:
+            metadata = component.lstat()
+        except FileNotFoundError:
+            break
+        except OSError as exc:
+            raise ValueError(
+                f"Package state-root component could not be inspected: {component}"
+            ) from exc
+        if _is_reparse_point(metadata):
+            raise ValueError(
+                "Package state root contains a link or junction/reparse point: "
+                f"{component}"
+            )
+        if not stat.S_ISDIR(metadata.st_mode):
+            raise ValueError(
+                f"Package state-root component is not a directory: {component}"
+            )
+
+
+def _validated_explicit_state_root(state_root: str | Path) -> Path:
+    supplied = Path(state_root)
+    if not supplied.is_absolute():
+        raise ValueError("Explicit package state root must be an absolute lexical path")
+    lexical_root = Path(os.path.abspath(supplied))
+    _require_safe_lexical_state_components(lexical_root)
+    resolved_root = resolve_secure_directory_path(lexical_root)
+    if resolved_root is None:
+        raise ValueError(f"Explicit package state root is unsafe: {lexical_root}")
+    _require_safe_lexical_state_components(lexical_root)
+    return resolved_root
 
 
 def without_workspace_reference_runtime(
@@ -49,7 +99,7 @@ def packaged_subprocess_environment(
     root = (
         (Path(".tmp") / namespace).resolve()
         if state_root is None
-        else Path(state_root).resolve()
+        else _validated_explicit_state_root(state_root)
     )
     matplotlib_dir = root / "matplotlib"
     cache_dir = root / "cache"

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -1195,6 +1196,60 @@ def test_lifecycle_rejects_successful_engine_command_without_created_cache(
         "package_engine_smoke.py",
         "package_public_data_smoke.py",
     }
+
+
+def test_lifecycle_passes_swapped_state_root_lexically_without_following(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    installer, manifest, probe = _inputs(
+        tmp_path,
+        longest_relative_path="Modori.exe",
+    )
+    smoke_root = tmp_path / "runs"
+    run_root = smoke_root / f"r-{'9' * 12}"
+    adapter = installer_smoke.LifecycleAdapter.for_test(run_root)
+    outside = tmp_path / "outside-state"
+    calls: list[list[str]] = []
+    monkeypatch.setattr(installer_smoke, "SMOKE_ROOT", smoke_root)
+    monkeypatch.setattr(adapter, "require_no_existing_registration", lambda: None)
+
+    def replace_user_state(_version: str) -> None:
+        (adapter.user_state_dir / "sentinel.json").unlink()
+        adapter.user_state_dir.rmdir()
+        outside.mkdir()
+        try:
+            adapter.user_state_dir.symlink_to(outside, target_is_directory=True)
+        except OSError as exc:
+            pytest.skip(f"directory symlinks are unavailable: {exc}")
+
+    monkeypatch.setattr(adapter, "require_installed", replace_user_state)
+
+    def runner(command: list[str]) -> int:
+        calls.append(command)
+        if len(command) > 1 and command[1].endswith("package_launch_smoke.py"):
+            return 9
+        return 0
+
+    result = installer_smoke.run_installer_smoke(
+        installer,
+        manifest,
+        probe,
+        runner=runner,
+        lifecycle_adapter=adapter,
+    )
+
+    launch_command = next(
+        call
+        for call in calls
+        if len(call) > 1 and call[1].endswith("package_launch_smoke.py")
+    )
+    state_argument = launch_command[launch_command.index("--state-root") + 1]
+    lexical_state = str(Path(os.path.abspath(adapter.user_state_dir)))
+    assert result == 1
+    assert state_argument == lexical_state
+    assert state_argument != str(outside.resolve())
+    assert list(outside.iterdir()) == []
 
 
 def test_successful_downgrade_probe_is_a_lifecycle_failure(

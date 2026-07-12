@@ -96,6 +96,24 @@ def test_package_engine_audit_documents_installed_cache_proof() -> None:
         assert required_text in row
 
 
+def test_package_environment_audit_documents_lexical_state_boundary() -> None:
+    row = next(
+        line
+        for line in AUDIT_DOCUMENT.read_text(encoding="utf-8").splitlines()
+        if "`scripts/package_environment.py`" in line
+    )
+
+    for required_text in (
+        "absolute lexical",
+        "component-by-component",
+        "`lstat`",
+        "symlink/junction/reparse",
+        "lifecycle creates",
+        "runtime children",
+    ):
+        assert required_text in row
+
+
 def test_installer_builder_audit_documents_frozen_staging_boundary() -> None:
     row = next(
         line

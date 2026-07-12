@@ -228,6 +228,38 @@ def test_package_engine_smoke_rejects_linked_cache(
     assert result == 1
 
 
+def test_package_engine_smoke_rejects_linked_state_ancestor_before_subprocess(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    exe = tmp_path / "Modori.exe"
+    exe.write_text("", encoding="utf-8")
+    outside = tmp_path / "outside-state"
+    outside.mkdir()
+    state_link = tmp_path / "state-link"
+    try:
+        state_link.symlink_to(outside, target_is_directory=True)
+    except OSError as exc:
+        pytest.skip(f"directory symlinks are unavailable: {exc}")
+    calls: list[list[str]] = []
+
+    def fake_run(command, check, timeout, env):
+        calls.append(command)
+        return subprocess.CompletedProcess(command, 0)
+
+    monkeypatch.setattr(package_engine_smoke.subprocess, "run", fake_run)
+
+    with pytest.raises(ValueError, match="link or junction/reparse"):
+        package_engine_smoke.run_engine_smoke(
+            exe,
+            timeout_seconds=0.01,
+            state_root=state_link / "missing-child",
+        )
+
+    assert calls == []
+    assert list(outside.iterdir()) == []
+
+
 def test_package_engine_smoke_fails_when_payload_is_not_ok(monkeypatch, tmp_path, capsys) -> None:
     exe = tmp_path / "Modori.exe"
     exe.write_text("", encoding="utf-8")

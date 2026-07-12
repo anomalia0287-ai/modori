@@ -288,10 +288,15 @@ already rebuilds and smoke-tests the package. Installer commands use the base
 environment; the R reference runtime remains limited to pytest and the slow
 statistical gate.
 
-For an installed lifecycle, the explicit state root is routed but not
-precreated. The installed engine-smoke process must call the real application
-cache selector and include its exact reported cache path in the result JSON.
-The wrapper constructs the child environment once, compares that path with the
+For an installed lifecycle, the lifecycle creates the state root and sentinel,
+then passes the state root to each wrapper as an absolute lexical path without
+following links. The shared package environment validates every existing
+component component-by-component with no-follow `lstat` before resolution and
+rejects symlink/junction/reparse points or non-directories. The package
+environment does not precreate runtime children such as cache or Matplotlib;
+the installed engine-smoke process must call the real application cache
+selector and include its exact reported cache path in the result JSON. The
+wrapper constructs the child environment once, compares that path with the
 resolved `MODORI_CACHE_DIR`, and requires the lexical expected path to be a real
 non-link/junction directory. Missing, mismatched, absent, or linked cache
 evidence fails before repair or publication.

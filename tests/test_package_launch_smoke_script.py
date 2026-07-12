@@ -4,6 +4,9 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+from types import SimpleNamespace
+
+import pytest
 
 from scripts import package_launch_smoke
 
@@ -132,3 +135,68 @@ def test_package_launch_environment_routes_exact_state_paths_and_strips_r(
     assert env["QT_QPA_PLATFORM"] == "offscreen"
     assert "MODORI_RSCRIPT" not in env
     assert str(r_root).casefold() not in env["PATH"].casefold()
+
+
+def test_package_launch_smoke_rejects_linked_state_before_qml_runtime(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    qml_root = tmp_path / "Main.qml"
+    qml_root.write_text("import QtQuick\nItem {}\n", encoding="utf-8")
+    outside = tmp_path / "outside-state"
+    outside.mkdir()
+    state_link = tmp_path / "state-link"
+    try:
+        state_link.symlink_to(outside, target_is_directory=True)
+    except OSError as exc:
+        pytest.skip(f"directory symlinks are unavailable: {exc}")
+    runtime_calls: list[str] = []
+
+    class UnexpectedQGuiApplication:
+        @staticmethod
+        def instance():
+            runtime_calls.append("instance")
+            return object()
+
+    class UnexpectedQmlEngine:
+        def rootContext(self):
+            return SimpleNamespace(setContextProperty=lambda *_args: None)
+
+        def load(self, _url):
+            runtime_calls.append("load")
+
+        def rootObjects(self):
+            return [object()]
+
+    class FakeBootstrap:
+        reduceEffects = False
+
+    class FakeController:
+        def __init__(self, **_kwargs):
+            pass
+
+    monkeypatch.setattr(
+        package_launch_smoke,
+        "QGuiApplication",
+        UnexpectedQGuiApplication,
+    )
+    monkeypatch.setattr(package_launch_smoke, "QQmlApplicationEngine", UnexpectedQmlEngine)
+    monkeypatch.setitem(
+        sys.modules,
+        "modori.app",
+        SimpleNamespace(AppBootstrap=FakeBootstrap),
+    )
+    monkeypatch.setitem(
+        sys.modules,
+        "modori.ui.controller",
+        SimpleNamespace(UiController=FakeController),
+    )
+
+    with pytest.raises(ValueError, match="link or junction/reparse"):
+        package_launch_smoke._load_packaged_qml_root(
+            qml_root,
+            state_root=state_link / "missing-child",
+        )
+
+    assert runtime_calls == []
+    assert list(outside.iterdir()) == []

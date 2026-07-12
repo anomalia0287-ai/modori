@@ -88,7 +88,12 @@ preserved; no cleanup was performed. The subsequent code hardening makes the
 installed engine-smoke process create and report the real selected cache, then
 requires its wrapper to match the report to routed `MODORI_CACHE_DIR` and a
 real non-link/junction directory. That hardening adds no corrected live gate or
-release evidence.
+release evidence. Subsequent review hardening keeps creation of the state root
+and sentinel in the lifecycle, passes that root lexically without following a
+replacement, and centralizes component-by-component no-follow validation in
+the shared package environment before any wrapper resolves it. The package
+environment still does not precreate installed cache or Matplotlib runtime
+children. This follow-up likewise adds no live or release evidence.
 
 ## Final Live Gate
 

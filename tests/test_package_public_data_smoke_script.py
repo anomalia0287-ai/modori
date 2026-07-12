@@ -5,6 +5,8 @@ import os
 from pathlib import Path
 import subprocess
 
+import pytest
+
 from scripts import package_public_data_smoke
 
 
@@ -191,6 +193,41 @@ def test_package_public_data_smoke_cli_routes_exact_state_paths(
     )
     assert captured_environment["MPLCONFIGDIR"] == str(resolved_root / "matplotlib")
     assert captured_environment["QT_QPA_PLATFORM"] == "offscreen"
+
+
+def test_package_public_data_smoke_rejects_linked_state_before_subprocess(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    exe = tmp_path / "Modori.exe"
+    exe.write_text("", encoding="utf-8")
+    fixture_dir = tmp_path / "fixtures"
+    fixture_dir.mkdir()
+    outside = tmp_path / "outside-state"
+    outside.mkdir()
+    state_link = tmp_path / "state-link"
+    try:
+        state_link.symlink_to(outside, target_is_directory=True)
+    except OSError as exc:
+        pytest.skip(f"directory symlinks are unavailable: {exc}")
+    calls: list[list[str]] = []
+
+    def fake_run(command, check, timeout, env):
+        calls.append(command)
+        return subprocess.CompletedProcess(command, 0)
+
+    monkeypatch.setattr(package_public_data_smoke.subprocess, "run", fake_run)
+
+    with pytest.raises(ValueError, match="link or junction/reparse"):
+        package_public_data_smoke.run_public_data_smoke(
+            exe,
+            fixture_dir=fixture_dir,
+            timeout_seconds=0.01,
+            state_root=state_link,
+        )
+
+    assert calls == []
+    assert list(outside.iterdir()) == []
 
 
 def test_package_public_data_smoke_fails_when_contract_payload_is_not_ok(

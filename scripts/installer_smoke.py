@@ -431,7 +431,7 @@ def run_installer_smoke(
             raise RuntimeError("Smoke installer returned nonzero")
         adapter.require_installed(version)
 
-        state_root = str(adapter.user_state_dir.resolve())
+        state_root = str(Path(os.path.abspath(adapter.user_state_dir)))
         package_smoke_commands = [
             [
                 sys.executable,

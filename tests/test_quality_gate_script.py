@@ -213,6 +213,12 @@ def test_release_checklist_documents_frozen_lifecycle_publication_boundary() -> 
         "`MODORI_CACHE_DIR`",
         "real non-link/junction directory",
         "before repair or publication",
+        "lifecycle creates the state root and sentinel",
+        "package environment does not precreate runtime children",
+        "cache or Matplotlib",
+        "absolute lexical",
+        "component-by-component",
+        "without following links",
     ):
         assert required_text in installer_gate
 

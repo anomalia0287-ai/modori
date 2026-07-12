@@ -468,17 +468,21 @@ on-disk rollback copy is outside the internal-channel scope.
    isolated smoke AppId and display name, plus a tiny same-AppId downgrade probe
    version `0.0.9`; verify both are marked `smoke_only: true`.
 2. Create a uniquely named smoke root and a user-state directory outside the
-   smoke install directory.
+   smoke install directory, write its preservation sentinel, and retain its
+   absolute lexical path without resolving through any later replacement.
 3. Install silently without elevation into the smoke install directory.
 4. Verify installed executable, QML root, smoke start-menu shortcut, uninstall
    registration, and isolated smoke AppId.
 5. Run packaged QML, engine, and public-data smokes against the installed path
    with cache and settings redirected to the smoke user-state directory. The
-   explicit state root is not precreated: the installed engine-smoke process
-   calls the real application cache selector and reports its exact resolved
-   cache path. Its wrapper constructs the environment once, requires that
-   report to equal `MODORI_CACHE_DIR`, and requires the lexical cache entry to
-   be a real non-link/junction directory before the lifecycle may continue.
+   lifecycle-created state root is validated by the shared package environment
+   component-by-component with no-follow `lstat` before resolution. The package
+   environment does not precreate the cache or Matplotlib runtime children: the
+   installed engine-smoke process calls the real application cache selector and
+   reports its exact resolved cache path. Its wrapper constructs the environment
+   once, requires that report to equal `MODORI_CACHE_DIR`, and requires the
+   lexical cache entry to be a real non-link/junction directory before the
+   lifecycle may continue.
 6. Write `orphan-stale-probe.bin` into the installed `{app}\Modori` subtree,
    rerun the same installer, verify the probe is absent, and verify a single
    smoke uninstall registration.
