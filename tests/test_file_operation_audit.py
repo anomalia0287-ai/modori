@@ -6,6 +6,7 @@ from pathlib import Path
 
 AUDITED_FILE_OPERATION_FILES = {
     "scripts/benchmark_research_memory.py",
+    "scripts/build_office_research_memory_kit.py",
     "scripts/build_recommendation_pilot.py",
     "scripts/check_product_wording.py",
     "scripts/quality_gate.py",
@@ -15,7 +16,9 @@ AUDITED_FILE_OPERATION_FILES = {
     "scripts/package_public_data_smoke.py",
     "scripts/package_windows.py",
     "scripts/recommendation_benchmark.py",
+    "scripts/run_office_research_memory_benchmark.py",
     "scripts/stress_matrix.py",
+    "scripts/verify_office_research_memory_kit.py",
     "src/modori/app.py",
     "src/modori/cache.py",
     "src/modori/knowledge/loader.py",
