@@ -2,6 +2,47 @@
 
 Status: working release gate document for the `release/readiness-1-9` lane.
 
+Current internal Windows installer evidence from 2026-07-12:
+
+- Source commit: `d23656588deeda7d7bd5001d1bbd78fbfe9a7ed3` on
+  `codex/internal-windows-installer`; the production manifest records
+  `git_dirty: false`.
+- Final live gate:
+  `scripts\quality_gate.py --with-installer-build --with-installed-smoke`
+  completed outside the workspace sandbox with exit code `0` in `898.4 s`;
+  pytest reported `1109 passed, 4 skipped`, all three package smokes passed,
+  lifecycle smoke completed at `.tmp\installer-smoke\r-1802b2989b50`, and the
+  local candidate was published only afterward.
+- Candidate directory:
+  `dist\installer\0.1.0-gd23656588dee`; it contains exactly the setup EXE,
+  `release-manifest.json`, and `SHA256SUMS.txt`.
+- Setup: `Modori-Setup-0.1.0-gd23656588dee.exe`, `173230927` bytes, SHA256
+  `FB9B5038E18D5385EE921E3DC4AE9C38F6C8E824B077E6BC98A235287B5F7057`.
+- Manifest: `1643` bytes, SHA256
+  `0E86E79B8AFAC5C8BAC92AEFA9CF33122EF41FC9354A5F4206BED567AAD585D2`;
+  build time `2026-07-12T16:45:51.810428+09:00`.
+- Checksum evidence: `104` bytes, SHA256
+  `8A0486137EF519B9B42CF0E543E000760F94CF32516EC8CE12F85DFDEA7CA42D`;
+  its setup hash and filename match the candidate bytes exactly.
+- Packaged `Modori.exe`: `30832703` bytes, SHA256
+  `F198A7C265A3D4AF1FA6C0C719644FC458DE495DD629102CA5F61E8F44BEDE65`.
+  `installer\modori.iss`: `3365` bytes, SHA256
+  `CA074DB4F298A693502C09002040D95070E7FEF3D26031B71528ACC2C65D54BE`.
+- Manifest verification records all three package smokes and installed
+  lifecycle smoke as `true`, production AppId
+  `{430f4cea-53ca-4578-800c-f7ce1b6aead2}`, isolated smoke AppId
+  `{97d13afd-818d-40c5-80ee-ce53eea57c0c}`, `4376` payload files, measured
+  maximum `219 <= 240`, and Inno/PyInstaller/Python versions
+  `6.7.3`/`6.21.0`/`3.12.10`.
+- The successful lifecycle removed its install tree, smoke registration,
+  shortcut, and test-only user-state sentinel. Production registration was
+  absent before and after. All three prior diagnostic runs and their logs
+  remain preserved for audit.
+- Slow statistical gate: `3 passed, 1110 deselected in 24.18s`.
+- Exact handoff:
+  `docs\superpowers\handoffs\2026-07-12-internal-windows-installer-handoff.md`.
+- **Unsigned internal test build; not approved for public distribution**.
+
 Current host-verified candidate from 2026-07-11:
 
 - Scope excludes the separately managed analysis-recommendation and semantic-
