@@ -95,6 +95,42 @@ def _invalid_duplicate_event_commit(store: DecisionLedgerStore) -> LedgerCommit:
     )
 
 
+def _commit_from_visible_head(
+    store: DecisionLedgerStore,
+    *,
+    event_id: str = "event:fact:next",
+    head: LedgerHead | None = None,
+) -> LedgerCommit:
+    request = store.load_request()
+    _, artifacts = ResearchRequestSnapshot.capture(request)
+    snapshot = next(
+        artifact
+        for artifact in artifacts
+        if artifact.artifact_kind is LedgerArtifactKind.REQUEST_SNAPSHOT
+    )
+    head = store.head if head is None else head
+    event = LedgerEvent.create(
+        project_id=store.project_id,
+        event_id=event_id,
+        sequence=head.sequence + 1,
+        event_kind=LedgerEventKind.FACT_INVALIDATED,
+        subject_artifact_ids=(snapshot.artifact_id,),
+        payload={
+            "fact_address": "study.dependence_structure",
+            "reason_code": "test_invalidation",
+            "resulting_snapshot_artifact_id": snapshot.artifact_id,
+        },
+        previous_event_hash=head.event_hash,
+        recorded_at_utc=None,
+    )
+    return LedgerCommit(
+        expected_head=head,
+        events=(event,),
+        artifacts=artifacts,
+        resulting_snapshot_artifact_id=snapshot.artifact_id,
+    )
+
+
 def test_store_rejects_relative_unc_and_wrong_suffix_paths(tmp_path: Path) -> None:
     with pytest.raises(LedgerPathError, match="absolute"):
         DecisionLedgerStore.create(Path("relative.sqlite3"), "project-1")
@@ -310,6 +346,78 @@ def test_constraint_failure_rolls_back_authoritative_and_derived_rows(
         after = store.verify()
         assert after == before
         assert len(store.events()) == 1
+
+
+def test_append_never_accepts_a_commit_based_only_on_a_forged_derived_head(
+    tmp_path: Path,
+) -> None:
+    path = _path(tmp_path)
+    with DecisionLedgerStore.create(path, "project-1") as store:
+        store.append(_genesis_commit(_request()))
+        forged_head = LedgerHead(sequence=2, event_hash="f" * 64)
+        commit = _commit_from_visible_head(store, head=forged_head)
+        external = sqlite3.connect(path)
+        external.execute(
+            "UPDATE ledger_head SET sequence=2,event_hash=?",
+            ("f" * 64,),
+        )
+        external.commit()
+        external.close()
+
+        with pytest.raises(LedgerIntegrityError, match="authoritative|chain"):
+            store.append(commit)
+
+        report = store.verify()
+        assert report.derived_rebuilt is True
+        assert tuple(event.sequence for event in store.events()) == (1,)
+        assert store.head.sequence == 1
+
+
+def test_append_detects_external_authoritative_rewrite_even_when_tail_is_unchanged(
+    tmp_path: Path,
+) -> None:
+    path = _path(tmp_path)
+    with DecisionLedgerStore.create(path, "project-1") as store:
+        store.append(_genesis_commit(_request()))
+        store.append(_commit_from_visible_head(store, event_id="event:fact:2"))
+        pending = _commit_from_visible_head(store, event_id="event:fact:3")
+        external = sqlite3.connect(path)
+        external.execute(
+            "UPDATE ledger_events SET canonical_body=? WHERE sequence=1",
+            (b"{}",),
+        )
+        external.commit()
+        external.close()
+
+        with pytest.raises(LedgerIntegrityError, match="outside|authoritative"):
+            store.append(pending)
+
+        inspection = sqlite3.connect(path)
+        count = inspection.execute("SELECT count(*) FROM ledger_events").fetchone()[0]
+        inspection.close()
+        assert count == 2
+
+
+def test_live_reads_fail_closed_after_external_change_until_full_verification(
+    tmp_path: Path,
+) -> None:
+    path = _path(tmp_path)
+    with DecisionLedgerStore.create(path, "project-1") as store:
+        store.append(_genesis_commit(_request()))
+        external = sqlite3.connect(path)
+        external.execute(
+            "UPDATE ledger_head SET sequence=2,event_hash=?",
+            ("f" * 64,),
+        )
+        external.commit()
+        external.close()
+
+        with pytest.raises(LedgerIntegrityError, match="outside|verification"):
+            _ = store.head
+
+        report = store.verify()
+        assert report.derived_rebuilt is True
+        assert store.head.sequence == 1
 
 
 @pytest.mark.parametrize("corruption", ["head", "materialized"])

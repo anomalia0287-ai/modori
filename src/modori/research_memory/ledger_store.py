@@ -478,6 +478,7 @@ class DecisionLedgerStore:
         self._project_id = project_id
         self._connection = connection
         self._closed = False
+        self._verified_data_version: int | None = None
 
     @classmethod
     def create(cls, path: str | Path, project_id: str) -> DecisionLedgerStore:
@@ -550,6 +551,7 @@ class DecisionLedgerStore:
             )
             _configure_connection(connection, durability=False)
             store = cls(resolved, project_id, connection)
+            verification_version = store._data_version()
             foreign_key_issues = store._run_database_checks(full_integrity=False)
             python_version, sqlite_version = store._validate_header_and_schema()
             _configure_durability(connection)
@@ -560,6 +562,7 @@ class DecisionLedgerStore:
                 sqlite_version=sqlite_version,
                 full_integrity=False,
             )
+            store._accept_verified_data_version(verification_version)
             return store
         except LedgerStoreError:
             if connection is not None:
@@ -580,7 +583,10 @@ class DecisionLedgerStore:
 
     @property
     def head(self) -> LedgerHead:
-        self._require_open()
+        self._require_verified_data_version()
+        return self._head_unchecked()
+
+    def _head_unchecked(self) -> LedgerHead:
         row = self._connection.execute(
             "SELECT sequence,event_hash FROM ledger_head WHERE singleton=1"
         ).fetchone()
@@ -591,9 +597,44 @@ class DecisionLedgerStore:
         except LedgerContractError as exc:
             raise LedgerIntegrityError("derived ledger head is invalid") from exc
 
+    def _authoritative_head_unchecked(self) -> LedgerHead:
+        row = self._connection.execute(
+            "SELECT sequence,event_hash FROM ledger_events ORDER BY sequence DESC LIMIT 1"
+        ).fetchone()
+        if row is None:
+            return LedgerHead.genesis()
+        try:
+            return LedgerHead(sequence=row[0], event_hash=row[1])
+        except LedgerContractError as exc:
+            raise LedgerIntegrityError("authoritative ledger tail is invalid") from exc
+
     def _require_open(self) -> None:
         if self._closed:
             raise LedgerStoreError("Decision Ledger store is closed")
+
+    def _data_version(self) -> int:
+        row = self._connection.execute("PRAGMA data_version").fetchone()
+        if row is None or type(row[0]) is not int or row[0] < 1:
+            raise LedgerIntegrityError("Decision Ledger data version is invalid")
+        return row[0]
+
+    def _accept_verified_data_version(self, expected: int) -> None:
+        current = self._data_version()
+        if current != expected:
+            raise LedgerIntegrityError(
+                "Decision Ledger changed outside the private writer during verification"
+            )
+        self._verified_data_version = current
+
+    def _require_verified_data_version(self) -> None:
+        self._require_open()
+        if (
+            self._verified_data_version is None
+            or self._data_version() != self._verified_data_version
+        ):
+            raise LedgerIntegrityError(
+                "Decision Ledger changed outside the private writer; verification required"
+            )
 
     def close(self) -> None:
         if not self._closed:
@@ -608,7 +649,10 @@ class DecisionLedgerStore:
         self.close()
 
     def artifacts(self) -> tuple[LedgerArtifact, ...]:
-        self._require_open()
+        self._require_verified_data_version()
+        return self._artifacts_unchecked()
+
+    def _artifacts_unchecked(self) -> tuple[LedgerArtifact, ...]:
         rows = self._connection.execute(
             "SELECT artifact_id,project_id,artifact_kind,schema_id,schema_version,"
             "object_id,semantic_digest,storage_digest,canonical_body "
@@ -617,7 +661,10 @@ class DecisionLedgerStore:
         return tuple(_artifact_from_row(row) for row in rows)
 
     def events(self) -> tuple[LedgerEvent, ...]:
-        self._require_open()
+        self._require_verified_data_version()
+        return self._events_unchecked()
+
+    def _events_unchecked(self) -> tuple[LedgerEvent, ...]:
         rows = self._connection.execute(
             "SELECT project_id,sequence,event_id,event_kind,canonical_body,body_digest,"
             "previous_event_hash,event_hash,recorded_at_utc "
@@ -626,13 +673,15 @@ class DecisionLedgerStore:
         return tuple(_event_from_row(row) for row in rows)
 
     def load_request(self) -> ResearchRequest:
-        self._require_open()
+        self._require_verified_data_version()
         row = self._connection.execute(
             "SELECT snapshot_artifact_id FROM materialized_request WHERE singleton=1"
         ).fetchone()
         if row is None:
             raise LedgerStoreError("ledger has no materialized request")
-        lookup = {artifact.artifact_id: artifact for artifact in self.artifacts()}
+        lookup = {
+            artifact.artifact_id: artifact for artifact in self._artifacts_unchecked()
+        }
         snapshot_artifact = lookup.get(row[0])
         if (
             snapshot_artifact is None
@@ -689,8 +738,8 @@ class DecisionLedgerStore:
         str | None,
         tuple[tuple[object, ...], ...],
     ]:
-        artifacts = self.artifacts()
-        events = self.events()
+        artifacts = self._artifacts_unchecked()
+        events = self._events_unchecked()
         lookup = {artifact.artifact_id: artifact for artifact in artifacts}
         previous = ZERO_HASH
         expected_sequence = 1
@@ -895,6 +944,7 @@ class DecisionLedgerStore:
 
     def verify(self, *, full_integrity: bool = False) -> LedgerVerificationReport:
         self._require_open()
+        verification_version = self._data_version()
         foreign_key_issues = self._run_database_checks(full_integrity=full_integrity)
         try:
             python_version, sqlite_version = self._validate_header_and_schema()
@@ -902,12 +952,14 @@ class DecisionLedgerStore:
             raise
         except (sqlite3.DatabaseError, TypeError, ValueError) as exc:
             raise LedgerIntegrityError("Decision Ledger verification failed") from exc
-        return self._verify_after_database_checks(
+        report = self._verify_after_database_checks(
             foreign_key_issues=foreign_key_issues,
             python_version=python_version,
             sqlite_version=sqlite_version,
             full_integrity=full_integrity,
         )
+        self._accept_verified_data_version(verification_version)
+        return report
 
     def _insert_artifact(self, artifact: LedgerArtifact) -> None:
         existing = self._connection.execute(
@@ -943,14 +995,15 @@ class DecisionLedgerStore:
             raise LedgerConflictError("commit project ID does not match this ledger")
         self._connection.execute("BEGIN IMMEDIATE")
         try:
-            row = self._connection.execute(
-                "SELECT sequence,event_hash FROM ledger_head WHERE singleton=1"
-            ).fetchone()
-            current = (
-                None if row is None else LedgerHead(sequence=row[0], event_hash=row[1])
-            )
-            if current != commit.expected_head:
+            current = self._head_unchecked()
+            authoritative = self._authoritative_head_unchecked()
+            if current != authoritative:
+                raise LedgerIntegrityError(
+                    "derived ledger head disagrees with the authoritative chain"
+                )
+            if authoritative != commit.expected_head:
                 raise LedgerConflictError("expected head is stale")
+            self._require_verified_data_version()
             for artifact in commit.artifacts:
                 self._insert_artifact(artifact)
             for event in commit.events:
@@ -1002,7 +1055,18 @@ class DecisionLedgerStore:
                         source.imported_at_utc,
                     ),
                 )
-            lookup = {artifact.artifact_id: artifact for artifact in self.artifacts()}
+            expected_new_head = LedgerHead(
+                sequence=last.sequence,
+                event_hash=last.event_hash,
+            )
+            if self._authoritative_head_unchecked() != expected_new_head:
+                raise LedgerIntegrityError(
+                    "appended authoritative tail does not verify"
+                )
+            lookup = {
+                artifact.artifact_id: artifact
+                for artifact in self._artifacts_unchecked()
+            }
             snapshot_artifact = lookup[commit.resulting_snapshot_artifact_id]
             snapshot = snapshot_artifact.decode_value()
             if not isinstance(snapshot, ResearchRequestSnapshot):
@@ -1011,7 +1075,7 @@ class DecisionLedgerStore:
             self._connection.commit()
             return LedgerReceipt(
                 project_id=self._project_id,
-                head=LedgerHead(sequence=last.sequence, event_hash=last.event_hash),
+                head=expected_new_head,
                 committed_event_ids=tuple(event.event_id for event in commit.events),
                 resulting_snapshot_artifact_id=commit.resulting_snapshot_artifact_id,
             )
