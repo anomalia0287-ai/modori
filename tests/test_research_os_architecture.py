@@ -5,6 +5,14 @@ import inspect
 from pathlib import Path
 
 from modori.recommendations import RecommendationService
+from modori.research_os.clarification import ClarificationSpec
+from modori.research_os.passport import (
+    AbstainPayload,
+    AnalysisPassport,
+    ClarifyPayload,
+    RecommendLocalPayload,
+    RouteExternalPayload,
+)
 from modori.research_os.service import ResearchOsService, ResearchRequest
 
 
@@ -37,13 +45,18 @@ def test_research_os_has_no_network_tool_or_calculation_imports() -> None:
         "numpy",
         "pandas",
         "pickle",
+        "pathlib",
         "requests",
         "scipy",
         "sklearn",
+        "shutil",
         "socket",
+        "sqlite3",
         "statsmodels",
         "subprocess",
+        "tempfile",
         "urllib",
+        "webbrowser",
     }
 
     assert _import_roots().isdisjoint(forbidden)
@@ -74,6 +87,20 @@ def test_research_os_production_code_has_no_io_or_dynamic_execution_call() -> No
     assert violations == []
 
 
+def test_research_os_cannot_import_product_execution_or_recommendation_modules() -> None:
+    violations: list[str] = []
+    for path, tree in _python_trees():
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.ImportFrom) or node.module is None:
+                continue
+            if node.module.startswith("modori.") and not node.module.startswith(
+                "modori.research_os"
+            ):
+                violations.append(f"{path}:{node.lineno}:{node.module}")
+
+    assert violations == []
+
+
 def test_structure_only_request_has_no_dataset_or_execution_field() -> None:
     field_names = tuple(ResearchRequest.__dataclass_fields__)
 
@@ -99,7 +126,59 @@ def test_research_os_public_service_cannot_run_or_persist() -> None:
         if callable(member) and not name.startswith("_")
     }
 
-    assert public_methods == {"resolve"}
+    assert public_methods == {"resolve", "plan", "clarifications_for"}
+
+
+def test_passport_and_payload_field_sets_cannot_gain_execution_authority() -> None:
+    assert tuple(AnalysisPassport.__dataclass_fields__) == (
+        "envelope",
+        "question_ref",
+        "estimand_ref",
+        "study_ref",
+        "dataset_fingerprint",
+        "method_space_version",
+        "method_space_digest",
+        "ruleset_version",
+        "resolver_decision_digest",
+        "recommend_local",
+        "clarify",
+        "route_external",
+        "abstain",
+    )
+    assert tuple(RecommendLocalPayload.__dataclass_fields__) == (
+        "capability_keys",
+        "local_analysis_kinds",
+        "claim_permissions",
+        "experimental",
+        "auto_selected",
+        "requires_explicit_configure_confirm_run",
+    )
+    assert tuple(ClarifyPayload.__dataclass_fields__) == (
+        "question_ids",
+        "blocking_fact_addresses",
+    )
+    assert tuple(RouteExternalPayload.__dataclass_fields__) == (
+        "route_ids",
+        "privacy_boundary_ids",
+    )
+    assert tuple(AbstainPayload.__dataclass_fields__) == (
+        "reason_codes",
+        "recovery_requirement_ids",
+    )
+
+
+def test_clarification_contract_cannot_embed_a_recommendation() -> None:
+    fields = set(ClarificationSpec.__dataclass_fields__)
+    forbidden = {
+        "analysis_family",
+        "capability_key",
+        "method",
+        "route_id",
+        "command",
+        "execute",
+    }
+
+    assert fields.isdisjoint(forbidden)
 
 
 def test_existing_recommendation_service_signature_is_unchanged() -> None:

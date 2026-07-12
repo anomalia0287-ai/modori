@@ -195,7 +195,8 @@ class ResearchOsService:
         """Bind one resolver decision to an authority-free immutable passport."""
 
         self._validate_passport_binding(request, passport_envelope)
-        decision = self.resolve(request)
+        resolve_request = self.resolve
+        decision = resolve_request(request)
         recommend_local: RecommendLocalPayload | None = None
         clarify: ClarifyPayload | None = None
         route_external: RouteExternalPayload | None = None
