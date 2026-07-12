@@ -10,7 +10,7 @@ import uuid
 import winreg
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 
 if __package__:
     from scripts.installer_contract import (
@@ -235,11 +235,18 @@ def validate_inputs(
     if (
         not isinstance(longest_path, str)
         or not longest_path
-        or "\\" in longest_path
-        or longest_path.startswith("/")
-        or any(part in ("", ".", "..") for part in longest_path.split("/"))
         or type(longest_path_chars) is not int
         or longest_path_chars != len(longest_path)
+    ):
+        raise ValueError("Installer smoke payload path evidence is invalid")
+    posix_path = PurePosixPath(longest_path)
+    windows_path = PureWindowsPath(longest_path)
+    if (
+        posix_path.is_absolute()
+        or bool(windows_path.drive)
+        or bool(windows_path.root)
+        or "\\" in longest_path
+        or any(part in ("", ".", "..") for part in longest_path.split("/"))
     ):
         raise ValueError("Installer smoke payload path evidence is invalid")
     return payload
@@ -251,16 +258,14 @@ def require_smoke_path_budget(
 ) -> None:
     path_payload = payload["payload_paths"]
     assert isinstance(path_payload, dict)
-    longest_path = path_payload["longest_relative_path"]
-    assert isinstance(longest_path, str)
-    destination = install_dir.resolve() / "Modori"
-    for part in longest_path.split("/"):
-        destination /= part
-    computed_chars = len(str(destination))
+    longest_path_chars = path_payload["longest_relative_path_chars"]
+    assert type(longest_path_chars) is int
+    payload_root = (install_dir / "Modori").resolve()
+    computed_chars = len(str(payload_root)) + 1 + longest_path_chars
     if computed_chars > SAFE_PATH_BUDGET_CHARS:
         raise ValueError(
             "Installer smoke path budget exceeded: "
-            f"{computed_chars} > {SAFE_PATH_BUDGET_CHARS}: {destination}"
+            f"{computed_chars} > {SAFE_PATH_BUDGET_CHARS}: {payload_root}"
         )
 
 

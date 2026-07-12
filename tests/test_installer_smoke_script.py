@@ -244,6 +244,55 @@ def test_invalid_manifest_evidence_fails_before_any_runner_call(
     assert not smoke_root.exists()
 
 
+@pytest.mark.parametrize(
+    "longest_relative_path",
+    [
+        "D:/x",
+        "D:x",
+        "//server/share/x",
+        r"\\server\share\x",
+        "/x",
+        r"\x",
+    ],
+    ids=[
+        "drive-absolute",
+        "drive-relative",
+        "unc-forward-slash",
+        "unc-backslash",
+        "rooted-forward-slash",
+        "rooted-backslash",
+    ],
+)
+def test_drive_unc_and_rooted_path_evidence_fails_before_mutation_boundaries(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    longest_relative_path: str,
+) -> None:
+    installer, manifest, probe = _inputs(
+        tmp_path,
+        longest_relative_path=longest_relative_path,
+    )
+    smoke_root = tmp_path / "runs"
+    events: list[str] = []
+    monkeypatch.setattr(installer_smoke, "SMOKE_ROOT", smoke_root)
+    monkeypatch.setattr(
+        installer_smoke,
+        "read_smoke_registration",
+        lambda: events.append("registration") or None,
+    )
+
+    result = installer_smoke.run_installer_smoke(
+        installer,
+        manifest,
+        probe,
+        runner=lambda _command: events.append("runner") or 1,
+    )
+
+    assert result == 2
+    assert events == []
+    assert not smoke_root.exists()
+
+
 def test_invalid_json_is_validation_failure_before_runner(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
