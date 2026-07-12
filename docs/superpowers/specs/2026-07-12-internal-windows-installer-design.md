@@ -191,7 +191,8 @@ or foreign-worktree package.
 An opt-in host lifecycle test. Its public CLI is:
 
 ```text
-python scripts/installer_smoke.py <installer-path> --manifest <manifest-path>
+python scripts/installer_smoke.py <installer-path> --manifest <manifest-path> \
+  --downgrade-probe <probe-installer-path>
 ```
 
 It creates a unique root under `.tmp/installer-smoke/`, runs the installer in
@@ -209,6 +210,11 @@ payload and `.iss` file with AppId
 announce before it starts because it creates and removes a current-user Inno
 Setup uninstall registration. It does not require administrator privileges and
 cannot update or uninstall a real Modori installation.
+
+The downgrade probe uses the same `.iss` and smoke AppId but version `0.0.9`
+and a minimal dummy payload. `InitializeSetup` rejects it before
+`[InstallDelete]` or `[Files]` can run, avoiding a second compression pass over
+the 595.5 MiB package while still testing the real downgrade guard.
 
 ### `scripts/quality_gate.py`
 
@@ -283,7 +289,9 @@ JSON is UTF-8, sorted by key, indented by two spaces, and ends with one newline.
 The unpublished lifecycle-smoke manifest uses the same schema with
 `channel: "internal-smoke"`, the isolated smoke AppId, and
 `smoke_only: true`. `scripts/installer_smoke.py` requires those three values to
-match before it starts Setup.
+match before it starts Setup. It also adds `downgrade_probe.version` as
+`0.0.9`, plus the probe installer filename, positive size, and SHA256;
+`scripts/installer_smoke.py` verifies those fields before executing the probe.
 
 `SHA256SUMS.txt` contains the installer hash followed by two spaces and the
 installer filename, plus one trailing newline. The internal executable hash
@@ -338,10 +346,12 @@ created them.
 - Installing a higher version is an in-place upgrade.
 - Installing a lower version over a higher version is rejected by
   `InitializeSetup`. It reads `DisplayVersion` from the permanent current-user
-  uninstall key, parses both numeric versions with `StrToVersion`, and compares
-  them with `ComparePackedVersion`. Missing registration allows installation;
-  an unreadable existing version fails closed. A deliberate downgrade requires
-  uninstalling first.
+  uninstall key, appends `.0` to the required three-component product version,
+  parses the resulting four-component value with `StrToVersion`, and compares
+  it with the candidate `windows_file_version` using `ComparePackedVersion`.
+  Missing registration allows installation; a non-three-component or
+  non-numeric existing `DisplayVersion` fails closed. A deliberate downgrade
+  requires uninstalling first.
 - No cleanup rule may target `%LocalAppData%\Modori`, user-selected paths, or a
   computed path outside the fixed install root.
 
@@ -410,8 +420,9 @@ on-disk rollback copy is outside the internal-channel scope.
   `RestartApplications=no`, fixed-subtree `[InstallDelete]`, recursive package
   copy, shortcuts, uninstall metadata, offline scope, and absence of user-state
   deletion.
-- Downgrade guard contract and numeric version parsing, including missing,
-  equal, higher, lower, and malformed installed `DisplayVersion` cases.
+- Downgrade guard contract and three-to-four-component numeric version
+  normalization, including missing, equal, higher, lower, and malformed
+  installed `DisplayVersion` cases.
 - Path-budget pass at the current measured 128-character longest relative path
   and failure when `90 + 1 + relative_length` exceeds `240`.
 - Staging isolation and no publication on each failure class.
@@ -500,6 +511,8 @@ No screenshot or manual visual comparison is required for installer acceptance.
   https://jrsoftware.org/ishelp/topic_scriptevents.htm
 - Inno Setup Pascal version comparison:
   https://jrsoftware.org/ishelp/topic_isxfunc_comparepackedversion.htm
+- Inno Setup Pascal `StrToVersion` four-component parser:
+  https://jrsoftware.org/ishelp/topic_isxfunc_strtoversion.htm
 - Microsoft MSIX signing overview:
   https://learn.microsoft.com/windows/msix/package/signing-package-overview
 - Microsoft SignTool:
