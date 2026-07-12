@@ -208,5 +208,38 @@ def test_release_checklist_documents_frozen_lifecycle_publication_boundary() -> 
         "immediately before snapshot creation",
         "UTF-16 code units",
         "files, directories, and directory search wildcards",
+        "installed engine-smoke process",
+        "reported cache path",
+        "`MODORI_CACHE_DIR`",
+        "real non-link/junction directory",
+        "before repair or publication",
     ):
         assert required_text in installer_gate
+
+
+def test_release_docs_preserve_failed_cache_diagnostic_as_non_release() -> None:
+    checklist = Path("docs/specs/release-readiness-checklist.md").read_text(
+        encoding="utf-8"
+    )
+    handoff = Path(
+        "docs/superpowers/handoffs/2026-07-12-internal-windows-installer-handoff.md"
+    ).read_text(encoding="utf-8")
+    normalized_checklist = " ".join(checklist.split())
+    normalized_handoff = " ".join(handoff.split())
+
+    for required_text in (
+        "baa49b20449bec6f3696e4ccb0613dfe5fe56166",
+        ".tmp/ib/baa49b20449b-8cc41b7f3cb0",
+        ".tmp/installer-smoke/r-9093f24ff807",
+        "non-release",
+        "no candidate",
+    ):
+        assert required_text in normalized_checklist
+        assert required_text in normalized_handoff
+
+    for required_hash in (
+        "A773EED67849B3099D655EC3832966D4E3CB3B3A9B17217E2ED8D85D44DEDC4B",
+        "44504197BCE06D8900DF58CDB57D2983EAE19BD7BFC4C53C73632BDEF3F3BE23",
+        "6ABC9EC0967FD64F6E21D9BBB0F16C5946568A28952E5D1B00547CA97E958DFA",
+    ):
+        assert required_hash in handoff

@@ -16,6 +16,15 @@ Historical internal Windows installer evidence from 2026-07-12:
   characters and the longest `128`-character relative payload produced a
   `285`-character compiler source path. This is non-release failure evidence,
   not a passed gate or artifact.
+- A later clean gate at `baa49b20449bec6f3696e4ccb0613dfe5fe56166`
+  built the isolated smoke artifacts under
+  `.tmp/ib/baa49b20449b-8cc41b7f3cb0`, installed into
+  `.tmp/installer-smoke/r-9093f24ff807`, and passed all three installed package
+  smokes. It then stopped before repair because the installed runtime had
+  created routed Matplotlib and settings state but had not exercised the routed
+  `cache` directory. This is non-release failure evidence; no candidate was
+  published. The failed install, registration, shortcut, logs, and state remain
+  preserved pending separately authorized cleanup.
 
 - Source commit: `d23656588deeda7d7bd5001d1bbd78fbfe9a7ed3` on
   `codex/internal-windows-installer`; the production manifest records
@@ -278,6 +287,14 @@ command; installed smoke requires the installer build. Do not combine
 already rebuilds and smoke-tests the package. Installer commands use the base
 environment; the R reference runtime remains limited to pytest and the slow
 statistical gate.
+
+For an installed lifecycle, the explicit state root is routed but not
+precreated. The installed engine-smoke process must call the real application
+cache selector and include its exact reported cache path in the result JSON.
+The wrapper constructs the child environment once, compares that path with the
+resolved `MODORI_CACHE_DIR`, and requires the lexical expected path to be a real
+non-link/junction directory. Missing, mismatched, absent, or linked cache
+evidence fails before repair or publication.
 
 After the package build, the builder creates a frozen snapshot of the complete
 package tree and the exact `.iss` bytes under the unique compact

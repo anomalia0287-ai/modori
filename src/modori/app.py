@@ -10,6 +10,7 @@ from PySide6.QtCore import Property, QObject, QUrl, Signal, Slot
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine
 
+from modori.cache import cache_dir
 from modori.public_data_smoke import run_public_data_import_smoke
 from modori.ui.contracts import ImportOptions
 from modori.ui.controller import UiController
@@ -66,6 +67,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 def _run_engine_smoke(data_path: Path, output_path: Path) -> int:
     payload: dict[str, object]
     try:
+        runtime_cache_dir = cache_dir().resolve(strict=True)
         controller = UiController()
         opened = controller.openDataFile(data_path, ImportOptions(confirm_new_session=True))
         if opened.ok:
@@ -86,6 +88,7 @@ def _run_engine_smoke(data_path: Path, output_path: Path) -> int:
                 and controller.status == "ready"
                 and v1_smoke.get("ok") is True
             ),
+            "cache_dir": str(runtime_cache_dir),
             "opened": opened.ok,
             "rerun": None if rerun is None else rerun.ok,
             "waited": waited,

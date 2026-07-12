@@ -55,6 +55,41 @@ paths. The historical failure measurements contain only BMP characters, so its
 `156 + 1 + 128 = 285` diagnosis remains unchanged. No corrected live installer
 has been compiled or published by this hardening work.
 
+## baa49b Installed Cache Diagnostic — No Release Artifact
+
+A fresh clean gate at `baa49b20449bec6f3696e4ccb0613dfe5fe56166`
+created isolated smoke evidence under
+`.tmp/ib/baa49b20449b-8cc41b7f3cb0` and installed it into
+`.tmp/installer-smoke/r-9093f24ff807`. Installation and all three installed
+package smokes passed. The lifecycle then stopped before its stale-file probe,
+repair, downgrade, or uninstall because `user-state/cache` was missing.
+`user-state/matplotlib/fontlist-v3.11.0.json`, `settings.json`, and the unchanged
+`preserve` sentinel were present. This is non-release failure evidence; no
+candidate was published.
+
+Preserved hashes from that failure are:
+
+- Smoke installer:
+  `B3859E9E75C3763F74D6D01D723D12EF864F42AE3A4B0A3DD8A9E4EB6188DE4E`.
+- Smoke manifest:
+  `7B6520A2ED2B4BF20406B36166830A53428360ED91BE339C18844173CDCADC2A`.
+- Install log:
+  `A773EED67849B3099D655EC3832966D4E3CB3B3A9B17217E2ED8D85D44DEDC4B`.
+- Successful engine result:
+  `44504197BCE06D8900DF58CDB57D2983EAE19BD7BFC4C53C73632BDEF3F3BE23`.
+- Successful ten-case public-data result:
+  `6ABC9EC0967FD64F6E21D9BBB0F16C5946568A28952E5D1B00547CA97E958DFA`.
+
+The installed and frozen payload inventories were identical: `380`
+directories, `4376` files, `624392981` bytes, digest
+`5889CC1D5D6C8FB6A327B908EB5559449E9F32DD0B0737D2E58611DDA54CD72C`.
+The smoke registration, shortcut, install tree, and diagnostic run remain
+preserved; no cleanup was performed. The subsequent code hardening makes the
+installed engine-smoke process create and report the real selected cache, then
+requires its wrapper to match the report to routed `MODORI_CACHE_DIR` and a
+real non-link/junction directory. That hardening adds no corrected live gate or
+release evidence.
+
 ## Final Live Gate
 
 The approved live gate ran outside the Codex workspace sandbox with

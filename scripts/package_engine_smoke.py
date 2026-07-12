@@ -9,6 +9,8 @@ from pathlib import Path
 
 import pandas as pd
 
+from modori.path_policy import is_link_or_junction
+
 if __package__:
     from scripts.package_environment import packaged_subprocess_environment
 else:
@@ -70,6 +72,12 @@ def run_engine_smoke(
     output_path = smoke_dir / "result.json"
     write_reference_xlsx(data_path)
     output_path.unlink(missing_ok=True)
+    environment = packaged_subprocess_environment(
+        "packaged-engine-runtime",
+        state_root=state_root,
+    )
+    expected_cache_path = Path(environment["MODORI_CACHE_DIR"])
+    expected_cache_dir = expected_cache_path.resolve()
     completed = subprocess.run(
         [
             str(exe_path),
@@ -79,10 +87,7 @@ def run_engine_smoke(
         ],
         check=False,
         timeout=timeout_seconds,
-        env=packaged_subprocess_environment(
-            "packaged-engine-runtime",
-            state_root=state_root,
-        ),
+        env=environment,
     )
     if completed.returncode != 0:
         return completed.returncode
@@ -94,6 +99,9 @@ def run_engine_smoke(
     v1_statistics_smoke = payload.get("v1_statistics_smoke")
     if (
         payload.get("ok") is not True
+        or payload.get("cache_dir") != str(expected_cache_dir)
+        or is_link_or_junction(expected_cache_path)
+        or not expected_cache_path.is_dir()
         or not isinstance(v1_statistics_smoke, dict)
         or v1_statistics_smoke.get("ok") is not True
     ):

@@ -80,6 +80,22 @@ def test_installer_smoke_audit_documents_bounded_recursive_state_cleanup() -> No
         assert required_text in row
 
 
+def test_package_engine_audit_documents_installed_cache_proof() -> None:
+    row = next(
+        line
+        for line in AUDIT_DOCUMENT.read_text(encoding="utf-8").splitlines()
+        if "`scripts/package_engine_smoke.py`" in line
+    )
+
+    for required_text in (
+        "reported cache path",
+        "`MODORI_CACHE_DIR`",
+        "real directory",
+        "link/junction",
+    ):
+        assert required_text in row
+
+
 def test_installer_builder_audit_documents_frozen_staging_boundary() -> None:
     row = next(
         line

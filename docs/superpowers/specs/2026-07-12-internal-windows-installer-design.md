@@ -473,7 +473,12 @@ on-disk rollback copy is outside the internal-channel scope.
 4. Verify installed executable, QML root, smoke start-menu shortcut, uninstall
    registration, and isolated smoke AppId.
 5. Run packaged QML, engine, and public-data smokes against the installed path
-   with cache and settings redirected to the smoke user-state directory.
+   with cache and settings redirected to the smoke user-state directory. The
+   explicit state root is not precreated: the installed engine-smoke process
+   calls the real application cache selector and reports its exact resolved
+   cache path. Its wrapper constructs the environment once, requires that
+   report to equal `MODORI_CACHE_DIR`, and requires the lexical cache entry to
+   be a real non-link/junction directory before the lifecycle may continue.
 6. Write `orphan-stale-probe.bin` into the installed `{app}\Modori` subtree,
    rerun the same installer, verify the probe is absent, and verify a single
    smoke uninstall registration.
@@ -497,6 +502,8 @@ No screenshot or manual visual comparison is required for installer acceptance.
 - Setup runs as the current user without a UAC prompt.
 - Start-menu and optional desktop shortcuts target the installed executable.
 - Installed QML, engine, and public-data smokes pass.
+- Installed engine-smoke cache evidence exactly matches its routed environment
+  and proves that the installed runtime created a real cache directory.
 - Repair installation deletes the planted stale-file probe and does not
   duplicate product registration.
 - The lower-version smoke probe is rejected without changing the registered

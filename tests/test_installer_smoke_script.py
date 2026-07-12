@@ -1033,9 +1033,10 @@ def test_smoke_repairs_stale_file_rejects_downgrade_and_uninstalls(
 
     def runner(command: list[str]) -> int:
         timeline.append(tuple(command))
-        if len(command) > 1 and command[1].startswith("scripts/package_"):
-            (adapter.user_state_dir / "cache").mkdir(exist_ok=True)
+        if len(command) > 1 and command[1].endswith("package_launch_smoke.py"):
             (adapter.user_state_dir / "matplotlib").mkdir(exist_ok=True)
+        if len(command) > 1 and command[1].endswith("package_engine_smoke.py"):
+            (adapter.user_state_dir / "cache").mkdir(exist_ok=True)
         log_argument = next(
             (item for item in command if item.startswith("/LOG=")),
             None,
@@ -1147,6 +1148,53 @@ def test_smoke_repairs_stale_file_rejects_downgrade_and_uninstalls(
             "uninstall.log",
         )
     )
+
+
+def test_lifecycle_rejects_successful_engine_command_without_created_cache(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    installer, manifest, probe = _inputs(
+        tmp_path,
+        longest_relative_path="Modori.exe",
+    )
+    smoke_root = tmp_path / "runs"
+    adapter = installer_smoke.LifecycleAdapter.for_test(tmp_path / "adapter")
+    calls: list[list[str]] = []
+    monkeypatch.setattr(installer_smoke, "SMOKE_ROOT", smoke_root)
+    monkeypatch.setattr(adapter, "require_no_existing_registration", lambda: None)
+    monkeypatch.setattr(adapter, "require_installed", lambda _version: None)
+
+    def runner(command: list[str]) -> int:
+        calls.append(command)
+        if len(command) > 1 and command[1].endswith("package_launch_smoke.py"):
+            (adapter.user_state_dir / "matplotlib").mkdir(exist_ok=True)
+        return 0
+
+    result = installer_smoke.run_installer_smoke(
+        installer,
+        manifest,
+        probe,
+        runner=runner,
+        lifecycle_adapter=adapter,
+    )
+
+    assert result == 1
+    assert "Smoke user state directory is missing" in capsys.readouterr().err
+    assert not (adapter.user_state_dir / "cache").exists()
+    assert (adapter.user_state_dir / "matplotlib").is_dir()
+    assert not adapter.stale_probe.exists()
+    assert sum(call[0] == str(installer.resolve()) for call in calls) == 1
+    assert {
+        Path(call[1]).name
+        for call in calls
+        if len(call) > 1 and call[1].startswith("scripts/package_")
+    } == {
+        "package_launch_smoke.py",
+        "package_engine_smoke.py",
+        "package_public_data_smoke.py",
+    }
 
 
 def test_successful_downgrade_probe_is_a_lifecycle_failure(
