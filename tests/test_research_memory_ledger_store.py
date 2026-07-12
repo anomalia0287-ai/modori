@@ -367,15 +367,17 @@ def test_open_rejects_authoritative_or_schema_corruption(
     elif corruption == "relationship":
         connection.execute("DELETE FROM event_artifacts WHERE ordinal=0")
     elif corruption == "metadata":
-        connection.execute(
-            "UPDATE ledger_meta SET project_id='different-project'"
-        )
+        connection.execute("UPDATE ledger_meta SET project_id='different-project'")
     else:
         connection.execute("CREATE TABLE attacker(value TEXT) STRICT")
     connection.commit()
     connection.close()
+    before = path.read_bytes()
     with pytest.raises(LedgerIntegrityError):
         DecisionLedgerStore.open(path, "project-1")
+    assert path.read_bytes() == before
+    assert not path.with_name(path.name + "-wal").exists()
+    assert not path.with_name(path.name + "-shm").exists()
     assert isinstance(ResearchOsService().resolve(_request()).action, PrimaryAction)
 
 
@@ -385,6 +387,37 @@ def test_open_binds_file_to_exact_local_project(tmp_path: Path) -> None:
         pass
     with pytest.raises(LedgerIntegrityError, match="project"):
         DecisionLedgerStore.open(path, "project-2")
+
+
+def test_open_runs_database_checks_before_consuming_schema_metadata(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    path = _path(tmp_path)
+    with DecisionLedgerStore.create(path, "project-1"):
+        pass
+    statements: list[str] = []
+    real_connect = sqlite3.connect
+
+    def traced_connect(*args: object, **kwargs: object) -> sqlite3.Connection:
+        connection = real_connect(*args, **kwargs)
+        connection.set_trace_callback(statements.append)
+        return connection
+
+    monkeypatch.setattr(ledger_store.sqlite3, "connect", traced_connect)
+    with DecisionLedgerStore.open(path, "project-1"):
+        pass
+
+    normalized = [statement.strip().lower() for statement in statements]
+    quick_index = normalized.index("pragma quick_check")
+    foreign_key_index = normalized.index("pragma foreign_key_check")
+    application_index = normalized.index("pragma application_id")
+    schema_index = next(
+        index
+        for index, statement in enumerate(normalized)
+        if statement.startswith("select type,name,tbl_name,sql from sqlite_schema")
+    )
+    assert quick_index < foreign_key_index < application_index < schema_index
 
 
 def test_runtime_authorizer_blocks_authoritative_rewrite_and_schema_change(

@@ -74,14 +74,10 @@ _PROJECT_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]*$")
 _AUTHORITATIVE_TABLES = frozenset(
     {"ledger_meta", "ledger_artifacts", "ledger_events", "event_artifacts"}
 )
-_DERIVED_TABLES = frozenset(
-    {"ledger_head", "materialized_request", "import_sources"}
-)
+_DERIVED_TABLES = frozenset({"ledger_head", "materialized_request", "import_sources"})
 _ALL_TABLES = _AUTHORITATIVE_TABLES | _DERIVED_TABLES
 
-_ARTIFACT_KINDS_SQL = ",".join(
-    f"'{kind.value}'" for kind in LedgerArtifactKind
-)
+_ARTIFACT_KINDS_SQL = ",".join(f"'{kind.value}'" for kind in LedgerArtifactKind)
 _EVENT_KINDS_SQL = ",".join(f"'{kind.value}'" for kind in LedgerEventKind)
 
 _SCHEMA_DEFINITIONS = (
@@ -184,9 +180,7 @@ def _schema_payload(rows: Iterable[tuple[str, str, str, str]]) -> list[dict[str,
 _EXPECTED_SCHEMA_ROWS = tuple(
     sorted(("table", name, name, sql) for name, sql in _SCHEMA_DEFINITIONS)
 )
-_EXPECTED_SCHEMA_FINGERPRINT = canonical_digest(
-    _schema_payload(_EXPECTED_SCHEMA_ROWS)
-)
+_EXPECTED_SCHEMA_FINGERPRINT = canonical_digest(_schema_payload(_EXPECTED_SCHEMA_ROWS))
 
 
 @dataclass(frozen=True)
@@ -347,7 +341,9 @@ def _configure_connection(
         ) from exc
 
 
-def _schema_rows(connection: sqlite3.Connection) -> tuple[tuple[str, str, str, str], ...]:
+def _schema_rows(
+    connection: sqlite3.Connection,
+) -> tuple[tuple[str, str, str, str], ...]:
     rows = connection.execute(
         "SELECT type,name,tbl_name,sql FROM sqlite_schema "
         "WHERE name NOT LIKE 'sqlite_%' ORDER BY type,name"
@@ -387,9 +383,15 @@ def _authorizer(
         sqlite3.SQLITE_DROP_TRIGGER,
         sqlite3.SQLITE_DROP_VIEW,
     }
-    if action in schema_actions or action in {sqlite3.SQLITE_ATTACH, sqlite3.SQLITE_DETACH}:
+    if action in schema_actions or action in {
+        sqlite3.SQLITE_ATTACH,
+        sqlite3.SQLITE_DETACH,
+    }:
         return sqlite3.SQLITE_DENY
-    if action in {sqlite3.SQLITE_UPDATE, sqlite3.SQLITE_DELETE} and first in _AUTHORITATIVE_TABLES:
+    if (
+        action in {sqlite3.SQLITE_UPDATE, sqlite3.SQLITE_DELETE}
+        and first in _AUTHORITATIVE_TABLES
+    ):
         return sqlite3.SQLITE_DENY
     if (
         action == sqlite3.SQLITE_PRAGMA
@@ -405,7 +407,10 @@ def _authorizer(
         }
     ):
         return sqlite3.SQLITE_DENY
-    if action == sqlite3.SQLITE_FUNCTION and (second or first or "").lower() == "load_extension":
+    if (
+        action == sqlite3.SQLITE_FUNCTION
+        and (second or first or "").lower() == "load_extension"
+    ):
         return sqlite3.SQLITE_DENY
     return sqlite3.SQLITE_OK
 
@@ -497,7 +502,9 @@ class DecisionLedgerStore:
                 connection.execute(statement)
             actual_rows = _schema_rows(connection)
             if actual_rows != _EXPECTED_SCHEMA_ROWS:
-                raise LedgerRuntimeError("SQLite did not preserve the frozen ledger schema")
+                raise LedgerRuntimeError(
+                    "SQLite did not preserve the frozen ledger schema"
+                )
             fingerprint = _schema_fingerprint(connection)
             connection.execute(
                 "INSERT INTO ledger_meta VALUES(1,?,?,?,?,?,?,?,?)",
@@ -543,10 +550,16 @@ class DecisionLedgerStore:
             )
             _configure_connection(connection, durability=False)
             store = cls(resolved, project_id, connection)
-            store._validate_header_and_schema()
+            foreign_key_issues = store._run_database_checks(full_integrity=False)
+            python_version, sqlite_version = store._validate_header_and_schema()
             _configure_durability(connection)
             connection.set_authorizer(_authorizer)
-            store.verify()
+            store._verify_after_database_checks(
+                foreign_key_issues=foreign_key_issues,
+                python_version=python_version,
+                sqlite_version=sqlite_version,
+                full_integrity=False,
+            )
             return store
         except LedgerStoreError:
             if connection is not None:
@@ -555,9 +568,7 @@ class DecisionLedgerStore:
         except sqlite3.DatabaseError as exc:
             if connection is not None:
                 connection.close()
-            raise LedgerIntegrityError(
-                "Decision Ledger could not be verified"
-            ) from exc
+            raise LedgerIntegrityError("Decision Ledger could not be verified") from exc
 
     @property
     def path(self) -> Path:
@@ -625,16 +636,21 @@ class DecisionLedgerStore:
         snapshot_artifact = lookup.get(row[0])
         if (
             snapshot_artifact is None
-            or snapshot_artifact.artifact_kind is not LedgerArtifactKind.REQUEST_SNAPSHOT
+            or snapshot_artifact.artifact_kind
+            is not LedgerArtifactKind.REQUEST_SNAPSHOT
         ):
             raise LedgerIntegrityError("materialized request snapshot is missing")
         snapshot = snapshot_artifact.decode_value()
         if not isinstance(snapshot, ResearchRequestSnapshot):
-            raise LedgerIntegrityError("materialized snapshot decoded to the wrong type")
+            raise LedgerIntegrityError(
+                "materialized snapshot decoded to the wrong type"
+            )
         try:
             return snapshot.restore(lookup)
         except (LedgerContractError, ValueError) as exc:
-            raise LedgerIntegrityError("materialized request cannot be restored") from exc
+            raise LedgerIntegrityError(
+                "materialized request cannot be restored"
+            ) from exc
 
     def _validate_header_and_schema(self) -> tuple[str, str]:
         application_id = self._connection.execute("PRAGMA application_id").fetchone()[0]
@@ -725,7 +741,9 @@ class DecisionLedgerStore:
         head = (
             LedgerHead.genesis()
             if not events
-            else LedgerHead(sequence=events[-1].sequence, event_hash=events[-1].event_hash)
+            else LedgerHead(
+                sequence=events[-1].sequence, event_hash=events[-1].event_hash
+            )
         )
         if snapshot_id is not None:
             snapshot_artifact = lookup.get(snapshot_id)
@@ -741,7 +759,9 @@ class DecisionLedgerStore:
             try:
                 decoded.restore(lookup)
             except (LedgerContractError, ValueError) as exc:
-                raise LedgerIntegrityError("replayed request cannot be restored") from exc
+                raise LedgerIntegrityError(
+                    "replayed request cannot be restored"
+                ) from exc
         return artifacts, events, head, snapshot_id, tuple(sorted(expected_imports))
 
     def _read_derived(
@@ -770,7 +790,11 @@ class DecisionLedgerStore:
             (row[0], row[1], row[2], bytes(row[3]), row[4], row[5])
             for row in import_rows
         )
-        return head, None if snapshot_row is None else snapshot_row[0], normalized_imports
+        return (
+            head,
+            None if snapshot_row is None else snapshot_row[0],
+            normalized_imports,
+        )
 
     def _rebuild_derived(
         self,
@@ -801,17 +825,36 @@ class DecisionLedgerStore:
             self._connection.rollback()
             raise
 
-    def verify(self, *, full_integrity: bool = False) -> LedgerVerificationReport:
-        self._require_open()
+    def _run_database_checks(
+        self,
+        *,
+        full_integrity: bool,
+    ) -> tuple[tuple[object, ...], ...]:
         try:
             check_name = "integrity_check" if full_integrity else "quick_check"
             result = self._connection.execute(f"PRAGMA {check_name}").fetchall()
             if result != [("ok",)]:
                 raise LedgerIntegrityError(f"SQLite {check_name} failed")
-            python_version, sqlite_version = self._validate_header_and_schema()
-            foreign_key_issues = self._connection.execute(
-                "PRAGMA foreign_key_check"
-            ).fetchall()
+            return tuple(
+                tuple(row)
+                for row in self._connection.execute(
+                    "PRAGMA foreign_key_check"
+                ).fetchall()
+            )
+        except LedgerStoreError:
+            raise
+        except sqlite3.DatabaseError as exc:
+            raise LedgerIntegrityError("Decision Ledger could not be verified") from exc
+
+    def _verify_after_database_checks(
+        self,
+        *,
+        foreign_key_issues: tuple[tuple[object, ...], ...],
+        python_version: str,
+        sqlite_version: str,
+        full_integrity: bool,
+    ) -> LedgerVerificationReport:
+        try:
             authoritative_issues = [
                 row for row in foreign_key_issues if row[0] in _AUTHORITATIVE_TABLES
             ]
@@ -826,7 +869,9 @@ class DecisionLedgerStore:
                 if self._read_derived() != expected:
                     raise LedgerIntegrityError("derived state rebuild did not verify")
                 if self._connection.execute("PRAGMA foreign_key_check").fetchall():
-                    raise LedgerIntegrityError("derived foreign keys failed after rebuild")
+                    raise LedgerIntegrityError(
+                        "derived foreign keys failed after rebuild"
+                    )
             return LedgerVerificationReport(
                 project_id=self._project_id,
                 event_count=len(events),
@@ -840,8 +885,29 @@ class DecisionLedgerStore:
             )
         except LedgerStoreError:
             raise
-        except (LedgerContractError, sqlite3.DatabaseError, TypeError, ValueError) as exc:
+        except (
+            LedgerContractError,
+            sqlite3.DatabaseError,
+            TypeError,
+            ValueError,
+        ) as exc:
             raise LedgerIntegrityError("Decision Ledger verification failed") from exc
+
+    def verify(self, *, full_integrity: bool = False) -> LedgerVerificationReport:
+        self._require_open()
+        foreign_key_issues = self._run_database_checks(full_integrity=full_integrity)
+        try:
+            python_version, sqlite_version = self._validate_header_and_schema()
+        except LedgerStoreError:
+            raise
+        except (sqlite3.DatabaseError, TypeError, ValueError) as exc:
+            raise LedgerIntegrityError("Decision Ledger verification failed") from exc
+        return self._verify_after_database_checks(
+            foreign_key_issues=foreign_key_issues,
+            python_version=python_version,
+            sqlite_version=sqlite_version,
+            full_integrity=full_integrity,
+        )
 
     def _insert_artifact(self, artifact: LedgerArtifact) -> None:
         existing = self._connection.execute(
@@ -880,7 +946,9 @@ class DecisionLedgerStore:
             row = self._connection.execute(
                 "SELECT sequence,event_hash FROM ledger_head WHERE singleton=1"
             ).fetchone()
-            current = None if row is None else LedgerHead(sequence=row[0], event_hash=row[1])
+            current = (
+                None if row is None else LedgerHead(sequence=row[0], event_hash=row[1])
+            )
             if current != commit.expected_head:
                 raise LedgerConflictError("expected head is stale")
             for artifact in commit.artifacts:
@@ -904,7 +972,9 @@ class DecisionLedgerStore:
                     "INSERT INTO event_artifacts VALUES(?,?,?,?)",
                     (
                         (event.project_id, event.sequence, ordinal, artifact_id)
-                        for ordinal, artifact_id in enumerate(event.subject_artifact_ids)
+                        for ordinal, artifact_id in enumerate(
+                            event.subject_artifact_ids
+                        )
                     ),
                 )
             last = commit.events[-1]
@@ -963,8 +1033,13 @@ class MemoryOpenResult:
 
     def __post_init__(self) -> None:
         if self.status is MemoryOpenStatus.AVAILABLE:
-            if not isinstance(self.store, DecisionLedgerStore) or self.reason_code is not None:
-                raise ValueError("available memory result requires only a verified store")
+            if (
+                not isinstance(self.store, DecisionLedgerStore)
+                or self.reason_code is not None
+            ):
+                raise ValueError(
+                    "available memory result requires only a verified store"
+                )
         elif self.status is MemoryOpenStatus.MEMORY_UNAVAILABLE:
             if self.store is not None or not isinstance(
                 self.reason_code, MemoryUnavailableReason
