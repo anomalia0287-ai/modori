@@ -1,0 +1,7 @@
+@echo off
+setlocal
+set "MODORI_KIT_ROOT=%~dp0"
+powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "$p=Join-Path $env:MODORI_KIT_ROOT 'VERIFY-AND-RUN.ps1'; if (-not (Test-Path -LiteralPath $p -PathType Leaf)) { Write-Host '오류 코드: powershell_bootstrap_missing'; exit 70 }; $h=(Get-FileHash -LiteralPath $p -Algorithm SHA256).Hash.ToLowerInvariant(); if ($h -ne '__POWERSHELL_SHA256__') { Write-Host '오류 코드: powershell_bootstrap_digest_mismatch'; exit 71 }; & $p; exit $LASTEXITCODE"
+set "MODORI_EXIT=%ERRORLEVEL%"
+if not "%MODORI_KIT_NONINTERACTIVE%"=="1" pause
+exit /b %MODORI_EXIT%

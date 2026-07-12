@@ -84,6 +84,7 @@ The archive root has a fixed, versioned name and contains only:
 
 ```text
 RUN-MODORI-BENCHMARK.cmd
+VERIFY-AND-RUN.ps1
 README-KO.txt
 KIT-IDENTITY.json
 MANIFEST.json
@@ -105,14 +106,14 @@ no network capability: it accepts a previously downloaded runtime archive and re
 any digest mismatch.
 
 `MANIFEST.json` contains the relative path, byte length, and SHA-256 for every immutable
-kit file except itself and the bootstrap `RUN-MODORI-BENCHMARK.cmd`; it also excludes
-the mutable `results/` and `work/` directories. Paths are lowercase-or-explicit fixed
-names, relative, slash-normalized, duplicate-free, and traversal-free. The bootstrap
-contains the expected manifest digest and verifies it with a fixed Windows PowerShell
-hash operation before it invokes the manifest-covered Python verifier. The final ZIP
-digest authenticates the bootstrap and is emitted beside the archive for out-of-band
-comparison after USB transport. This is corruption detection with an out-of-band hash,
-not a digital-signature scheme.
+kit file except itself, `RUN-MODORI-BENCHMARK.cmd`, and `VERIFY-AND-RUN.ps1`; it also
+excludes the mutable `results/` and `work/` directories. Paths are
+lowercase-or-explicit fixed names, relative, slash-normalized, duplicate-free, and
+traversal-free. The final ZIP digest anchors the CMD bootstrap, CMD embeds and verifies
+the PowerShell bootstrap digest, PowerShell embeds and verifies the manifest digest,
+and the manifest verifies the runtime and payload before Python starts. The final ZIP
+digest is emitted beside the archive for out-of-band comparison after USB transport.
+This is corruption detection with an out-of-band hash, not a digital-signature scheme.
 
 ## 6. Execution protocol
 
