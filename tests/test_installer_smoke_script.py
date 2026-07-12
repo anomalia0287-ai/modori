@@ -337,13 +337,14 @@ def test_setup_command_uses_only_isolated_silent_safety_flags(tmp_path: Path) ->
 
 def test_real_run_setup_dir_reduces_observed_267_path_to_budget() -> None:
     run_uuid = UUID("123456789abcdef0123456789abcdef0")
+    synthetic_smoke_root = Path("C:/") / ("s" * 83)
     old_install_dir = (
-        installer_smoke.SMOKE_ROOT / f"run-{run_uuid.hex}" / "install"
+        synthetic_smoke_root / f"run-{run_uuid.hex}" / "install"
     )
     old_destination = (
         old_install_dir / "Modori" / _LONGEST_RELATIVE_PAYLOAD_PATH
     ).resolve()
-    compact_run_root = installer_smoke.SMOKE_ROOT / f"r-{run_uuid.hex[:12]}"
+    compact_run_root = synthetic_smoke_root / f"r-{run_uuid.hex[:12]}"
     adapter = installer_smoke.LifecycleAdapter.for_real_run(compact_run_root)
     setup = installer_smoke.setup_command(
         Path("smoke.exe"),
@@ -355,10 +356,13 @@ def test_real_run_setup_dir_reduces_observed_267_path_to_budget() -> None:
     ).resolve()
 
     assert len(_LONGEST_RELATIVE_PAYLOAD_PATH) == 128
+    assert synthetic_smoke_root.is_absolute()
+    assert len(str(synthetic_smoke_root)) == 86
     assert len(str(old_destination)) == 267
     assert adapter.install_dir == compact_run_root / "i"
     assert f"/DIR={adapter.install_dir.resolve()}" in setup
     assert len(str(destination)) == 239
+    assert len(str(old_destination)) - len(str(destination)) == 28
     assert len(str(destination)) <= SAFE_PATH_BUDGET_CHARS
 
 
