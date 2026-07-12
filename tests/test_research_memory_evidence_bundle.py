@@ -147,6 +147,26 @@ def test_every_foreign_event_must_bind_its_own_request_snapshot_subject() -> Non
     assert caught.value.code is EvidenceBundleErrorCode.CHAIN_INVALID
 
 
+def test_from_bytes_reuses_predecoded_payload_for_typed_artifact_roles(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    raw = _bundle().to_bytes()
+    payload_reads = 0
+    original_getter = LedgerEvent.payload.fget
+    assert original_getter is not None
+
+    def counted_payload(event: LedgerEvent):
+        nonlocal payload_reads
+        payload_reads += 1
+        return original_getter(event)
+
+    monkeypatch.setattr(LedgerEvent, "payload", property(counted_payload))
+
+    EvidenceBundle.from_bytes(raw)
+
+    assert payload_reads == 0
+
+
 def test_bundle_resource_defaults_bound_preparse_allocation() -> None:
     limits = EvidenceBundleLimits()
     assert limits.max_collection_items == 10_000

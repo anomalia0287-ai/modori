@@ -421,11 +421,12 @@ class LedgerEvent:
             if getattr(self, field) != getattr(expected, field):
                 raise LedgerContractError(f"event {field} does not verify")
 
-    def require_snapshot_subject(
+    def _require_snapshot_subject_from_payload(
         self,
         artifact_lookup: Mapping[str, LedgerArtifact],
+        payload: Mapping[str, Any],
     ) -> str:
-        snapshot_id = self.payload["resulting_snapshot_artifact_id"]
+        snapshot_id = payload["resulting_snapshot_artifact_id"]
         if snapshot_id not in self.subject_artifact_ids:
             raise LedgerContractError(
                 "event resulting snapshot must be one of its subject artifacts"
@@ -440,12 +441,24 @@ class LedgerEvent:
             )
         return snapshot_id
 
-    def require_typed_artifact_subjects(
+    def require_snapshot_subject(
         self,
         artifact_lookup: Mapping[str, LedgerArtifact],
     ) -> str:
-        snapshot_id = self.require_snapshot_subject(artifact_lookup)
-        payload = self.payload
+        return self._require_snapshot_subject_from_payload(
+            artifact_lookup,
+            self.payload,
+        )
+
+    def _require_typed_artifact_subjects_from_payload(
+        self,
+        artifact_lookup: Mapping[str, LedgerArtifact],
+        payload: Mapping[str, Any],
+    ) -> str:
+        snapshot_id = self._require_snapshot_subject_from_payload(
+            artifact_lookup,
+            payload,
+        )
         for field, expected_kind in _EVENT_ARTIFACT_ROLES[self.event_kind].items():
             raw_ids = payload[field]
             artifact_ids = raw_ids if isinstance(raw_ids, list) else [raw_ids]
@@ -456,6 +469,15 @@ class LedgerEvent:
                         f"{field} must reference artifact kind {expected_kind.value}"
                     )
         return snapshot_id
+
+    def require_typed_artifact_subjects(
+        self,
+        artifact_lookup: Mapping[str, LedgerArtifact],
+    ) -> str:
+        return self._require_typed_artifact_subjects_from_payload(
+            artifact_lookup,
+            self.payload,
+        )
 
     def to_mapping(self) -> dict[str, object]:
         return {

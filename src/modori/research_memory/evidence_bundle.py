@@ -536,10 +536,11 @@ class EvidenceBundle:
                     EvidenceBundleErrorCode.UNRESOLVED_SUBJECT,
                     "event references an unresolved subject artifact",
                 )
-            try:
-                event.require_typed_artifact_subjects(artifact_lookup)
-            except LedgerContractError as exc:
-                _event_error(exc)
+            if not typed_identities_verified:
+                try:
+                    event.require_typed_artifact_subjects(artifact_lookup)
+                except LedgerContractError as exc:
+                    _event_error(exc)
             referenced.update(event.subject_artifact_ids)
             previous = event.event_hash
         last = self.events[-1]
@@ -719,6 +720,7 @@ class EvidenceBundle:
                 EvidenceBundleErrorCode.NONCANONICAL,
                 "artifact array must use deterministic artifact-ID order",
             )
+        artifact_lookup = {artifact.artifact_id: artifact for artifact in artifacts}
         events: list[LedgerEvent] = []
         for item in raw_events:
             if not isinstance(item, Mapping):
@@ -727,7 +729,18 @@ class EvidenceBundle:
                     "event must be an object",
                 )
             try:
-                events.append(LedgerEvent.from_mapping(item))
+                event = LedgerEvent.from_mapping(item)
+                body = item["body"]
+                if not isinstance(body, Mapping):
+                    raise LedgerContractError("LedgerEvent body must be an object")
+                decoded_payload = body["payload"]
+                if not isinstance(decoded_payload, Mapping):
+                    raise LedgerContractError("event payload must be an object")
+                event._require_typed_artifact_subjects_from_payload(
+                    artifact_lookup,
+                    decoded_payload,
+                )
+                events.append(event)
             except (LedgerContractError, ValueError, TypeError) as exc:
                 _event_error(exc)
         raw_head = parsed["head"]

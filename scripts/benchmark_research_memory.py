@@ -454,18 +454,10 @@ def run_benchmark(
         for _ in range(3):
             started = time.perf_counter_ns()
             report = store.verify(full_integrity=True)
-            full_integrity_timings.append(
-                (time.perf_counter_ns() - started) // 1_000
-            )
+            full_integrity_timings.append((time.perf_counter_ns() - started) // 1_000)
         if report is None:
             raise RuntimeError("full-integrity benchmark produced no report")
-        bundle = EvidenceBundle.create(
-            source_project_id="benchmark-project",
-            head=store.head,
-            artifacts=store.artifacts(),
-            events=store.events(),
-            exported_at_utc=None,
-        )
+        bundle = store.export_evidence_bundle(exported_at_utc=None)
         bundle_bytes = _padded_bundle_bytes(
             bundle,
             target_bytes=bundle_target_bytes,
