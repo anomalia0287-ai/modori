@@ -33,6 +33,12 @@ from modori.research_memory.ledger_store import (
     LedgerVerificationReport,
     default_ledger_path,
 )
+from modori.research_memory.evidence_bundle import (
+    EvidenceBundle,
+    EvidenceBundleError,
+    EvidenceBundleErrorCode,
+    EvidenceBundleLimits,
+)
 
 __all__ = [
     "CANONICALIZATION_ID",
@@ -40,6 +46,10 @@ __all__ = [
     "ZERO_HASH",
     "CanonicalizationError",
     "DecisionLedgerStore",
+    "EvidenceBundle",
+    "EvidenceBundleError",
+    "EvidenceBundleErrorCode",
+    "EvidenceBundleLimits",
     "ImportedAssertion",
     "ImportSourceRecord",
     "LedgerArtifact",
