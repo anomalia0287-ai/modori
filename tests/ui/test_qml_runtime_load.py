@@ -3,6 +3,8 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+import pytest
+
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6.QtCore import QMetaObject, QObject, QUrl, qInstallMessageHandler
@@ -107,6 +109,42 @@ def test_data_grid_view_qml_loads_without_runtime_errors() -> None:
         obj = component.create()
         assert obj is not None, _component_errors(component)
         app.processEvents()
+        assert _significant_warnings(messages) == []
+        obj.deleteLater()
+        app.processEvents()
+        assert _significant_warnings(messages) == []
+    finally:
+        qInstallMessageHandler(previous_handler)
+
+
+@pytest.mark.parametrize("reduce_effects", [False, True])
+def test_splash_qml_loads_without_runtime_errors(reduce_effects: bool) -> None:
+    app = _app()
+    engine = QQmlEngine()
+    bootstrap = AppBootstrap()
+    messages: list[str] = []
+
+    def message_handler(msg_type, context, message) -> None:
+        del msg_type, context
+        messages.append(message)
+
+    previous_handler = qInstallMessageHandler(message_handler)
+    engine.rootContext().setContextProperty("appBootstrap", bootstrap)
+    component = QQmlComponent(
+        engine,
+        QUrl.fromLocalFile(str((QML_ROOT / "screens/SplashScreen.qml").resolve())),
+    )
+
+    try:
+        assert component.status() == QQmlComponent.Status.Ready, _component_errors(component)
+
+        obj = component.createWithInitialProperties({"reduceEffects": reduce_effects})
+        assert obj is not None, _component_errors(component)
+        app.processEvents()
+        progress = obj.findChild(QObject, "splashProgress")
+        assert progress is not None
+        assert progress.property("indeterminate") is (not reduce_effects)
+        assert progress.property("value") == (1 if reduce_effects else 0)
         assert _significant_warnings(messages) == []
         obj.deleteLater()
         app.processEvents()

@@ -11,8 +11,15 @@ def test_splash_screen_exists_and_is_wired() -> None:
 
     assert splash.is_file()
     text = splash.read_text(encoding="utf-8")
-    assert "splash.subtitle" in text
-    assert "privacy.local" in text
+    assert "import QtQuick.Controls.Basic" in text
+    assert "PearlSurface" in text
+    assert "theme.orange" not in text
+    assert "GradientStop" not in text
+    assert "theme.splashProgressWidth" in text
+    assert "theme.splashProgressHeight" in text
+    assert "root.reduceEffects" in text
+    assert 'appBootstrap.text("splash.subtitle")' in text
+    assert 'appBootstrap.text("privacy.local")' in text
     assert "SplashScreen" in main
 
 

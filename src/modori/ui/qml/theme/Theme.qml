@@ -74,8 +74,8 @@ QtObject {
     readonly property int spaceGridRow: 8
 
     readonly property int fontHero: 44
-    readonly property int fontSplashTitle: 46
-    readonly property int fontSplashSubtitle: 18
+    readonly property int fontSplashTitle: 30
+    readonly property int fontSplashSubtitle: 13
     readonly property int fontSubtitle: 20
     readonly property int fontOverlay: 22
     readonly property int fontTitle: 16
@@ -117,6 +117,10 @@ QtObject {
     readonly property int popoverWidth: 420
     readonly property int popoverBodyHeight: 320
     readonly property int progressWidth: 280
+    readonly property int splashProgressWidth: 180
+    readonly property int splashProgressHeight: 4
+    readonly property int splashProgressSegmentWidth: 54
+    readonly property int splashProgressCycleMs: 1050
     readonly property int tableCellWidth: 120
     readonly property int tableCellHeight: 32
     readonly property int gridHeaderHeight: 28
