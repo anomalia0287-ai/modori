@@ -1,50 +1,63 @@
 import QtQuick
 
 QtObject {
-    readonly property color deepTeal: "#0B4A43"
-    readonly property color brandTeal: "#0F6E56"
-    readonly property color actionTeal: "#0FA396"
-    readonly property color aqua: "#DDF3EF"
-    readonly property color gold: "#D9A441"
-    readonly property color orange: "#D88A2D"
-    readonly property color transformAccent: "#B76E79"
-    readonly property color porcelainBackground: "#F4F7F6"
-    readonly property color guideSurface: "#EFF7F3"
-    readonly property color subtleSurface: "#FAFCFB"
-    readonly property color quietSurface: "#EEF2F1"
-    readonly property color popoverSurface: "#F8FBF9"
-    readonly property color paperSurface: "#FFFFFF"
-    readonly property color surface: "#FFFFFF"
-    readonly property color gridColumnHeaderSurface: "#EDF5F2"
-    readonly property color gridRowHeaderSurface: "#F6F0E5"
+    readonly property color canvasCream: "#F3EEE5"
+    readonly property color surfaceCream: "#FBF8F1"
+    readonly property color surfaceRaised: "#EDE5D9"
+    readonly property color surfaceQuiet: "#F6F1E8"
+    readonly property color pearlMint: "#F0F5EE"
+    readonly property color pearlRose: "#F7EEEB"
+    readonly property color pearlLilac: "#F2EFF7"
+    readonly property color focusRing: "#176F64"
+    readonly property color semanticGlow: "#5FB7AA"
+    readonly property color transparent: "transparent"
+
+    readonly property color deepTeal: "#244E47"
+    readonly property color brandTeal: "#2C7468"
+    readonly property color actionTeal: "#237E70"
+    readonly property color aqua: "#DCEBE4"
+    readonly property color gold: "#B98B3E"
+    readonly property color orange: "#B87743"
+    readonly property color transformAccent: "#A96F78"
+    readonly property color porcelainBackground: canvasCream
+    readonly property color guideSurface: surfaceQuiet
+    readonly property color subtleSurface: surfaceQuiet
+    readonly property color quietSurface: surfaceRaised
+    readonly property color popoverSurface: surfaceCream
+    readonly property color paperSurface: surfaceCream
+    readonly property color surface: surfaceCream
+    readonly property color gridColumnHeaderSurface: "#E7EFE9"
+    readonly property color gridRowHeaderSurface: "#F0E8DA"
     readonly property color gridHeaderText: "#27423B"
-    readonly property color flatBackground: "#F7FAF8"
-    readonly property color lineSubtle: "#E3EAE8"
-    readonly property color lineStrong: "#DCE4E1"
-    readonly property color lineGrid: "#E4ECE8"
-    readonly property color lineRail: "#D9E5DF"
-    readonly property color lineDialog: "#D9E4DF"
-    readonly property color linePopover: "#9FC7B9"
-    readonly property color textStrong: "#22312E"
-    readonly property color textBody: "#33463F"
-    readonly property color textControl: "#26352F"
-    readonly property color textTable: "#17211D"
-    readonly property color textSecondary: "#486157"
-    readonly property color textLevel: "#3A5F58"
-    readonly property color textMuted: "#8A9993"
-    readonly property color textSoft: "#9DB0AA"
+    readonly property color flatBackground: canvasCream
+    readonly property color lineSubtle: "#DCD4C8"
+    readonly property color lineStrong: "#C9C0B4"
+    readonly property color lineGrid: "#D7DED8"
+    readonly property color lineRail: "#D2C9BC"
+    readonly property color lineDialog: "#CFC6BA"
+    readonly property color linePopover: "#93B9AD"
+    readonly property color textStrong: "#24332F"
+    readonly property color textBody: "#485A54"
+    readonly property color textControl: "#35463F"
+    readonly property color textTable: "#1E2925"
+    readonly property color textSecondary: "#5A6B65"
+    readonly property color textLevel: "#48675F"
+    readonly property color textMuted: "#6E7B76"
+    readonly property color textSoft: "#89958F"
     readonly property color onBrand: "#FFFFFF"
     readonly property color onBrandDanger: "#FFE6E6"
-    readonly property color selectionSurface: "#E3F1EC"
-    readonly property color warning: "#8A6A1F"
-    readonly property color warningSurface: "#F8EBC9"
-    readonly property color danger: "#B00020"
-    readonly property color dangerSurface: "#FBE8EC"
-    readonly property color brandScrim: "#800B4A43"
+    readonly property color selectionSurface: "#DFECE6"
+    readonly property color warning: "#8B641F"
+    readonly property color warningSurface: "#F5E8C8"
+    readonly property color danger: "#A33D4B"
+    readonly property color dangerSurface: "#F5E2E3"
+    readonly property color brandScrim: "#80243E38"
 
     readonly property int radiusSmall: 6
     readonly property int radiusMedium: 10
     readonly property int radiusLarge: 14
+    readonly property int borderWidth: 1
+    readonly property int borderWidthFocus: 2
 
     readonly property int spaceXs: 4
     readonly property int spaceTight: 6
@@ -74,7 +87,9 @@ QtObject {
     readonly property int detachedSheetWidth: 980
     readonly property int detachedSheetHeight: 640
     readonly property int headerHeight: 56
+    readonly property int commandSurfaceHeight: 64
     readonly property int pipelineHeight: 176
+    readonly property int pipelineCompactHeight: 68
     readonly property int resultsPanelPreferredWidth: 360
     readonly property int guideRailPreferredWidth: 260
     readonly property int guideRailMinimumWidth: 220
@@ -100,6 +115,17 @@ QtObject {
     readonly property int fieldWidthMedium: 180
     readonly property int badgeHeight: 22
     readonly property int badgeHorizontalPadding: 18
+    readonly property int controlHeight: 40
+    readonly property int iconButtonSize: 40
+    readonly property int iconSize: 18
+    readonly property int switchTrackWidth: 44
+    readonly property int switchTrackHeight: 24
+    readonly property int switchThumbSize: 20
+    readonly property int switchThumbInset: 2
+    readonly property int preferenceMinimumWidth: 320
+    readonly property int settingsDialogWidth: 520
+    readonly property int resultDetailWidth: 820
+    readonly property int tooltipDelayMs: 450
     readonly property int tablePreviewHeight: 206
     readonly property int chartPreviewHeight: 228
     readonly property int radiusPill: 999
@@ -110,6 +136,7 @@ QtObject {
     readonly property real opacityPrivacy: 0.86
     readonly property real opacitySplashPrivacy: 0.85
     readonly property real opacitySoft: 0.72
+    readonly property real opacityDisabled: 0.46
     readonly property real stateBorderAlpha: 0.25
     readonly property real resultSummaryLineHeight: 1.18
 }

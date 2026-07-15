@@ -166,7 +166,9 @@ def test_reusable_visual_components_are_real_qml_controls() -> None:
         assert "MouseArea" not in source
 ```
 
-Extend `tests/ui/test_qml_visual_contract.py` so its themed-file set includes the six new components and the two new dialogs.
+Extend `tests/ui/test_qml_visual_contract.py` so its themed-file set includes
+the six new components. Add each new dialog to that set in the task that
+creates the dialog, so this task can reach GREEN independently.
 
 - [ ] **Step 2: Run the tests and verify RED**
 
@@ -252,7 +254,7 @@ selects background/border colors from `variant`, `hovered`, `down`,
 ```qml
 // AppIconButton.qml
 property url iconSource: Qt.resolvedUrl("../assets/icons/settings.svg")
-property string toolTipText: appBootstrap.text("settings.title")
+property string toolTipText: ""
 ```
 
 `AppIconButton` inherits `QtQuick.Controls.Basic.Button`, uses
