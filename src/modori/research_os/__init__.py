@@ -115,9 +115,11 @@ from modori.research_os.resolver import (
     RuleTrace,
 )
 from modori.research_os.service import (
+    ResolvedPassport,
     ResearchOsService,
     ResearchRequest,
     ResearchServiceError,
+    validate_passport_request_binding,
 )
 from modori.research_os.transition import (
     ClarificationTransitionService,
@@ -184,6 +186,7 @@ __all__ = [
     "RecommendLocalPayload",
     "ResearchOsService",
     "ResearchRequest",
+    "ResolvedPassport",
     "ResearchServiceError",
     "ResolutionContext",
     "ResolutionDecision",
@@ -229,4 +232,5 @@ __all__ = [
     "TerminalLoss",
     "answer_kind_cost",
     "project_question_answers",
+    "validate_passport_request_binding",
 ]

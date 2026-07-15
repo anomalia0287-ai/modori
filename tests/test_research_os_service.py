@@ -480,6 +480,37 @@ def test_available_variable_order_does_not_change_decision() -> None:
     assert left.semantic_signature == right.semantic_signature
 
 
+def test_request_binding_canonicalizes_variable_identity_set() -> None:
+    request = _independent_mean_request()
+    reversed_request = replace(
+        request,
+        available_variable_ids=tuple(reversed(request.available_variable_ids)),
+    )
+
+    assert request.request_binding_digest() == (
+        reversed_request.request_binding_digest()
+    )
+    assert request.request_binding_mapping()["available_variable_ids"] == [
+        "arm",
+        "score",
+    ]
+
+
+def test_request_binding_changes_for_every_decision_relevant_input() -> None:
+    request = _independent_mean_request()
+    mutations = (
+        replace(request, available_variable_ids=("arm", "other", "score")),
+        replace(request, surface=ProductSurface.ORDINARY),
+        replace(request, question_budget_remaining=2),
+        replace(request, current_dataset_fingerprint="f" * 64),
+    )
+
+    assert all(
+        changed.request_binding_digest() != request.request_binding_digest()
+        for changed in mutations
+    )
+
+
 def test_experimental_p1_catalog_does_not_emit_on_ordinary_surface() -> None:
     request = replace(
         _independent_mean_request(),
@@ -569,3 +600,17 @@ def test_research_request_requires_unique_ordered_local_decision_evidence() -> N
                 _evidence_ref(1, "wrong-project", project_id="project-2"),
             ),
         )
+
+
+def test_request_binding_embeds_complete_evidence_in_event_sequence_order() -> None:
+    first = _evidence_ref(1, "first")
+    second = _evidence_ref(2, "second")
+    request = replace(
+        _independent_mean_request(),
+        decision_evidence_refs=(first, second),
+    )
+
+    assert request.request_binding_mapping()["decision_evidence_refs"] == [
+        first.to_mapping(),
+        second.to_mapping(),
+    ]

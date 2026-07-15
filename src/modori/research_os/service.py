@@ -37,7 +37,8 @@ from modori.research_os.passport import (
     AbstainPayload,
     AnalysisPassport,
     ClaimClass,
-    ClarifyPayload,
+    ClarificationRef,
+    ClarifyPayloadV2,
     ComponentRevisionRef,
     RecommendLocalPayload,
     RouteExternalPayload,
@@ -87,6 +88,17 @@ _RECOVERY_BY_REASON = {
     ),
 }
 _UNMAPPED_RECOVERY = "manual_review_required_for_unmapped_abstention"
+
+
+def _component_ref(
+    spec: QuestionSpec | EstimandSpec | StudySpec,
+) -> ComponentRevisionRef:
+    return ComponentRevisionRef(
+        schema_id=spec.envelope.schema_id,
+        object_id=spec.envelope.object_id,
+        revision=spec.envelope.revision,
+        digest=spec.digest(),
+    )
 
 
 @dataclass(frozen=True)
@@ -187,6 +199,81 @@ class ResearchRequest:
                     "decision evidence project ID must match request components"
                 )
 
+    def request_binding_mapping(self) -> dict[str, Any]:
+        return {
+            "schema_id": "modori.research_request_binding",
+            "schema_version": 1,
+            "question_ref": _component_ref(self.question).to_mapping(),
+            "estimand_ref": _component_ref(self.estimand).to_mapping(),
+            "study_ref": _component_ref(self.study).to_mapping(),
+            "current_dataset_fingerprint": self.current_dataset_fingerprint,
+            "available_variable_ids": sorted(self.available_variable_ids),
+            "surface": self.surface.value,
+            "question_budget_remaining": self.question_budget_remaining,
+            "decision_evidence_refs": [
+                reference.to_mapping()
+                for reference in self.decision_evidence_refs
+            ],
+        }
+
+    def request_binding_digest(self) -> str:
+        return canonical_digest(self.request_binding_mapping())
+
+
+@dataclass(frozen=True)
+class ResolvedPassport:
+    decision: ResolutionDecision
+    passport: AnalysisPassport
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.decision, ResolutionDecision):
+            raise ResearchServiceError("decision must be a ResolutionDecision")
+        if (
+            not isinstance(self.passport, AnalysisPassport)
+            or self.passport.envelope.schema_version != 2
+        ):
+            raise ResearchServiceError("resolved passport must use schema version 2")
+
+
+def validate_passport_request_binding(
+    passport: AnalysisPassport,
+    request: ResearchRequest,
+) -> None:
+    if not isinstance(passport, AnalysisPassport):
+        raise ResearchServiceError("passport must be an AnalysisPassport")
+    if not isinstance(request, ResearchRequest):
+        raise ResearchServiceError("request must be a ResearchRequest")
+    if passport.envelope.schema_version != 2:
+        raise ResearchServiceError(
+            "complete request binding requires passport version 2"
+        )
+    project_ids = {
+        request.question.envelope.project_id,
+        request.estimand.envelope.project_id,
+        request.study.envelope.project_id,
+    }
+    if len(project_ids) != 1:
+        raise ResearchServiceError("request component projects do not match")
+    expected_project = next(iter(project_ids))
+    expected_refs = (
+        (passport.question_ref, _component_ref(request.question)),
+        (passport.estimand_ref, _component_ref(request.estimand)),
+        (passport.study_ref, _component_ref(request.study)),
+    )
+    expected_evidence = tuple(
+        item.evidence_digest for item in request.decision_evidence_refs
+    )
+    if passport.envelope.project_id != expected_project:
+        raise ResearchServiceError("passport project no longer matches request")
+    if any(left != right for left, right in expected_refs):
+        raise ResearchServiceError("passport component no longer matches request")
+    if passport.dataset_fingerprint != request.current_dataset_fingerprint:
+        raise ResearchServiceError("passport dataset no longer matches request")
+    if passport.decision_evidence_digests != expected_evidence:
+        raise ResearchServiceError("passport evidence no longer matches request")
+    if passport.request_binding_digest != request.request_binding_digest():
+        raise ResearchServiceError("passport request binding no longer matches")
+
 
 class ResearchOsService:
     """Resolve approved structures without accepting data or executing analysis."""
@@ -232,6 +319,10 @@ class ResearchOsService:
     def ruleset_version(self) -> str:
         return self._method_space.ruleset_version
 
+    @property
+    def clarification_registry_digest(self) -> str:
+        return self._clarification_registry.digest()
+
     def resolve(self, request: ResearchRequest) -> ResolutionDecision:
         integrity_errors = self._integrity_errors(request)
         context = ResolutionContext(
@@ -259,35 +350,57 @@ class ResearchOsService:
     ) -> AnalysisPassport:
         """Bind one resolver decision to an authority-free immutable passport."""
 
+        return self.resolve_and_plan(request, passport_envelope).passport
+
+    def resolve_and_plan(
+        self,
+        request: ResearchRequest,
+        passport_envelope: SchemaEnvelope,
+    ) -> ResolvedPassport:
+        """Resolve once and bind that exact decision to a V2 passport."""
+
         self._validate_passport_binding(request, passport_envelope)
-        resolve_request = self.resolve
-        decision = resolve_request(request)
+        decision = self.resolve(request)
+        decision_digest = canonical_digest(
+            {"semantic_signature": decision.semantic_signature}
+        )
         recommend_local: RecommendLocalPayload | None = None
-        clarify: ClarifyPayload | None = None
+        clarify: ClarifyPayloadV2 | None = None
         route_external: RouteExternalPayload | None = None
         abstain: AbstainPayload | None = None
 
         if decision.action is PrimaryAction.RECOMMEND_LOCAL:
             recommend_local = self._recommend_payload(decision)
         elif decision.action is PrimaryAction.CLARIFY:
-            clarify = self._clarify_payload(decision)
+            self.clarifications_for(decision)
+            plan = decision.clarification_plan
+            if plan is None:
+                raise ResearchServiceError("clarify decision is missing its plan")
+            reference = ClarificationRef(
+                question_id=plan.selected_question_id,
+                question_version=plan.selected_question_version,
+                question_digest=plan.selected_question_digest,
+                fact_address=plan.selected_fact_address,
+                planner_version=plan.planner_version,
+                clarification_plan_digest=plan.digest(),
+                source_decision_digest=decision_digest,
+            )
+            clarify = ClarifyPayloadV2(reference, plan)
         elif decision.action is PrimaryAction.ROUTE_EXTERNAL:
             route_external = self._route_payload(decision)
         else:
             abstain = self._abstain_payload(decision)
 
-        return AnalysisPassport(
+        passport = AnalysisPassport(
             envelope=passport_envelope,
-            question_ref=self._component_ref(request.question),
-            estimand_ref=self._component_ref(request.estimand),
-            study_ref=self._component_ref(request.study),
+            question_ref=_component_ref(request.question),
+            estimand_ref=_component_ref(request.estimand),
+            study_ref=_component_ref(request.study),
             dataset_fingerprint=request.current_dataset_fingerprint,
             method_space_version=self._method_space.version,
             method_space_digest=self._method_space.digest(),
             ruleset_version=self._method_space.ruleset_version,
-            resolver_decision_digest=canonical_digest(
-                {"semantic_signature": decision.semantic_signature}
-            ),
+            resolver_decision_digest=decision_digest,
             decision_evidence_digests=tuple(
                 reference.evidence_digest
                 for reference in request.decision_evidence_refs
@@ -296,7 +409,11 @@ class ResearchOsService:
             clarify=clarify,
             route_external=route_external,
             abstain=abstain,
+            request_binding_digest=request.request_binding_digest(),
+            clarification_registry_digest=self.clarification_registry_digest,
         )
+        validate_passport_request_binding(passport, request)
+        return ResolvedPassport(decision=decision, passport=passport)
 
     def clarifications_for(
         self,
@@ -346,10 +463,10 @@ class ResearchOsService:
             )
         if (
             passport_envelope.schema_id != "modori.analysis_passport"
-            or passport_envelope.schema_version != 1
+            or passport_envelope.schema_version != 2
         ):
             raise ResearchServiceError(
-                "passport envelope must use modori.analysis_passport version 1"
+                "passport envelope must use modori.analysis_passport version 2"
             )
         component_project_ids = {
             request.question.envelope.project_id,
@@ -362,17 +479,6 @@ class ResearchOsService:
             raise ResearchServiceError(
                 "passport project ID must match all request components"
             )
-
-    @staticmethod
-    def _component_ref(
-        spec: QuestionSpec | EstimandSpec | StudySpec,
-    ) -> ComponentRevisionRef:
-        return ComponentRevisionRef(
-            schema_id=spec.envelope.schema_id,
-            object_id=spec.envelope.object_id,
-            revision=spec.envelope.revision,
-            digest=spec.digest(),
-        )
 
     def _recommend_payload(
         self,
@@ -415,13 +521,6 @@ class ResearchOsService:
             local_analysis_kinds=tuple(local_analysis_kinds),
             claim_permissions=tuple(claim_permissions),
             experimental=experimental,
-        )
-
-    def _clarify_payload(self, decision: ResolutionDecision) -> ClarifyPayload:
-        self.clarifications_for(decision)
-        return ClarifyPayload(
-            question_ids=decision.clarification_ids,
-            blocking_fact_addresses=decision.blocking_fact_addresses,
         )
 
     def _route_payload(self, decision: ResolutionDecision) -> RouteExternalPayload:

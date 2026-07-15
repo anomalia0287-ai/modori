@@ -29,7 +29,11 @@ from modori.research_os.passport import (
     RecommendLocalPayload,
     RouteExternalPayload,
 )
-from modori.research_os.service import ResearchOsService, ResearchRequest
+from modori.research_os.service import (
+    ResolvedPassport,
+    ResearchOsService,
+    ResearchRequest,
+)
 from modori.research_os.transition import (
     ClarificationTransitionService,
     RevisionCandidate,
@@ -138,6 +142,10 @@ def test_structure_only_request_has_no_dataset_or_execution_field() -> None:
         "question_budget_remaining",
         "decision_evidence_refs",
     )
+    assert tuple(ResolvedPassport.__dataclass_fields__) == (
+        "decision",
+        "passport",
+    )
 
 
 def test_research_os_public_service_cannot_run_or_persist() -> None:
@@ -147,7 +155,12 @@ def test_research_os_public_service_cannot_run_or_persist() -> None:
         if callable(member) and not name.startswith("_")
     }
 
-    assert public_methods == {"resolve", "plan", "clarifications_for"}
+    assert public_methods == {
+        "resolve",
+        "resolve_and_plan",
+        "plan",
+        "clarifications_for",
+    }
 
 
 def test_counterfactual_planner_contracts_cannot_gain_execution_authority() -> None:

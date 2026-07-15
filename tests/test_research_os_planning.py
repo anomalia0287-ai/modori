@@ -45,15 +45,17 @@ from modori.research_os.decision_evidence import (
     DecisionEvidenceRef,
 )
 from modori.research_os.p1_catalog import build_p1_method_space
-from modori.research_os.passport import ClaimClass
+from modori.research_os.passport import ClaimClass, ClarifyPayloadV2
 from modori.research_os.resolver import (
     PrimaryAction,
     ResolverError,
 )
 from modori.research_os.service import (
+    ResolvedPassport,
     ResearchOsService,
     ResearchRequest,
     ResearchServiceError,
+    validate_passport_request_binding,
 )
 
 
@@ -81,8 +83,15 @@ def _envelope(
     )
 
 
-def _passport_envelope(project_id: str = "project-1") -> SchemaEnvelope:
-    return _envelope("modori.analysis_passport", "passport-1", project_id)
+def _passport_envelope(
+    project_id: str = "project-1",
+    *,
+    version: int = 2,
+) -> SchemaEnvelope:
+    return replace(
+        _envelope("modori.analysis_passport", "passport-1", project_id),
+        schema_version=version,
+    )
 
 
 def _question(
@@ -319,12 +328,75 @@ def test_clarify_plan_resolves_exact_registered_questions_without_candidates() -
 
     assert passport.action is PrimaryAction.CLARIFY
     assert passport.recommend_local is None
-    assert passport.clarify is not None
-    assert passport.clarify.question_ids == decision.clarification_ids
+    assert isinstance(passport.clarify, ClarifyPayloadV2)
+    assert passport.clarify.clarification_ref.question_id == (
+        decision.clarification_ids[0]
+    )
     assert tuple(question.question_id for question in questions) == decision.clarification_ids
     assert tuple(question.fact_address for question in questions) == (
         decision.blocking_fact_addresses
     )
+
+
+def test_resolve_and_plan_returns_one_decision_and_matching_v2_passport() -> None:
+    service = ResearchOsService()
+    request = _request(
+        study=_study(Fact.unknown(reason_code="dependence_not_confirmed"))
+    )
+    with patch.object(service, "resolve", wraps=service.resolve) as resolve:
+        result = service.resolve_and_plan(request, _passport_envelope(version=2))
+
+    resolve.assert_called_once_with(request)
+    assert result.passport.envelope.schema_version == 2
+    assert result.passport.request_binding_digest == request.request_binding_digest()
+    assert (
+        result.passport.clarification_registry_digest
+        == service.clarification_registry_digest
+    )
+    assert result.decision.clarification_plan is not None
+    assert isinstance(result.passport.clarify, ClarifyPayloadV2)
+    assert result.passport.clarify.clarification_plan == (
+        result.decision.clarification_plan
+    )
+
+
+def test_plan_delegates_to_resolve_and_plan_without_second_resolution() -> None:
+    service = ResearchOsService()
+    request = _request()
+    with patch.object(
+        service,
+        "resolve_and_plan",
+        wraps=service.resolve_and_plan,
+    ) as combined:
+        passport = service.plan(request, _passport_envelope(version=2))
+
+    combined.assert_called_once_with(request, _passport_envelope(version=2))
+    assert passport.envelope.schema_version == 2
+
+
+def test_passport_request_binding_accepts_identity_reordering_but_rejects_drift() -> None:
+    service = ResearchOsService()
+    request = replace(_request(), available_variable_ids=("group", "score"))
+    passport = service.plan(request, _passport_envelope())
+
+    validate_passport_request_binding(passport, request)
+    validate_passport_request_binding(
+        passport,
+        replace(
+            request,
+            available_variable_ids=tuple(reversed(request.available_variable_ids)),
+        ),
+    )
+    with pytest.raises(ResearchServiceError, match="request binding"):
+        validate_passport_request_binding(
+            passport,
+            replace(request, question_budget_remaining=2),
+        )
+    with pytest.raises(ResearchServiceError, match="component"):
+        validate_passport_request_binding(
+            passport,
+            replace(request, question=replace(request.question, language=Language.EN)),
+        )
 
 
 def test_clarification_decision_rejects_plan_address_mismatch() -> None:
@@ -429,5 +501,10 @@ def test_plan_binds_request_decision_evidence_in_event_order() -> None:
 
 def test_planning_service_is_exposed_from_package() -> None:
     assert research_os.ResearchOsService is ResearchOsService
+    assert research_os.ResolvedPassport is ResolvedPassport
+    assert (
+        research_os.validate_passport_request_binding
+        is validate_passport_request_binding
+    )
     assert callable(ResearchOsService.plan)
     assert callable(ResearchOsService.clarifications_for)

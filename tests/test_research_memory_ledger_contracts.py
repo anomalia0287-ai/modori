@@ -349,7 +349,10 @@ def test_all_nontext_research_os_artifacts_roundtrip_with_separate_identities() 
     request = _request(with_evidence=True)
     passport = ResearchOsService().plan(
         request,
-        _envelope("modori.analysis_passport", "passport-1"),
+        replace(
+            _envelope("modori.analysis_passport", "passport-1"),
+            schema_version=2,
+        ),
     )
     answer = ClarificationAnswerEvent(
         event_id="answer:event:2",
