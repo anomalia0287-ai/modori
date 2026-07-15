@@ -176,6 +176,9 @@ def test_data_grid_contains_motion_and_places_basic_scrollbars_outside_cells() -
         "gridScrollMinimumThumbLength",
     ):
         assert f"theme.{token}" in scrollbar
+    assert "id: thumb" in scrollbar
+    assert "width: root.horizontal ? parent.width : root.thumbThickness" in scrollbar
+    assert "height: root.horizontal ? root.thumbThickness : parent.height" in scrollbar
 
 
 def test_data_grid_headers_have_distinct_visual_treatment() -> None:

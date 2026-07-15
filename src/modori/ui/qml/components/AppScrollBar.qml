@@ -36,26 +36,35 @@ Basic.ScrollBar {
         }
     }
 
-    contentItem: Rectangle {
-        implicitWidth: root.horizontal ? theme.gridScrollMinimumThumbLength : root.thumbThickness
-        implicitHeight: root.horizontal ? root.thumbThickness : theme.gridScrollMinimumThumbLength
-        radius: root.thumbThickness / 2
-        color: root.engaged ? theme.actionTeal : theme.textMuted
+    contentItem: Item {
+        implicitWidth: root.horizontal ? theme.gridScrollMinimumThumbLength : theme.gridScrollRailSize
+        implicitHeight: root.horizontal ? theme.gridScrollRailSize : theme.gridScrollMinimumThumbLength
         opacity: root.size < 1.0
             ? (root.engaged ? theme.opacityHigh : theme.opacityScrollThumbRest)
             : theme.spaceNone
 
-        Behavior on implicitWidth {
-            NumberAnimation {
-                duration: theme.gridScrollThicknessDurationMs
-                easing.type: Easing.OutCubic
-            }
-        }
+        Rectangle {
+            id: thumb
+            anchors.centerIn: parent
+            width: root.horizontal ? parent.width : root.thumbThickness
+            height: root.horizontal ? root.thumbThickness : parent.height
+            radius: root.thumbThickness / 2
+            color: root.engaged ? theme.actionTeal : theme.textMuted
 
-        Behavior on implicitHeight {
-            NumberAnimation {
-                duration: theme.gridScrollThicknessDurationMs
-                easing.type: Easing.OutCubic
+            Behavior on width {
+                enabled: root.vertical
+                NumberAnimation {
+                    duration: theme.gridScrollThicknessDurationMs
+                    easing.type: Easing.OutCubic
+                }
+            }
+
+            Behavior on height {
+                enabled: root.horizontal
+                NumberAnimation {
+                    duration: theme.gridScrollThicknessDurationMs
+                    easing.type: Easing.OutCubic
+                }
             }
         }
     }
