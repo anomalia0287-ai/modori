@@ -114,13 +114,38 @@ def test_data_grid_exposes_scrollbars_and_viewport_position() -> None:
 
     assert "ScrollBar.horizontal" in qml
     assert "ScrollBar.vertical" in qml
-    assert "body.contentWidth > body.width" in qml
-    assert "body.contentHeight > body.height" in qml
+    assert 'objectName: "dataGridHorizontalScrollBar"' in qml
+    assert 'objectName: "dataGridVerticalScrollBar"' in qml
     for token in ("topRow", "bottomRow", "leftColumn", "rightColumn", "rows", "columns"):
         assert token in qml
     assert 'appBootstrap.text("data.grid_rows")' in qml
     assert 'appBootstrap.text("data.grid_columns")' in qml
     assert 'appBootstrap.text("data.grid_extent_separator")' in qml
+
+
+def test_data_grid_contains_motion_and_places_basic_scrollbars_outside_cells() -> None:
+    qml = qml_text("components/DataGridView.qml")
+    scrollbar_path = QML_ROOT / "components/AppScrollBar.qml"
+
+    assert scrollbar_path.is_file()
+    scrollbar = scrollbar_path.read_text(encoding="utf-8")
+
+    assert "boundsBehavior: Flickable.StopAtBounds" in qml
+    assert "boundsMovement: Flickable.StopAtBounds" in qml
+    assert "pixelAligned: true" in qml
+    assert 'objectName: "dataGridBody"' in qml
+    assert "parent: horizontalScrollRail" in qml
+    assert "parent: verticalScrollRail" in qml
+    assert qml.count("AppScrollBar") == 2
+    assert "import QtQuick.Controls.Basic" in scrollbar
+    for token in (
+        "gridScrollRailSize",
+        "gridScrollTrackThickness",
+        "gridScrollThumbThickness",
+        "gridScrollThumbActiveThickness",
+        "gridScrollMinimumThumbLength",
+    ):
+        assert f"theme.{token}" in scrollbar
 
 
 def test_data_grid_headers_have_distinct_visual_treatment() -> None:

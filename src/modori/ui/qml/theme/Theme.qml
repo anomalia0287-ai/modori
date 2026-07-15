@@ -122,6 +122,13 @@ QtObject {
     readonly property int gridHeaderHeight: 28
     readonly property int gridRowLabelWidth: 56
     readonly property int gridStatusHeight: 28
+    readonly property int gridScrollRailSize: 12
+    readonly property int gridScrollTrackThickness: 3
+    readonly property int gridScrollThumbThickness: 5
+    readonly property int gridScrollThumbActiveThickness: 7
+    readonly property int gridScrollMinimumThumbLength: 28
+    readonly property int gridScrollSettleDurationMs: 110
+    readonly property int gridScrollThicknessDurationMs: 90
     readonly property int variableCellWidth: 140
     readonly property int variableCellHeight: 34
     readonly property int fieldWidthTiny: 80
@@ -157,6 +164,7 @@ QtObject {
     readonly property real opacityPrivacy: 0.86
     readonly property real opacitySplashPrivacy: 0.85
     readonly property real opacitySoft: 0.72
+    readonly property real opacityScrollThumbRest: 0.72
     readonly property real opacityDisabled: 0.46
     readonly property real stateBorderAlpha: 0.25
     readonly property real resultSummaryLineHeight: 1.18

@@ -63,156 +63,212 @@ Item {
         anchors.fill: parent
         spacing: theme.spaceNone
 
-        GridLayout {
+        Rectangle {
+            id: gridSurface
+            objectName: "dataGridSurface"
             Layout.fillWidth: true
             Layout.fillHeight: true
-            columns: 2
-            rowSpacing: theme.spaceNone
-            columnSpacing: theme.spaceNone
+            clip: true
+            color: theme.paperSurface
+            border.width: theme.borderWidth
+            border.color: theme.lineSubtle
 
-            Item {
-                Layout.preferredWidth: theme.gridRowLabelWidth
-                Layout.preferredHeight: theme.gridHeaderHeight
-            }
+            GridLayout {
+                anchors.fill: parent
+                anchors.margins: theme.borderWidth
+                columns: 3
+                rowSpacing: theme.spaceNone
+                columnSpacing: theme.spaceNone
 
-            HorizontalHeaderView {
-                id: horizontalHeader
-                syncView: body
-                Layout.fillWidth: true
-                Layout.preferredHeight: theme.gridHeaderHeight
-
-                delegate: Rectangle {
-                    implicitWidth: root.cellWidth
-                    implicitHeight: theme.gridHeaderHeight
-                    color: theme.gridColumnHeaderSurface
-                    border.color: theme.lineStrong
-
-                    Text {
-                        anchors.centerIn: parent
-                        width: parent.width - theme.spaceSm
-                        text: String(model.display ?? "")
-                        color: theme.gridHeaderText
-                        font.pixelSize: theme.fontCaption
-                        elide: Text.ElideRight
-                        horizontalAlignment: Text.AlignHCenter
-                    }
-                }
-            }
-
-            VerticalHeaderView {
-                id: verticalHeader
-                syncView: body
-                Layout.preferredWidth: theme.gridRowLabelWidth
-                Layout.fillHeight: true
-
-                delegate: Rectangle {
-                    implicitWidth: theme.gridRowLabelWidth
-                    implicitHeight: root.cellHeight
+                Rectangle {
+                    Layout.preferredWidth: theme.gridRowLabelWidth
+                    Layout.preferredHeight: theme.gridHeaderHeight
                     color: theme.gridRowHeaderSurface
-                    border.color: theme.lineStrong
-
-                    Text {
-                        anchors.centerIn: parent
-                        width: parent.width - theme.spaceSm
-                        text: String(model.display ?? "")
-                        color: theme.gridHeaderText
-                        font.pixelSize: theme.fontCaption
-                        elide: Text.ElideRight
-                        horizontalAlignment: Text.AlignHCenter
-                    }
-                }
-            }
-
-            TableView {
-                id: body
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                clip: true
-                reuseItems: true
-                animate: false
-                activeFocusOnTab: true
-                model: root.model
-                columnWidthProvider: function(column) { return root.cellWidth }
-                rowHeightProvider: function(row) { return root.cellHeight }
-
-                ScrollBar.horizontal: ScrollBar {
-                    policy: body.contentWidth > body.width ? ScrollBar.AlwaysOn : ScrollBar.AsNeeded
-                }
-                ScrollBar.vertical: ScrollBar {
-                    policy: body.contentHeight > body.height ? ScrollBar.AlwaysOn : ScrollBar.AsNeeded
                 }
 
-                Keys.onPressed: function(event) {
-                    if (event.modifiers & Qt.ControlModifier && event.key === Qt.Key_C) {
-                        root.copyCurrentCell()
-                        event.accepted = true
-                    } else if (event.key === Qt.Key_Left) {
-                        root.moveCurrent(0, -1)
-                        event.accepted = true
-                    } else if (event.key === Qt.Key_Right) {
-                        root.moveCurrent(0, 1)
-                        event.accepted = true
-                    } else if (event.key === Qt.Key_Up) {
-                        root.moveCurrent(-1, 0)
-                        event.accepted = true
-                    } else if (event.key === Qt.Key_Down) {
-                        root.moveCurrent(1, 0)
-                        event.accepted = true
-                    } else if (event.key === Qt.Key_Home) {
-                        root.currentColumn = 0
-                        body.positionViewAtCell(Qt.point(root.currentColumn, root.currentRow), TableView.Contain)
-                        event.accepted = true
-                    } else if (event.key === Qt.Key_End) {
-                        root.currentColumn = Math.max(0, body.columns - 1)
-                        body.positionViewAtCell(Qt.point(root.currentColumn, root.currentRow), TableView.Contain)
-                        event.accepted = true
-                    } else if (event.key === Qt.Key_PageUp) {
-                        root.moveCurrent(-(body.bottomRow - body.topRow + 1), 0)
-                        event.accepted = true
-                    } else if (event.key === Qt.Key_PageDown) {
-                        root.moveCurrent(body.bottomRow - body.topRow + 1, 0)
-                        event.accepted = true
-                    }
-                }
+                HorizontalHeaderView {
+                    id: horizontalHeader
+                    syncView: body
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: theme.gridHeaderHeight
+                    clip: true
 
-                delegate: Rectangle {
-                    required property int row
-                    required property int column
-                    property string variableKey: model.variableKey ?? ""
-                    property string measureValue: model.measureValue ?? ""
-                    property string cellText: model.display ?? ""
-                    property bool isCurrentCell: root.currentRow === row && root.currentColumn === column
+                    delegate: Rectangle {
+                        implicitWidth: root.cellWidth
+                        implicitHeight: theme.gridHeaderHeight
+                        color: theme.gridColumnHeaderSurface
+                        border.color: theme.lineStrong
 
-                    implicitWidth: root.cellWidth
-                    implicitHeight: root.cellHeight
-                    color: isCurrentCell
-                        ? theme.selectionSurface
-                        : (root.selectedKey.length > 0 && root.selectedKey === variableKey
-                            ? theme.selectionSurface
-                            : theme.paperSurface)
-                    border.color: isCurrentCell ? theme.actionTeal : theme.lineGrid
-
-                    MouseArea {
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        onClicked: {
-                            body.forceActiveFocus()
-                            root.currentRow = row
-                            root.currentColumn = column
-                            root.cellActivated(row, column, variableKey, measureValue)
+                        Text {
+                            anchors.centerIn: parent
+                            width: parent.width - theme.spaceSm
+                            text: String(model.display ?? "")
+                            color: theme.gridHeaderText
+                            font.pixelSize: theme.fontCaption
+                            elide: Text.ElideRight
+                            horizontalAlignment: Text.AlignHCenter
                         }
-                        ToolTip.visible: containsMouse && cellText.length > 0
-                        ToolTip.text: cellText
+                    }
+                }
+
+                Rectangle {
+                    Layout.preferredWidth: theme.gridScrollRailSize
+                    Layout.preferredHeight: theme.gridHeaderHeight
+                    color: theme.surfaceQuiet
+                }
+
+                VerticalHeaderView {
+                    id: verticalHeader
+                    syncView: body
+                    Layout.preferredWidth: theme.gridRowLabelWidth
+                    Layout.fillHeight: true
+                    clip: true
+
+                    delegate: Rectangle {
+                        implicitWidth: theme.gridRowLabelWidth
+                        implicitHeight: root.cellHeight
+                        color: theme.gridRowHeaderSurface
+                        border.color: theme.lineStrong
+
+                        Text {
+                            anchors.centerIn: parent
+                            width: parent.width - theme.spaceSm
+                            text: String(model.display ?? "")
+                            color: theme.gridHeaderText
+                            font.pixelSize: theme.fontCaption
+                            elide: Text.ElideRight
+                            horizontalAlignment: Text.AlignHCenter
+                        }
+                    }
+                }
+
+                TableView {
+                    id: body
+                    objectName: "dataGridBody"
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    clip: true
+                    reuseItems: true
+                    animate: false
+                    activeFocusOnTab: true
+                    boundsBehavior: Flickable.StopAtBounds
+                    boundsMovement: Flickable.StopAtBounds
+                    pixelAligned: true
+                    model: root.model
+                    columnWidthProvider: function(column) { return root.cellWidth }
+                    rowHeightProvider: function(row) { return root.cellHeight }
+
+                    ScrollBar.horizontal: AppScrollBar {
+                        id: horizontalScrollBar
+                        objectName: "dataGridHorizontalScrollBar"
+                        parent: horizontalScrollRail
+                        anchors.fill: parent
+                    }
+                    ScrollBar.vertical: AppScrollBar {
+                        id: verticalScrollBar
+                        objectName: "dataGridVerticalScrollBar"
+                        parent: verticalScrollRail
+                        anchors.fill: parent
                     }
 
-                    Text {
-                        anchors.centerIn: parent
-                        width: parent.width - theme.spaceSm
-                        text: cellText
-                        color: theme.textTable
-                        elide: Text.ElideRight
-                        horizontalAlignment: Text.AlignHCenter
+                    Keys.onPressed: function(event) {
+                        if (event.modifiers & Qt.ControlModifier && event.key === Qt.Key_C) {
+                            root.copyCurrentCell()
+                            event.accepted = true
+                        } else if (event.key === Qt.Key_Left) {
+                            root.moveCurrent(0, -1)
+                            event.accepted = true
+                        } else if (event.key === Qt.Key_Right) {
+                            root.moveCurrent(0, 1)
+                            event.accepted = true
+                        } else if (event.key === Qt.Key_Up) {
+                            root.moveCurrent(-1, 0)
+                            event.accepted = true
+                        } else if (event.key === Qt.Key_Down) {
+                            root.moveCurrent(1, 0)
+                            event.accepted = true
+                        } else if (event.key === Qt.Key_Home) {
+                            root.currentColumn = 0
+                            body.positionViewAtCell(Qt.point(root.currentColumn, root.currentRow), TableView.Contain)
+                            event.accepted = true
+                        } else if (event.key === Qt.Key_End) {
+                            root.currentColumn = Math.max(0, body.columns - 1)
+                            body.positionViewAtCell(Qt.point(root.currentColumn, root.currentRow), TableView.Contain)
+                            event.accepted = true
+                        } else if (event.key === Qt.Key_PageUp) {
+                            root.moveCurrent(-(body.bottomRow - body.topRow + 1), 0)
+                            event.accepted = true
+                        } else if (event.key === Qt.Key_PageDown) {
+                            root.moveCurrent(body.bottomRow - body.topRow + 1, 0)
+                            event.accepted = true
+                        }
                     }
+
+                    delegate: Rectangle {
+                        required property int row
+                        required property int column
+                        property string variableKey: model.variableKey ?? ""
+                        property string measureValue: model.measureValue ?? ""
+                        property string cellText: model.display ?? ""
+                        property bool isCurrentCell: root.currentRow === row && root.currentColumn === column
+
+                        implicitWidth: root.cellWidth
+                        implicitHeight: root.cellHeight
+                        color: isCurrentCell
+                            ? theme.selectionSurface
+                            : (root.selectedKey.length > 0 && root.selectedKey === variableKey
+                                ? theme.selectionSurface
+                                : theme.paperSurface)
+                        border.color: isCurrentCell ? theme.actionTeal : theme.lineGrid
+
+                        MouseArea {
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            onClicked: {
+                                body.forceActiveFocus()
+                                root.currentRow = row
+                                root.currentColumn = column
+                                root.cellActivated(row, column, variableKey, measureValue)
+                            }
+                            ToolTip.visible: containsMouse && cellText.length > 0
+                            ToolTip.text: cellText
+                        }
+
+                        Text {
+                            anchors.centerIn: parent
+                            width: parent.width - theme.spaceSm
+                            text: cellText
+                            color: theme.textTable
+                            elide: Text.ElideRight
+                            horizontalAlignment: Text.AlignHCenter
+                        }
+                    }
+                }
+
+                Item {
+                    id: verticalScrollRail
+                    objectName: "dataGridVerticalScrollRail"
+                    Layout.preferredWidth: theme.gridScrollRailSize
+                    Layout.fillHeight: true
+                }
+
+                Rectangle {
+                    Layout.preferredWidth: theme.gridRowLabelWidth
+                    Layout.preferredHeight: theme.gridScrollRailSize
+                    color: theme.surfaceQuiet
+                }
+
+                Item {
+                    id: horizontalScrollRail
+                    objectName: "dataGridHorizontalScrollRail"
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: theme.gridScrollRailSize
+                }
+
+                Rectangle {
+                    Layout.preferredWidth: theme.gridScrollRailSize
+                    Layout.preferredHeight: theme.gridScrollRailSize
+                    color: theme.surfaceQuiet
                 }
             }
         }
