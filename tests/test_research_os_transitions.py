@@ -765,6 +765,113 @@ def test_not_sure_creates_unknown_and_never_a_default() -> None:
     assert decision.reason_codes == ("clarification_budget_exhausted",)
 
 
+def test_not_sure_answer_never_repeats_the_same_question() -> None:
+    request = _request(
+        study=_study(Fact.unknown(reason_code="dependence_not_confirmed")),
+        question_budget_remaining=3,
+    )
+    service = ResearchOsService()
+    transition = ClarificationTransitionService()
+    passport = service.plan(
+        request,
+        _envelope("modori.analysis_passport", "passport-not-sure-1"),
+    )
+    assert passport.clarify is not None
+    refused_id = passport.clarify.question_ids[0]
+    answer = replace(
+        _answer(
+            request,
+            refused_id,
+            AnswerValue(kind=AnswerValueKind.NOT_SURE),
+        ),
+        source_passport_digest=passport.digest(),
+    )
+    candidate = transition.propose(request, passport, answer)
+
+    revised = transition.commit_ready(request, candidate)
+    second = service.resolve(revised)
+
+    assert refused_id not in second.clarification_ids
+    assert second.action is PrimaryAction.ABSTAIN
+    assert second.reason_codes == ("clarification_answer_unavailable",)
+    assert revised.question_budget_remaining == 2
+    second_passport = service.plan(
+        revised,
+        _envelope("modori.analysis_passport", "passport-not-sure-2"),
+    )
+    assert second_passport.abstain is not None
+    assert second_passport.abstain.recovery_requirement_ids == (
+        "complete_structured_intake_or_revise_scope",
+    )
+
+
+def test_three_refusal_rounds_are_finite_budgeted_and_never_repeat() -> None:
+    request = _request(
+        study=replace(
+            _study(Fact.unknown(reason_code="dependence_not_confirmed")),
+            design_roles=(),
+        ),
+        question_budget_remaining=3,
+    )
+    service = ResearchOsService()
+    transition = ClarificationTransitionService()
+    current = request
+    seen_questions: set[str] = set()
+    seen_states = {
+        (
+            current.question.digest(),
+            current.estimand.digest(),
+            current.study.digest(),
+            current.question_budget_remaining,
+        )
+    }
+    budgets = [current.question_budget_remaining]
+
+    for sequence in (1, 2, 3):
+        passport = service.plan(
+            current,
+            _envelope(
+                "modori.analysis_passport",
+                f"passport-refusal-{sequence}",
+            ),
+        )
+        assert passport.clarify is not None
+        question_id = passport.clarify.question_ids[0]
+        assert question_id not in seen_questions
+        seen_questions.add(question_id)
+        answer = replace(
+            _answer(
+                current,
+                question_id,
+                AnswerValue(kind=AnswerValueKind.NOT_SURE),
+                event_sequence=sequence,
+            ),
+            source_passport_digest=passport.digest(),
+        )
+        candidate = transition.propose(current, passport, answer)
+        current = transition.commit_ready(current, candidate)
+        state = (
+            current.question.digest(),
+            current.estimand.digest(),
+            current.study.digest(),
+            current.question_budget_remaining,
+        )
+        assert state not in seen_states
+        seen_states.add(state)
+        budgets.append(current.question_budget_remaining)
+
+    final = service.resolve(current)
+
+    assert budgets == [3, 2, 1, 0]
+    assert seen_questions == {
+        "confirm_cluster_use",
+        "confirm_dependence",
+        "confirm_weight_use",
+    }
+    assert final.action is PrimaryAction.ABSTAIN
+    assert final.reason_codes == ("clarification_budget_exhausted",)
+
+
 def test_replayed_or_nonmonotonic_answer_event_is_rejected() -> None:
     base = _request()
     replayed_answer = _answer(
