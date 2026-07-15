@@ -5,6 +5,7 @@ from pathlib import Path
 
 
 AUDITED_FILE_OPERATION_FILES = {
+    "scripts/benchmark_counterfactual_clarification.py",
     "scripts/benchmark_research_memory.py",
     "scripts/build_office_research_memory_kit.py",
     "scripts/build_recommendation_pilot.py",
