@@ -2,9 +2,8 @@
 
 Date: 2026-07-15
 
-Status: reconciliation appendix awaiting owner confirmation. It amends the two
-referenced designs where they conflict; it changes nothing else in either
-document.
+Status: owner-confirmed on 2026-07-15. It amends the two referenced designs
+where they conflict; it changes nothing else in either document.
 
 Referenced documents:
 

@@ -6,6 +6,12 @@ Approved by the owner on 2026-07-15. This document supersedes the visual
 direction in `2026-07-06-porcelain-glass-ui-redesign-design.md` while keeping
 its architectural, privacy, and statistical-integrity constraints.
 
+The owner additionally confirmed the precedence and conflict resolutions in
+`2026-07-15-guided-surface-reconciliation.md`. Recommendation interaction,
+claims, default mode, and experimental wording follow
+`2026-07-11-experimental-recommendation-boundary-design.md`; this document
+continues to govern material, layout, spacing, and component styling.
+
 The design is expected to be calibrated against the running application. The
 semantic roles, interaction model, and accessibility requirements are fixed;
 individual color, spacing, and opacity values may be adjusted after screenshot
@@ -28,6 +34,8 @@ The redesign must:
 - reduce the amount of standard-mode configuration visible in guided mode;
 - describe transforms as replayable additions, never as in-place source edits;
 - produce review evidence from the running application, not generated images.
+- reserve a stable global settings entry point that can grow without
+  restructuring the command surface.
 
 ## Product And Technical Constraints
 
@@ -164,6 +172,8 @@ Introduce only the primitives needed to make the touched screens coherent:
 - `PreferenceSwitch`: accessible immediate two-state setting control;
 - `ModeSegment`: mutually exclusive guided/direct mode selector;
 - `StateBadge`: latest, running, stale, error, and neutral result states.
+- `AppIconButton`: accessible icon-library button for global commands,
+  including the settings entry point.
 
 The primitives wrap Qt Quick Controls instead of replacing input semantics with
 `MouseArea`-only drawings. Text fields, combo boxes, multi-select checkboxes,
@@ -204,6 +214,8 @@ targeted visual styling.
 - Use `ModeSegment` for `안내 분석` and `직접 분석`.
 - Replace `설명 모드` and `가벼운 모드` checkboxes with
   `PreferenceSwitch` controls labeled `설명` and `시각 효과 줄이기`.
+- Reserve the far-right command position for an accessible gear button labeled
+  `설정`. It opens the real settings sheet and remains stable as settings grow.
 - Retain the current guide / data / results relationship, but use consistent
   spacing, rounded surfaces, and resizable boundaries.
 - Keep the data surface visually quiet and more opaque than supporting panes.
@@ -270,6 +282,23 @@ targeted visual styling.
 - Disable unavailable result sections with an explanation.
 - Keep Word export as the single primary completion action.
 
+### Settings Entry And Sheet
+
+- Place one gear icon from a vendored, licensed icon library in the stable
+  far-right global-command slot. Do not draw an approximate icon or use an
+  emoji.
+- The icon always has the accessible name and tooltip `설정`.
+- The entry point is functional in the first slice and opens a centered cream
+  pearl settings sheet; it is not a disabled placeholder.
+- The initial sheet owns existing persistent preferences: `설명`,
+  `시각 효과 줄이기`, and `최근 항목 기억하기`.
+- Each preference uses a switch because it is an immediate persistent binary
+  state. Destructive clearing of recent history is not implied by merely
+  opening the sheet.
+- The sheet structure reserves grouped sections without displaying empty
+  future rows. Future settings can be added inside the sheet without moving the
+  global gear entry or changing its accessible contract.
+
 ## Copy Decisions
 
 The following wording changes are part of the design:
@@ -281,6 +310,7 @@ The following wording changes are part of the design:
 - `데이터 창` -> `데이터 넓게 보기`;
 - `Word 내보내기` -> `Word로 저장`;
 - `왜 이 검정?` -> `이 분석을 선택한 이유`;
+- global settings entry and sheet title -> `설정`;
 - transform labels change as specified in the transform section.
 
 Action labels describe the result of the action. Nouns are used for places;
@@ -383,6 +413,8 @@ The design slice is complete when:
 - transform labels state their safe outcome;
 - semantic light is limited to meaningful state and action;
 - reduced-effects mode provides a visually coherent static fallback;
+- the global gear opens a real settings sheet and remains keyboard and
+  screen-reader accessible;
 - focused and full UI tests pass;
 - the owner has reviewed running-app captures and requested no remaining
   blocking visual correction.
