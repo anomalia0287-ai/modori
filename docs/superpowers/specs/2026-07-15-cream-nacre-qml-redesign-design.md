@@ -212,8 +212,10 @@ targeted visual styling.
   pearl reflection.
 - Group file actions, result/report actions, and preferences by purpose.
 - Use `ModeSegment` for `안내 분석` and `직접 분석`.
-- Replace `설명 모드` and `가벼운 모드` checkboxes with
-  `PreferenceSwitch` controls labeled `설명` and `시각 효과 줄이기`.
+- Remove `설명 모드` and `가벼운 모드` checkboxes from the crowded command
+  surface. Their persisted values move into the settings sheet as
+  `PreferenceSwitch` controls labeled `설명` and `시각 효과 줄이기`; the
+  switches are not duplicated in the header.
 - Reserve the far-right command position for an accessible gear button labeled
   `설정`. It opens the real settings sheet and remains stable as settings grow.
 - Retain the current guide / data / results relationship, but use consistent
