@@ -20,7 +20,13 @@ from modori.research_memory.ledger_contracts import (
 )
 from modori.research_memory.ledger_store import (
     DecisionLedgerStore,
+    LedgerConflictError,
     LedgerStoreError,
+)
+from modori.research_memory.passport_state import (
+    CommittedPassportRecord,
+    PassportHistory,
+    PassportStateError,
 )
 from modori.research_memory.quarantine import (
     QuarantineResult,
@@ -30,8 +36,12 @@ from modori.research_os import (
     AnalysisPassport,
     ClarificationAnswerEvent,
     ClarificationTransitionService,
+    ClarifyPayloadV2,
+    ResearchOsService,
     ResearchRequest,
+    ResearchServiceError,
     RevisionAcceptanceCertificate,
+    SchemaEnvelope,
     TransitionError,
 )
 
@@ -53,6 +63,34 @@ class PromotionReceipt:
             raise PromotionError("promotion receipt requires a durable ledger receipt")
         if not isinstance(self.imported_assertions, tuple):
             raise PromotionError("imported_assertions must be a tuple")
+
+
+@dataclass(frozen=True)
+class PassportCommitReceipt:
+    request: ResearchRequest
+    passport: AnalysisPassport
+    head: LedgerHead
+    passport_event_id: str
+    appended: bool
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.request, ResearchRequest):
+            raise PromotionError("passport receipt requires a ResearchRequest")
+        if not isinstance(self.passport, AnalysisPassport):
+            raise PromotionError("passport receipt requires an AnalysisPassport")
+        if self.passport.envelope.schema_version != 2:
+            raise PromotionError("passport receipt requires schema version 2")
+        if not isinstance(self.head, LedgerHead) or self.head.sequence < 1:
+            raise PromotionError("passport receipt requires a durable ledger head")
+        if (
+            not isinstance(self.passport_event_id, str)
+            or not self.passport_event_id
+        ):
+            raise PromotionError("passport_event_id must be a non-empty string")
+        if self.passport.envelope.created_event_ref != self.passport_event_id:
+            raise PromotionError("passport receipt event identity mismatch")
+        if type(self.appended) is not bool:
+            raise PromotionError("appended must be a boolean")
 
 
 def _request_project_id(request: ResearchRequest) -> str:
@@ -112,12 +150,71 @@ class ResearchMemoryCoordinator:
     def __init__(
         self,
         transition_service: ClarificationTransitionService | None = None,
+        research_service: ResearchOsService | None = None,
     ) -> None:
         self._transition = transition_service or ClarificationTransitionService()
+        self._research_service = research_service or ResearchOsService()
         if not isinstance(self._transition, ClarificationTransitionService):
             raise PromotionError(
                 "transition_service must be a ClarificationTransitionService"
             )
+        if not isinstance(self._research_service, ResearchOsService):
+            raise PromotionError("research_service must be a ResearchOsService")
+        if (
+            self._transition.clarification_registry_digest
+            != self._research_service.clarification_registry_digest
+        ):
+            raise PromotionError(
+                "planning and transition clarification registries must match"
+            )
+
+    @staticmethod
+    def _history(store: DecisionLedgerStore) -> PassportHistory:
+        try:
+            return PassportHistory.inspect(store.events(), store.artifacts())
+        except PassportStateError as exc:
+            raise PromotionError("durable passport history is invalid") from exc
+
+    def _current_outstanding(
+        self,
+        store: DecisionLedgerStore,
+        request: ResearchRequest,
+    ) -> tuple[CommittedPassportRecord, ...]:
+        return self._history(store).outstanding_for(
+            project_id=_request_project_id(request),
+            request_binding_digest=request.request_binding_digest(),
+            clarification_registry_digest=(
+                self._research_service.clarification_registry_digest
+            ),
+        )
+
+    def _require_active_committed_passport(
+        self,
+        store: DecisionLedgerStore,
+        request: ResearchRequest,
+        passport: AnalysisPassport,
+    ) -> CommittedPassportRecord:
+        if (
+            not isinstance(passport, AnalysisPassport)
+            or passport.envelope.schema_version != 2
+            or not isinstance(passport.clarify, ClarifyPayloadV2)
+        ):
+            raise PromotionError(
+                "clarification passport is not an active committed version 2 passport"
+            )
+        records = self._current_outstanding(store, request)
+        if len(records) != 1:
+            raise PromotionError("clarification passport is not active")
+        record = records[0]
+        passport_artifact = _artifact_for_value(passport)
+        if (
+            record.passport_artifact_id != passport_artifact.artifact_id
+            or record.passport != passport
+            or passport.clarification_registry_digest
+            != self._research_service.clarification_registry_digest
+        ):
+            raise PromotionError("clarification passport is not active")
+        return record
 
     @staticmethod
     def _ensure_store_binding(
@@ -201,6 +298,129 @@ class ResearchMemoryCoordinator:
             raise PromotionError("initial request cannot enter durable memory") from exc
         return self._append(store, commit, request)
 
+    def commit_current_passport(
+        self,
+        store: DecisionLedgerStore,
+        request: ResearchRequest,
+        *,
+        event_id: str,
+        passport_object_id: str,
+        recorded_at_utc: str | None,
+    ) -> PassportCommitReceipt:
+        project_id, head = self._ensure_store_binding(
+            store,
+            request,
+            require_empty=False,
+        )
+        existing = self._current_outstanding(store, request)
+        if len(existing) == 1:
+            record = existing[0]
+            return PassportCommitReceipt(
+                request=request,
+                passport=record.passport,
+                head=store.head,
+                passport_event_id=record.commit_event_id,
+                appended=False,
+            )
+        if len(existing) > 1:
+            raise PromotionError("multiple active clarification passports exist")
+
+        artifacts_before = store.artifacts()
+        if any(
+            artifact.artifact_kind is LedgerArtifactKind.ANALYSIS_PASSPORT
+            and artifact.object_id == passport_object_id
+            for artifact in artifacts_before
+        ):
+            raise PromotionError("passport object identity has already been used")
+        if any(event.event_id == event_id for event in store.events()):
+            raise PromotionError("passport event identity has already been used")
+
+        try:
+            envelope = SchemaEnvelope(
+                schema_id="modori.analysis_passport",
+                schema_version=2,
+                project_id=project_id,
+                object_id=passport_object_id,
+                revision=1,
+                supersedes_revision=None,
+                created_event_ref=event_id,
+            )
+            resolved = self._research_service.resolve_and_plan(request, envelope)
+            passport = resolved.passport
+            _snapshot, snapshot_artifacts = ResearchRequestSnapshot.capture(request)
+            snapshot_artifact = _snapshot_artifact(snapshot_artifacts)
+            passport_artifact = _artifact_for_value(passport)
+            artifacts = _merge_artifacts(
+                snapshot_artifacts,
+                (passport_artifact,),
+            )
+            event = LedgerEvent.create(
+                project_id=project_id,
+                event_id=event_id,
+                sequence=head.sequence + 1,
+                event_kind=LedgerEventKind.PASSPORT_COMMITTED,
+                subject_artifact_ids=_subjects(
+                    snapshot_artifacts,
+                    (passport_artifact,),
+                ),
+                payload={
+                    "passport_artifact_id": passport_artifact.artifact_id,
+                    "resulting_snapshot_artifact_id": snapshot_artifact.artifact_id,
+                },
+                previous_event_hash=head.event_hash,
+                recorded_at_utc=recorded_at_utc,
+            )
+            commit = LedgerCommit(
+                expected_head=head,
+                events=(event,),
+                artifacts=artifacts,
+                resulting_snapshot_artifact_id=snapshot_artifact.artifact_id,
+            )
+        except (
+            ResearchServiceError,
+            LedgerContractError,
+            ValueError,
+            TypeError,
+        ) as exc:
+            raise PromotionError("current passport could not be constructed") from exc
+
+        try:
+            receipt = store.append(commit)
+        except LedgerConflictError:
+            try:
+                store.verify()
+                if store.load_request() != request:
+                    raise PromotionError(
+                        "ledger changed to a different request during passport commit"
+                    )
+                winner = self._current_outstanding(store, request)
+            except LedgerStoreError as exc:
+                raise PromotionError(
+                    "ledger conflict could not be safely reverified"
+                ) from exc
+            if len(winner) != 1:
+                raise PromotionError(
+                    "ledger changed without an equivalent active passport"
+                )
+            record = winner[0]
+            return PassportCommitReceipt(
+                request=request,
+                passport=record.passport,
+                head=store.head,
+                passport_event_id=record.commit_event_id,
+                appended=False,
+            )
+        except (LedgerStoreError, LedgerContractError, ValueError, TypeError) as exc:
+            raise PromotionError("durable passport commit failed") from exc
+
+        return PassportCommitReceipt(
+            request=request,
+            passport=passport,
+            head=receipt.head,
+            passport_event_id=event.event_id,
+            appended=True,
+        )
+
     def commit_ready_answer(
         self,
         store: DecisionLedgerStore,
@@ -219,6 +439,7 @@ class ResearchMemoryCoordinator:
             raise PromotionError("answer must be a ClarificationAnswerEvent")
         if answer.event_sequence != head.sequence + 1:
             raise PromotionError("answer sequence must immediately extend ledger head")
+        self._require_active_committed_passport(store, request, passport)
         try:
             candidate = self._transition.propose(request, passport, answer)
             committed_request = self._transition.commit_ready(request, candidate)
@@ -280,6 +501,7 @@ class ResearchMemoryCoordinator:
             raise PromotionError("answer sequence must immediately extend ledger head")
         if certificate.event_sequence != head.sequence + 2:
             raise PromotionError("acceptance sequence must immediately follow answer")
+        self._require_active_committed_passport(store, request, passport)
         try:
             candidate = self._transition.propose(
                 request,

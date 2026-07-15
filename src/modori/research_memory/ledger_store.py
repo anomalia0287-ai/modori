@@ -33,6 +33,10 @@ from modori.research_memory.ledger_contracts import (
     LedgerReceipt,
     ResearchRequestSnapshot,
 )
+from modori.research_memory.passport_state import (
+    PassportHistory,
+    PassportStateError,
+)
 from modori.research_os import ResearchRequest
 
 if TYPE_CHECKING:
@@ -840,6 +844,10 @@ class DecisionLedgerStore:
                 raise LedgerIntegrityError(
                     "replayed request cannot be restored"
                 ) from exc
+        try:
+            PassportHistory.inspect(events, artifacts)
+        except PassportStateError as exc:
+            raise LedgerIntegrityError("passport event history is invalid") from exc
         return artifacts, events, head, snapshot_id, tuple(sorted(expected_imports))
 
     def _read_derived(
@@ -1033,6 +1041,28 @@ class DecisionLedgerStore:
             if authoritative != commit.expected_head:
                 raise LedgerConflictError("expected head is stale")
             self._require_verified_data_version()
+            existing_artifacts = self._artifacts_unchecked()
+            artifact_lookup = {
+                artifact.artifact_id: artifact for artifact in existing_artifacts
+            }
+            for artifact in commit.artifacts:
+                prior = artifact_lookup.get(artifact.artifact_id)
+                if prior is not None and prior != artifact:
+                    raise LedgerIntegrityError(
+                        "artifact ID collision or byte mismatch"
+                    )
+                artifact_lookup[artifact.artifact_id] = artifact
+            try:
+                PassportHistory.inspect(
+                    (*self._events_unchecked(), *commit.events),
+                    tuple(
+                        artifact_lookup[key] for key in sorted(artifact_lookup)
+                    ),
+                )
+            except PassportStateError as exc:
+                raise LedgerIntegrityError(
+                    "atomic ledger append rejected invalid passport event history"
+                ) from exc
             for artifact in commit.artifacts:
                 self._insert_artifact(artifact)
             for event in commit.events:

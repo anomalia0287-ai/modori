@@ -20,6 +20,10 @@ from modori.research_memory.ledger_contracts import (
     LedgerEventKind,
     LedgerHead,
 )
+from tests.research_memory_passport_fixtures import (
+    history_with_passport_commit,
+    history_with_v2_answer,
+)
 from tests.test_research_memory_ledger_contracts import _request
 from tests.test_research_memory_ledger_store import _genesis_commit
 
@@ -169,6 +173,7 @@ def test_from_bytes_reuses_predecoded_payload_for_typed_artifact_roles(
 
 def test_bundle_resource_defaults_bound_preparse_allocation() -> None:
     limits = EvidenceBundleLimits()
+    assert limits.max_depth == 10
     assert limits.max_collection_items == 10_000
     assert limits.max_preparse_container_items == 30_000
     assert limits.max_items == 1_000_000
@@ -190,7 +195,7 @@ def _decoder_must_not_run(*_args, **_kwargs):
             EvidenceBundleErrorCode.ITEM_LIMIT,
         ),
         (
-            b"[" * 9 + b"0" + b"]" * 9,
+            b"[" * 11 + b"0" + b"]" * 11,
             EvidenceBundleLimits(),
             EvidenceBundleErrorCode.NESTING_LIMIT,
         ),
@@ -265,7 +270,7 @@ def test_bundle_decoder_recursion_is_closed_as_nesting_limit() -> None:
         ),
         (lambda raw: raw.replace(b"{", b"{ ", 1), EvidenceBundleErrorCode.NONCANONICAL),
         (
-            lambda raw: b"[" * 9 + raw + b"]" * 9,
+            lambda raw: b"[" * 11 + raw + b"]" * 11,
             EvidenceBundleErrorCode.NESTING_LIMIT,
         ),
     ],
@@ -315,6 +320,52 @@ def test_bundle_rejects_byte_and_count_limits_before_typed_use() -> None:
             limits=replace(EvidenceBundleLimits(), max_string_length=1),
         )
     assert caught.value.code is EvidenceBundleErrorCode.STRING_LIMIT
+
+
+def test_v2_embedded_plan_uses_exact_bounded_bundle_depth() -> None:
+    events, artifacts, _request_value, _passport = history_with_passport_commit()
+    head = LedgerHead(
+        sequence=events[-1].sequence,
+        event_hash=events[-1].event_hash,
+    )
+    bundle = EvidenceBundle.create(
+        source_project_id="project-1",
+        head=head,
+        artifacts=artifacts,
+        events=events,
+        exported_at_utc=None,
+    )
+
+    assert EvidenceBundle.from_bytes(bundle.to_bytes()) == bundle
+    with pytest.raises(EvidenceBundleError) as caught:
+        EvidenceBundle.create(
+            source_project_id="project-1",
+            head=head,
+            artifacts=artifacts,
+            events=events,
+            exported_at_utc=None,
+            limits=replace(EvidenceBundleLimits(), max_depth=9),
+        )
+    assert caught.value.code is EvidenceBundleErrorCode.NESTING_LIMIT
+
+
+def test_bundle_rejects_v2_answer_without_prior_passport_commit() -> None:
+    events, artifacts, _request_value, _passport = history_with_v2_answer(
+        include_commit=False
+    )
+
+    with pytest.raises(EvidenceBundleError) as caught:
+        EvidenceBundle.create(
+            source_project_id="project-1",
+            head=LedgerHead(
+                sequence=events[-1].sequence,
+                event_hash=events[-1].event_hash,
+            ),
+            artifacts=artifacts,
+            events=events,
+            exported_at_utc=None,
+        )
+    assert caught.value.code is EvidenceBundleErrorCode.CHAIN_INVALID
 
 
 @pytest.mark.parametrize("mutation", ["gap", "duplicate", "bad_head", "truncated"])

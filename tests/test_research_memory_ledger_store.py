@@ -30,6 +30,7 @@ from modori.research_memory.ledger_store import (
     open_decision_memory,
 )
 from modori.research_os import PrimaryAction, ResearchOsService, ResearchRequest
+from tests.research_memory_passport_fixtures import history_with_v2_answer
 from tests.test_research_memory_ledger_contracts import _request
 
 
@@ -369,6 +370,29 @@ def test_constraint_failure_rolls_back_authoritative_and_derived_rows(
         after = store.verify()
         assert after == before
         assert len(store.events()) == 1
+
+
+def test_append_rejects_v2_answer_without_prior_passport_commit(
+    tmp_path: Path,
+) -> None:
+    events, artifacts, _request_value, _passport = history_with_v2_answer(
+        include_commit=False
+    )
+    commit = LedgerCommit(
+        expected_head=LedgerHead.genesis(),
+        events=events,
+        artifacts=artifacts,
+        resulting_snapshot_artifact_id=events[-1].payload[
+            "resulting_snapshot_artifact_id"
+        ],
+    )
+    with DecisionLedgerStore.create(_path(tmp_path), "project-1") as store:
+        before = store.verify()
+        with pytest.raises(LedgerIntegrityError, match="passport event history"):
+            store.append(commit)
+        assert store.verify() == before
+        assert store.events() == ()
+        assert store.artifacts() == ()
 
 
 def test_append_never_accepts_a_commit_based_only_on_a_forged_derived_head(

@@ -26,6 +26,10 @@ from modori.research_memory.ledger_contracts import (
     LedgerHead,
     ResearchRequestSnapshot,
 )
+from modori.research_memory.passport_state import (
+    PassportHistory,
+    PassportStateError,
+)
 
 
 class EvidenceBundleErrorCode(str, Enum):
@@ -64,7 +68,7 @@ class EvidenceBundleLimits:
     max_bytes: int = 16 * 1024 * 1024
     max_events: int = 10_000
     max_artifacts: int = 30_000
-    max_depth: int = 8
+    max_depth: int = 10
     max_event_bytes: int = 8 * 1024
     max_artifact_bytes: int = 128 * 1024
     max_string_length: int = 512
@@ -455,6 +459,7 @@ class EvidenceBundle:
         limits: EvidenceBundleLimits,
         *,
         typed_identities_verified: bool = False,
+        verified_event_payloads: tuple[Mapping[str, object], ...] | None = None,
     ) -> None:
         _require_project_id(self.source_project_id)
         _require_utc(self.exported_at_utc)
@@ -569,6 +574,17 @@ class EvidenceBundle:
                     snapshot.restore(artifact_lookup)
                 except (LedgerContractError, ValueError) as exc:
                     _artifact_error(exc)
+        try:
+            PassportHistory.inspect(
+                self.events,
+                self.artifacts,
+                verified_event_payloads=verified_event_payloads,
+            )
+        except PassportStateError as exc:
+            raise EvidenceBundleError(
+                EvidenceBundleErrorCode.CHAIN_INVALID,
+                "passport event history is invalid",
+            ) from exc
 
     def verify(self) -> None:
         self._verify_with_limits(EvidenceBundleLimits())
@@ -722,6 +738,7 @@ class EvidenceBundle:
             )
         artifact_lookup = {artifact.artifact_id: artifact for artifact in artifacts}
         events: list[LedgerEvent] = []
+        decoded_event_payloads: list[Mapping[str, object]] = []
         for item in raw_events:
             if not isinstance(item, Mapping):
                 _raise(
@@ -741,6 +758,7 @@ class EvidenceBundle:
                     decoded_payload,
                 )
                 events.append(event)
+                decoded_event_payloads.append(decoded_payload)
             except (LedgerContractError, ValueError, TypeError) as exc:
                 _event_error(exc)
         raw_head = parsed["head"]
@@ -760,5 +778,9 @@ class EvidenceBundle:
             events=tuple(events),
             exported_at_utc=parsed["exported_at_utc"],
         )
-        bundle._verify_with_limits(limits, typed_identities_verified=True)
+        bundle._verify_with_limits(
+            limits,
+            typed_identities_verified=True,
+            verified_event_payloads=tuple(decoded_event_payloads),
+        )
         return bundle

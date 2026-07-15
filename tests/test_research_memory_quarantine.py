@@ -74,7 +74,7 @@ def _passport_bundle(*, stale: bool, stale_version: str = "stale_v0") -> bytes:
             object_id="passport-1",
             revision=1,
             supersedes_revision=None,
-            created_event_ref="event:passport:1",
+            created_event_ref="event:passport:2",
         ),
         question_ref=component_ref(request.question),
         estimand_ref=component_ref(request.estimand),
@@ -104,19 +104,24 @@ def _passport_bundle(*, stale: bool, stale_version: str = "stale_v0") -> bytes:
     original = base.events[0]
     event = LedgerEvent.create(
         project_id=original.project_id,
-        event_id=original.event_id,
-        sequence=original.sequence,
-        event_kind=LedgerEventKind.PROJECT_CREATED,
+        event_id="event:passport:2",
+        sequence=2,
+        event_kind=LedgerEventKind.PASSPORT_COMMITTED,
         subject_artifact_ids=tuple(item.artifact_id for item in artifacts),
-        payload=original.payload,
-        previous_event_hash=original.previous_event_hash,
+        payload={
+            "passport_artifact_id": passport_artifact.artifact_id,
+            "resulting_snapshot_artifact_id": original.payload[
+                "resulting_snapshot_artifact_id"
+            ],
+        },
+        previous_event_hash=original.event_hash,
         recorded_at_utc=original.recorded_at_utc,
     )
     return EvidenceBundle.create(
         source_project_id=base.source_project_id,
-        head=LedgerHead(sequence=1, event_hash=event.event_hash),
+        head=LedgerHead(sequence=2, event_hash=event.event_hash),
         artifacts=artifacts,
-        events=(event,),
+        events=(original, event),
         exported_at_utc=None,
     ).to_bytes()
 

@@ -52,6 +52,7 @@ from modori.research_memory.quarantine import (
     QuarantineStage,
 )
 from modori.research_memory.promotion import (
+    PassportCommitReceipt,
     PromotionError,
     PromotionReceipt,
     ResearchMemoryCoordinator,
@@ -102,6 +103,7 @@ __all__ = [
     "PromotionError",
     "PromotionReceipt",
     "PassportHistory",
+    "PassportCommitReceipt",
     "PassportStateError",
     "ResearchMemoryCoordinator",
     "artifact_id",
