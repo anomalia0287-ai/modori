@@ -19,13 +19,25 @@ This evidence does not claim publisher authentication, code-signing trust,
 SmartScreen reputation, clean-VM validation, or permission to publish the
 installer externally.
 
-Source workspace and branch:
+Artifact-build workspace, branch, and source:
 
 ```text
 C:\Users\V\Desktop\TongTong\.worktrees\internal-windows-installer
 codex/internal-windows-installer
 c88c567d17fa99fd88433d0a8d48c657fcd4b49f
 ```
+
+Local integration completed by fast-forward at:
+
+```text
+C:\Users\V\Desktop\TongTong
+release/readiness-1-9
+cf068cad748b409737aded844b1e4afb442d181a
+```
+
+The feature branch and isolated worktree were removed after host candidate and
+evidence copies passed exact inventory, size, and SHA256 comparison. No remote
+branch or artifact was pushed.
 
 The production manifest records `git_dirty: false`, `channel: internal`,
 `signed: false`, and `smoke_only: false`.
@@ -89,6 +101,10 @@ approved unsigned internal-test scope. Manifest-tracked build inputs match:
   `installer-build-ok` for this exact final path.
 - Slow statistical reference gate: exit `0`; another clean base gate followed
   by `3 passed, 1237 deselected in 19.63s`.
+- Post-merge host gate: exit `0`; Ruff, Bandit, launch smoke, pip check,
+  installer tool check, and `1236 passed, 4 skipped`. The pass/skip split
+  differed between the isolated worktree and host workspace; total collected
+  tests remained `1240`.
 
 ## Current Installed Lifecycle Evidence
 
@@ -96,6 +112,12 @@ Successful run root:
 
 ```text
 .tmp\installer-smoke\r-cb0756629cd2
+```
+
+After local integration, the retained owner-facing copy is:
+
+```text
+C:\Users\V\Desktop\TongTong\.tmp\installer-smoke\r-cb0756629cd2
 ```
 
 | Evidence | Bytes | SHA256 | Result |
@@ -136,6 +158,12 @@ and official-uninstaller cleanup log SHA256 is
 `49CECB17ECC19149CE9E0A073207C30B34C62338E8833EC85FD984040F1E4DA6`.
 The install tree and registration are absent.
 
+Its retained owner-facing copy is:
+
+```text
+C:\Users\V\Desktop\TongTong\.tmp\installer-smoke\r-547add96090d
+```
+
 Commit `c88c567d17fa99fd88433d0a8d48c657fcd4b49f` copies the verified workbook
 into a unique identity-bound test-state child before launching the application;
 sidecars are now disposable state and durable evidence remains exact. Its
@@ -148,10 +176,23 @@ empty pytest cache directories: `28` directories and `3394542120` measured
 bytes. After the current bytes were copied and rehashed in the host project,
 the revoked host d236 candidate was also removed (`173232674` bytes). Combined
 cleanup was `29` directories and `3567774794` measured bytes. `.tmp\ib` is
-empty. The current candidate, current success evidence, and the single
-sidecar-failure diagnostic are the only retained installer artifacts in their
-respective worktree roots; the host installer root contains only the current
-candidate.
+empty. Before worktree retirement, the current candidate, current success
+evidence, and the single sidecar-failure diagnostic were the only retained
+installer artifacts in their respective worktree roots; the host installer
+root contained only the current candidate.
+
+Before retiring the isolated worktree, both retained evidence roots and all
+three candidate files were copied to the host project and compared by exact
+relative inventory, size, and SHA256. Removing the worktree reclaimed at least
+`2426261870` readable bytes plus one access-restricted Windows-link test
+temporary directory. The local feature branch was deleted after the
+fast-forward and post-merge gate. The host installer root contains only the
+current candidate, and the host evidence root contains exactly the current
+success and sidecar-failure runs.
+
+Final host hygiene also removed four legacy empty pytest cache directories,
+one legacy empty test child, and its now-empty parent (`6` directories,
+`0` measured bytes). No root pytest-cache directory or `.test-tmp` remains.
 
 ## Superseded b4 Candidate Identity — Do Not Use
 

@@ -8,6 +8,10 @@ Current internal Windows installer status from 2026-07-13:
   artifact source `c88c567d17fa99fd88433d0a8d48c657fcd4b49f` on
   `codex/internal-windows-installer`. Later evidence-only documentation commits
   are not artifact sources.
+- The completed implementation was fast-forwarded locally into
+  `release/readiness-1-9` at integration anchor
+  `cf068cad748b409737aded844b1e4afb442d181a`. The feature branch and isolated
+  worktree were then removed; no remote branch or artifact was pushed.
 - Candidate directory:
   `dist\installer\0.1.0-gc88c567d17fa`; it contains exactly three regular,
   non-reparse files and no directory or hidden publication residue:
@@ -63,15 +67,28 @@ Current internal Windows installer status from 2026-07-13:
 - Slow statistical reference gate passed separately on the artifact source:
   `3 passed, 1237 deselected in 19.63s` after another clean
   `1228 passed, 12 skipped` base gate.
+- Post-merge verification in the host project also exited `0`: Ruff, Bandit,
+  launch smoke, dependency check, installer tool check, and
+  `1236 passed, 4 skipped`. The pass/skip split differed between the isolated
+  worktree and host workspace; the collected total remained `1240`.
 - Worktree cleanup after replacement verification removed four obsolete
   staging roots, the revoked b4 candidate directory, six obsolete
   smoke-evidence roots, and seventeen empty pytest cache directories: `28`
   directories / `3394542120` measured bytes. After the current bytes were
   copied and rehashed in the host project, the revoked host d236 candidate was
   also removed (`173232674` bytes). Combined cleanup: `29` directories /
-  `3567774794` bytes. The staging root is now empty; only the current candidate,
-  current success evidence, and the `r-547add96090d` sidecar-failure evidence
-  remain in the worktree installer roots.
+  `3567774794` bytes. Before worktree retirement the staging root was empty and
+  only the current candidate, current success evidence, and the
+  `r-547add96090d` sidecar-failure evidence remained in its installer roots.
+- The two retained evidence roots were copied byte-for-byte and rehashed under
+  `C:\Users\V\Desktop\TongTong\.tmp\installer-smoke` before worktree removal.
+  Removing the completed worktree reclaimed at least another `2426261870`
+  readable bytes plus its access-restricted Windows-link test temporary
+  directory. The host evidence root now contains exactly the current success
+  and sidecar-failure runs.
+- Final host hygiene also removed four legacy empty pytest cache directories,
+  one legacy empty test child, and its now-empty parent (`6` directories,
+  `0` measured bytes). No root pytest-cache directory or `.test-tmp` remains.
 - This is an unsigned internal-test artifact. It makes no publisher-trust,
   SmartScreen-reputation, clean-VM, or public-release claim.
 
