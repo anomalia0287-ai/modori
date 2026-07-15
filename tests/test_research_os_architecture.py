@@ -41,6 +41,7 @@ from modori.research_os.transition import (
 
 
 RESEARCH_OS_ROOT = Path("src/modori/research_os")
+MODORI_ROOT = Path("src/modori")
 
 
 def _python_trees() -> tuple[tuple[Path, ast.AST], ...]:
@@ -332,3 +333,22 @@ def test_existing_recommendation_service_signature_is_unchanged() -> None:
 
     assert tuple(parameters) == ("self", "dataset", "active_analysis")
     assert parameters["active_analysis"].kind is inspect.Parameter.KEYWORD_ONLY
+
+
+def test_production_code_has_no_direct_migration_event_producer() -> None:
+    violations: list[str] = []
+    for path in sorted(MODORI_ROOT.rglob("*.py")):
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.keyword) or node.arg != "event_kind":
+                continue
+            value = node.value
+            if (
+                isinstance(value, ast.Attribute)
+                and value.attr == "MIGRATION_APPLIED"
+                and isinstance(value.value, ast.Name)
+                and value.value.id == "LedgerEventKind"
+            ):
+                violations.append(f"{path}:{node.lineno}")
+
+    assert violations == []

@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 from dataclasses import replace
+import time
+import tracemalloc
 from unittest.mock import patch
 
 import pytest
 
 import modori.research_os as research_os
+from modori.research_memory.canonical import canonical_bytes
 from modori.research_os.contracts import (
     AssignmentMechanism,
     AssociationTarget,
@@ -57,6 +60,8 @@ from modori.research_os.service import (
     ResearchServiceError,
     validate_passport_request_binding,
 )
+from tests.research_os_v2_fixtures import locked_p1_plan
+from tests.test_research_os_service import _paired_request
 
 
 DATASET_FINGERPRINT = "a" * 64
@@ -508,3 +513,30 @@ def test_planning_service_is_exposed_from_package() -> None:
     )
     assert callable(ResearchOsService.plan)
     assert callable(ResearchOsService.clarifications_for)
+
+
+def test_v2_embedded_plan_and_contract_overhead_stay_below_fixed_gates(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    worst_plan_bytes = canonical_bytes(locked_p1_plan().to_mapping())
+    assert len(worst_plan_bytes) == 14_267
+    assert len(worst_plan_bytes) < 64 * 1024
+
+    service = ResearchOsService()
+    request = _paired_request(
+        Fact.unknown(reason_code="pairing_not_confirmed")
+    )
+    decision = service.resolve(request)
+    assert decision.clarification_plan is not None
+    monkeypatch.setattr(service, "resolve", lambda current: decision)
+
+    tracemalloc.start()
+    started = time.perf_counter_ns()
+    result = service.resolve_and_plan(request, _passport_envelope(version=2))
+    elapsed_ms = (time.perf_counter_ns() - started) / 1_000_000
+    _, peak_bytes = tracemalloc.get_traced_memory()
+    tracemalloc.stop()
+
+    assert isinstance(result.passport.clarify, ClarifyPayloadV2)
+    assert elapsed_ms < 50
+    assert peak_bytes < 5 * 1024 * 1024

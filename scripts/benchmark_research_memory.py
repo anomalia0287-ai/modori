@@ -368,7 +368,8 @@ def _padded_bundle_bytes(
     padding_artifacts: list[LedgerArtifact] = []
     estimated = len(base_bytes)
     padding_value = ["x" * limits.max_string_length] * 240
-    for index in range(min(len(bundle.events), limits.max_artifacts)):
+    available_padding_events = max(0, len(bundle.events) - 1)
+    for index in range(min(available_padding_events, limits.max_artifacts)):
         source_artifact_id = canonical_digest({"padding_index": index})
         assertion = ImportedAssertion(
             assertion_id=f"padding:{source_artifact_id}",
@@ -393,8 +394,8 @@ def _padded_bundle_bytes(
     previous = ZERO_HASH
     for index, original in enumerate(bundle.events):
         extra = (
-            (padding_artifacts[index].artifact_id,)
-            if index < len(padding_artifacts)
+            (padding_artifacts[index - 1].artifact_id,)
+            if 1 <= index <= len(padding_artifacts)
             else ()
         )
         rebuilt = LedgerEvent.create(

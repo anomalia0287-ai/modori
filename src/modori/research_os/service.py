@@ -360,7 +360,8 @@ class ResearchOsService:
         """Resolve once and bind that exact decision to a V2 passport."""
 
         self._validate_passport_binding(request, passport_envelope)
-        decision = self.resolve(request)
+        resolve_request = self.resolve
+        decision = resolve_request(request)
         decision_digest = canonical_digest(
             {"semantic_signature": decision.semantic_signature}
         )

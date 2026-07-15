@@ -21,6 +21,7 @@ from modori.research_memory.ledger_contracts import (
     LedgerHead,
 )
 from tests.research_memory_passport_fixtures import (
+    forged_passport_history,
     history_with_passport_commit,
     history_with_v2_answer,
 )
@@ -363,6 +364,68 @@ def test_bundle_rejects_v2_answer_without_prior_passport_commit() -> None:
             ),
             artifacts=artifacts,
             events=events,
+            exported_at_utc=None,
+        )
+    assert caught.value.code is EvidenceBundleErrorCode.CHAIN_INVALID
+
+
+@pytest.mark.parametrize(
+    "forgery",
+    (
+        "wrong_created_event_ref",
+        "request_binding_splice",
+        "second_outstanding_same_key",
+    ),
+)
+def test_bundle_rejects_self_consistent_v2_passport_history_forgery(
+    forgery: str,
+) -> None:
+    events, artifacts = forged_passport_history(forgery)
+
+    with pytest.raises(EvidenceBundleError) as caught:
+        EvidenceBundle.create(
+            source_project_id="project-1",
+            head=LedgerHead(
+                sequence=events[-1].sequence,
+                event_hash=events[-1].event_hash,
+            ),
+            artifacts=artifacts,
+            events=events,
+            exported_at_utc=None,
+        )
+    assert caught.value.code is EvidenceBundleErrorCode.CHAIN_INVALID
+
+
+def test_bundle_rejects_passport_payload_with_wrong_artifact_role() -> None:
+    events, artifacts, _request_value, _passport = history_with_passport_commit()
+    genesis, commit = events
+    question = next(
+        artifact
+        for artifact in artifacts
+        if artifact.artifact_kind is LedgerArtifactKind.QUESTION_SPEC
+    )
+    forged = LedgerEvent.create(
+        project_id=commit.project_id,
+        event_id=commit.event_id,
+        sequence=commit.sequence,
+        event_kind=commit.event_kind,
+        subject_artifact_ids=commit.subject_artifact_ids,
+        payload={
+            "passport_artifact_id": question.artifact_id,
+            "resulting_snapshot_artifact_id": commit.payload[
+                "resulting_snapshot_artifact_id"
+            ],
+        },
+        previous_event_hash=genesis.event_hash,
+        recorded_at_utc=None,
+    )
+
+    with pytest.raises(EvidenceBundleError) as caught:
+        EvidenceBundle.create(
+            source_project_id="project-1",
+            head=LedgerHead(sequence=2, event_hash=forged.event_hash),
+            artifacts=artifacts,
+            events=(genesis, forged),
             exported_at_utc=None,
         )
     assert caught.value.code is EvidenceBundleErrorCode.CHAIN_INVALID

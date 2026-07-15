@@ -29,6 +29,7 @@ from modori.research_os import (
     FactState,
     QuestionSpec,
     StudySpec,
+    build_p1_clarification_registry,
     build_p1_method_space,
 )
 
@@ -352,6 +353,7 @@ def _extract_assertions(
 def _catalogs_are_current(bundle: EvidenceBundle) -> bool:
     method_space = build_p1_method_space()
     method_space_digest = method_space.digest()
+    registry_digest = build_p1_clarification_registry().digest()
     for artifact in bundle.artifacts:
         if artifact.artifact_kind is not LedgerArtifactKind.ANALYSIS_PASSPORT:
             continue
@@ -362,6 +364,10 @@ def _catalogs_are_current(bundle: EvidenceBundle) -> bool:
             passport.method_space_version != method_space.version
             or passport.method_space_digest != method_space_digest
             or passport.ruleset_version != method_space.ruleset_version
+            or (
+                passport.envelope.schema_version == 2
+                and passport.clarification_registry_digest != registry_digest
+            )
         ):
             return False
     return True

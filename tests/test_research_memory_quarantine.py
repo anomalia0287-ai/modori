@@ -14,10 +14,12 @@ from modori.research_memory.canonical import (
 from modori.research_memory.evidence_bundle import EvidenceBundle
 from modori.research_memory.ledger_contracts import (
     LedgerArtifact,
+    LedgerArtifactKind,
     LedgerEvent,
     LedgerEventKind,
     LedgerHead,
 )
+from tests.research_memory_passport_fixtures import history_with_passport_commit
 from modori.research_memory.quarantine import (
     EvidenceBundleQuarantine,
     QuarantineDisposition,
@@ -122,6 +124,56 @@ def _passport_bundle(*, stale: bool, stale_version: str = "stale_v0") -> bytes:
         head=LedgerHead(sequence=2, event_hash=event.event_hash),
         artifacts=artifacts,
         events=(original, event),
+        exported_at_utc=None,
+    ).to_bytes()
+
+
+def _v2_passport_bundle(*, registry_digest: str | None = None) -> bytes:
+    events, artifacts, _request_value, passport = history_with_passport_commit()
+    if registry_digest is not None:
+        replacement = replace(
+            passport,
+            clarification_registry_digest=registry_digest,
+        )
+        replacement_artifact = LedgerArtifact.from_value(replacement)
+        snapshot_artifacts = tuple(
+            artifact
+            for artifact in artifacts
+            if artifact.artifact_kind is not LedgerArtifactKind.ANALYSIS_PASSPORT
+        )
+        artifacts = tuple(
+            sorted(
+                (*snapshot_artifacts, replacement_artifact),
+                key=lambda artifact: artifact.artifact_id,
+            )
+        )
+        genesis = events[0]
+        committed = LedgerEvent.create(
+            project_id="project-1",
+            event_id="event:passport:2",
+            sequence=2,
+            event_kind=LedgerEventKind.PASSPORT_COMMITTED,
+            subject_artifact_ids=tuple(
+                artifact.artifact_id for artifact in artifacts
+            ),
+            payload={
+                "passport_artifact_id": replacement_artifact.artifact_id,
+                "resulting_snapshot_artifact_id": genesis.payload[
+                    "resulting_snapshot_artifact_id"
+                ],
+            },
+            previous_event_hash=genesis.event_hash,
+            recorded_at_utc=None,
+        )
+        events = (genesis, committed)
+    return EvidenceBundle.create(
+        source_project_id="project-1",
+        head=LedgerHead(
+            sequence=events[-1].sequence,
+            event_hash=events[-1].event_hash,
+        ),
+        artifacts=artifacts,
+        events=events,
         exported_at_utc=None,
     ).to_bytes()
 
@@ -393,6 +445,31 @@ def test_current_passport_is_ignored_as_authority_but_stale_catalog_is_rejected(
         local_dataset_fingerprint="a" * 64,
     )
     assert stale.stage is QuarantineStage.REJECTED
+    assert stale.findings[0].reason_code is QuarantineReasonCode.STALE_CATALOG
+
+
+def test_foreign_v2_is_integrity_checked_without_authority_and_registry_drift_closes() -> (
+    None
+):
+    current = EvidenceBundleQuarantine.inspect(
+        _v2_passport_bundle(),
+        local_dataset_fingerprint="a" * 64,
+    )
+    assert current.stage is QuarantineStage.ASSERTION_READY
+    assert current.imported_assertions
+    assert "passport" not in current.__dataclass_fields__
+    assert "transition" not in current.__dataclass_fields__
+    assert all(
+        not isinstance(assertion.value, (AnalysisPassport, Fact))
+        for assertion in current.imported_assertions
+    )
+
+    stale = EvidenceBundleQuarantine.inspect(
+        _v2_passport_bundle(registry_digest="f" * 64),
+        local_dataset_fingerprint="a" * 64,
+    )
+    assert stale.stage is QuarantineStage.REJECTED
+    assert stale.imported_assertions == ()
     assert stale.findings[0].reason_code is QuarantineReasonCode.STALE_CATALOG
 
 
