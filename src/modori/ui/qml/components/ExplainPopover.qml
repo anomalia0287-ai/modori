@@ -43,7 +43,7 @@ Popup {
             }
         }
 
-        Button {
+        AppButton {
             text: appBootstrap.text("explain.close")
             Accessible.name: appBootstrap.text("explain.close_accessible")
             Layout.alignment: Qt.AlignRight

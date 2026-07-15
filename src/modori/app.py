@@ -70,16 +70,22 @@ def _run_engine_smoke(data_path: Path, output_path: Path) -> int:
         runtime_cache_dir = cache_dir().resolve(strict=True)
         controller = UiController()
         opened = controller.openDataFile(data_path, ImportOptions(confirm_new_session=True))
-        if opened.ok:
-            rerun = (
-                controller.runPreparedRecommendation()
-                if controller.recommendationCount > 0
-                else controller.rerun()
-            )
-            waited = controller.waitForLastRun(timeout=30)
-        else:
-            rerun = None
-            waited = False
+        variable_model = controller.variableModel
+        variable_keys = (
+            [
+                str(variable_model.data(variable_model.index(row, 0))).strip()
+                for row in range(min(variable_model.rowCount(), 3))
+            ]
+            if variable_model is not None
+            else []
+        )
+        configured = bool(
+            opened.ok
+            and variable_keys
+            and controller.configureDescriptivesFromText(", ".join(variable_keys), "")
+        )
+        rerun = controller.rerun() if configured else None
+        waited = controller.waitForLastRun(timeout=30) if rerun is not None else False
         v1_smoke = v1_statistics_smoke_payload()
         payload = {
             "ok": bool(

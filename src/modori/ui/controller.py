@@ -30,6 +30,41 @@ from modori.ui.settings import UiSettingsStore
 from modori.ui.worker import EngineJobResult, SerializedEngineWorker
 
 
+_STEP_TITLE_LABELS_KO = {
+    "Import data": "데이터 가져오기",
+    "Import regression data": "회귀 데이터 가져오기",
+    "Reverse-code negative items": "역문항 역코딩",
+    "Reverse-code items": "역코딩",
+    "Compose job satisfaction": "직무만족 척도 만들기",
+    "Compose scale score": "척도 점수 만들기",
+    "Unify value variants": "값 표기 통일",
+    "Map categorical values": "범주 값 매핑",
+    "Descriptives Table 1": "기술통계",
+    "Reliability": "척도 신뢰도",
+    "Compare groups": "집단 비교",
+    "Multiple linear regression": "다중회귀",
+    "Frequency and crosstab": "빈도·교차표",
+    "Correlation": "상관관계",
+    "One-way ANOVA": "일원분산분석",
+    "Kruskal-Wallis test": "Kruskal-Wallis 검정",
+    "ANCOVA": "공분산분석",
+    "Factor/PCA": "요인/PCA",
+    "Repeated-measures ANOVA": "반복측정 분산분석",
+    "Friedman test": "Friedman 검정",
+    "Mediation": "매개분석",
+    "Moderated mediation": "조절된 매개분석",
+    "APA report": "APA 보고서",
+    "Regression report": "회귀 보고서",
+}
+
+
+def _localized_step_title(title: str) -> str:
+    metadata_prefix = "Edit metadata: "
+    if title.startswith(metadata_prefix):
+        return f"변수 정보 수정: {title.removeprefix(metadata_prefix)}"
+    return _STEP_TITLE_LABELS_KO.get(title, title)
+
+
 def export_report_from_pipeline(
     pipeline: object,
     options: ReportExportOptions,
@@ -72,7 +107,7 @@ class UiController(
             self._settings_store,
             reduce_effects_override=reduce_effects,
         )
-        self._mode = "guided"
+        self._mode = "standard"
         self._last_error = ""
         self._last_message = ""
         self._result_state = UiResultState()
@@ -110,6 +145,13 @@ class UiController(
     @Property(str, notify=stateChanged)
     def status(self) -> str:
         return self._pipeline_state.status
+
+    @Property(bool, notify=stateChanged)
+    def canRerun(self) -> bool:
+        if self.status in {"empty", "running"}:
+            return False
+        validation = self._services.run_validator.validate(self._services.pipeline_ops)
+        return validation.ok
 
     @Property(bool, notify=stateChanged)
     def stale(self) -> bool:
@@ -172,6 +214,14 @@ class UiController(
     @Property(str, notify=stateChanged)
     def stepChainText(self) -> str:
         return self._pipeline_state.step_chain_text
+
+    @Property(str, notify=stateChanged)
+    def stepChainDisplayText(self) -> str:
+        return " → ".join(
+            _localized_step_title(title.strip())
+            for title in self._pipeline_state.step_chain_text.split(" → ")
+            if title.strip()
+        )
 
     @Property(str, notify=stateChanged)
     def recentFilesText(self) -> str:

@@ -209,6 +209,13 @@ def test_reliability_questionable_alpha_band_is_exactly_locked() -> None:
     )
 
 
+def test_default_reliability_scale_name_is_human_readable_in_korean() -> None:
+    result = replace(_reliability_result(0.65), scale_name="selected_scale")
+
+    assert prose_for(result, "ko").startswith("선택한 문항 척도는")
+    assert prose_for(result, "en").startswith("The selected_scale scale")
+
+
 def test_comparison_student_t_prose_is_exactly_locked() -> None:
     assert (
         prose_for(_comparison_result("student_t"), "ko")

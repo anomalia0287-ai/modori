@@ -13,8 +13,7 @@ def test_import_preview_service_returns_variable_summary(tmp_path) -> None:
 
     assert preview.ok is True
     assert preview.pending_path == data_path
-    assert "2 cases" in preview.text
-    assert "2 variables" in preview.text
+    assert "미리 읽은 데이터: 2행 · 2개 변수" in preview.text
     assert "group" in preview.text
     assert "score" in preview.text
 
@@ -76,7 +75,7 @@ def test_import_preview_service_surfaces_public_data_header_warning(tmp_path) ->
     preview = ImportPreviewService().preview(data_path)
 
     assert preview.ok is True
-    assert "추론: 헤더 1행, 데이터 시작 5행, 확신 high" in preview.text
+    assert "추론: 헤더 1행, 데이터 시작 5행, 확신 높음" in preview.text
     assert "근거: 표 헤더 앞의 안내 행 3개를 건너뛰었습니다." in preview.text
     assert "표 헤더 앞의 안내 행 3개를 건너뛰었습니다." in preview.text
     assert "자치구" in preview.text
@@ -91,7 +90,7 @@ def test_import_preview_service_accepts_text_xls_public_data(tmp_path) -> None:
     preview = ImportPreviewService().preview(data_path)
 
     assert preview.ok is True
-    assert "4 variables" in preview.text
+    assert "4개 변수" in preview.text
     assert "XLS 확장자이지만 텍스트 표로 읽었습니다." in preview.text
     assert "근거: XLS 확장자이지만 텍스트 표로 읽었습니다." in preview.text
     assert "지점명=서울" in preview.text

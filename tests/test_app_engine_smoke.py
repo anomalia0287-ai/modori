@@ -4,6 +4,14 @@ from pathlib import Path
 import pandas as pd
 
 
+def test_engine_smoke_uses_stable_direct_rerun_path() -> None:
+    source = Path("src/modori/app.py").read_text(encoding="utf-8")
+
+    assert "controller.runPreparedRecommendation()" not in source
+    assert "controller.configureDescriptivesFromText" in source
+    assert "rerun = controller.rerun() if configured else None" in source
+
+
 def test_app_engine_smoke_writes_success_payload(tmp_path, monkeypatch) -> None:
     from tests.ui.test_end_to_end_ui_flow import write_reference_csv
     from modori.app import main

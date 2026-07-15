@@ -160,8 +160,9 @@ def _reliability_prose(result: ReliabilityResult, language: str = "ko") -> str:
             f"The {result.scale_name} scale showed {_alpha_qualifier_en(result.cronbach_alpha)} internal consistency "
             f"(Cronbach's α = {alpha}, McDonald's ω = {omega})."
         )
+    scale_name = "선택한 문항" if result.scale_name == "selected_scale" else result.scale_name
     return (
-        f"{result.scale_name} 척도는 {_alpha_qualifier_ko(result.cronbach_alpha)} 내적 일관성을 보였다"
+        f"{scale_name} 척도는 {_alpha_qualifier_ko(result.cronbach_alpha)} 내적 일관성을 보였다"
         f"(Cronbach's α = {alpha}, McDonald's ω = {omega})."
     )
 

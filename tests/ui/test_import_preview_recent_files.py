@@ -9,11 +9,12 @@ def test_import_preview_lists_variables_and_inferred_measures(tmp_path) -> None:
     assert controller.previewDataFilePath(str(data_path)) is True
 
     preview = controller.importPreviewText
-    assert "20 cases" in preview
-    assert "9 variables" in preview
+    assert "미리 읽은 데이터: 20행 · 9개 변수" in preview
     assert "q1" in preview
     assert "group" in preview
-    assert "ordinal" in preview
+    assert "순서형" in preview
+    assert "no labels" not in preview
+    assert "no missing" not in preview
 
 
 def test_import_preview_failure_sets_visible_error(tmp_path) -> None:

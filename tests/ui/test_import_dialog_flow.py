@@ -57,8 +57,7 @@ def test_controller_previews_file_before_confirming_import(tmp_path) -> None:
     controller = UiController()
 
     assert controller.previewDataFilePath(str(data_path)) is True
-    assert "20 cases" in controller.importPreviewText
-    assert "9 variables" in controller.importPreviewText
+    assert "미리 읽은 데이터: 20행 · 9개 변수" in controller.importPreviewText
     assert controller.pipeline is None
 
     assert controller.confirmPendingImport() is True

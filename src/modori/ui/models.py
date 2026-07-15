@@ -8,6 +8,13 @@ from PySide6.QtCore import QAbstractTableModel, QByteArray, QModelIndex, Qt
 from modori.ui.table_provider import TableProvider
 
 
+_MEASURE_DISPLAY_KO = {
+    "nominal": "범주형",
+    "ordinal": "순서형",
+    "scale": "연속형",
+}
+
+
 class DataTableModel(QAbstractTableModel):
     def __init__(self, provider: TableProvider) -> None:
         super().__init__()
@@ -85,7 +92,7 @@ class VariableTableModel(QAbstractTableModel):
         values = (
             record.key,
             record.label,
-            record.measure,
+            _MEASURE_DISPLAY_KO.get(record.measure, record.measure),
             record.value_labels,
             record.missing_codes,
             record.display_type,

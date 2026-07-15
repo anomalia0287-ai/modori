@@ -173,7 +173,8 @@ def test_explain_mode_control_is_bound_to_explanation_surfaces() -> None:
     assert "uiController.explainModeEnabled" in settings
     assert "uiController.setExplainModeEnabled(checked)" in settings
     assert "visible: uiController.explainModeEnabled" in results
-    assert "uiController.explainModeEnabled ?" in guide
+    assert "uiController.explainModeEnabled" in guide
+    assert "uiController.explainPlainText" in guide
 
 
 def test_guided_and_standard_modes_change_visible_work_surface() -> None:
@@ -196,10 +197,10 @@ def test_work_actions_are_disabled_until_required_state_exists() -> None:
     dialog = qml_text("dialogs/ReportExportDialog.qml")
 
     assert 'enabled: uiController.status !== "empty" && uiController.status !== "running"' in work
+    assert "enabled: uiController.canRerun" in work
     assert "enabled: uiController.resultSummary.length > 0" in work
     assert "enabled: root.hasResults()" in results
-    assert 'property bool canRunPipeline: uiController.status !== "empty" && uiController.status !== "running"' in pipeline
-    assert "enabled: root.canRunPipeline" in pipeline
+    assert "enabled: uiController.canRerun" in pipeline
     assert "enabled: uiController.resultSummary.length > 0" in dialog
 
 
@@ -211,9 +212,10 @@ def test_controller_bridge_runs_reference_flow_from_path(tmp_path) -> None:
     write_reference_csv(data_path)
     controller = UiController()
 
-    assert controller.chooseMode("guided") is True
+    assert controller.chooseMode("standard") is True
     assert controller.openDataFilePath(str(data_path)) is True
-    assert controller.runPreparedRecommendationNow() is True
+    assert controller.configureReliabilityFromText("q1, q2, q3") is True
+    assert controller.rerunNow() is True
     assert controller.waitForLastRun(timeout=10) is True
     assert controller.dataModel is not None
     assert controller.dataModel.rowCount() == 20

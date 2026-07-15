@@ -64,10 +64,12 @@ Item {
                 }
 
                 AppButton {
-                    text: appBootstrap.text("work.analysis")
-                    Accessible.name: appBootstrap.text("work.analysis_run")
+                    text: uiController.resultSummary.length > 0
+                        ? appBootstrap.text("work.analysis")
+                        : appBootstrap.text("work.analysis_run")
+                    Accessible.name: text
                     variant: "secondary"
-                    enabled: uiController.status !== "empty" && uiController.status !== "running"
+                    enabled: uiController.canRerun
                     onClicked: uiController.rerunNow()
                 }
 
@@ -129,9 +131,83 @@ Item {
                             objectName: "workDataTabs"
                             Layout.fillWidth: true
 
-                            TabButton { text: appBootstrap.text("work.data_view") }
-                            TabButton { text: appBootstrap.text("work.variable_view") }
-                            TabButton { text: appBootstrap.text("work.transform_view") }
+                            TabButton {
+                                id: dataTab
+                                text: appBootstrap.text("work.data_view")
+                                Accessible.name: text
+                                contentItem: Label {
+                                    text: dataTab.text
+                                    color: dataTab.checked ? theme.textStrong : theme.textSecondary
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+                                background: Rectangle {
+                                    color: dataTab.checked ? theme.surfaceCream : theme.surfaceRaised
+                                    border.color: dataTab.activeFocus ? theme.focusRing : theme.lineSubtle
+                                    border.width: dataTab.activeFocus ? theme.borderWidthFocus : theme.borderWidth
+
+                                    Rectangle {
+                                        anchors.left: parent.left
+                                        anchors.right: parent.right
+                                        anchors.bottom: parent.bottom
+                                        height: theme.borderWidthFocus
+                                        color: theme.actionTeal
+                                        visible: dataTab.checked
+                                    }
+                                }
+                            }
+
+                            TabButton {
+                                id: variableTab
+                                text: appBootstrap.text("work.variable_view")
+                                Accessible.name: text
+                                contentItem: Label {
+                                    text: variableTab.text
+                                    color: variableTab.checked ? theme.textStrong : theme.textSecondary
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+                                background: Rectangle {
+                                    color: variableTab.checked ? theme.surfaceCream : theme.surfaceRaised
+                                    border.color: variableTab.activeFocus ? theme.focusRing : theme.lineSubtle
+                                    border.width: variableTab.activeFocus ? theme.borderWidthFocus : theme.borderWidth
+
+                                    Rectangle {
+                                        anchors.left: parent.left
+                                        anchors.right: parent.right
+                                        anchors.bottom: parent.bottom
+                                        height: theme.borderWidthFocus
+                                        color: theme.actionTeal
+                                        visible: variableTab.checked
+                                    }
+                                }
+                            }
+
+                            TabButton {
+                                id: transformTab
+                                text: appBootstrap.text("work.transform_view")
+                                Accessible.name: text
+                                contentItem: Label {
+                                    text: transformTab.text
+                                    color: transformTab.checked ? theme.textStrong : theme.textSecondary
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+                                background: Rectangle {
+                                    color: transformTab.checked ? theme.surfaceCream : theme.surfaceRaised
+                                    border.color: transformTab.activeFocus ? theme.focusRing : theme.lineSubtle
+                                    border.width: transformTab.activeFocus ? theme.borderWidthFocus : theme.borderWidth
+
+                                    Rectangle {
+                                        anchors.left: parent.left
+                                        anchors.right: parent.right
+                                        anchors.bottom: parent.bottom
+                                        height: theme.borderWidthFocus
+                                        color: theme.actionTeal
+                                        visible: transformTab.checked
+                                    }
+                                }
+                            }
                         }
 
                         StackLayout {
@@ -153,7 +229,9 @@ Item {
 
             PipelineRail {
                 Layout.fillWidth: true
-                Layout.preferredHeight: theme.pipelineHeight
+                Layout.preferredHeight: uiController.mode === "guided"
+                    ? theme.pipelineCompactHeight
+                    : theme.pipelineHeight
                 onRerunRequested: uiController.rerunNow()
             }
         }

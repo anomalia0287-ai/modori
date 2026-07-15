@@ -132,14 +132,15 @@ def test_guided_and_standard_apply_buttons_require_complete_fields() -> None:
 
     assert "property bool canCommitSelection" in guide
     assert 'property bool canEditSelection: uiController.status !== "empty" && uiController.status !== "running"' in guide
-    assert "enabled: root.canCommitSelection" in guide
+    assert "enabled: root.canRunReviewedSelection()" in guide
     assert "function canCommitManualSelection()" in guide
     assert "if (!root.canEditSelection)" in guide
     assert 'root.selectedIntent === "reliability"' in guide
     assert "root.isVariableListIntent(root.selectedIntent)" in guide
     assert "root.hasText(reliabilityItemsField.text)" in guide
-    assert "root.hasText(outcomeKeyField.text) && root.hasText(groupKeyField.text)" in guide
-    assert "root.hasText(outcomeKeyField.text) && root.hasText(predictorKeysField.text)" in guide
+    assert "root.hasText(outcomeKeyField.text)" in guide
+    assert "root.hasText(groupKeyField.text)" in guide
+    assert "root.hasText(predictorKeysField.text)" in guide
     assert 'property bool canEditSelection: uiController.status !== "empty" && uiController.status !== "running"' in rail
     assert "enabled: root.canEditSelection && root.hasText(reliabilityItemsField.text)" in rail
     assert (
@@ -157,16 +158,18 @@ def test_guide_rail_shows_recommendations_without_auto_running() -> None:
 
     assert "ScrollView" in guide
     assert "uiController.recommendationTitle" in guide
-    assert "uiController.recommendationLevel" in guide
     assert "uiController.recommendationReason" in guide
     assert "uiController.recommendationAlternativesText" not in guide
     assert "uiController.recommendationCount" in guide
     assert "uiController.recommendationCandidateTitleAt(index)" in guide
-    assert "uiController.recommendationCandidateLevelAt(index)" in guide
     assert "uiController.selectRecommendationAt" in guide
     assert 'appBootstrap.text("guide.other_recommendations")' in guide
     assert 'appBootstrap.text("guide.manual_selection")' in guide
-    assert "uiController.runPreparedRecommendationNow()" in guide
+    assert "uiController.runPreparedRecommendationNow()" not in guide
+    assert "uiController.runPreparedRecommendation()" not in guide
+    assert "uiController.applySelectedRecommendation" not in guide
+    assert "uiController.recommendationLevel" not in guide
+    assert "uiController.recommendationCandidateLevelAt(index)" not in guide
 
     selection_call = guide.index("uiController.selectRecommendationAt")
     selection_handler_start = guide.rfind("onClicked: {", 0, selection_call)

@@ -28,6 +28,18 @@ _REVIEW_ROLE_LABELS_KO = {
     "data": "데이터",
 }
 
+_MEASURE_LABELS_KO = {
+    "scale": "연속형",
+    "ordinal": "순서형",
+    "nominal": "범주형",
+}
+
+_CONFIDENCE_LABELS_KO = {
+    "high": "높음",
+    "medium": "보통",
+    "low": "낮음",
+}
+
 
 def review_rows(preview: TablePreviewResult | None) -> list[dict[str, Any]]:
     if preview is None:
@@ -103,10 +115,14 @@ class ImportPreviewService:
         for name, variable in variables.items():
             has_labels = bool(variable.value_labels)
             has_missing = bool(variable.missing_values)
+            measure = _MEASURE_LABELS_KO.get(
+                variable.measure.value,
+                variable.measure.value,
+            )
             lines.append(
-                f"{name} · {variable.label or name} · {variable.measure.value} · "
-                f"{'labels' if has_labels else 'no labels'} · "
-                f"{'missing' if has_missing else 'no missing'}"
+                f"{name} · {variable.label or name} · {measure} · "
+                f"{'값 레이블 있음' if has_labels else '값 레이블 없음'} · "
+                f"{'결측값 지정됨' if has_missing else '결측값 지정 없음'}"
             )
         return lines[:30]
 
@@ -118,7 +134,7 @@ class ImportPreviewService:
     ) -> str:
         lines = [
             f"파일: {preview.source.path.name}",
-            f"{preview.previewed_rows} cases previewed · {len(preview.columns)} variables",
+            f"미리 읽은 데이터: {preview.previewed_rows}행 · {len(preview.columns)}개 변수",
             f"미리보기: 앞 {preview.preview_limit}행 중 {preview.previewed_rows}행",
             f"값 레이블이 있는 변수: {label_count}",
         ]
@@ -145,7 +161,7 @@ class ImportPreviewService:
             "추론: "
             f"헤더 {report.header_row_count}행, "
             f"데이터 시작 {report.data_start_row_index + 1}행, "
-            f"확신 {report.confidence}"
+            f"확신 {_CONFIDENCE_LABELS_KO.get(report.confidence, report.confidence)}"
         ]
         if report.reasons:
             lines.append(f"근거: {' / '.join(report.reasons[:3])}")
@@ -165,5 +181,5 @@ class ImportPreviewService:
     @staticmethod
     def _format_cell(value: object) -> str:
         if value is None:
-            return "(missing)"
+            return "(결측)"
         return str(value)

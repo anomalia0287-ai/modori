@@ -303,3 +303,21 @@ def test_recommendation_service_exposes_mediation_as_caution_only() -> None:
     mediation = next(candidate for candidate in state.candidates if candidate.kind == "mediation")
     assert mediation.level == "주의 필요"
     assert state.default_candidate is not mediation
+
+
+def test_recommendation_kind_is_exposed_without_mutating_pipeline(tmp_path) -> None:
+    from tests.ui.test_end_to_end_ui_flow import write_reference_csv
+    from modori.ui.controller import UiController
+
+    data_path = tmp_path / "survey.csv"
+    write_reference_csv(data_path)
+    controller = UiController()
+    assert controller.openDataFilePath(str(data_path)) is True
+
+    before_version = controller.pipeline_version
+    before_steps = controller.stepChainText
+    kind = controller.recommendationKind
+
+    assert kind
+    assert controller.pipeline_version == before_version
+    assert controller.stepChainText == before_steps

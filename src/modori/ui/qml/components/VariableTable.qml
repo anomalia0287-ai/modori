@@ -6,6 +6,7 @@ import "../theme"
 Item {
     id: root
     property string selectedVariableKey: ""
+    property var measureValues: ["nominal", "ordinal", "scale"]
 
     Theme {
         id: theme
@@ -23,6 +24,10 @@ Item {
             return 2
         }
         return 0
+    }
+
+    function measureValue(index) {
+        return root.measureValues[index]
     }
 
     function selectVariable(variableKey, measureValue) {
@@ -52,14 +57,21 @@ Item {
 
             ComboBox {
                 id: measureBox
-                model: ["nominal", "ordinal", "scale"]
+                model: [
+                    appBootstrap.text("variable.measure_nominal"),
+                    appBootstrap.text("variable.measure_ordinal"),
+                    appBootstrap.text("variable.measure_scale")
+                ]
                 Accessible.name: appBootstrap.text("variable.measure_accessible")
             }
 
-            Button {
+            AppButton {
                 text: appBootstrap.text("variable.measure_edit")
                 enabled: root.selectedVariableKey.length > 0 && uiController.status !== "running"
-                onClicked: uiController.changeVariableMeasure(root.selectedVariableKey, measureBox.currentText)
+                onClicked: uiController.changeVariableMeasure(
+                    root.selectedVariableKey,
+                    root.measureValue(measureBox.currentIndex)
+                )
             }
         }
 
@@ -83,7 +95,7 @@ Item {
                 selectByMouse: true
             }
 
-            Button {
+            AppButton {
                 text: appBootstrap.text("variable.metadata_apply")
                 Accessible.name: appBootstrap.text("variable.metadata_apply")
                 enabled: root.selectedVariableKey.length > 0 && uiController.status !== "running" && (root.hasText(labelField.text) || root.hasText(missingCodesField.text))

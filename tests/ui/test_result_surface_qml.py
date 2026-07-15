@@ -125,6 +125,8 @@ def test_explain_popover_and_report_dialog_are_local_qml_components() -> None:
     assert explain.is_file()
     assert report.is_file()
     assert "Popup" in explain.read_text(encoding="utf-8")
+    assert "AppButton" in explain.read_text(encoding="utf-8")
+    assert "\n        Button {" not in explain.read_text(encoding="utf-8")
     assert "Dialog" in report.read_text(encoding="utf-8")
     assert "uiController.exportReportWithSelections" in report.read_text(encoding="utf-8")
 

@@ -24,6 +24,11 @@ class RecommendationControllerMixin:
         return "" if candidate is None else candidate.title_ko
 
     @Property(str, notify=recommendationStateChanged)
+    def recommendationKind(self) -> str:
+        candidate = self._recommendation_state.selected_candidate
+        return "" if candidate is None else candidate.kind
+
+    @Property(str, notify=recommendationStateChanged)
     def recommendationLevel(self) -> str:
         candidate = self._recommendation_state.selected_candidate
         return "" if candidate is None else candidate.level

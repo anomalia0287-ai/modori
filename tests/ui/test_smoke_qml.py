@@ -115,8 +115,5 @@ def test_no_hidden_rerun_calls_in_import_or_recommendation_selection() -> None:
     assert controller_method_calls(recommendation_selection_block) == [
         "selectRecommendationAt"
     ]
-    assert "runPreparedRecommendationNow" in controller_method_calls(
-        qml_object_block(
-            guide, 'text: root.manualSelectionMode ? appBootstrap.text("guide.run_manual") : appBootstrap.text("guide.run_recommended")'
-        )
-    )
+    assert "runPreparedRecommendationNow" not in guide
+    assert "applySelectedRecommendation" not in guide

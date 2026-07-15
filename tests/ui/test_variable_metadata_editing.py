@@ -267,6 +267,12 @@ def test_variable_table_exposes_measure_editing_action() -> None:
 
     assert "variable.measure_edit" in qml
     assert "uiController.changeVariableMeasure" in qml
+    assert 'appBootstrap.text("variable.measure_nominal")' in qml
+    assert 'appBootstrap.text("variable.measure_ordinal")' in qml
+    assert 'appBootstrap.text("variable.measure_scale")' in qml
+    assert "root.measureValue(measureBox.currentIndex)" in qml
+    assert 'model: ["nominal", "ordinal", "scale"]' not in qml
+    assert qml.count("AppButton {") >= 2
 
 
 def test_variable_table_selects_row_as_measure_edit_target() -> None:
@@ -279,4 +285,6 @@ def test_variable_table_selects_row_as_measure_edit_target() -> None:
     assert "onCellActivated" in qml
     assert "root.selectVariable(variableKey, measureValue)" in qml
     assert "readOnly: true" in qml
-    assert "uiController.changeVariableMeasure(root.selectedVariableKey" in qml
+    assert "uiController.changeVariableMeasure(" in qml
+    assert "root.selectedVariableKey," in qml
+    assert "root.measureValue(measureBox.currentIndex)" in qml

@@ -68,7 +68,7 @@ def test_variable_table_model_exposes_metadata_rows() -> None:
     assert model.rowCount() == 1
     assert model.columnCount() == 6
     assert model.data(model.index(0, 0), Qt.ItemDataRole.DisplayRole) == "score"
-    assert model.data(model.index(0, 2), Qt.ItemDataRole.DisplayRole) == "scale"
+    assert model.data(model.index(0, 2), Qt.ItemDataRole.DisplayRole) == "연속형"
     role_names = {bytes(value).decode("utf-8") for value in model.roleNames().values()}
     assert "variableKey" in role_names
     assert "measureValue" in role_names
