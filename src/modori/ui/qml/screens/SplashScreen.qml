@@ -25,11 +25,9 @@ Basic.Pane {
         anchors.centerIn: parent
         spacing: theme.spaceMd
 
-        Basic.Label {
+        BrandWordmark {
             text: appBootstrap.text("app.title")
-            color: theme.textStrong
             font.pixelSize: theme.fontSplashTitle
-            font.bold: true
             Layout.alignment: Qt.AlignHCenter
         }
 

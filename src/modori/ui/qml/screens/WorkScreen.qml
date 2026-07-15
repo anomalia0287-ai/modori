@@ -41,11 +41,9 @@ Item {
                 anchors.rightMargin: theme.spaceXl
                 spacing: theme.spaceHeaderGap
 
-                Label {
+                BrandWordmark {
                     text: appBootstrap.text("app.title")
-                    color: theme.textStrong
                     font.pixelSize: theme.fontSubtitle
-                    font.bold: true
                 }
 
                 AppButton {

@@ -44,11 +44,9 @@ Item {
                 Layout.fillHeight: true
                 spacing: theme.spaceLg
 
-                Label {
+                BrandWordmark {
                     text: appBootstrap.text("app.title")
-                    color: theme.textStrong
                     font.pixelSize: theme.fontHero
-                    font.bold: true
                 }
 
                 Label {

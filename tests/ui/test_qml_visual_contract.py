@@ -25,6 +25,7 @@ def test_visual_qml_surfaces_use_theme_object() -> None:
         "Main.qml",
         "components/AppButton.qml",
         "components/AppIconButton.qml",
+        "components/BrandWordmark.qml",
         "components/DataGridView.qml",
         "components/DataTable.qml",
         "components/ExplainPopover.qml",

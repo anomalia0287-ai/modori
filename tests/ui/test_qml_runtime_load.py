@@ -10,6 +10,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from PySide6.QtCore import QMetaObject, QObject, QUrl, qInstallMessageHandler
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine, QQmlComponent, QQmlEngine
+from PySide6.QtTest import QTest
 
 from modori.app import AppBootstrap
 from modori.ui.controller import UiController
@@ -149,6 +150,35 @@ def test_splash_qml_loads_without_runtime_errors(reduce_effects: bool) -> None:
         obj.deleteLater()
         app.processEvents()
         assert _significant_warnings(messages) == []
+    finally:
+        qInstallMessageHandler(previous_handler)
+
+
+def test_brand_wordmark_loads_bundled_parisienne_without_runtime_errors() -> None:
+    app = _app()
+    engine = QQmlEngine()
+    messages: list[str] = []
+
+    def message_handler(msg_type, context, message) -> None:
+        del msg_type, context
+        messages.append(message)
+
+    previous_handler = qInstallMessageHandler(message_handler)
+    component = QQmlComponent(
+        engine,
+        QUrl.fromLocalFile(str((QML_ROOT / "components/BrandWordmark.qml").resolve())),
+    )
+
+    try:
+        assert component.status() == QQmlComponent.Status.Ready, _component_errors(component)
+        obj = component.create()
+        assert obj is not None, _component_errors(component)
+        QTest.qWait(100)
+        app.processEvents()
+        assert obj.property("font").family() == "Parisienne"
+        assert _significant_warnings(messages) == []
+        obj.deleteLater()
+        app.processEvents()
     finally:
         qInstallMessageHandler(previous_handler)
 

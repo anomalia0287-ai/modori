@@ -46,3 +46,26 @@ def test_pure_white_surface_roles_are_scoped_to_scrollbars() -> None:
         "scrollRailSurface",
         "scrollThumbSurface",
     }
+
+
+def test_wordmark_component_owns_font_loading_and_brand_color() -> None:
+    wordmark = qml_text("components/BrandWordmark.qml")
+
+    assert "FontLoader" in wordmark
+    assert 'Qt.resolvedUrl("../assets/fonts/Parisienne-Regular.ttf")' in wordmark
+    assert "font.family: parisienne.name" in wordmark
+    assert "font.weight: Font.Normal" in wordmark
+    assert "color: theme.brandWordmark" in wordmark
+    assert "Accessible.name: text" in wordmark
+    assert "Theme {" in wordmark
+
+
+def test_entry_work_and_splash_reuse_brand_wordmark() -> None:
+    for relative in (
+        "screens/EntryScreen.qml",
+        "screens/WorkScreen.qml",
+        "screens/SplashScreen.qml",
+    ):
+        source = qml_text(relative)
+        assert "BrandWordmark {" in source
+        assert 'appBootstrap.text("app.title")' in source

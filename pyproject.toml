@@ -50,6 +50,8 @@ where = ["src"]
     "qml/dialogs/*.qml",
     "qml/screens/*.qml",
     "qml/theme/*.qml",
+    "qml/assets/fonts/*.ttf",
+    "qml/assets/fonts/*.txt",
     "qml/assets/icons/*.svg",
     "qml/assets/icons/*.txt",
 ]
