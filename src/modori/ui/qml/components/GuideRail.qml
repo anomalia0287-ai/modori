@@ -8,6 +8,7 @@ PearlSurface {
     objectName: "guideRail"
 
     fillColor: theme.guideSurface
+    radius: theme.radiusSmall
 
     property string guideNote: ""
     property string selectedIntent: ""
@@ -480,7 +481,7 @@ PearlSurface {
                 }
             }
 
-            TextField {
+            AppTextField {
                 id: reliabilityItemsField
                 visible: root.manualSelectionMode && root.selectedIntent === "reliability"
                 Layout.fillWidth: true
@@ -494,7 +495,7 @@ PearlSurface {
                 }
             }
 
-            TextField {
+            AppTextField {
                 id: variableKeysField
                 visible: root.manualSelectionMode
                     && root.isVariableListIntent(root.selectedIntent)
@@ -509,7 +510,7 @@ PearlSurface {
                 }
             }
 
-            TextField {
+            AppTextField {
                 id: outcomeKeyField
                 visible: root.manualSelectionMode
                     && (root.isOutcomeGroupIntent(root.selectedIntent)
@@ -527,7 +528,7 @@ PearlSurface {
                 }
             }
 
-            TextField {
+            AppTextField {
                 id: groupKeyField
                 visible: root.manualSelectionMode
                     && (root.isOutcomeGroupIntent(root.selectedIntent)
@@ -543,7 +544,7 @@ PearlSurface {
                 }
             }
 
-            TextField {
+            AppTextField {
                 id: covariateKeysField
                 visible: root.manualSelectionMode && root.selectedIntent === "ancova"
                 Layout.fillWidth: true
@@ -557,7 +558,7 @@ PearlSurface {
                 }
             }
 
-            TextField {
+            AppTextField {
                 id: predictorKeysField
                 visible: root.manualSelectionMode && root.selectedIntent === "regression"
                 Layout.fillWidth: true
@@ -571,7 +572,7 @@ PearlSurface {
                 }
             }
 
-            CheckBox {
+            AppCheckBox {
                 id: reviewConfirmation
                 objectName: "guideReviewConfirmation"
                 text: appBootstrap.text("guide.confirm_review")

@@ -7,6 +7,7 @@ PearlSurface {
     id: root
 
     fillColor: theme.paperSurface
+    radius: theme.radiusSmall
 
     signal rerunRequested()
 
@@ -75,7 +76,7 @@ PearlSurface {
                     font.bold: true
                 }
 
-                ComboBox {
+                AppComboBox {
                     id: analysisType
                     model: [
                         appBootstrap.text("guide.reliability"),
@@ -106,7 +107,7 @@ PearlSurface {
                 RowLayout {
                     spacing: theme.spaceSm
 
-                    TextField {
+                    AppTextField {
                         id: reliabilityItemsField
                         placeholderText: appBootstrap.text("pipeline.items_placeholder")
                         Accessible.name: appBootstrap.text("pipeline.items_accessible")
@@ -125,7 +126,7 @@ PearlSurface {
                 RowLayout {
                     spacing: theme.spaceSm
 
-                    TextField {
+                    AppTextField {
                         id: descriptivesVariablesField
                         placeholderText: appBootstrap.text("pipeline.variables_placeholder")
                         Accessible.name: appBootstrap.text("pipeline.variables_accessible")
@@ -133,7 +134,7 @@ PearlSurface {
                         Layout.fillWidth: true
                     }
 
-                    TextField {
+                    AppTextField {
                         id: descriptivesGroupField
                         placeholderText: appBootstrap.text("pipeline.group_placeholder")
                         Accessible.name: appBootstrap.text("pipeline.group_accessible")
@@ -155,7 +156,7 @@ PearlSurface {
                 RowLayout {
                     spacing: theme.spaceSm
 
-                    TextField {
+                    AppTextField {
                         id: frequencyVariablesField
                         placeholderText: appBootstrap.text("pipeline.variables_placeholder")
                         Accessible.name: appBootstrap.text("pipeline.variables_accessible")
@@ -174,7 +175,7 @@ PearlSurface {
                 RowLayout {
                     spacing: theme.spaceSm
 
-                    TextField {
+                    AppTextField {
                         id: correlationVariablesField
                         placeholderText: appBootstrap.text("pipeline.variables_placeholder")
                         Accessible.name: appBootstrap.text("pipeline.variables_accessible")
@@ -193,7 +194,7 @@ PearlSurface {
                 RowLayout {
                     spacing: theme.spaceSm
 
-                    TextField {
+                    AppTextField {
                         id: factorPcaVariablesField
                         placeholderText: appBootstrap.text("pipeline.variables_placeholder")
                         Accessible.name: appBootstrap.text("pipeline.variables_accessible")
@@ -212,7 +213,7 @@ PearlSurface {
                 RowLayout {
                     spacing: theme.spaceSm
 
-                    TextField {
+                    AppTextField {
                         id: comparisonOutcomeField
                         placeholderText: appBootstrap.text("pipeline.outcome_placeholder")
                         Accessible.name: appBootstrap.text("pipeline.outcome_accessible")
@@ -220,7 +221,7 @@ PearlSurface {
                         Layout.fillWidth: true
                     }
 
-                    TextField {
+                    AppTextField {
                         id: comparisonGroupField
                         placeholderText: appBootstrap.text("pipeline.group_placeholder")
                         Accessible.name: appBootstrap.text("pipeline.group_accessible")
@@ -242,7 +243,7 @@ PearlSurface {
                 RowLayout {
                     spacing: theme.spaceSm
 
-                    TextField {
+                    AppTextField {
                         id: anovaOutcomeField
                         placeholderText: appBootstrap.text("pipeline.outcome_placeholder")
                         Accessible.name: appBootstrap.text("pipeline.outcome_accessible")
@@ -250,7 +251,7 @@ PearlSurface {
                         Layout.fillWidth: true
                     }
 
-                    TextField {
+                    AppTextField {
                         id: anovaGroupField
                         placeholderText: appBootstrap.text("pipeline.group_placeholder")
                         Accessible.name: appBootstrap.text("pipeline.group_accessible")
@@ -272,7 +273,7 @@ PearlSurface {
                 RowLayout {
                     spacing: theme.spaceSm
 
-                    TextField {
+                    AppTextField {
                         id: kruskalDependentField
                         placeholderText: appBootstrap.text("pipeline.dependent_placeholder")
                         Accessible.name: appBootstrap.text("pipeline.dependent_accessible")
@@ -280,7 +281,7 @@ PearlSurface {
                         Layout.fillWidth: true
                     }
 
-                    TextField {
+                    AppTextField {
                         id: kruskalGroupField
                         placeholderText: appBootstrap.text("pipeline.group_placeholder")
                         Accessible.name: appBootstrap.text("pipeline.group_accessible")
@@ -302,7 +303,7 @@ PearlSurface {
                 RowLayout {
                     spacing: theme.spaceSm
 
-                    TextField {
+                    AppTextField {
                         id: ancovaOutcomeField
                         placeholderText: appBootstrap.text("pipeline.outcome_placeholder")
                         Accessible.name: appBootstrap.text("pipeline.outcome_accessible")
@@ -310,7 +311,7 @@ PearlSurface {
                         Layout.fillWidth: true
                     }
 
-                    TextField {
+                    AppTextField {
                         id: ancovaGroupField
                         placeholderText: appBootstrap.text("pipeline.group_placeholder")
                         Accessible.name: appBootstrap.text("pipeline.group_accessible")
@@ -318,7 +319,7 @@ PearlSurface {
                         Layout.fillWidth: true
                     }
 
-                    TextField {
+                    AppTextField {
                         id: ancovaCovariatesField
                         placeholderText: appBootstrap.text("pipeline.covariates_placeholder")
                         Accessible.name: appBootstrap.text("pipeline.covariates_accessible")
@@ -341,7 +342,7 @@ PearlSurface {
                 RowLayout {
                     spacing: theme.spaceSm
 
-                    TextField {
+                    AppTextField {
                         id: regressionOutcomeField
                         placeholderText: appBootstrap.text("pipeline.dependent_placeholder")
                         Accessible.name: appBootstrap.text("pipeline.dependent_accessible")
@@ -349,7 +350,7 @@ PearlSurface {
                         Layout.fillWidth: true
                     }
 
-                    TextField {
+                    AppTextField {
                         id: regressionPredictorsField
                         placeholderText: appBootstrap.text("pipeline.predictors_placeholder")
                         Accessible.name: appBootstrap.text("pipeline.predictors_accessible")

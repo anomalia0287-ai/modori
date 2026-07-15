@@ -1,21 +1,21 @@
 import QtQuick
 
 QtObject {
-    readonly property color canvasCream: "#F3EEE5"
-    readonly property color surfaceCream: "#FBF8F1"
-    readonly property color surfaceRaised: "#EDE5D9"
-    readonly property color surfaceQuiet: "#F6F1E8"
-    readonly property color pearlMint: "#F0F5EE"
-    readonly property color pearlRose: "#F7EEEB"
-    readonly property color pearlLilac: "#F2EFF7"
-    readonly property color focusRing: "#176F64"
-    readonly property color semanticGlow: "#5FB7AA"
+    readonly property color canvasCream: "#F4F0E8"
+    readonly property color surfaceCream: "#FCFAF5"
+    readonly property color surfaceRaised: "#EEE8DE"
+    readonly property color surfaceQuiet: "#F7F3EB"
+    readonly property color pearlMint: "#EFF4F0"
+    readonly property color pearlRose: "#F6EFEC"
+    readonly property color pearlLilac: "#F2F0F5"
+    readonly property color focusRing: "#2B6F65"
+    readonly property color semanticGlow: "#8CB8AF"
     readonly property color transparent: "transparent"
 
-    readonly property color deepTeal: "#244E47"
-    readonly property color brandTeal: "#2C7468"
-    readonly property color actionTeal: "#237E70"
-    readonly property color aqua: "#DCEBE4"
+    readonly property color deepTeal: "#2E4D47"
+    readonly property color brandTeal: "#376F67"
+    readonly property color actionTeal: "#2C776B"
+    readonly property color aqua: "#E2ECE7"
     readonly property color gold: "#B98B3E"
     readonly property color orange: "#B87743"
     readonly property color transformAccent: "#A96F78"
@@ -30,8 +30,8 @@ QtObject {
     readonly property color gridRowHeaderSurface: "#F0E8DA"
     readonly property color gridHeaderText: "#27423B"
     readonly property color flatBackground: canvasCream
-    readonly property color lineSubtle: "#DCD4C8"
-    readonly property color lineStrong: "#C9C0B4"
+    readonly property color lineSubtle: "#DDD6CC"
+    readonly property color lineStrong: "#C9C1B7"
     readonly property color lineGrid: "#D7DED8"
     readonly property color lineRail: "#D2C9BC"
     readonly property color lineDialog: "#CFC6BA"
@@ -46,7 +46,7 @@ QtObject {
     readonly property color textSoft: "#89958F"
     readonly property color onBrand: "#FFFFFF"
     readonly property color onBrandDanger: "#FFE6E6"
-    readonly property color selectionSurface: "#DFECE6"
+    readonly property color selectionSurface: "#E3ECE7"
     readonly property color warning: "#8B641F"
     readonly property color warningSurface: "#F5E8C8"
     readonly property color danger: "#A33D4B"
@@ -56,6 +56,7 @@ QtObject {
     readonly property int radiusSmall: 6
     readonly property int radiusMedium: 10
     readonly property int radiusLarge: 14
+    readonly property int checkboxRadius: 4
     readonly property int borderWidth: 1
     readonly property int borderWidthFocus: 2
 
@@ -64,7 +65,7 @@ QtObject {
     readonly property int spaceSm: 8
     readonly property int spaceGridColumn: 10
     readonly property int spaceMd: 12
-    readonly property int spaceHeaderGap: 14
+    readonly property int spaceHeaderGap: 10
     readonly property int spaceContent: 16
     readonly property int spaceLg: 18
     readonly property int spaceRailHorizontal: 20
@@ -95,7 +96,7 @@ QtObject {
     readonly property int detachedSheetWidth: 980
     readonly property int detachedSheetHeight: 640
     readonly property int headerHeight: 56
-    readonly property int commandSurfaceHeight: 64
+    readonly property int commandSurfaceHeight: 52
     readonly property int pipelineHeight: 176
     readonly property int pipelineCompactHeight: 68
     readonly property int resultsPanelPreferredWidth: 420
@@ -128,12 +129,16 @@ QtObject {
     readonly property int fieldWidthMedium: 180
     readonly property int badgeHeight: 22
     readonly property int badgeHorizontalPadding: 18
-    readonly property int controlHeight: 40
-    readonly property int iconButtonSize: 40
-    readonly property int iconSize: 18
-    readonly property int switchTrackWidth: 44
-    readonly property int switchTrackHeight: 24
-    readonly property int switchThumbSize: 20
+    readonly property int controlHeight: 34
+    readonly property int iconButtonSize: 34
+    readonly property int iconSize: 16
+    readonly property int compactGlyphSize: 12
+    readonly property int checkboxIndicatorSize: 18
+    readonly property int radioDotSize: 8
+    readonly property int spinIndicatorWidth: 28
+    readonly property int switchTrackWidth: 38
+    readonly property int switchTrackHeight: 20
+    readonly property int switchThumbSize: 16
     readonly property int switchThumbInset: 2
     readonly property int preferenceMinimumWidth: 320
     readonly property int settingsDialogWidth: 520

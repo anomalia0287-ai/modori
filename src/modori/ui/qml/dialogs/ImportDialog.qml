@@ -258,7 +258,7 @@ Dialog {
                         Layout.fillWidth: true
                         spacing: theme.spaceSm
 
-                        TextField {
+                        AppTextField {
                             id: columnSearch
                             Layout.fillWidth: true
                             placeholderText: appBootstrap.text("dialog.import.columns_search")
@@ -288,7 +288,7 @@ Dialog {
                             Repeater {
                                 model: uiController.importColumnRows
 
-                                CheckBox {
+                                AppCheckBox {
                                     Layout.fillWidth: true
                                     Layout.preferredHeight: visible ? implicitHeight : theme.spaceNone
                                     visible: root.columnMatchesFilter(modelData.name)
@@ -335,7 +335,7 @@ Dialog {
                                 width: settingsScroll.availableWidth
                                 spacing: theme.spaceSm
 
-                                CheckBox {
+                                AppCheckBox {
                                     text: appBootstrap.text("dialog.import.preserve_metadata")
                                     checked: true
                                     enabled: false
@@ -350,7 +350,7 @@ Dialog {
                                     Layout.fillWidth: true
                                 }
 
-                                CheckBox {
+                                AppCheckBox {
                                     id: dropAggregateRows
                                     text: appBootstrap.text("dialog.import.drop_aggregate_rows")
                                     checked: false
@@ -358,7 +358,7 @@ Dialog {
                                     Layout.fillWidth: true
                                 }
 
-                                CheckBox {
+                                AppCheckBox {
                                     id: dropDuplicateRows
                                     text: appBootstrap.text("dialog.import.drop_duplicate_rows")
                                     checked: false
@@ -376,7 +376,7 @@ Dialog {
                                         text: appBootstrap.text("dialog.import.sheet_name")
                                     }
 
-                                    TextField {
+                                    AppTextField {
                                         id: sheetName
                                         Layout.fillWidth: true
                                         placeholderText: appBootstrap.text("dialog.import.sheet_name")
@@ -387,7 +387,7 @@ Dialog {
                                         text: appBootstrap.text("dialog.import.header_row")
                                     }
 
-                                    SpinBox {
+                                    AppSpinBox {
                                         id: headerRow
                                         from: 1
                                         to: 999
@@ -400,7 +400,7 @@ Dialog {
                                         text: appBootstrap.text("dialog.import.header_rows")
                                     }
 
-                                    SpinBox {
+                                    AppSpinBox {
                                         id: headerRows
                                         from: 1
                                         to: 3
@@ -413,7 +413,7 @@ Dialog {
                                         text: appBootstrap.text("dialog.import.data_start_row")
                                     }
 
-                                    SpinBox {
+                                    AppSpinBox {
                                         id: dataStartRow
                                         from: 1
                                         to: 999

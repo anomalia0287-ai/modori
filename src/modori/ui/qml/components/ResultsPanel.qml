@@ -7,7 +7,8 @@ import "../theme"
 PearlSurface {
     id: root
 
-    fillColor: theme.surfaceQuiet
+    fillColor: theme.paperSurface
+    radius: theme.radiusSmall
     Accessible.name: appBootstrap.text("results.title")
 
     Theme {
@@ -72,6 +73,8 @@ PearlSurface {
             Layout.fillWidth: true
             Layout.fillHeight: true
             fillColor: theme.paperSurface
+            radius: theme.spaceNone
+            border.width: theme.spaceNone
 
             ColumnLayout {
                 anchors.fill: parent

@@ -104,16 +104,12 @@ Item {
                 Layout.topMargin: theme.spaceMd
             }
 
-            GroupBox {
+            AppGroupBox {
                 title: appBootstrap.text("transform.unify_title")
                 Layout.fillWidth: true
                 Layout.leftMargin: theme.spaceMd
                 Layout.rightMargin: theme.spaceMd
                 visible: uiController.valueUnificationSuggestions.length > 0
-
-                background: PearlSurface {
-                    fillColor: theme.surfaceQuiet
-                }
 
                 ColumnLayout {
                     anchors.left: parent.left
@@ -152,16 +148,12 @@ Item {
                 }
             }
 
-            GroupBox {
+            AppGroupBox {
                 title: appBootstrap.text("transform.map_title")
                 Layout.fillWidth: true
                 Layout.leftMargin: theme.spaceMd
                 Layout.rightMargin: theme.spaceMd
                 visible: uiController.valueRecodeInventory.length > 0
-
-                background: PearlSurface {
-                    fillColor: theme.surfaceQuiet
-                }
 
                 GridLayout {
                     columns: 2
@@ -175,7 +167,7 @@ Item {
                         color: theme.textControl
                     }
 
-                    ComboBox {
+                    AppComboBox {
                         id: recodeColumn
                         model: uiController.valueRecodeInventory
                         textRole: "column"
@@ -224,7 +216,7 @@ Item {
                                         Layout.fillWidth: true
                                     }
 
-                                    TextField {
+                                    AppTextField {
                                         id: recodeNewValue
                                         text: modelData.new_value ? modelData.new_value : ""
                                         placeholderText: appBootstrap.text("transform.map_new_value")
@@ -234,7 +226,7 @@ Item {
                                         selectByMouse: true
                                     }
 
-                                    CheckBox {
+                                    AppCheckBox {
                                         id: recodeToMissing
                                         checked: Boolean(modelData.to_missing)
                                         text: appBootstrap.text("transform.map_to_missing")
@@ -290,7 +282,7 @@ Item {
                         color: theme.textControl
                     }
 
-                    TextField {
+                    AppTextField {
                         id: recodeMissing
                         placeholderText: appBootstrap.text("transform.map_missing_placeholder")
                         Accessible.name: appBootstrap.text("transform.map_missing")
@@ -303,7 +295,7 @@ Item {
                         color: theme.textControl
                     }
 
-                    TextField {
+                    AppTextField {
                         id: recodeSuffix
                         text: root.selectedRecodeEntry() && root.selectedRecodeEntry().suffix
                             ? root.selectedRecodeEntry().suffix
@@ -335,15 +327,11 @@ Item {
                 }
             }
 
-            GroupBox {
+            AppGroupBox {
                 title: appBootstrap.text("transform.reverse_title")
                 Layout.fillWidth: true
                 Layout.leftMargin: theme.spaceMd
                 Layout.rightMargin: theme.spaceMd
-
-                background: PearlSurface {
-                    fillColor: theme.surfaceQuiet
-                }
 
                 GridLayout {
                     columns: 2
@@ -357,7 +345,7 @@ Item {
                         color: theme.textControl
                     }
 
-                    TextField {
+                    AppTextField {
                         id: reverseColumns
                         placeholderText: appBootstrap.text("transform.reverse_columns_placeholder")
                         Accessible.name: appBootstrap.text("transform.reverse_columns")
@@ -370,7 +358,7 @@ Item {
                         color: theme.textControl
                     }
 
-                    SpinBox {
+                    AppSpinBox {
                         id: reverseMin
                         from: -999
                         to: 999
@@ -383,7 +371,7 @@ Item {
                         color: theme.textControl
                     }
 
-                    SpinBox {
+                    AppSpinBox {
                         id: reverseMax
                         from: -999
                         to: 999
@@ -396,7 +384,7 @@ Item {
                         color: theme.textControl
                     }
 
-                    TextField {
+                    AppTextField {
                         id: reverseSuffix
                         text: appBootstrap.text("transform.reverse_suffix_placeholder")
                         placeholderText: appBootstrap.text("transform.reverse_suffix_placeholder")
@@ -421,16 +409,12 @@ Item {
                 }
             }
 
-            GroupBox {
+            AppGroupBox {
                 title: appBootstrap.text("transform.scale_title")
                 Layout.fillWidth: true
                 Layout.leftMargin: theme.spaceMd
                 Layout.rightMargin: theme.spaceMd
                 Layout.bottomMargin: theme.spaceMd
-
-                background: PearlSurface {
-                    fillColor: theme.surfaceQuiet
-                }
 
                 GridLayout {
                     columns: 2
@@ -444,7 +428,7 @@ Item {
                         color: theme.textControl
                     }
 
-                    TextField {
+                    AppTextField {
                         id: scaleItems
                         placeholderText: appBootstrap.text("transform.scale_items_placeholder")
                         Accessible.name: appBootstrap.text("transform.scale_items")
@@ -457,7 +441,7 @@ Item {
                         color: theme.textControl
                     }
 
-                    TextField {
+                    AppTextField {
                         id: scaleName
                         placeholderText: appBootstrap.text("transform.scale_name_placeholder")
                         Accessible.name: appBootstrap.text("transform.scale_name")
@@ -470,7 +454,7 @@ Item {
                         color: theme.textControl
                     }
 
-                    ComboBox {
+                    AppComboBox {
                         id: scaleMethod
                         model: [
                             appBootstrap.text("transform.method_mean"),
@@ -484,7 +468,7 @@ Item {
                         color: theme.textControl
                     }
 
-                    ComboBox {
+                    AppComboBox {
                         id: scalePolicy
                         model: [
                             appBootstrap.text("transform.policy_survey"),
@@ -499,7 +483,7 @@ Item {
                         color: theme.textControl
                     }
 
-                    SpinBox {
+                    AppSpinBox {
                         id: minValid
                         from: 1
                         to: 100

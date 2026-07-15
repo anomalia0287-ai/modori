@@ -125,6 +125,7 @@ Item {
                 PearlSurface {
                     SplitView.fillWidth: true
                     fillColor: theme.paperSurface
+                    radius: theme.radiusSmall
                     clip: true
 
                     ColumnLayout {

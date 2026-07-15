@@ -12,10 +12,10 @@ Button {
     implicitHeight: theme.controlHeight
     leftPadding: theme.spaceContent
     rightPadding: theme.spaceContent
-    topPadding: theme.spaceSm
-    bottomPadding: theme.spaceSm
-    font.pixelSize: theme.fontSection
-    font.bold: control.variant === "primary"
+    topPadding: theme.spaceTight
+    bottomPadding: theme.spaceTight
+    font.pixelSize: theme.fontBody
+    font.weight: control.variant === "primary" ? Font.DemiBold : Font.Normal
 
     function backgroundColor() {
         if (!control.enabled) {
@@ -50,7 +50,7 @@ Button {
     }
 
     background: Rectangle {
-        radius: theme.radiusMedium
+        radius: theme.radiusSmall
         color: control.backgroundColor()
         border.color: control.activeFocus
             ? theme.focusRing

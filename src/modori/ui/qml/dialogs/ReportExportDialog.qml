@@ -70,14 +70,14 @@ Dialog {
                     Layout.fillWidth: true
                     spacing: theme.spaceGridColumn
 
-                    RadioButton {
+                    AppRadioButton {
                         text: appBootstrap.text("dialog.report.language.ko")
                         checked: true
                         ButtonGroup.group: languageGroup
                         onClicked: root.selectedLanguage = "ko"
                     }
 
-                    RadioButton {
+                    AppRadioButton {
                         text: appBootstrap.text("dialog.report.language.en")
                         ButtonGroup.group: languageGroup
                         onClicked: root.selectedLanguage = "en"
@@ -114,56 +114,56 @@ Dialog {
                     columnSpacing: theme.spaceLg
                     rowSpacing: theme.spaceSm
 
-                    CheckBox {
+                    AppCheckBox {
                         id: includeDescriptives
                         text: appBootstrap.text("dialog.report.include_descriptives")
                         checked: true
                         Layout.fillWidth: true
                     }
 
-                    CheckBox {
+                    AppCheckBox {
                         id: includeReliability
                         text: appBootstrap.text("dialog.report.include_reliability")
                         checked: true
                         Layout.fillWidth: true
                     }
 
-                    CheckBox {
+                    AppCheckBox {
                         id: includeComparison
                         text: appBootstrap.text("dialog.report.include_comparison")
                         checked: true
                         Layout.fillWidth: true
                     }
 
-                    CheckBox {
+                    AppCheckBox {
                         id: includeAssociation
                         text: appBootstrap.text("dialog.report.include_association")
                         checked: true
                         Layout.fillWidth: true
                     }
 
-                    CheckBox {
+                    AppCheckBox {
                         id: includeGroupModels
                         text: appBootstrap.text("dialog.report.include_group_models")
                         checked: true
                         Layout.fillWidth: true
                     }
 
-                    CheckBox {
+                    AppCheckBox {
                         id: includeDimensionReduction
                         text: appBootstrap.text("dialog.report.include_dimension_reduction")
                         checked: true
                         Layout.fillWidth: true
                     }
 
-                    CheckBox {
+                    AppCheckBox {
                         id: includeRegression
                         text: appBootstrap.text("dialog.report.include_regression")
                         checked: true
                         Layout.fillWidth: true
                     }
 
-                    CheckBox {
+                    AppCheckBox {
                         id: includeFigures
                         text: appBootstrap.text("dialog.report.include_figures")
                         checked: true

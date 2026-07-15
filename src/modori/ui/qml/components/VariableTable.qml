@@ -45,7 +45,7 @@ Item {
             Layout.fillWidth: true
             spacing: theme.spaceSm
 
-            TextField {
+            AppTextField {
                 id: variableKeyField
                 Layout.fillWidth: true
                 text: root.selectedVariableKey
@@ -55,7 +55,7 @@ Item {
                 Accessible.name: appBootstrap.text("variable.key_accessible")
             }
 
-            ComboBox {
+            AppComboBox {
                 id: measureBox
                 model: [
                     appBootstrap.text("variable.measure_nominal"),
@@ -79,7 +79,7 @@ Item {
             Layout.fillWidth: true
             spacing: theme.spaceSm
 
-            TextField {
+            AppTextField {
                 id: labelField
                 Layout.fillWidth: true
                 placeholderText: appBootstrap.text("variable.label_placeholder")
@@ -87,7 +87,7 @@ Item {
                 selectByMouse: true
             }
 
-            TextField {
+            AppTextField {
                 id: missingCodesField
                 Layout.preferredWidth: theme.fieldWidthMedium
                 placeholderText: appBootstrap.text("variable.missing_codes_placeholder")
