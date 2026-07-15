@@ -261,7 +261,6 @@ L(F, d, C) =
    number_of_blocking_fact_addresses(F),
    worst_path_questions_asked,
    worst_path_dependency_deficit,
-   worst_path_declared_burden,
    worst_path_answer_kind_cost)
 ```
 
@@ -272,8 +271,9 @@ The P1 burden policy is versioned with the planner and derived only from already
 contract fields:
 
 1. unresolved declared dependencies;
-2. answer-kind burden (`yes_no`, closed choice, one variable, multiple variables,
-   ordered variables, bounded text/conflict resolution); and
+2. answer-kind burden (`yes_no=1`; `single_choice` and `level_choice=2`;
+   `variable_single=3`; `variable_multi=4`; `ordered_variables=5`;
+   `bounded_text=6`; `conflict_resolution=7`); and
 3. question ID as the final deterministic tie-break.
 
 These are engineering cost tiers, not empirically validated user-burden estimates. Actual
@@ -354,7 +354,7 @@ substantive branch IDs and snapshot digests
 not_sure safety snapshot digest
 worst terminal loss
 guaranteed E3+ blockers removed
-dependency deficit and declared burden
+dependency deficit and answer-kind burden
 evaluated state count and memo hit count
 selected flag and deterministic rank key
 ```
@@ -513,4 +513,3 @@ Expected production changes are limited to:
 The legacy product recommendation service, UI, calculation steps, data import, Decision
 Ledger storage, evidence-bundle quarantine, packaging, benchmark fixtures, and persisted
 passport schema are not changed by this work.
-
