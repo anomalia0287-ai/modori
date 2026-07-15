@@ -17,6 +17,7 @@ from modori.research_os.clarification import (
 from modori.research_os.contracts import Fact, FactState
 from modori.research_os.counterfactual_planner import (
     BlockingFact,
+    ClarificationPlan,
     CounterfactualPlanner,
     DecisionSnapshot,
     PlannerError,
@@ -24,6 +25,7 @@ from modori.research_os.counterfactual_planner import (
     project_question_answers,
 )
 from modori.research_os.p1_clarifications import build_p1_clarification_registry
+from tests.research_os_v2_fixtures import locked_p1_plan
 
 
 def _snapshot(
@@ -154,6 +156,41 @@ def test_terminal_loss_rejects_malformed_risk_vector(
 ) -> None:
     with pytest.raises(PlannerError, match=message):
         TerminalLoss(risk_vector, 0, 0, 0, 0, 0)  # type: ignore[arg-type]
+
+
+def test_clarification_plan_strict_roundtrip_recomputes_derived_rank_key() -> None:
+    plan = locked_p1_plan()
+
+    restored = ClarificationPlan.from_mapping(plan.to_mapping())
+
+    assert restored == plan
+    assert restored.digest() == plan.digest()
+    forged = plan.to_mapping()
+    forged["evaluations"][0]["rank_key"][-1] = "forged_question"
+    with pytest.raises(PlannerError, match="rank_key"):
+        ClarificationPlan.from_mapping(forged)
+
+
+@pytest.mark.parametrize(
+    ("mutator", "message"),
+    (
+        (lambda value: value.__setitem__("unknown", True), "unknown field"),
+        (
+            lambda value: value.__setitem__("selected_question_version", True),
+            "positive integer",
+        ),
+        (lambda value: value.pop("evaluated_state_count"), "missing field"),
+    ),
+)
+def test_clarification_plan_decoder_rejects_open_or_ambiguous_wire(
+    mutator,
+    message: str,
+) -> None:
+    plan = locked_p1_plan()
+    payload = plan.to_mapping()
+    mutator(payload)
+    with pytest.raises(PlannerError, match=message):
+        ClarificationPlan.from_mapping(payload)
 
 
 def _binary_question(question_id: str, fact_address: str) -> ClarificationSpec:

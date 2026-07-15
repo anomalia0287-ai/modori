@@ -16,7 +16,9 @@ from modori.research_os.clarification import (
 from modori.research_os.contracts import Fact, FactState, canonical_digest
 
 
-PLANNER_VERSION = "research-os-counterfactual-minimax-v1"
+PLANNER_VERSION_V1 = "research-os-counterfactual-minimax-v1"
+PLANNER_VERSION = PLANNER_VERSION_V1
+_DECODABLE_PLANNER_VERSIONS = frozenset({PLANNER_VERSION_V1})
 DEFAULT_MAX_STATE_EVALUATIONS = 250_000
 
 _ACTIONS = frozenset(
@@ -37,6 +39,38 @@ _ANSWER_KIND_COST = {
 
 class PlannerError(ValueError):
     """Raised when planner inputs or invariants violate the closed contract."""
+
+
+def _require_mapping(value: object, context: str) -> Mapping[str, Any]:
+    if not isinstance(value, Mapping):
+        raise PlannerError(f"{context} must be an object")
+    return value
+
+
+def _require_exact_keys(
+    payload: Mapping[str, Any],
+    allowed: frozenset[str],
+    context: str,
+) -> None:
+    unknown = sorted(set(payload) - allowed)
+    if unknown:
+        raise PlannerError(f"{context} unknown field(s): {', '.join(unknown)}")
+    missing = sorted(allowed - set(payload))
+    if missing:
+        raise PlannerError(f"{context} missing field(s): {', '.join(missing)}")
+
+
+def _decode_integer_list(
+    value: object,
+    field_name: str,
+    *,
+    length: int,
+) -> tuple[int, ...]:
+    if not isinstance(value, list) or len(value) != length:
+        raise PlannerError(f"{field_name} must contain {length} integers")
+    if any(type(item) is not int for item in value):
+        raise PlannerError(f"{field_name} must contain integers")
+    return tuple(value)
 
 
 def _require_nonblank(value: object, field_name: str) -> str:
@@ -287,6 +321,33 @@ class TerminalLoss:
             "answer_kind_cost": self.answer_kind_cost,
         }
 
+    @classmethod
+    def from_mapping(cls, payload: Mapping[str, Any]) -> TerminalLoss:
+        payload = _require_mapping(payload, "TerminalLoss")
+        _require_exact_keys(
+            payload,
+            frozenset(
+                {
+                    "risk_vector",
+                    "frontier_size",
+                    "blocking_fact_count",
+                    "questions_asked",
+                    "dependency_deficit",
+                    "answer_kind_cost",
+                }
+            ),
+            "TerminalLoss",
+        )
+        risk = _decode_integer_list(payload["risk_vector"], "risk_vector", length=5)
+        return cls(
+            risk_vector=risk,  # type: ignore[arg-type]
+            frontier_size=payload["frontier_size"],
+            blocking_fact_count=payload["blocking_fact_count"],
+            questions_asked=payload["questions_asked"],
+            dependency_deficit=payload["dependency_deficit"],
+            answer_kind_cost=payload["answer_kind_cost"],
+        )
+
 
 @dataclass(frozen=True)
 class _AnswerProjection:
@@ -480,6 +541,73 @@ class QuestionEvaluationTrace:
             "rank_key": [*self.worst_loss.to_mapping().values(), self.question_id],
         }
 
+    @classmethod
+    def from_mapping(cls, payload: Mapping[str, Any]) -> QuestionEvaluationTrace:
+        payload = _require_mapping(payload, "QuestionEvaluationTrace")
+        _require_exact_keys(
+            payload,
+            frozenset(
+                {
+                    "question_id",
+                    "question_version",
+                    "question_digest",
+                    "fact_address",
+                    "branch_snapshot_digests",
+                    "refusal_snapshot_digest",
+                    "worst_loss",
+                    "guaranteed_e3_plus_blockers_removed",
+                    "dependency_deficit",
+                    "answer_kind_cost",
+                    "evaluated_state_count",
+                    "memo_hit_count",
+                    "selected",
+                    "rank_key",
+                }
+            ),
+            "QuestionEvaluationTrace",
+        )
+        raw_branches = payload["branch_snapshot_digests"]
+        if not isinstance(raw_branches, list):
+            raise PlannerError("branch_snapshot_digests must be a list")
+        branches: list[tuple[str, str]] = []
+        for item in raw_branches:
+            if not isinstance(item, list) or len(item) != 2:
+                raise PlannerError(
+                    "branch_snapshot_digests entries must be two-item lists"
+                )
+            branch_id, digest = item
+            if not isinstance(branch_id, str) or not isinstance(digest, str):
+                raise PlannerError(
+                    "branch_snapshot_digests entries must contain strings"
+                )
+            branches.append((branch_id, digest))
+        trace = cls(
+            question_id=payload["question_id"],
+            question_version=payload["question_version"],
+            question_digest=payload["question_digest"],
+            fact_address=payload["fact_address"],
+            branch_snapshot_digests=tuple(branches),
+            refusal_snapshot_digest=payload["refusal_snapshot_digest"],
+            worst_loss=TerminalLoss.from_mapping(
+                _require_mapping(payload["worst_loss"], "worst_loss")
+            ),
+            guaranteed_e3_plus_blockers_removed=payload[
+                "guaranteed_e3_plus_blockers_removed"
+            ],
+            dependency_deficit=payload["dependency_deficit"],
+            answer_kind_cost=payload["answer_kind_cost"],
+            evaluated_state_count=payload["evaluated_state_count"],
+            memo_hit_count=payload["memo_hit_count"],
+            selected=payload["selected"],
+        )
+        expected_rank_key = [
+            *trace.worst_loss.to_mapping().values(),
+            trace.question_id,
+        ]
+        if payload["rank_key"] != expected_rank_key:
+            raise PlannerError("QuestionEvaluationTrace rank_key does not recompute")
+        return trace
+
 
 @dataclass(frozen=True)
 class ClarificationPlan:
@@ -496,8 +624,8 @@ class ClarificationPlan:
     memo_hit_count: int
 
     def __post_init__(self) -> None:
-        if self.planner_version != PLANNER_VERSION:
-            raise PlannerError("planner_version does not match the running planner")
+        if self.planner_version not in _DECODABLE_PLANNER_VERSIONS:
+            raise PlannerError("planner_version is not a decodable planner version")
         _require_nonblank(self.selected_question_id, "selected_question_id")
         _require_nonblank(self.selected_fact_address, "selected_fact_address")
         if (
@@ -550,6 +678,55 @@ class ClarificationPlan:
             "evaluated_state_count": self.evaluated_state_count,
             "memo_hit_count": self.memo_hit_count,
         }
+
+    @classmethod
+    def from_mapping(cls, payload: Mapping[str, Any]) -> ClarificationPlan:
+        payload = _require_mapping(payload, "ClarificationPlan")
+        _require_exact_keys(
+            payload,
+            frozenset(
+                {
+                    "planner_version",
+                    "selected_question_id",
+                    "selected_fact_address",
+                    "selected_question_version",
+                    "selected_question_digest",
+                    "initial_snapshot_digest",
+                    "initial_risk_vector",
+                    "question_budget_remaining",
+                    "evaluations",
+                    "evaluated_state_count",
+                    "memo_hit_count",
+                }
+            ),
+            "ClarificationPlan",
+        )
+        risk = _decode_integer_list(
+            payload["initial_risk_vector"],
+            "initial_risk_vector",
+            length=5,
+        )
+        raw_evaluations = payload["evaluations"]
+        if not isinstance(raw_evaluations, list):
+            raise PlannerError("evaluations must be a list")
+        return cls(
+            planner_version=payload["planner_version"],
+            selected_question_id=payload["selected_question_id"],
+            selected_fact_address=payload["selected_fact_address"],
+            selected_question_version=payload["selected_question_version"],
+            selected_question_digest=payload["selected_question_digest"],
+            initial_snapshot_digest=payload["initial_snapshot_digest"],
+            initial_risk_vector=risk,  # type: ignore[arg-type]
+            question_budget_remaining=payload["question_budget_remaining"],
+            evaluations=tuple(
+                QuestionEvaluationTrace.from_mapping(
+                    _require_mapping(item, "evaluation")
+                )
+                for item in raw_evaluations
+            ),
+            evaluated_state_count=payload["evaluated_state_count"],
+            memo_hit_count=payload["memo_hit_count"],
+        )
 
     def digest(self) -> str:
         return canonical_digest(self.to_mapping())

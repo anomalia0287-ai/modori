@@ -196,6 +196,18 @@ def test_passport_strict_roundtrip_preserves_digest() -> None:
         AnalysisPassport.from_mapping(passport.to_mapping() | {"execute": True})
 
 
+def test_v1_wire_mapping_and_digest_are_frozen() -> None:
+    passport = _valid_recommend_passport()
+
+    assert passport.envelope.schema_version == 1
+    assert "request_binding_digest" not in passport.to_mapping()
+    assert "clarification_registry_digest" not in passport.to_mapping()
+    assert passport.digest() == (
+        "256019034d7fb5fbe1ac1547c5c3516dfc83ae0f125f059c5ceb91f6c9d41ec8"
+    )
+    assert AnalysisPassport.from_mapping(passport.to_mapping()) == passport
+
+
 def test_passport_decision_evidence_digests_are_ordered_unique_hashes() -> None:
     passport = _valid_recommend_passport()
 
