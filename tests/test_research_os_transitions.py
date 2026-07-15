@@ -37,6 +37,7 @@ from modori.research_os.contracts import (
     TemporalStructure,
     UnitKind,
 )
+from modori.research_os.counterfactual_planner import CounterfactualPlanner
 from modori.research_os.decision_evidence import (
     AnswerValue,
     AnswerValueKind,
@@ -48,15 +49,18 @@ from modori.research_os.p1_clarifications import build_p1_clarification_registry
 from modori.research_os.passport import (
     AnalysisPassport,
     ClarifyPayload,
+    ClarifyPayloadV2,
     ComponentRevisionRef,
 )
 from modori.research_os.resolver import PrimaryAction
 from modori.research_os.service import ResearchOsService, ResearchRequest
 from modori.research_os.transition import (
     ClarificationTransitionService,
+    PassportMigrationRequired,
     RevisionCandidate,
     TransitionError,
 )
+from tests.research_os_v2_fixtures import v2_clarify_passport
 
 
 DATASET_FINGERPRINT = "a" * 64
@@ -80,6 +84,13 @@ def _envelope(
         revision=revision,
         supersedes_revision=supersedes_revision,
         created_event_ref=created_event_ref or f"event:{object_id}:{revision}",
+    )
+
+
+def _passport_envelope(object_id: str) -> SchemaEnvelope:
+    return replace(
+        _envelope("modori.analysis_passport", object_id),
+        schema_version=2,
     )
 
 
@@ -244,7 +255,7 @@ def _component_ref(spec: QuestionSpec | EstimandSpec | StudySpec) -> ComponentRe
     )
 
 
-def _clarify_passport(
+def _legacy_clarify_passport(
     request: ResearchRequest,
     question_id: str,
 ) -> AnalysisPassport:
@@ -272,6 +283,35 @@ def _clarify_passport(
     )
 
 
+def _clarify_passport(
+    request: ResearchRequest,
+    question_id: str,
+) -> AnalysisPassport:
+    return v2_clarify_passport(request, question_id)
+
+
+def _answer_for_passport(
+    request: ResearchRequest,
+    passport: AnalysisPassport,
+    value: AnswerValue,
+    *,
+    event_sequence: int = 1,
+) -> research_os.ClarificationAnswerEvent:
+    assert isinstance(passport.clarify, ClarifyPayloadV2)
+    reference = passport.clarify.clarification_ref
+    return research_os.ClarificationAnswerEvent(
+        event_id=f"answer:{reference.question_id}:{event_sequence}",
+        project_id=request.question.envelope.project_id,
+        event_sequence=event_sequence,
+        source_passport_digest=passport.digest(),
+        question_id=reference.question_id,
+        question_version=reference.question_version,
+        question_digest=reference.question_digest,
+        fact_address=reference.fact_address,
+        answer_value=value,
+    )
+
+
 def _answer(
     request: ResearchRequest,
     question_id: str,
@@ -279,19 +319,25 @@ def _answer(
     *,
     event_sequence: int = 1,
 ) -> research_os.ClarificationAnswerEvent:
-    registry = build_p1_clarification_registry()
-    question = registry.get(question_id)
     passport = _clarify_passport(request, question_id)
-    return research_os.ClarificationAnswerEvent(
-        event_id=f"answer:{question_id}:{event_sequence}",
-        project_id=request.question.envelope.project_id,
+    return _answer_for_passport(
+        request,
+        passport,
+        value,
         event_sequence=event_sequence,
-        source_passport_digest=passport.digest(),
-        question_id=question_id,
-        question_version=question.version,
-        question_digest=question.digest(),
-        fact_address=question.fact_address,
-        answer_value=value,
+    )
+
+
+def _registry_with_revised_question(question_id: str) -> ClarificationRegistry:
+    registry = build_p1_clarification_registry()
+    return ClarificationRegistry(
+        questions=tuple(
+            replace(question, version=question.version + 1)
+            if question.question_id == question_id
+            else question
+            for question in registry.questions
+        ),
+        required_question_ids=registry.required_question_ids,
     )
 
 
@@ -344,6 +390,109 @@ def _candidate_fact(candidate: RevisionCandidate, fact_address: str) -> Fact[obj
         )
     assert candidate.proposed_study is not None
     return getattr(candidate.proposed_study, fact_address.split(".", 1)[1])
+
+
+def test_v1_answer_requires_fresh_replan_before_candidate_construction() -> None:
+    request = _request(
+        study=_study(Fact.unknown(reason_code="dependence_not_confirmed"))
+    )
+    passport = _legacy_clarify_passport(request, "confirm_dependence")
+    question = build_p1_clarification_registry().get("confirm_dependence")
+    answer = research_os.ClarificationAnswerEvent(
+        event_id="answer:confirm_dependence:1",
+        project_id=request.question.envelope.project_id,
+        event_sequence=1,
+        source_passport_digest=passport.digest(),
+        question_id=question.question_id,
+        question_version=question.version,
+        question_digest=question.digest(),
+        fact_address=question.fact_address,
+        answer_value=_choice("independent"),
+    )
+
+    with pytest.raises(PassportMigrationRequired):
+        ClarificationTransitionService().propose(request, passport, answer)
+
+
+def test_v2_transition_rejects_request_registry_and_answer_identity_drift() -> None:
+    request = _request(
+        study=_study(Fact.unknown(reason_code="dependence_not_confirmed"))
+    )
+    passport = _clarify_passport(request, "confirm_dependence")
+    answer = _answer_for_passport(request, passport, _choice("independent"))
+
+    with pytest.raises(TransitionError):
+        ClarificationTransitionService().propose(
+            replace(request, question_budget_remaining=2),
+            passport,
+            answer,
+        )
+    with pytest.raises(TransitionError):
+        ClarificationTransitionService(
+            _registry_with_revised_question("confirm_dependence")
+        ).propose(request, passport, answer)
+    with pytest.raises(TransitionError):
+        ClarificationTransitionService().propose(
+            request,
+            passport,
+            replace(answer, question_version=answer.question_version + 1),
+        )
+    with pytest.raises(TransitionError):
+        ClarificationTransitionService().propose(
+            request,
+            passport,
+            replace(answer, question_digest="f" * 64),
+        )
+    with pytest.raises(TransitionError):
+        ClarificationTransitionService().propose(
+            request,
+            passport,
+            replace(answer, question_id="confirm_weight_use"),
+        )
+    with pytest.raises(TransitionError):
+        ClarificationTransitionService().propose(
+            request,
+            passport,
+            replace(answer, fact_address="study.role.weight"),
+        )
+
+
+def test_v2_transition_never_runs_a_second_planner_search(monkeypatch) -> None:
+    request = _request(
+        study=_study(Fact.unknown(reason_code="dependence_not_confirmed"))
+    )
+    passport = _clarify_passport(request, "confirm_dependence")
+    answer = _answer_for_passport(request, passport, _choice("independent"))
+
+    def fail_second_search(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("second planner search")
+
+    monkeypatch.setattr(CounterfactualPlanner, "plan", fail_second_search)
+
+    assert isinstance(
+        ClarificationTransitionService().propose(request, passport, answer),
+        RevisionCandidate,
+    )
+
+
+def test_budget_zero_rejects_a_passport_issued_while_one_question_remained() -> None:
+    issued_request = _request(
+        study=_study(Fact.unknown(reason_code="dependence_not_confirmed")),
+        question_budget_remaining=1,
+    )
+    passport = _clarify_passport(issued_request, "confirm_dependence")
+    answer = _answer_for_passport(
+        issued_request,
+        passport,
+        _choice("independent"),
+    )
+
+    with pytest.raises(TransitionError, match="budget is exhausted"):
+        ClarificationTransitionService().propose(
+            replace(issued_request, question_budget_remaining=0),
+            passport,
+            answer,
+        )
 
 
 @pytest.mark.parametrize(
@@ -546,7 +695,7 @@ def test_withdrawn_question_cannot_validate_an_answer() -> None:
         required_question_ids=source_registry.required_question_ids,
     )
 
-    with pytest.raises(TransitionError, match="not active"):
+    with pytest.raises(TransitionError, match="registry"):
         ClarificationTransitionService(registry).propose(
             request,
             _clarify_passport(request, "confirm_dependence"),
@@ -774,10 +923,10 @@ def test_not_sure_answer_never_repeats_the_same_question() -> None:
     transition = ClarificationTransitionService()
     passport = service.plan(
         request,
-        _envelope("modori.analysis_passport", "passport-not-sure-1"),
+        _passport_envelope("passport-not-sure-1"),
     )
-    assert passport.clarify is not None
-    refused_id = passport.clarify.question_ids[0]
+    assert isinstance(passport.clarify, ClarifyPayloadV2)
+    refused_id = passport.clarify.clarification_ref.question_id
     answer = replace(
         _answer(
             request,
@@ -797,7 +946,7 @@ def test_not_sure_answer_never_repeats_the_same_question() -> None:
     assert revised.question_budget_remaining == 2
     second_passport = service.plan(
         revised,
-        _envelope("modori.analysis_passport", "passport-not-sure-2"),
+        _passport_envelope("passport-not-sure-2"),
     )
     assert second_passport.abstain is not None
     assert second_passport.abstain.recovery_requirement_ids == (
@@ -830,13 +979,10 @@ def test_three_refusal_rounds_are_finite_budgeted_and_never_repeat() -> None:
     for sequence in (1, 2, 3):
         passport = service.plan(
             current,
-            _envelope(
-                "modori.analysis_passport",
-                f"passport-refusal-{sequence}",
-            ),
+            _passport_envelope(f"passport-refusal-{sequence}"),
         )
-        assert passport.clarify is not None
-        question_id = passport.clarify.question_ids[0]
+        assert isinstance(passport.clarify, ClarifyPayloadV2)
+        question_id = passport.clarify.clarification_ref.question_id
         assert question_id not in seen_questions
         seen_questions.add(question_id)
         answer = replace(
@@ -1144,6 +1290,11 @@ def test_acceptance_sequence_and_candidate_digest_attacks_fail_closed() -> None:
 
 def test_transition_service_is_exposed_without_execution_authority() -> None:
     assert research_os.ClarificationTransitionService is ClarificationTransitionService
+    assert research_os.PassportMigrationRequired is PassportMigrationRequired
+    assert (
+        ClarificationTransitionService().clarification_registry_digest
+        == build_p1_clarification_registry().digest()
+    )
     assert callable(ClarificationTransitionService.propose)
     assert not hasattr(ClarificationTransitionService, "execute")
     assert not hasattr(ClarificationTransitionService, "save")

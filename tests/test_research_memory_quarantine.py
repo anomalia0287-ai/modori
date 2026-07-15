@@ -25,6 +25,9 @@ from modori.research_memory.quarantine import (
     QuarantineStage,
 )
 from modori.research_os import (
+    AbstainPayload,
+    AnalysisPassport,
+    ComponentRevisionRef,
     DependenceKind,
     Fact,
     MissingCodeMeaning,
@@ -53,9 +56,18 @@ def _raw_bundle(request=None) -> bytes:
 
 def _passport_bundle(*, stale: bool, stale_version: str = "stale_v0") -> bytes:
     request = _request()
-    passport = ResearchOsService().plan(
-        request,
-        SchemaEnvelope(
+    service = ResearchOsService()
+
+    def component_ref(value) -> ComponentRevisionRef:
+        return ComponentRevisionRef(
+            schema_id=value.envelope.schema_id,
+            object_id=value.envelope.object_id,
+            revision=value.envelope.revision,
+            digest=value.digest(),
+        )
+
+    passport = AnalysisPassport(
+        envelope=SchemaEnvelope(
             schema_id="modori.analysis_passport",
             schema_version=1,
             project_id="project-1",
@@ -63,6 +75,23 @@ def _passport_bundle(*, stale: bool, stale_version: str = "stale_v0") -> bytes:
             revision=1,
             supersedes_revision=None,
             created_event_ref="event:passport:1",
+        ),
+        question_ref=component_ref(request.question),
+        estimand_ref=component_ref(request.estimand),
+        study_ref=component_ref(request.study),
+        dataset_fingerprint=request.current_dataset_fingerprint,
+        method_space_version=service.method_space_version,
+        method_space_digest=service.method_space_digest,
+        ruleset_version=service.ruleset_version,
+        resolver_decision_digest="c" * 64,
+        decision_evidence_digests=tuple(
+            item.evidence_digest for item in request.decision_evidence_refs
+        ),
+        abstain=AbstainPayload(
+            reason_codes=("no_stable_supported_capability",),
+            recovery_requirement_ids=(
+                "revise_target_or_expand_verified_method_space",
+            ),
         ),
     )
     if stale:

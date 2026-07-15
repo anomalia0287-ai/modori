@@ -104,6 +104,11 @@ from modori.research_os.passport import (
     RouteExternalPayload,
     clarify_decision_digest,
 )
+from modori.research_os.passport_audit import (
+    PassportRegistryAudit,
+    PassportRegistryAuditStatus,
+    audit_passport_registry,
+)
 from modori.research_os.resolver import (
     C1Resolver,
     PrimaryAction,
@@ -123,6 +128,7 @@ from modori.research_os.service import (
 )
 from modori.research_os.transition import (
     ClarificationTransitionService,
+    PassportMigrationRequired,
     RevisionCandidate,
     TransitionError,
 )
@@ -180,6 +186,9 @@ __all__ = [
     "QuestionSpec",
     "PredicateKind",
     "PassportError",
+    "PassportMigrationRequired",
+    "PassportRegistryAudit",
+    "PassportRegistryAuditStatus",
     "PrimaryAction",
     "ProductSurface",
     "RecommendationEvidence",
@@ -231,6 +240,7 @@ __all__ = [
     "QuestionEvaluationTrace",
     "TerminalLoss",
     "answer_kind_cost",
+    "audit_passport_registry",
     "project_question_answers",
     "validate_passport_request_binding",
 ]

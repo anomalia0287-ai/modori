@@ -45,13 +45,29 @@ from modori.research_os.decision_evidence import (
     RevisionAcceptanceCertificate,
 )
 from modori.research_os.p1_clarifications import build_p1_clarification_registry
-from modori.research_os.passport import AnalysisPassport, ComponentRevisionRef
+from modori.research_os.passport import (
+    AnalysisPassport,
+    ClarifyPayloadV2,
+    ComponentRevisionRef,
+)
+from modori.research_os.passport_audit import (
+    PassportRegistryAuditStatus,
+    audit_passport_registry,
+)
 from modori.research_os.resolver import PrimaryAction
-from modori.research_os.service import ResearchRequest
+from modori.research_os.service import (
+    ResearchRequest,
+    ResearchServiceError,
+    validate_passport_request_binding,
+)
 
 
 class TransitionError(ValueError):
     """Raised when clarification evidence cannot create a safe revision."""
+
+
+class PassportMigrationRequired(TransitionError):
+    """Raised when historical V1 authority needs a fresh V2 replan."""
 
 
 _DIGEST_RE = re.compile(r"^[0-9a-f]{64}$")
@@ -320,6 +336,10 @@ class ClarificationTransitionService:
         if not isinstance(self._registry, ClarificationRegistry):
             raise TransitionError("registry must be a ClarificationRegistry")
 
+    @property
+    def clarification_registry_digest(self) -> str:
+        return self._registry.digest()
+
     def propose(
         self,
         request: ResearchRequest,
@@ -414,8 +434,17 @@ class ClarificationTransitionService:
             raise TransitionError("passport must be an AnalysisPassport")
         if not isinstance(answer, ClarificationAnswerEvent):
             raise TransitionError("answer must be a ClarificationAnswerEvent")
-        if passport.action is not PrimaryAction.CLARIFY or passport.clarify is None:
-            raise TransitionError("source passport must have a clarify action")
+        if passport.envelope.schema_version == 1:
+            raise PassportMigrationRequired(
+                "version 1 passport requires a fresh version 2 plan"
+            )
+        if (
+            passport.action is not PrimaryAction.CLARIFY
+            or not isinstance(passport.clarify, ClarifyPayloadV2)
+        ):
+            raise TransitionError(
+                "source passport must have a version 2 clarify action"
+            )
         if answer.source_passport_digest != passport.digest():
             raise TransitionError("source passport digest mismatch")
         component_project_ids = {
@@ -429,24 +458,8 @@ class ClarificationTransitionService:
             raise TransitionError("answer project ID does not match passport")
         if answer.project_id != request.question.envelope.project_id:
             raise TransitionError("answer project ID does not match request")
-        try:
-            index = passport.clarify.question_ids.index(answer.question_id)
-        except ValueError as exc:
-            raise TransitionError("answer question is not in clarify passport") from exc
-        if passport.clarify.blocking_fact_addresses[index] != answer.fact_address:
-            raise TransitionError("answer fact address does not match passport blocker")
-        try:
-            question = self._registry.get(answer.question_id)
-        except ClarificationError as exc:
-            raise TransitionError("answer references an unknown question") from exc
-        if question.lifecycle is not ClarificationLifecycle.ACTIVE:
-            raise TransitionError("clarification question is not active")
-        if question.version != answer.question_version:
-            raise TransitionError("clarification question version mismatch")
-        if question.digest() != answer.question_digest:
-            raise TransitionError("clarification question digest mismatch")
-        if question.fact_address != answer.fact_address:
-            raise TransitionError("clarification question fact address mismatch")
+        if request.question_budget_remaining == 0:
+            raise TransitionError("clarification question budget is exhausted")
         expected_refs = (
             (passport.question_ref, _component_ref(request.question)),
             (passport.estimand_ref, _component_ref(request.estimand)),
@@ -463,8 +476,33 @@ class ClarificationTransitionService:
             raise TransitionError(
                 "source decision evidence no longer matches passport"
             )
-        if request.question_budget_remaining == 0:
-            raise TransitionError("clarification question budget is exhausted")
+        try:
+            validate_passport_request_binding(passport, request)
+        except ResearchServiceError as exc:
+            raise TransitionError(f"source request binding is stale: {exc}") from exc
+        audit = audit_passport_registry(passport, self._registry)
+        if audit.status is not PassportRegistryAuditStatus.VERIFIED:
+            raise TransitionError(
+                f"source clarification registry is stale: {audit.reason_code}"
+            )
+        reference = passport.clarify.clarification_ref
+        answer_identity = (
+            (answer.question_id, reference.question_id, "question ID"),
+            (answer.question_version, reference.question_version, "question version"),
+            (answer.question_digest, reference.question_digest, "question digest"),
+            (answer.fact_address, reference.fact_address, "fact address"),
+        )
+        for actual, expected, field_name in answer_identity:
+            if actual != expected:
+                raise TransitionError(
+                    f"answer {field_name} does not match clarify passport"
+                )
+        try:
+            question = self._registry.get(reference.question_id)
+        except ClarificationError as exc:  # pragma: no cover - audit closes this path.
+            raise TransitionError("answer references an unknown question") from exc
+        if question.lifecycle is not ClarificationLifecycle.ACTIVE:
+            raise TransitionError("clarification question is not active")
         if any(
             reference.evidence_id == answer.event_id
             for reference in request.decision_evidence_refs
