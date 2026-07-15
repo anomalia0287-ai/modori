@@ -11,13 +11,17 @@ from modori.research_os.passport import (
     AbstainPayload,
     AnalysisPassport,
     ClaimClass,
+    ClarificationRef,
     ClarifyPayload,
+    ClarifyPayloadV2,
     ComponentRevisionRef,
     PassportError,
     RecommendLocalPayload,
     RouteExternalPayload,
+    clarify_decision_digest,
 )
 from modori.research_os.resolver import PrimaryAction
+from tests.research_os_v2_fixtures import locked_p1_plan
 
 
 def _passport_envelope() -> SchemaEnvelope:
@@ -88,6 +92,32 @@ def _passport(**payloads: object) -> AnalysisPassport:
 
 def _valid_recommend_passport() -> AnalysisPassport:
     return _passport(recommend_local=_recommend_payload())
+
+
+def _valid_v2_clarify() -> AnalysisPassport:
+    plan = locked_p1_plan()
+    decision_digest = clarify_decision_digest(
+        question_id=plan.selected_question_id,
+        fact_address=plan.selected_fact_address,
+        plan=plan,
+    )
+    reference = ClarificationRef(
+        question_id=plan.selected_question_id,
+        question_version=plan.selected_question_version,
+        question_digest=plan.selected_question_digest,
+        fact_address=plan.selected_fact_address,
+        planner_version=plan.planner_version,
+        clarification_plan_digest=plan.digest(),
+        source_decision_digest=decision_digest,
+    )
+    return replace(
+        _passport(clarify=_clarify_payload()),
+        envelope=replace(_passport_envelope(), schema_version=2),
+        resolver_decision_digest=decision_digest,
+        request_binding_digest="d" * 64,
+        clarification_registry_digest="e" * 64,
+        clarify=ClarifyPayloadV2(reference, plan),
+    )
 
 
 def _all_keys(value: Any) -> set[str]:
@@ -208,6 +238,73 @@ def test_v1_wire_mapping_and_digest_are_frozen() -> None:
     assert AnalysisPassport.from_mapping(passport.to_mapping()) == passport
 
 
+def test_v2_clarify_roundtrip_binds_exact_plan_and_question_revision() -> None:
+    passport = _valid_v2_clarify()
+
+    restored = AnalysisPassport.from_mapping(passport.to_mapping())
+
+    assert restored == passport
+    assert restored.clarify == passport.clarify
+
+
+def test_v1_and_v2_shapes_are_structurally_exclusive() -> None:
+    v1 = _passport(clarify=_clarify_payload()).to_mapping()
+    v1["request_binding_digest"] = "d" * 64
+    with pytest.raises(PassportError, match="unknown field"):
+        AnalysisPassport.from_mapping(v1)
+
+    v2 = _valid_v2_clarify().to_mapping()
+    v2["clarify"] = _clarify_payload().to_mapping()
+    with pytest.raises(PassportError, match="version 2 clarify"):
+        AnalysisPassport.from_mapping(v2)
+
+
+def test_unknown_passport_version_fails_closed() -> None:
+    payload = _valid_v2_clarify().to_mapping()
+    payload["envelope"]["schema_version"] = 3
+    with pytest.raises(PassportError, match="unsupported schema version"):
+        AnalysisPassport.from_mapping(payload)
+
+
+@pytest.mark.parametrize(
+    ("field_name", "value", "message"),
+    (
+        ("question_version", True, "positive integer"),
+        ("clarification_plan_digest", "f" * 64, "plan digest mismatch"),
+        ("question_digest", "f" * 64, "question digest mismatch"),
+        ("fact_address", "study.other", "fact address mismatch"),
+        ("question_id", "other_question", "question ID mismatch"),
+        ("source_decision_digest", "f" * 64, "source decision digest mismatch"),
+    ),
+)
+def test_v2_clarification_reference_mutations_fail_closed(
+    field_name: str,
+    value: object,
+    message: str,
+) -> None:
+    payload = _valid_v2_clarify().to_mapping()
+    payload["clarify"]["clarification_ref"][field_name] = value
+
+    with pytest.raises(PassportError, match=message):
+        AnalysisPassport.from_mapping(payload)
+
+
+def test_v2_requires_both_binding_digests() -> None:
+    payload = _valid_v2_clarify().to_mapping()
+    payload.pop("request_binding_digest")
+
+    with pytest.raises(PassportError, match="missing field.*request_binding_digest"):
+        AnalysisPassport.from_mapping(payload)
+
+
+def test_v2_embedded_plan_rejects_unknown_fields() -> None:
+    payload = _valid_v2_clarify().to_mapping()
+    payload["clarify"]["clarification_plan"]["unknown"] = True
+
+    with pytest.raises(ValueError, match="unknown field"):
+        AnalysisPassport.from_mapping(payload)
+
+
 def test_passport_decision_evidence_digests_are_ordered_unique_hashes() -> None:
     passport = _valid_recommend_passport()
 
@@ -256,8 +353,12 @@ def test_passport_wire_has_no_execution_authority_key() -> None:
     }
 
     assert _all_keys(_valid_recommend_passport().to_mapping()).isdisjoint(forbidden)
+    assert _all_keys(_valid_v2_clarify().to_mapping()).isdisjoint(forbidden)
 
 
 def test_passport_contract_is_exposed_from_package() -> None:
     assert research_os.AnalysisPassport is AnalysisPassport
     assert research_os.ClaimClass is ClaimClass
+    assert research_os.ClarificationRef is ClarificationRef
+    assert research_os.ClarifyPayloadV2 is ClarifyPayloadV2
+    assert research_os.clarify_decision_digest is clarify_decision_digest

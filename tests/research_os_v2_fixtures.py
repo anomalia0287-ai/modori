@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from functools import lru_cache
+
 from modori.research_os.contracts import Fact
 from modori.research_os.counterfactual_planner import ClarificationPlan
 from modori.research_os.p1_catalog import build_p1_method_space
@@ -7,6 +9,7 @@ from modori.research_os.p1_clarifications import build_p1_clarification_registry
 from modori.research_os.resolver import C1Resolver, ProductSurface, ResolutionContext
 
 
+@lru_cache(maxsize=1)
 def locked_p1_plan() -> ClarificationPlan:
     method_space = build_p1_method_space()
     registry = build_p1_clarification_registry()

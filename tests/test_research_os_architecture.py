@@ -23,7 +23,9 @@ from modori.research_os.decision_evidence import (
 from modori.research_os.passport import (
     AbstainPayload,
     AnalysisPassport,
+    ClarificationRef,
     ClarifyPayload,
+    ClarifyPayloadV2,
     RecommendLocalPayload,
     RouteExternalPayload,
 )
@@ -184,6 +186,8 @@ def test_passport_and_payload_field_sets_cannot_gain_execution_authority() -> No
         "clarify",
         "route_external",
         "abstain",
+        "request_binding_digest",
+        "clarification_registry_digest",
     )
     assert tuple(RecommendLocalPayload.__dataclass_fields__) == (
         "capability_keys",
@@ -197,6 +201,19 @@ def test_passport_and_payload_field_sets_cannot_gain_execution_authority() -> No
         "question_ids",
         "blocking_fact_addresses",
     )
+    assert tuple(ClarificationRef.__dataclass_fields__) == (
+        "question_id",
+        "question_version",
+        "question_digest",
+        "fact_address",
+        "planner_version",
+        "clarification_plan_digest",
+        "source_decision_digest",
+    )
+    assert tuple(ClarifyPayloadV2.__dataclass_fields__) == (
+        "clarification_ref",
+        "clarification_plan",
+    )
     assert tuple(RouteExternalPayload.__dataclass_fields__) == (
         "route_ids",
         "privacy_boundary_ids",
@@ -204,6 +221,13 @@ def test_passport_and_payload_field_sets_cannot_gain_execution_authority() -> No
     assert tuple(AbstainPayload.__dataclass_fields__) == (
         "reason_codes",
         "recovery_requirement_ids",
+    )
+    passport_parameters = inspect.signature(AnalysisPassport).parameters
+    assert passport_parameters["request_binding_digest"].kind is (
+        inspect.Parameter.KEYWORD_ONLY
+    )
+    assert passport_parameters["clarification_registry_digest"].kind is (
+        inspect.Parameter.KEYWORD_ONLY
     )
 
 

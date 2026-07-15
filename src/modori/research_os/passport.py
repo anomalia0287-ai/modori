@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 import re
 from typing import Any
 import unicodedata
 
 from modori.research_os.contracts import ContractError, SchemaEnvelope, canonical_digest
+from modori.research_os.counterfactual_planner import ClarificationPlan, PlannerError
 from modori.research_os.resolver import PrimaryAction
 
 
@@ -272,6 +273,163 @@ class ClarifyPayload:
 
 
 @dataclass(frozen=True)
+class ClarificationRef:
+    question_id: str
+    question_version: int
+    question_digest: str
+    fact_address: str
+    planner_version: str
+    clarification_plan_digest: str
+    source_decision_digest: str
+
+    def __post_init__(self) -> None:
+        _require_closed_id(self.question_id, "question_id")
+        if type(self.question_version) is not int or self.question_version < 1:
+            raise PassportError("question_version must be a positive integer")
+        _require_digest(self.question_digest, "question_digest")
+        _require_closed_id(self.fact_address, "fact_address")
+        _require_closed_id(self.planner_version, "planner_version")
+        _require_digest(
+            self.clarification_plan_digest,
+            "clarification_plan_digest",
+        )
+        _require_digest(self.source_decision_digest, "source_decision_digest")
+
+    def to_mapping(self) -> dict[str, Any]:
+        return {
+            "question_id": self.question_id,
+            "question_version": self.question_version,
+            "question_digest": self.question_digest,
+            "fact_address": self.fact_address,
+            "planner_version": self.planner_version,
+            "clarification_plan_digest": self.clarification_plan_digest,
+            "source_decision_digest": self.source_decision_digest,
+        }
+
+    @classmethod
+    def from_mapping(cls, payload: Mapping[str, Any]) -> ClarificationRef:
+        payload = _require_mapping(payload, "ClarificationRef")
+        _require_exact_keys(
+            payload,
+            frozenset(
+                {
+                    "question_id",
+                    "question_version",
+                    "question_digest",
+                    "fact_address",
+                    "planner_version",
+                    "clarification_plan_digest",
+                    "source_decision_digest",
+                }
+            ),
+            "ClarificationRef",
+        )
+        return cls(
+            question_id=payload["question_id"],
+            question_version=payload["question_version"],
+            question_digest=payload["question_digest"],
+            fact_address=payload["fact_address"],
+            planner_version=payload["planner_version"],
+            clarification_plan_digest=payload["clarification_plan_digest"],
+            source_decision_digest=payload["source_decision_digest"],
+        )
+
+
+def clarify_decision_digest(
+    *,
+    question_id: str,
+    fact_address: str,
+    plan: ClarificationPlan,
+) -> str:
+    if not isinstance(plan, ClarificationPlan):
+        raise PassportError("plan must be a ClarificationPlan")
+    _require_closed_id(question_id, "question_id")
+    _require_closed_id(fact_address, "fact_address")
+    return canonical_digest(
+        {
+            "semantic_signature": (
+                PrimaryAction.CLARIFY.value,
+                (),
+                (),
+                (question_id,),
+                (fact_address,),
+                (),
+                plan.to_mapping(),
+            )
+        }
+    )
+
+
+@dataclass(frozen=True)
+class ClarifyPayloadV2:
+    clarification_ref: ClarificationRef
+    clarification_plan: ClarificationPlan
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.clarification_ref, ClarificationRef):
+            raise PassportError("clarification_ref must be a ClarificationRef")
+        if not isinstance(self.clarification_plan, ClarificationPlan):
+            raise PassportError("clarification_plan must be a ClarificationPlan")
+        ref = self.clarification_ref
+        plan = self.clarification_plan
+        expected = (
+            (ref.question_id, plan.selected_question_id, "question ID"),
+            (ref.fact_address, plan.selected_fact_address, "fact address"),
+            (
+                ref.question_version,
+                plan.selected_question_version,
+                "question version",
+            ),
+            (
+                ref.question_digest,
+                plan.selected_question_digest,
+                "question digest",
+            ),
+            (ref.planner_version, plan.planner_version, "planner version"),
+            (
+                ref.clarification_plan_digest,
+                plan.digest(),
+                "plan digest",
+            ),
+            (
+                ref.source_decision_digest,
+                clarify_decision_digest(
+                    question_id=ref.question_id,
+                    fact_address=ref.fact_address,
+                    plan=plan,
+                ),
+                "source decision digest",
+            ),
+        )
+        for actual, wanted, field_name in expected:
+            if actual != wanted:
+                raise PassportError(f"clarify {field_name} mismatch")
+
+    def to_mapping(self) -> dict[str, Any]:
+        return {
+            "clarification_ref": self.clarification_ref.to_mapping(),
+            "clarification_plan": self.clarification_plan.to_mapping(),
+        }
+
+    @classmethod
+    def from_mapping(cls, payload: Mapping[str, Any]) -> ClarifyPayloadV2:
+        payload = _require_mapping(payload, "ClarifyPayloadV2")
+        _require_exact_keys(
+            payload,
+            frozenset({"clarification_ref", "clarification_plan"}),
+            "ClarifyPayloadV2",
+        )
+        return cls(
+            clarification_ref=ClarificationRef.from_mapping(
+                _require_mapping(payload["clarification_ref"], "clarification_ref")
+            ),
+            clarification_plan=ClarificationPlan.from_mapping(
+                _require_mapping(payload["clarification_plan"], "clarification_plan")
+            ),
+        )
+
+
+@dataclass(frozen=True)
 class RouteExternalPayload:
     route_ids: tuple[str, ...]
     privacy_boundary_ids: tuple[str, ...]
@@ -365,17 +523,44 @@ class AnalysisPassport:
     clarify: ClarifyPayload | None = None
     route_external: RouteExternalPayload | None = None
     abstain: AbstainPayload | None = None
+    request_binding_digest: str | None = field(default=None, kw_only=True)
+    clarification_registry_digest: str | None = field(default=None, kw_only=True)
 
     def __post_init__(self) -> None:
         if not isinstance(self.envelope, SchemaEnvelope):
             raise PassportError("envelope must be a SchemaEnvelope")
-        if (
-            self.envelope.schema_id != "modori.analysis_passport"
-            or self.envelope.schema_version != 1
-        ):
-            raise PassportError(
-                "passport envelope must use modori.analysis_passport schema version 1"
+        if self.envelope.schema_id != "modori.analysis_passport":
+            raise PassportError("passport envelope must use modori.analysis_passport")
+        version = self.envelope.schema_version
+        if version == 1:
+            if (
+                self.request_binding_digest is not None
+                or self.clarification_registry_digest is not None
+                or (
+                    self.clarify is not None
+                    and not isinstance(self.clarify, ClarifyPayload)
+                )
+            ):
+                raise PassportError("version 1 passport has version 2 fields")
+        elif version == 2:
+            _require_digest(self.request_binding_digest, "request_binding_digest")
+            _require_digest(
+                self.clarification_registry_digest,
+                "clarification_registry_digest",
             )
+            if self.clarify is not None and not isinstance(
+                self.clarify,
+                ClarifyPayloadV2,
+            ):
+                raise PassportError("version 2 clarify payload has the wrong type")
+            if (
+                isinstance(self.clarify, ClarifyPayloadV2)
+                and self.clarify.clarification_ref.source_decision_digest
+                != self.resolver_decision_digest
+            ):
+                raise PassportError("clarify source decision digest mismatch")
+        else:
+            raise PassportError("unsupported schema version for AnalysisPassport")
         expected_refs = (
             (self.question_ref, "question_ref", "modori.question_spec"),
             (self.estimand_ref, "estimand_ref", "modori.estimand_spec"),
@@ -412,9 +597,10 @@ class AnalysisPassport:
         )
         if sum(payload is not None for payload in payloads) != 1:
             raise PassportError("passport requires exactly one action payload")
+        clarify_type = ClarifyPayload if version == 1 else ClarifyPayloadV2
         expected_types = (
             (self.recommend_local, RecommendLocalPayload, "recommend_local"),
-            (self.clarify, ClarifyPayload, "clarify"),
+            (self.clarify, clarify_type, "clarify"),
             (self.route_external, RouteExternalPayload, "route_external"),
             (self.abstain, AbstainPayload, "abstain"),
         )
@@ -433,7 +619,7 @@ class AnalysisPassport:
         return PrimaryAction.ABSTAIN
 
     def to_mapping(self) -> dict[str, Any]:
-        return {
+        payload = {
             "envelope": self.envelope.to_mapping(),
             "question_ref": self.question_ref.to_mapping(),
             "estimand_ref": self.estimand_ref.to_mapping(),
@@ -457,11 +643,28 @@ class AnalysisPassport:
             ),
             "abstain": None if self.abstain is None else self.abstain.to_mapping(),
         }
+        if self.envelope.schema_version == 2:
+            payload["request_binding_digest"] = self.request_binding_digest
+            payload["clarification_registry_digest"] = (
+                self.clarification_registry_digest
+            )
+        return payload
 
     @classmethod
     def from_mapping(cls, payload: Mapping[str, Any]) -> AnalysisPassport:
         payload = _require_mapping(payload, "AnalysisPassport")
-        allowed = frozenset(
+        if "envelope" not in payload:
+            raise PassportError("AnalysisPassport missing field(s): envelope")
+        try:
+            envelope = SchemaEnvelope.from_mapping(
+                _require_mapping(payload["envelope"], "passport envelope")
+            )
+        except ContractError as exc:
+            raise PassportError(f"invalid passport envelope: {exc}") from exc
+        version = envelope.schema_version
+        if version not in (1, 2):
+            raise PassportError("unsupported schema version for AnalysisPassport")
+        v1_fields = frozenset(
             {
                 "envelope",
                 "question_ref",
@@ -479,16 +682,18 @@ class AnalysisPassport:
                 "abstain",
             }
         )
+        allowed = (
+            v1_fields
+            if version == 1
+            else v1_fields
+            | frozenset(
+                {"request_binding_digest", "clarification_registry_digest"}
+            )
+        )
         _require_exact_keys(payload, allowed, "AnalysisPassport")
         raw_evidence_digests = payload["decision_evidence_digests"]
         if not isinstance(raw_evidence_digests, list):
             raise PassportError("decision_evidence_digests must be a list")
-        try:
-            envelope = SchemaEnvelope.from_mapping(
-                _require_mapping(payload["envelope"], "passport envelope")
-            )
-        except ContractError as exc:
-            raise PassportError(f"invalid passport envelope: {exc}") from exc
 
         def optional_payload(
             field_name: str,
@@ -498,6 +703,24 @@ class AnalysisPassport:
             if raw is None:
                 return None
             return payload_type.from_mapping(_require_mapping(raw, field_name))
+
+        raw_clarify = payload["clarify"]
+        clarify: ClarifyPayload | ClarifyPayloadV2 | None
+        if raw_clarify is None:
+            clarify = None
+        elif version == 1:
+            clarify = ClarifyPayload.from_mapping(
+                _require_mapping(raw_clarify, "clarify")
+            )
+        else:
+            try:
+                clarify = ClarifyPayloadV2.from_mapping(
+                    _require_mapping(raw_clarify, "clarify")
+                )
+            except (PassportError, PlannerError) as exc:
+                raise PassportError(
+                    f"invalid version 2 clarify payload: {exc}"
+                ) from exc
 
         return cls(
             envelope=envelope,
@@ -533,11 +756,27 @@ class AnalysisPassport:
             recommend_local=optional_payload(
                 "recommend_local", RecommendLocalPayload
             ),
-            clarify=optional_payload("clarify", ClarifyPayload),
+            clarify=clarify,
             route_external=optional_payload(
                 "route_external", RouteExternalPayload
             ),
             abstain=optional_payload("abstain", AbstainPayload),
+            request_binding_digest=(
+                None
+                if version == 1
+                else _require_digest(
+                    payload["request_binding_digest"],
+                    "request_binding_digest",
+                )
+            ),
+            clarification_registry_digest=(
+                None
+                if version == 1
+                else _require_digest(
+                    payload["clarification_registry_digest"],
+                    "clarification_registry_digest",
+                )
+            ),
         )
 
     def digest(self) -> str:
