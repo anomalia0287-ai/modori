@@ -26,7 +26,9 @@ def test_work_header_exposes_guided_standard_controls() -> None:
 
     assert 'uiController.chooseMode("guided")' in work
     assert 'uiController.chooseMode("standard")' in work
-    assert "work.explain_mode" in work
+    assert "signal settingsRequested()" in work
+    assert 'appBootstrap.text("settings.title")' in work
+    assert "root.settingsRequested()" in work
 
 
 def test_guide_rail_lists_supported_v1_intents() -> None:

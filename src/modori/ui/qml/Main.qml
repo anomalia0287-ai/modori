@@ -50,6 +50,7 @@ ApplicationWindow {
             }
         }
         onOpenDataRequested: dataFileDialog.open()
+        onSettingsRequested: settingsDialog.open()
         onRecentFileRequested: {
             if (uiController.openRecentFileAt(index)) {
                 root.currentScreen = "work"
@@ -64,6 +65,7 @@ ApplicationWindow {
         onOpenDataRequested: dataFileDialog.open()
         onReportRequested: reportExportDialog.open()
         onDataSheetRequested: dataSheetWindow.show()
+        onSettingsRequested: settingsDialog.open()
     }
 
     Window {
@@ -114,6 +116,10 @@ ApplicationWindow {
 
     ReportExportDialog {
         id: reportExportDialog
+    }
+
+    SettingsDialog {
+        id: settingsDialog
     }
 
     FileDialog {

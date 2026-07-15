@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import "../components"
 import "../theme"
 
 Pane {
@@ -10,6 +11,7 @@ Pane {
     signal standardRequested()
     signal openDataRequested()
     signal recentFileRequested(int index)
+    signal settingsRequested()
 
     Theme {
         id: theme
@@ -20,6 +22,16 @@ Pane {
             GradientStop { position: 0.0; color: theme.deepTeal }
             GradientStop { position: 1.0; color: root.reduceEffects ? theme.brandTeal : theme.orange }
         }
+    }
+
+    AppIconButton {
+        anchors.top: parent.top
+        anchors.right: parent.right
+        anchors.topMargin: theme.spaceXl
+        anchors.rightMargin: theme.spaceXl
+        toolTipText: appBootstrap.text("settings.title")
+        Accessible.name: appBootstrap.text("settings.title")
+        onClicked: root.settingsRequested()
     }
 
     ColumnLayout {

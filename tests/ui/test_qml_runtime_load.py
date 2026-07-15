@@ -5,7 +5,7 @@ from pathlib import Path
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6.QtCore import QUrl, qInstallMessageHandler
+from PySide6.QtCore import QMetaObject, QObject, QUrl, qInstallMessageHandler
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine, QQmlComponent, QQmlEngine
 
@@ -141,6 +141,22 @@ def test_main_qml_loads_work_screen_with_imported_data_models(tmp_path) -> None:
     engine, root, messages = _load_main_with_warnings(controller)
 
     try:
+        assert _significant_warnings(messages) == []
+    finally:
+        root.deleteLater()
+        _app().processEvents()
+        del engine
+
+
+def test_main_qml_exposes_openable_settings_dialog() -> None:
+    engine, root, messages = _load_main_with_warnings(UiController(reduce_effects=True))
+
+    try:
+        dialog = root.findChild(QObject, "settingsDialog")
+        assert dialog is not None
+        assert QMetaObject.invokeMethod(dialog, "open") is True
+        _app().processEvents()
+        assert dialog.property("opened") is True
         assert _significant_warnings(messages) == []
     finally:
         root.deleteLater()

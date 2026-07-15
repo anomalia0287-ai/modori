@@ -50,6 +50,8 @@ where = ["src"]
     "qml/dialogs/*.qml",
     "qml/screens/*.qml",
     "qml/theme/*.qml",
+    "qml/assets/icons/*.svg",
+    "qml/assets/icons/*.txt",
 ]
 
 [tool.pytest.ini_options]

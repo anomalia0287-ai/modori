@@ -20,3 +20,10 @@ def test_app_launcher_uses_qml_not_legacy_widgets() -> None:
     assert "QMainWindow" not in source
     assert "QWidget" not in source
     assert "QApplication" not in source
+
+
+def test_settings_icon_and_license_resolve_from_package_source() -> None:
+    qml_root = Path("src/modori/ui/qml")
+
+    assert (qml_root / "assets/icons/settings.svg").is_file()
+    assert (qml_root / "assets/icons/LUCIDE-LICENSE.txt").is_file()

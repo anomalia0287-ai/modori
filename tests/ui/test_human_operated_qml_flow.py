@@ -166,12 +166,12 @@ def test_standard_pipeline_rail_reaches_every_supported_v1_analysis() -> None:
 
 
 def test_explain_mode_control_is_bound_to_explanation_surfaces() -> None:
-    work = qml_text("screens/WorkScreen.qml")
+    settings = qml_text("dialogs/SettingsDialog.qml")
     results = qml_text("components/ResultsPanel.qml")
     guide = qml_text("components/GuideRail.qml")
 
-    assert "uiController.explainModeEnabled" in work
-    assert "uiController.setExplainModeEnabled(checked)" in work
+    assert "uiController.explainModeEnabled" in settings
+    assert "uiController.setExplainModeEnabled(checked)" in settings
     assert "visible: uiController.explainModeEnabled" in results
     assert "uiController.explainModeEnabled ?" in guide
 

@@ -10,6 +10,7 @@ Item {
     signal openDataRequested()
     signal reportRequested()
     signal dataSheetRequested()
+    signal settingsRequested()
 
     Theme {
         id: theme
@@ -85,18 +86,10 @@ Item {
                     onClicked: uiController.chooseMode("standard")
                 }
 
-                CheckBox {
-                    text: appBootstrap.text("work.explain_mode")
-                    Accessible.name: appBootstrap.text("work.explain_mode")
-                    checked: uiController.explainModeEnabled
-                    onClicked: uiController.setExplainModeEnabled(checked)
-                }
-
-                CheckBox {
-                    text: appBootstrap.text("work.reduce_effects")
-                    Accessible.name: appBootstrap.text("work.reduce_effects")
-                    checked: uiController.reduceEffects
-                    onClicked: uiController.setReduceEffects(checked)
+                AppIconButton {
+                    toolTipText: appBootstrap.text("settings.title")
+                    Accessible.name: appBootstrap.text("settings.title")
+                    onClicked: root.settingsRequested()
                 }
             }
         }

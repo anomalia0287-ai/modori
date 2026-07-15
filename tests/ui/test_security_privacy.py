@@ -61,12 +61,14 @@ def test_controller_reduce_effects_toggle_persists_to_settings(tmp_path, monkeyp
     assert reloaded.reduceEffects is True
 
 
-def test_work_screen_exposes_reduce_effects_toggle() -> None:
-    work = Path("src/modori/ui/qml/screens/WorkScreen.qml").read_text(encoding="utf-8")
+def test_settings_surface_exposes_reduce_effects_toggle() -> None:
+    settings = Path("src/modori/ui/qml/dialogs/SettingsDialog.qml").read_text(
+        encoding="utf-8"
+    )
     main = Path("src/modori/ui/qml/Main.qml").read_text(encoding="utf-8")
 
-    assert "work.reduce_effects" in work
-    assert "uiController.setReduceEffects" in work
+    assert "settings.reduce_effects" in settings
+    assert "uiController.setReduceEffects" in settings
     assert "property bool reduceEffects: uiController.reduceEffects" in main
 
 
