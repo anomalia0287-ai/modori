@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 from collections.abc import Callable, Iterator, Mapping
 import ctypes
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from itertools import product
 import json
 import os
@@ -84,6 +84,8 @@ class BenchmarkCase:
 class PolicyOutcome:
     selected_question_id: str | None
     worst_loss: TerminalLoss
+    evaluated_state_count: int = field(default=0, compare=False)
+    memo_hit_count: int = field(default=0, compare=False)
 
 
 @dataclass(frozen=True)
@@ -335,6 +337,8 @@ class _IndependentOracle:
         self._memo: dict[tuple[int, str], PolicyOutcome] = {}
         self._use_min_for_worst_branch = use_min_for_worst_branch
         self._loss_key = loss_key or self._correct_loss_key
+        self.evaluated_state_count = 0
+        self.memo_hit_count = 0
 
     @staticmethod
     def _correct_loss_key(loss: TerminalLoss) -> tuple[Any, ...]:
@@ -355,7 +359,9 @@ class _IndependentOracle:
         key = (budget, _facts_digest(facts))
         cached = self._memo.get(key)
         if cached is not None:
+            self.memo_hit_count += 1
             return cached
+        self.evaluated_state_count += 1
         snapshot = toy_snapshot(facts)
         if snapshot.action != "clarify" or budget == 0:
             outcome = PolicyOutcome(None, _terminal_loss(snapshot))
@@ -399,7 +405,14 @@ def oracle_policy(
 ) -> PolicyOutcome:
     if type(budget) is not int or not 0 <= budget <= 3:
         raise ValueError("budget must be an integer from zero through three")
-    return _IndependentOracle().policy(facts, budget)
+    oracle = _IndependentOracle()
+    outcome = oracle.policy(facts, budget)
+    return PolicyOutcome(
+        outcome.selected_question_id,
+        outcome.worst_loss,
+        evaluated_state_count=oracle.evaluated_state_count,
+        memo_hit_count=oracle.memo_hit_count,
+    )
 
 
 def production_policy(
@@ -408,7 +421,11 @@ def production_policy(
 ) -> PolicyOutcome:
     snapshot = toy_snapshot(facts)
     if snapshot.action != "clarify" or budget == 0:
-        return PolicyOutcome(None, _terminal_loss(snapshot))
+        return PolicyOutcome(
+            None,
+            _terminal_loss(snapshot),
+            evaluated_state_count=1,
+        )
     result = CounterfactualPlanner(
         _REGISTRY,
         toy_snapshot,
@@ -417,7 +434,12 @@ def production_policy(
     if result.plan is None:
         raise AssertionError(f"production planner abstained: {result.abstention_reason}")
     selected = next(item for item in result.plan.evaluations if item.selected)
-    return PolicyOutcome(result.plan.selected_question_id, selected.worst_loss)
+    return PolicyOutcome(
+        result.plan.selected_question_id,
+        selected.worst_loss,
+        evaluated_state_count=result.plan.evaluated_state_count,
+        memo_hit_count=result.plan.memo_hit_count,
+    )
 
 
 def _one_step_policy(
@@ -425,13 +447,19 @@ def _one_step_policy(
 ) -> PolicyOutcome:
     snapshot = toy_snapshot(facts)
     if snapshot.action != "clarify":
-        return PolicyOutcome(None, _terminal_loss(snapshot))
+        return PolicyOutcome(
+            None,
+            _terminal_loss(snapshot),
+            evaluated_state_count=1,
+        )
     evaluations: list[tuple[TerminalLoss, str]] = []
+    evaluated_state_count = 1
     for question in _candidate_questions(snapshot):
         losses = []
         for projection in project_question_answers(question).substantive:
             projected = dict(facts)
             projected[question.fact_address] = projection.fact
+            evaluated_state_count += 1
             losses.append(
                 _terminal_loss(toy_snapshot(projected)).with_question_cost(
                     dependency_deficit=0,
@@ -440,7 +468,11 @@ def _one_step_policy(
             )
         evaluations.append((max(losses), question.question_id))
     loss, question_id = min(evaluations)
-    return PolicyOutcome(question_id, loss)
+    return PolicyOutcome(
+        question_id,
+        loss,
+        evaluated_state_count=evaluated_state_count,
+    )
 
 
 def _select_question(
@@ -561,6 +593,22 @@ def _trajectory(
     )
 
 
+def _root_search_work(policy: str, case: BenchmarkCase) -> tuple[int, int]:
+    if policy == "batch_form":
+        return 0, 0
+    if policy in {"fixed_tree", "legacy_severity_impact"}:
+        return 1, 0
+    if policy == "one_step_greedy":
+        outcome = _one_step_policy(case.facts)
+    elif policy == "bounded_minimax":
+        outcome = production_policy(case.facts, case.budget)
+    elif policy == "independent_oracle":
+        outcome = oracle_policy(case.facts, case.budget)
+    else:  # pragma: no cover - closed policy tuple protects this branch.
+        raise ValueError(f"unknown policy: {policy}")
+    return outcome.evaluated_state_count, outcome.memo_hit_count
+
+
 def _loss_mapping(loss: TerminalLoss) -> dict[str, Any]:
     return loss.to_mapping()
 
@@ -579,6 +627,9 @@ def _policy_evidence() -> tuple[
     ] = {policy: {} for policy in _POLICIES}
     case_worst: dict[str, dict[str, TerminalLoss]] = {
         policy: {} for policy in _POLICIES
+    }
+    root_search_work: dict[str, list[tuple[int, int]]] = {
+        policy: [] for policy in _POLICIES
     }
     oracle_disagreements: list[dict[str, Any]] = []
     e4_e5_failures: list[dict[str, Any]] = []
@@ -605,6 +656,7 @@ def _policy_evidence() -> tuple[
             )
         worlds = _complete_worlds(case.facts)
         for policy in _POLICIES:
+            root_search_work[policy].append(_root_search_work(policy, case))
             results = []
             for world in worlds:
                 world_key = tuple(sorted(world.items()))
@@ -637,6 +689,8 @@ def _policy_evidence() -> tuple[
             for case in cases
         )
         worst = max(losses)
+        state_counts = tuple(item[0] for item in root_search_work[policy])
+        memo_counts = tuple(item[1] for item in root_search_work[policy])
         policy_metrics[policy] = {
             "worst_loss": _loss_mapping(worst),
             "worst_risk_vector": list(
@@ -650,6 +704,10 @@ def _policy_evidence() -> tuple[
                 result.repeated_question_attempts for result in results.values()
             ),
             "strictly_suboptimal_roots": strictly_suboptimal,
+            "root_states_evaluated_total": sum(state_counts),
+            "root_states_evaluated_max": max(state_counts),
+            "root_memo_hits_total": sum(memo_counts),
+            "root_memo_hits_max": max(memo_counts),
         }
     strict_advantages = [
         case.case_id
@@ -762,43 +820,76 @@ def _peak_process_memory_bytes() -> tuple[int, str]:
     return peak, "windows_peak_working_set"
 
 
+def _root_policy_signature(
+    policy: str,
+    case: BenchmarkCase,
+) -> dict[str, Any]:
+    if case.budget == 0:
+        return {"case_id": case.case_id, "question_ids": []}
+    if policy == "batch_form":
+        question_ids = [
+            question.question_id
+            for question in _REGISTRY.questions
+            if case.facts[question.fact_address].state is FactState.UNKNOWN
+        ][: case.budget]
+        return {"case_id": case.case_id, "question_ids": question_ids}
+    return {
+        "case_id": case.case_id,
+        "question_ids": [
+            question_id
+            for question_id in (
+                _select_question(policy, case.facts, case.budget),
+            )
+            if question_id is not None
+        ],
+    }
+
+
 def _performance(iterations: int) -> dict[str, Any]:
     cases = tuple(iter_small_cases())
-    samples: list[float] = []
-    outcome_digest = ""
+    policy_metrics: dict[str, dict[str, Any]] = {}
     tracing_before = tracemalloc.is_tracing()
     if not tracing_before:
         tracemalloc.start()
     tracemalloc.reset_peak()
-    for _ in range(iterations):
-        started = time.perf_counter_ns()
-        outcomes = []
-        for case in cases:
-            outcome = production_policy(case.facts, case.budget)
-            outcomes.append(
-                {
-                    "case_id": case.case_id,
-                    "question_id": outcome.selected_question_id,
-                    "loss": outcome.worst_loss.to_mapping(),
-                }
+    for policy in _POLICIES:
+        samples: list[float] = []
+        outcome_digest = ""
+        for _ in range(iterations):
+            started = time.perf_counter_ns()
+            outcomes = [
+                _root_policy_signature(policy, case) for case in cases
+            ]
+            samples.append(
+                round((time.perf_counter_ns() - started) / 1_000_000, 3)
             )
-        samples.append(round((time.perf_counter_ns() - started) / 1_000_000, 3))
-        outcome_digest = canonical_digest({"outcomes": outcomes})
+            outcome_digest = canonical_digest({"outcomes": outcomes})
+        policy_metrics[policy] = {
+            "iterations": iterations,
+            "matrix_cases_per_iteration": CASE_COUNT,
+            "elapsed_ms_samples": samples,
+            "min_elapsed_ms": min(samples),
+            "median_elapsed_ms": round(float(median(samples)), 3),
+            "max_elapsed_ms": max(samples),
+            "outcome_digest": outcome_digest,
+        }
     _, peak = tracemalloc.get_traced_memory()
     if not tracing_before:
         tracemalloc.stop()
     process_peak, process_memory_measurement = _peak_process_memory_bytes()
+    bounded = policy_metrics["bounded_minimax"]
     return {
         "iterations": iterations,
         "matrix_cases_per_iteration": CASE_COUNT,
-        "elapsed_ms_samples": samples,
-        "min_elapsed_ms": min(samples),
-        "median_elapsed_ms": round(float(median(samples)), 3),
-        "max_elapsed_ms": max(samples),
+        "elapsed_ms_samples": bounded["elapsed_ms_samples"],
+        "min_elapsed_ms": bounded["min_elapsed_ms"],
+        "median_elapsed_ms": bounded["median_elapsed_ms"],
+        "max_elapsed_ms": bounded["max_elapsed_ms"],
         "peak_tracemalloc_bytes": peak,
         "peak_process_memory_bytes": process_peak,
         "peak_process_memory_measurement": process_memory_measurement,
-        "outcome_digest": outcome_digest,
+        "outcome_digest": bounded["outcome_digest"],
+        "policies": policy_metrics,
     }
 
 

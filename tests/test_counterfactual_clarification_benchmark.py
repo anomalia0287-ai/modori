@@ -50,6 +50,25 @@ def test_bounded_lookahead_has_a_strict_locked_advantage_over_one_step() -> None
     assert report["bounded_worse_than_one_step_cases"] == []
 
 
+def test_policy_metrics_include_search_work_not_only_outcomes() -> None:
+    report = build_report(iterations=1)
+
+    for policy in report["policies"].values():
+        assert policy["root_states_evaluated_total"] >= 0
+        assert policy["root_states_evaluated_max"] >= 0
+        assert policy["root_memo_hits_total"] >= 0
+        assert policy["root_memo_hits_max"] >= 0
+    assert report["policies"]["bounded_minimax"][
+        "root_states_evaluated_total"
+    ] > 0
+    assert report["policies"]["bounded_minimax"]["root_memo_hits_total"] > 0
+    assert set(report["performance"]["policies"]) == set(report["policies"])
+    for timing in report["performance"]["policies"].values():
+        assert timing["iterations"] == 1
+        assert len(timing["elapsed_ms_samples"]) == 1
+        assert timing["max_elapsed_ms"] >= timing["min_elapsed_ms"]
+
+
 def test_all_deliberate_policy_mutants_are_killed() -> None:
     checks = mutation_checks()
 
