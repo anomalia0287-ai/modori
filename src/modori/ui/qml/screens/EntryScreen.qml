@@ -32,7 +32,7 @@ Item {
         anchors.centerIn: parent
         width: Math.min(parent.width - theme.entryViewportMargin * 2, theme.entryStartMaxWidth)
         height: Math.min(parent.height - theme.entryViewportMargin * 2, theme.entryStartMaxHeight)
-        fillColor: theme.surfaceCream
+        fillColor: theme.surfaceQuiet
 
         RowLayout {
             anchors.fill: parent

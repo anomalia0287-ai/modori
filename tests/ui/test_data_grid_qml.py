@@ -170,7 +170,6 @@ def test_data_grid_contains_motion_and_places_basic_scrollbars_outside_cells() -
     assert "import QtQuick.Controls.Basic" in scrollbar
     for token in (
         "gridScrollRailSize",
-        "gridScrollTrackThickness",
         "gridScrollThumbThickness",
         "gridScrollThumbActiveThickness",
         "gridScrollMinimumThumbLength",
@@ -179,6 +178,10 @@ def test_data_grid_contains_motion_and_places_basic_scrollbars_outside_cells() -
     assert "id: thumb" in scrollbar
     assert "width: root.horizontal ? parent.width : root.thumbThickness" in scrollbar
     assert "height: root.horizontal ? root.thumbThickness : parent.height" in scrollbar
+    assert "theme.scrollRailSurface" in scrollbar
+    assert "theme.scrollThumbSurface" in scrollbar
+    assert "theme.headerTiffany" in scrollbar
+    assert "theme.lineStrong" in scrollbar
 
 
 def test_data_grid_headers_have_distinct_visual_treatment() -> None:

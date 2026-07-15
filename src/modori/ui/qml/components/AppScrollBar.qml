@@ -26,22 +26,23 @@ Basic.ScrollBar {
         id: theme
     }
 
-    background: Item {
+    background: Rectangle {
+        color: theme.scrollRailSurface
+        border.color: theme.lineSubtle
+        border.width: theme.borderWidth
+
         Rectangle {
             anchors.centerIn: parent
-            width: root.horizontal ? parent.width : theme.gridScrollTrackThickness
-            height: root.horizontal ? theme.gridScrollTrackThickness : parent.height
-            radius: theme.gridScrollTrackThickness / 2
-            color: theme.lineRail
+            width: root.horizontal ? parent.width : theme.borderWidth
+            height: root.horizontal ? theme.borderWidth : parent.height
+            color: theme.lineSubtle
         }
     }
 
     contentItem: Item {
         implicitWidth: root.horizontal ? theme.gridScrollMinimumThumbLength : theme.gridScrollRailSize
         implicitHeight: root.horizontal ? theme.gridScrollRailSize : theme.gridScrollMinimumThumbLength
-        opacity: root.size < 1.0
-            ? (root.engaged ? theme.opacityHigh : theme.opacityScrollThumbRest)
-            : theme.spaceNone
+        visible: root.size < 1.0
 
         Rectangle {
             id: thumb
@@ -49,7 +50,9 @@ Basic.ScrollBar {
             width: root.horizontal ? parent.width : root.thumbThickness
             height: root.horizontal ? root.thumbThickness : parent.height
             radius: root.thumbThickness / 2
-            color: root.engaged ? theme.actionTeal : theme.textMuted
+            color: root.engaged ? theme.headerTiffany : theme.scrollThumbSurface
+            border.color: theme.lineStrong
+            border.width: theme.borderWidth
 
             Behavior on width {
                 enabled: root.vertical

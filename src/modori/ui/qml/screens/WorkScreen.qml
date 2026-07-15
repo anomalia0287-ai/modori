@@ -30,7 +30,7 @@ Item {
         spacing: theme.spaceNone
 
         PearlSurface {
-            fillColor: theme.surfaceQuiet
+            fillColor: theme.headerTiffany
             radius: theme.spaceNone
             Layout.fillWidth: true
             Layout.preferredHeight: theme.commandSurfaceHeight

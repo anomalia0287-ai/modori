@@ -69,3 +69,23 @@ def test_entry_work_and_splash_reuse_brand_wordmark() -> None:
         source = qml_text(relative)
         assert "BrandWordmark {" in source
         assert 'appBootstrap.text("app.title")' in source
+
+
+def test_work_header_and_entry_sheet_use_approved_surface_roles() -> None:
+    work = qml_text("screens/WorkScreen.qml")
+    entry = qml_text("screens/EntryScreen.qml")
+
+    assert "fillColor: theme.headerTiffany" in work
+    assert 'objectName: "entryStartSurface"' in entry
+    assert "fillColor: theme.surfaceQuiet" in entry
+
+
+def test_scrollbar_uses_white_surfaces_rose_bronze_edges_and_tiffany_active_state() -> None:
+    scrollbar = qml_text("components/AppScrollBar.qml")
+
+    assert "color: theme.scrollRailSurface" in scrollbar
+    assert "border.color: theme.lineSubtle" in scrollbar
+    assert "root.engaged ? theme.headerTiffany : theme.scrollThumbSurface" in scrollbar
+    assert "border.color: theme.lineStrong" in scrollbar
+    assert "theme.textMuted" not in scrollbar
+    assert "theme.actionTeal" not in scrollbar
