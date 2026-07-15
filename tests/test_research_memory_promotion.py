@@ -11,8 +11,10 @@ from modori.research_memory.evidence_bundle import EvidenceBundle
 from modori.research_memory.ledger_contracts import (
     LedgerArtifactKind,
     LedgerCommit,
+    LedgerEvent,
     LedgerEventKind,
     LedgerHead,
+    ResearchRequestSnapshot,
 )
 from modori.research_memory.ledger_store import DecisionLedgerStore
 from modori.research_memory.promotion import (
@@ -681,3 +683,65 @@ def test_two_connection_race_commits_one_active_passport(tmp_path: Path) -> None
         assert verified.verify().event_count == 2
     finally:
         verified.close()
+
+
+def test_unrelated_head_change_never_retries_stale_passport(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    request = _clarify_request()
+    store, request = _initialized(tmp_path, request=request)
+    head = store.head
+    _snapshot, artifacts = ResearchRequestSnapshot.capture(request)
+    snapshot_artifact = next(
+        artifact
+        for artifact in artifacts
+        if artifact.artifact_kind is LedgerArtifactKind.REQUEST_SNAPSHOT
+    )
+    unrelated_event = LedgerEvent.create(
+        project_id="project-1",
+        event_id="event:unrelated:2",
+        sequence=2,
+        event_kind=LedgerEventKind.FACT_INVALIDATED,
+        subject_artifact_ids=tuple(
+            sorted(artifact.artifact_id for artifact in artifacts)
+        ),
+        payload={
+            "fact_address": "study.dependence_structure",
+            "reason_code": "external_metadata_changed",
+            "resulting_snapshot_artifact_id": snapshot_artifact.artifact_id,
+        },
+        previous_event_hash=head.event_hash,
+        recorded_at_utc=None,
+    )
+    unrelated_commit = LedgerCommit(
+        expected_head=head,
+        events=(unrelated_event,),
+        artifacts=artifacts,
+        resulting_snapshot_artifact_id=snapshot_artifact.artifact_id,
+    )
+    real_append = store.append
+
+    def append_after_unrelated_winner(commit):
+        with DecisionLedgerStore.open(store.path, "project-1") as rival:
+            rival.append(unrelated_commit)
+        return real_append(commit)
+
+    monkeypatch.setattr(store, "append", append_after_unrelated_winner)
+    try:
+        with pytest.raises(PromotionError, match="without an equivalent"):
+            ResearchMemoryCoordinator().commit_current_passport(
+                store,
+                request,
+                event_id="event:passport:2",
+                passport_object_id="passport:decision:1",
+                recorded_at_utc=None,
+            )
+        assert store.head.sequence == 2
+        assert store.events()[-1].event_kind is LedgerEventKind.FACT_INVALIDATED
+        assert all(
+            artifact.artifact_kind is not LedgerArtifactKind.ANALYSIS_PASSPORT
+            for artifact in store.artifacts()
+        )
+    finally:
+        store.close()
