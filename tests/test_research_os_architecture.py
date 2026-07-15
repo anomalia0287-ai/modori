@@ -6,6 +6,14 @@ from pathlib import Path
 
 from modori.recommendations import RecommendationService
 from modori.research_os.clarification import ClarificationSpec
+from modori.research_os.counterfactual_planner import (
+    ClarificationPlan,
+    CounterfactualPlanner,
+    DecisionSnapshot,
+    PlannerResult,
+    QuestionEvaluationTrace,
+    TerminalLoss,
+)
 from modori.research_os.decision_evidence import (
     AnswerValue,
     ClarificationAnswerEvent,
@@ -138,6 +146,26 @@ def test_research_os_public_service_cannot_run_or_persist() -> None:
     }
 
     assert public_methods == {"resolve", "plan", "clarifications_for"}
+
+
+def test_counterfactual_planner_contracts_cannot_gain_execution_authority() -> None:
+    forbidden = {"run", "save", "execute", "open", "persist"}
+    contract_types = (
+        ClarificationPlan,
+        CounterfactualPlanner,
+        DecisionSnapshot,
+        PlannerResult,
+        QuestionEvaluationTrace,
+        TerminalLoss,
+    )
+
+    for contract_type in contract_types:
+        public_methods = {
+            name
+            for name, member in inspect.getmembers(contract_type)
+            if callable(member) and not name.startswith("_")
+        }
+        assert public_methods.isdisjoint(forbidden)
 
 
 def test_passport_and_payload_field_sets_cannot_gain_execution_authority() -> None:

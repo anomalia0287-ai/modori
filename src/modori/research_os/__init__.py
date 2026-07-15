@@ -46,6 +46,20 @@ from modori.research_os.contracts import (
     UnitKind,
     canonical_digest,
 )
+from modori.research_os.counterfactual_planner import (
+    DEFAULT_MAX_STATE_EVALUATIONS,
+    PLANNER_VERSION,
+    BlockingFact,
+    ClarificationPlan,
+    CounterfactualPlanner,
+    DecisionSnapshot,
+    PlannerError,
+    PlannerResult,
+    QuestionEvaluationTrace,
+    TerminalLoss,
+    answer_kind_cost,
+    project_question_answers,
+)
 from modori.research_os.decision_evidence import (
     AnswerValue,
     AnswerValueKind,
@@ -197,4 +211,16 @@ __all__ = [
     "canonical_digest",
     "build_p1_clarification_registry",
     "build_p1_method_space",
+    "BlockingFact",
+    "ClarificationPlan",
+    "CounterfactualPlanner",
+    "DEFAULT_MAX_STATE_EVALUATIONS",
+    "DecisionSnapshot",
+    "PLANNER_VERSION",
+    "PlannerError",
+    "PlannerResult",
+    "QuestionEvaluationTrace",
+    "TerminalLoss",
+    "answer_kind_cost",
+    "project_question_answers",
 ]

@@ -72,8 +72,8 @@ def test_choice_projection_has_one_substantive_state_per_registered_value() -> N
     projections = project_question_answers(question)
 
     assert tuple(item.projection_id for item in projections.substantive) == (
-        "independent:independent",
-        "paired:paired",
+        "choice_independent:independent",
+        "choice_paired:paired",
     )
     assert tuple(item.fact.value for item in projections.substantive) == (
         "independent",
