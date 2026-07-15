@@ -1,15 +1,19 @@
 import QtQuick
 
 QtObject {
-    readonly property color canvasCream: "#F4F0E8"
-    readonly property color surfaceCream: "#FCFAF5"
-    readonly property color surfaceRaised: "#EEE8DE"
-    readonly property color surfaceQuiet: "#F7F3EB"
-    readonly property color pearlMint: "#EFF4F0"
-    readonly property color pearlRose: "#F6EFEC"
-    readonly property color pearlLilac: "#F2F0F5"
+    readonly property color canvasCream: "#FEFDFC"
+    readonly property color surfaceCream: "#FEFDFC"
+    readonly property color surfaceRaised: "#FBF9F7"
+    readonly property color surfaceQuiet: "#FBF9F7"
+    readonly property color pearlMint: "#FCFFFE"
+    readonly property color pearlRose: "#FFFCFB"
+    readonly property color pearlLilac: "#FEFCFF"
+    readonly property color headerTiffany: "#81D8D0"
+    readonly property color brandWordmark: "#B9856E"
+    readonly property color scrollRailSurface: "#FFFFFF"
+    readonly property color scrollThumbSurface: "#FFFFFF"
     readonly property color focusRing: "#2B6F65"
-    readonly property color semanticGlow: "#8CB8AF"
+    readonly property color semanticGlow: "#B9856E"
     readonly property color transparent: "transparent"
 
     readonly property color deepTeal: "#2E4D47"
@@ -26,16 +30,16 @@ QtObject {
     readonly property color popoverSurface: surfaceCream
     readonly property color paperSurface: surfaceCream
     readonly property color surface: surfaceCream
-    readonly property color gridColumnHeaderSurface: "#E7EFE9"
-    readonly property color gridRowHeaderSurface: "#F0E8DA"
+    readonly property color gridColumnHeaderSurface: "#FBF9F7"
+    readonly property color gridRowHeaderSurface: "#FBF9F7"
     readonly property color gridHeaderText: "#27423B"
     readonly property color flatBackground: canvasCream
-    readonly property color lineSubtle: "#DDD6CC"
-    readonly property color lineStrong: "#C9C1B7"
-    readonly property color lineGrid: "#D7DED8"
-    readonly property color lineRail: "#D2C9BC"
-    readonly property color lineDialog: "#CFC6BA"
-    readonly property color linePopover: "#93B9AD"
+    readonly property color lineSubtle: "#D7B9AA"
+    readonly property color lineStrong: "#B9856E"
+    readonly property color lineGrid: "#D7B9AA"
+    readonly property color lineRail: "#D7B9AA"
+    readonly property color lineDialog: "#D7B9AA"
+    readonly property color linePopover: "#B9856E"
     readonly property color textStrong: "#24332F"
     readonly property color textBody: "#485A54"
     readonly property color textControl: "#35463F"
