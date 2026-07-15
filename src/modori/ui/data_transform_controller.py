@@ -215,6 +215,7 @@ class DataTransformControllerMixin:
         )
         self.stepsModel = self._pipeline_state.steps_model
         self._refresh_dataset_models()
+        self._session.invalidate_selection_confirmation()
         self._refresh_recommendations()
         self._last_error = ""
         self._last_message = result.message_ko

@@ -20,7 +20,11 @@ def test_controller_exposes_result_table_and_chart_after_run(tmp_path) -> None:
         if candidate.kind == "reliability"
     )
     assert controller.selectRecommendationAt(reliability_index) is True
-    assert controller.runPreparedRecommendationNow() is True
+    assert controller.configureReliabilityFromText(
+        controller.preparedReliabilityItems
+    ) is True
+    controller.markExperimentalCandidateAssisted()
+    assert controller.rerunNow() is True
     assert controller.waitForLastRun(timeout=10) is True
 
     assert controller.resultTableText

@@ -5,6 +5,7 @@ import "../theme"
 
 PearlSurface {
     id: root
+    objectName: "guideRail"
 
     fillColor: theme.guideSurface
 
@@ -42,10 +43,10 @@ PearlSurface {
 
     function canPrepareCandidate() {
         var kind = uiController.recommendationKind
-        return kind === "descriptives"
-            || kind === "reliability"
-            || kind === "comparison"
+        return kind === "reliability"
             || kind === "regression"
+            || root.isVariableListIntent(kind)
+            || root.isOutcomeGroupIntent(kind)
     }
 
     function clearSelectionFields() {
@@ -55,6 +56,11 @@ PearlSurface {
         groupKeyField.text = ""
         covariateKeysField.text = ""
         predictorKeysField.text = ""
+    }
+
+    function scrollReviewToBottom() {
+        var flickable = guideScroll.contentItem
+        flickable.contentY = Math.max(0, flickable.contentHeight - flickable.height)
     }
 
     function prepareCandidateForReview() {
@@ -70,22 +76,45 @@ PearlSurface {
         root.candidateAssistedReview = true
         root.reviewConfirmed = false
 
-        if (kind === "descriptives") {
-            variableKeysField.text = uiController.preparedDescriptiveVariables
-            groupKeyField.text = uiController.preparedGroupKey
+        if (root.isVariableListIntent(kind)) {
+            variableKeysField.text = uiController.preparedVariableKeys
+            if (kind === "descriptives") {
+                groupKeyField.text = uiController.preparedGroupKey
+            }
         } else if (kind === "reliability") {
             reliabilityItemsField.text = uiController.preparedReliabilityItems
-        } else if (kind === "comparison") {
+        } else if (root.isOutcomeGroupIntent(kind)) {
             outcomeKeyField.text = uiController.preparedOutcomeKey
             groupKeyField.text = uiController.preparedGroupKey
+            if (kind === "ancova") {
+                covariateKeysField.text = uiController.preparedCovariateKeys
+            }
         } else if (kind === "regression") {
             outcomeKeyField.text = uiController.preparedOutcomeKey
             predictorKeysField.text = uiController.preparedPredictorKeys
         }
+        Qt.callLater(root.scrollReviewToBottom)
         return true
     }
 
+    function resetPendingSelection(manualMode) {
+        root.clearSelectionFields()
+        root.selectedIntent = ""
+        root.manualSelectionMode = manualMode
+        root.showOtherRecommendations = false
+        root.candidateAssistedReview = false
+        root.reviewConfirmed = false
+        root.guideNote = ""
+    }
+
+    function startManualSelection() {
+        root.resetPendingSelection(true)
+    }
+
     function chooseManualIntent(intent, explanationKey) {
+        if (root.candidateAssistedReview || root.selectedIntent !== intent) {
+            root.clearSelectionFields()
+        }
         root.manualSelectionMode = true
         root.selectedIntent = intent
         root.candidateAssistedReview = false
@@ -181,8 +210,7 @@ PearlSurface {
 
     onVisibleChanged: {
         if (!visible) {
-            root.candidateAssistedReview = false
-            root.reviewConfirmed = false
+            root.resetPendingSelection(false)
         }
     }
 
@@ -190,15 +218,49 @@ PearlSurface {
         target: uiController
 
         function onRecommendationStateChanged() {
-            root.candidateAssistedReview = false
-            root.reviewConfirmed = false
+            root.resetPendingSelection(false)
+        }
+    }
+
+    ColumnLayout {
+        id: guideHeader
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.margins: theme.spaceLg
+        spacing: theme.spaceSm
+
+        Label {
+            text: appBootstrap.text("guide.title")
+            font.bold: true
+            color: theme.deepTeal
+            Layout.fillWidth: true
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: theme.spaceSm
+
+            StateBadge {
+                state: "empty"
+                label: appBootstrap.text("guide.experimental_badge")
+            }
+
+            Label {
+                text: appBootstrap.text("guide.experimental_status")
+                color: theme.textBody
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
         }
     }
 
     ScrollView {
         id: guideScroll
+        objectName: "guideFormScroll"
         anchors.fill: parent
         anchors.margins: theme.spaceLg
+        anchors.topMargin: theme.spaceLg + guideHeader.implicitHeight + theme.spaceMd
         clip: true
         contentWidth: availableWidth
         ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
@@ -206,30 +268,6 @@ PearlSurface {
         ColumnLayout {
             width: guideScroll.availableWidth
             spacing: theme.spaceMd
-
-            Label {
-                text: appBootstrap.text("guide.title")
-                font.bold: true
-                color: theme.deepTeal
-                Layout.fillWidth: true
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: theme.spaceSm
-
-                StateBadge {
-                    state: "empty"
-                    label: appBootstrap.text("guide.experimental_badge")
-                }
-
-                Label {
-                    text: appBootstrap.text("guide.experimental_status")
-                    color: theme.textBody
-                    wrapMode: Text.WordWrap
-                    Layout.fillWidth: true
-                }
-            }
 
             Label {
                 text: appBootstrap.text("guide.question")
@@ -287,7 +325,7 @@ PearlSurface {
                     }
 
                     Label {
-                        text: appBootstrap.text("guide.review_required")
+                        text: appBootstrap.text("guide.form_unavailable")
                         visible: root.recommendationAvailable && !root.canPrepareCandidate()
                         color: theme.warning
                         wrapMode: Text.WordWrap
@@ -303,10 +341,9 @@ PearlSurface {
                 enabled: root.canEditSelection && uiController.recommendationCount > 1
                 Layout.fillWidth: true
                 onClicked: {
-                    root.manualSelectionMode = false
-                    root.candidateAssistedReview = false
-                    root.reviewConfirmed = false
-                    root.showOtherRecommendations = !root.showOtherRecommendations
+                    var shouldShow = !root.showOtherRecommendations
+                    root.resetPendingSelection(false)
+                    root.showOtherRecommendations = shouldShow
                 }
             }
 
@@ -323,8 +360,7 @@ PearlSurface {
                     enabled: root.canEditSelection
                     Layout.fillWidth: true
                     onClicked: {
-                        root.candidateAssistedReview = false
-                        root.reviewConfirmed = false
+                        root.resetPendingSelection(false)
                         uiController.selectRecommendationAt(index)
                     }
                 }
@@ -336,12 +372,7 @@ PearlSurface {
                 variant: "quiet"
                 enabled: root.canEditSelection
                 Layout.fillWidth: true
-                onClicked: {
-                    root.manualSelectionMode = true
-                    root.showOtherRecommendations = false
-                    root.candidateAssistedReview = false
-                    root.reviewConfirmed = false
-                }
+                onClicked: root.startManualSelection()
             }
 
             Label {
@@ -542,6 +573,7 @@ PearlSurface {
 
             CheckBox {
                 id: reviewConfirmation
+                objectName: "guideReviewConfirmation"
                 text: appBootstrap.text("guide.confirm_review")
                 Accessible.name: text
                 visible: root.candidateAssistedReview
@@ -577,7 +609,13 @@ PearlSurface {
                 enabled: root.canRunReviewedSelection()
                 Layout.fillWidth: true
                 onClicked: {
+                    var assisted = root.candidateAssistedReview
                     if (root.commitSelectedIntent()) {
+                        if (assisted) {
+                            uiController.markExperimentalCandidateAssisted()
+                        } else {
+                            uiController.clearSelectionProvenance()
+                        }
                         uiController.rerunNow()
                     }
                 }

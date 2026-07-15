@@ -24,6 +24,8 @@ class UiSessionState:
         self._recent_files_enabled = bool(settings.get("recent_files_enabled", True))
         self._recent_files = list(settings.get("recent_files", []))[:5]
         self._explain_mode_enabled = bool(settings.get("explain_mode_enabled", True))
+        self._selection_provenance = "manual"
+        self._selection_confirmation_required = False
         self._recent_files_model = QStringListModel(self.recent_file_labels)
 
     @property
@@ -60,6 +62,14 @@ class UiSessionState:
         return self._explain_mode_enabled
 
     @property
+    def selection_provenance(self) -> str:
+        return self._selection_provenance
+
+    @property
+    def selection_confirmation_required(self) -> bool:
+        return self._selection_confirmation_required
+
+    @property
     def recent_files_text(self) -> str:
         return "\n".join(self.recent_file_labels)
 
@@ -88,6 +98,18 @@ class UiSessionState:
     def set_explain_mode_enabled(self, enabled: bool) -> None:
         self._explain_mode_enabled = bool(enabled)
         self.save()
+
+    def mark_experimental_candidate_assisted(self) -> None:
+        self._selection_provenance = "experimental_candidate_assisted"
+        self._selection_confirmation_required = False
+
+    def invalidate_selection_confirmation(self) -> None:
+        if self._selection_provenance == "experimental_candidate_assisted":
+            self._selection_confirmation_required = True
+
+    def clear_selection_provenance(self) -> None:
+        self._selection_provenance = "manual"
+        self._selection_confirmation_required = False
 
     def remember_recent_file(self, path: Path) -> None:
         if not self._recent_files_enabled:

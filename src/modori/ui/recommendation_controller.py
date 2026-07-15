@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from PySide6.QtCore import Property, Signal, Slot
 
-from modori.recommendations import RecommendationCandidate, RecommendationState
-from modori.ui.contracts import CommandResult
+from modori.recommendations import RecommendationState
 
 
 def empty_recommendation_state() -> RecommendationState:
@@ -66,6 +65,13 @@ class RecommendationControllerMixin:
         return ", ".join(candidate.variable_keys)
 
     @Property(str, notify=recommendationStateChanged)
+    def preparedVariableKeys(self) -> str:
+        candidate = self._recommendation_state.selected_candidate
+        if candidate is None:
+            return ""
+        return ", ".join(candidate.variable_keys)
+
+    @Property(str, notify=recommendationStateChanged)
     def preparedOutcomeKey(self) -> str:
         candidate = self._recommendation_state.selected_candidate
         return "" if candidate is None else candidate.outcome_key
@@ -82,10 +88,17 @@ class RecommendationControllerMixin:
             return ""
         return ", ".join(candidate.predictor_keys)
 
+    @Property(str, notify=recommendationStateChanged)
+    def preparedCovariateKeys(self) -> str:
+        candidate = self._recommendation_state.selected_candidate
+        if candidate is None or candidate.kind != "ancova":
+            return ""
+        return ", ".join(candidate.predictor_keys)
+
     @Slot(int, result=bool)
     def selectRecommendationAt(self, index: int) -> bool:
         if index < 0 or index >= len(self._recommendation_state.candidates):
-            self._last_error = "추천 후보를 찾을 수 없습니다."
+            self._last_error = "분석 후보를 찾을 수 없습니다."
             self._last_message = ""
             self.stateChanged.emit()
             return False
@@ -97,7 +110,7 @@ class RecommendationControllerMixin:
             message_ko=self._recommendation_state.message_ko,
         )
         self._last_error = ""
-        self._last_message = "추천 후보를 선택했습니다."
+        self._last_message = "검토할 분석 후보를 선택했습니다."
         self._emit_recommendation_state_changed()
         self.stateChanged.emit()
         return True
@@ -113,80 +126,6 @@ class RecommendationControllerMixin:
         if index < 0 or index >= len(self._recommendation_state.candidates):
             return ""
         return self._recommendation_state.candidates[index].level
-
-    def applySelectedRecommendation(self) -> CommandResult:
-        candidate: RecommendationCandidate | None = self._recommendation_state.selected_candidate
-        if candidate is None:
-            return self._command_error("실행할 추천 분석이 없습니다.", "no_recommendation")
-        if candidate.kind == "descriptives":
-            return self.configureDescriptivesSelection(
-                ", ".join(candidate.variable_keys),
-                group_key=candidate.group_key,
-            )
-        if candidate.kind == "reliability":
-            return self.configureReliabilitySelection(", ".join(candidate.item_keys))
-        if candidate.kind == "comparison":
-            return self.configureComparisonSelection(candidate.outcome_key, candidate.group_key)
-        if candidate.kind == "regression":
-            return self.configureRegressionSelection(
-                candidate.outcome_key,
-                ", ".join(candidate.predictor_keys),
-            )
-        if candidate.kind == "frequency_crosstab":
-            return self.configureFrequencyCrosstabSelection(
-                ", ".join(candidate.variable_keys)
-            )
-        if candidate.kind == "correlation":
-            return self.configureCorrelationSelection(", ".join(candidate.variable_keys))
-        if candidate.kind == "anova_oneway":
-            return self.configureAnovaOneWaySelection(
-                candidate.outcome_key,
-                candidate.group_key,
-            )
-        if candidate.kind == "kruskal_wallis":
-            return self.configureKruskalWallisSelection(
-                candidate.outcome_key,
-                candidate.group_key,
-            )
-        if candidate.kind == "ancova":
-            return self.configureAncovaSelection(
-                candidate.outcome_key,
-                candidate.group_key,
-                ", ".join(candidate.predictor_keys),
-            )
-        if candidate.kind == "factor_pca":
-            return self.configureFactorPcaSelection(", ".join(candidate.variable_keys))
-        if candidate.kind == "repeated_measures_anova":
-            return self.configureRepeatedMeasuresAnovaSelection(
-                ", ".join(candidate.variable_keys)
-            )
-        if candidate.kind == "friedman":
-            return self.configureFriedmanSelection(", ".join(candidate.variable_keys))
-        if candidate.kind == "mediation":
-            return self.configureMediationSelection(
-                candidate.variable_keys[0] if len(candidate.variable_keys) > 0 else "",
-                candidate.variable_keys[1] if len(candidate.variable_keys) > 1 else "",
-                candidate.variable_keys[2] if len(candidate.variable_keys) > 2 else "",
-            )
-        if candidate.kind == "moderated_mediation":
-            return self.configureModeratedMediationSelection(
-                "7",
-                candidate.variable_keys[0] if len(candidate.variable_keys) > 0 else "",
-                candidate.variable_keys[1] if len(candidate.variable_keys) > 1 else "",
-                candidate.variable_keys[2] if len(candidate.variable_keys) > 2 else "",
-                candidate.variable_keys[3] if len(candidate.variable_keys) > 3 else "",
-            )
-        return self._command_error("지원하지 않는 추천 분석입니다.", "invalid_recommendation")
-
-    @Slot(result=bool)
-    def runPreparedRecommendationNow(self) -> bool:
-        return self.runPreparedRecommendation().ok
-
-    def runPreparedRecommendation(self) -> CommandResult:
-        applied = self.applySelectedRecommendation()
-        if not applied.ok:
-            return applied
-        return self.rerun()
 
     def _refresh_recommendations(self) -> None:
         self._recommendation_state = self._services.recommendation_service.recommend(

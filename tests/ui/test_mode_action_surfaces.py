@@ -63,6 +63,61 @@ def test_candidate_assisted_run_requires_visible_confirmation() -> None:
     assert "wrapMode: Text.WordWrap" in guide
 
 
+def test_experimental_status_stays_outside_the_scrolling_form() -> None:
+    guide = qml_text("components/GuideRail.qml")
+    scroll_start = guide.index("ScrollView {")
+
+    assert guide.index("id: guideHeader") < scroll_start
+    assert 'appBootstrap.text("guide.experimental_status")' in guide[:scroll_start]
+    assert 'appBootstrap.text("guide.experimental_status")' not in guide[scroll_start:]
+
+
+def test_guide_has_explicit_fail_closed_reset_and_provenance_calls() -> None:
+    guide = qml_text("components/GuideRail.qml")
+
+    assert "function resetPendingSelection" in guide
+    assert "function startManualSelection" in guide
+    assert "root.clearSelectionFields()" in guide
+    assert 'root.selectedIntent = ""' in guide
+    assert "uiController.markExperimentalCandidateAssisted()" in guide
+    assert "uiController.clearSelectionProvenance()" in guide
+    assert "Qt.callLater(root.scrollReviewToBottom)" in guide
+
+
+def test_reconfirmation_boundary_is_visible_on_run_and_report_surfaces() -> None:
+    work = qml_text("screens/WorkScreen.qml")
+    pipeline = qml_text("components/PipelineRail.qml")
+    report = qml_text("dialogs/ReportExportDialog.qml")
+    strings = Path("src/modori/ui/strings.py").read_text(encoding="utf-8")
+
+    assert "uiController.selectionConfirmationRequired" in work
+    assert "uiController.selectionConfirmationRequired" in pipeline
+    assert "uiController.selectionConfirmationRequired" in report
+    assert "데이터 구성이 바뀌었습니다." in strings
+
+
+def test_unsupported_candidate_copy_does_not_promise_an_unavailable_action() -> None:
+    guide = qml_text("components/GuideRail.qml")
+    strings = Path("src/modori/ui/strings.py").read_text(encoding="utf-8")
+
+    assert 'appBootstrap.text("guide.form_unavailable")' in guide
+    assert "이 후보는 아직 안내 화면에서 구성할 수 없습니다." in strings
+
+
+def test_visible_controller_copy_uses_candidate_language_not_recommendation_claims() -> (
+    None
+):
+    candidate_controller = Path("src/modori/ui/recommendation_controller.py").read_text(
+        encoding="utf-8"
+    )
+    run_validation = Path("src/modori/ui/run_validation.py").read_text(encoding="utf-8")
+
+    for forbidden in ("추천 후보", "추천 분석"):
+        assert forbidden not in candidate_controller
+        assert forbidden not in run_validation
+    assert "검토할 분석 후보를 선택했습니다." in candidate_controller
+
+
 def test_pipeline_shows_only_selected_direct_analysis_form() -> None:
     rail = qml_text("components/PipelineRail.qml")
 

@@ -1,8 +1,10 @@
+
 from __future__ import annotations
 
 from pathlib import Path
 
 import pandas as pd
+from PySide6.QtTest import QSignalSpy
 
 from modori.core import Dataset, Measure, Pipeline, Step, StepResult, Variable
 from modori.steps import ImportStep, VariableMetadataPatchStep
@@ -132,6 +134,32 @@ def test_controller_changes_variable_measure_through_metadata_step(tmp_path) -> 
     assert controller.stale is True
     assert controller.pipeline_version == 1
     assert "Edit metadata: group" in controller.stepChainText
+
+
+def test_metadata_edit_refreshes_candidates_and_invalidates_assisted_confirmation(
+    tmp_path,
+) -> None:
+    data_path = tmp_path / "survey.csv"
+    _write_csv(data_path)
+    pipeline = Pipeline(Dataset.empty())
+    pipeline.add(
+        ImportStep(
+            id="import",
+            title="Import CSV",
+            params={"path": str(data_path), "file_type": "csv"},
+        )
+    )
+    pipeline.recompute(dirty_from=None)
+    controller = UiController(pipeline=pipeline)
+    recommendation_changes = QSignalSpy(controller.recommendationStateChanged)
+    controller.markExperimentalCandidateAssisted()
+
+    result = controller.updateVariableMetadata("group", {"measure": "nominal"})
+
+    assert result.ok is True
+    assert recommendation_changes.count() == 1
+    assert controller.selectionProvenance == "experimental_candidate_assisted"
+    assert controller.selectionConfirmationRequired is True
 
 
 def test_controller_maps_missing_codes_to_engine_missing_values(tmp_path) -> None:

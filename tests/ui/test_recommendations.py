@@ -1,3 +1,4 @@
+
 from __future__ import annotations
 
 import pandas as pd
@@ -321,3 +322,28 @@ def test_recommendation_kind_is_exposed_without_mutating_pipeline(tmp_path) -> N
     assert kind
     assert controller.pipeline_version == before_version
     assert controller.stepChainText == before_steps
+
+def test_controller_exposes_generic_candidate_fields_for_supported_review_forms() -> None:
+    from modori.recommendations import RecommendationCandidate, RecommendationState
+    from modori.ui.controller import UiController
+
+    candidate = RecommendationCandidate(
+        candidate_id="ancova:score:group",
+        kind="ancova",
+        title_ko="공분산분석 후보",
+        level="주의 필요",
+        reason_ko="역할 확인 필요",
+        outcome_key="score",
+        group_key="group",
+        predictor_keys=["age", "baseline"],
+    )
+    controller = UiController()
+    controller._recommendation_state = RecommendationState(
+        candidates=[candidate],
+        default_candidate=None,
+        selected_candidate=candidate,
+    )
+
+    assert controller.preparedOutcomeKey == "score"
+    assert controller.preparedGroupKey == "group"
+    assert controller.preparedCovariateKeys == "age, baseline"

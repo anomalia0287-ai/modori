@@ -1,3 +1,4 @@
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -34,6 +35,24 @@ def test_controller_applies_reverse_code_transform_and_marks_results_stale(
     assert controller.stale is True
     assert "Reverse-code items" in controller.stepChainText
     assert "q3_R" in controller.pipeline.current_dataset.df.columns
+
+
+def test_transform_retains_provenance_and_invalidates_assisted_confirmation(
+    tmp_path: Path,
+) -> None:
+    data_path = tmp_path / "survey.csv"
+    _write_csv(data_path)
+    controller = UiController()
+    assert controller.openDataFile(data_path, ImportOptions(confirm_new_session=True)).ok
+    controller.markExperimentalCandidateAssisted()
+
+    result = controller.applyReverseCodeTransform(
+        {"columns": ["q3"], "scale_min": 1, "scale_max": 5, "suffix": "_R"}
+    )
+
+    assert result.ok is True
+    assert controller.selectionProvenance == "experimental_candidate_assisted"
+    assert controller.selectionConfirmationRequired is True
 
 
 def test_controller_applies_scale_score_transform(tmp_path: Path) -> None:

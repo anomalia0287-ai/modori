@@ -33,8 +33,17 @@ PearlSurface {
             spacing: theme.spaceSm
 
             Label {
-                text: uiController.stepChainDisplayText
-                color: theme.textControl
+                text: uiController.selectionConfirmationRequired
+                    ? appBootstrap.text("boundary.reconfirmation_required")
+                    : uiController.stepChainDisplayText
+                Accessible.name: text
+                color: uiController.selectionConfirmationRequired
+                    ? theme.warning
+                    : theme.textControl
+                wrapMode: uiController.selectionConfirmationRequired
+                    ? Text.WordWrap
+                    : Text.NoWrap
+                maximumLineCount: 2
                 elide: Text.ElideMiddle
                 Layout.fillWidth: true
             }

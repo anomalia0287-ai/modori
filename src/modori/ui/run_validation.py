@@ -37,7 +37,7 @@ class RunConfigurationValidator:
         if steps and not any(
             self._step_type(step) in self._ANALYSIS_STEP_TYPES for step in steps
         ):
-            return self._invalid("실행할 분석이 없습니다. 추천 분석을 선택하거나 변수를 지정해 주세요.")
+            return self._invalid("실행할 분석이 없습니다. 분석 방법을 선택하고 변수를 지정해 주세요.")
         for step in steps:
             step_type = self._step_type(step)
             params = self._step_params(step)

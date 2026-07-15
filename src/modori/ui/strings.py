@@ -2,6 +2,7 @@ from __future__ import annotations
 
 UI_STRINGS_KO = {
     "app.title": "Modori",
+    "boundary.reconfirmation_required": "데이터 구성이 바뀌었습니다. 후보 구성을 다시 확인하거나 분석 방법을 직접 적용해 주세요.",
     "dialog.import.cancel": "취소",
     "dialog.import.columns_count": "선택한 열",
     "dialog.import.columns_count_separator": ": ",
@@ -75,6 +76,7 @@ UI_STRINGS_KO = {
     "guide.items_placeholder": "문항 변수: q1, q2, q3",
     "guide.experimental_badge": "실험적 후보",
     "guide.experimental_status": "검증 중인 분석 후보 · 자동 실행 안 함",
+    "guide.form_unavailable": "이 후보는 아직 안내 화면에서 구성할 수 없습니다. 직접 선택에서 지원되는 분석을 선택해 주세요.",
     "guide.manual_selection": "직접 선택",
     "guide.no_recommendation": "검토할 분석 후보 없음",
     "guide.other_recommendations": "다른 실험적 후보 보기",
@@ -90,7 +92,7 @@ UI_STRINGS_KO = {
     "guide.kruskal_wallis": "순위 기반 세 집단 비교",
     "guide.run_manual": "선택한 분석 실행",
     "guide.run_reviewed": "설정 확인 후 실행",
-    "guide.review_required": "구성을 확인한 뒤 실행할 수 있습니다.",
+    "guide.review_required": "변수와 구성을 확인하고 동의한 뒤 실행할 수 있습니다.",
     "guide.review_state": "검토 상태",
     "guide.title": "분석 후보 안내",
     "guide.variables_accessible": "분석 변수",
@@ -203,6 +205,7 @@ UI_STRINGS_KO = {
     "variable.missing_codes_placeholder": "결측 코드: 9, 99",
     "work.analysis": "분석 다시 실행",
     "work.analysis_run": "분석 실행",
+    "work.reconfirmation_required": "구성 재확인 필요",
     "work.data": "데이터 열기",
     "work.data_menu": "데이터 메뉴",
     "work.data_sheet_window": "데이터 넓게 보기",

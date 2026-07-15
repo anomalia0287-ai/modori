@@ -25,6 +25,7 @@ AUDITED_FILE_OPERATION_FILES = {
     "src/modori/ui/worker.py",
     "src/modori/ui/resources.py",
     "src/modori/ui/result_binding.py",
+    "src/modori/ui/report_export.py",
     "src/modori/ui/session.py",
     "src/modori/ui/settings.py",
 }

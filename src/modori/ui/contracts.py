@@ -8,6 +8,7 @@ from typing import Any, Literal
 Language = Literal["ko", "en"]
 ControllerModeValue = Literal["guided", "standard"]
 RunStatusValue = Literal["empty", "ready", "running", "error"]
+SelectionProvenance = Literal["manual", "experimental_candidate_assisted"]
 
 
 class ControllerMode(str, Enum):
@@ -64,6 +65,7 @@ class ReportExportOptions:
     include_dimension_reduction: bool = True
     include_regression: bool = True
     include_figures: bool = True
+    selection_provenance: SelectionProvenance = "manual"
 
 
 @dataclass(frozen=True)

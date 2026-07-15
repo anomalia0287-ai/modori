@@ -1,3 +1,4 @@
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -350,6 +351,7 @@ def test_pipeline_operations_export_report_applies_dialog_options_to_report_step
             include_comparison=False,
             include_regression=True,
             include_figures=False,
+            selection_provenance="experimental_candidate_assisted",
         )
     )
 
@@ -364,6 +366,7 @@ def test_pipeline_operations_export_report_applies_dialog_options_to_report_step
             "include_figures": False,
         },
     )
+    assert "selection_provenance" not in pipeline.edits[-1][1]
 
 
 def test_pipeline_operations_export_report_filters_all_analysis_families(tmp_path) -> None:

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 from typing import Any, Callable, Mapping
 
@@ -25,6 +26,7 @@ from modori.ui.recommendation_controller import (
 )
 from modori.ui.result_state import UiResultState
 from modori.ui.run_tracker import UiRunTracker
+from modori.ui.selection_provenance_controller import SelectionProvenanceControllerMixin
 from modori.ui.session import UiSessionState
 from modori.ui.settings import UiSettingsStore
 from modori.ui.worker import EngineJobResult, SerializedEngineWorker
@@ -57,6 +59,10 @@ _STEP_TITLE_LABELS_KO = {
     "Regression report": "회귀 보고서",
 }
 
+_RECONFIRMATION_ERROR_CODE = "experimental_confirmation_required"
+_RECONFIRMATION_RUN_MESSAGE = "변경된 데이터 구성을 다시 확인하거나 분석 방법을 직접 구성해 주세요."
+_RECONFIRMATION_REPORT_MESSAGE = "변경된 데이터 구성을 다시 확인한 뒤 보고서를 저장해 주세요."
+
 
 def _localized_step_title(title: str) -> str:
     metadata_prefix = "Edit metadata: "
@@ -78,6 +84,7 @@ class UiController(
     AnalysisSelectionControllerMixin,
     DataTransformControllerMixin,
     ImportLayoutControllerMixin,
+    SelectionProvenanceControllerMixin,
 ):
     stateChanged = Signal()
     workerResultReady = Signal(object)
@@ -150,8 +157,14 @@ class UiController(
     def canRerun(self) -> bool:
         if self.status in {"empty", "running"}:
             return False
+        if self._session.selection_confirmation_required:
+            return False
         validation = self._services.run_validator.validate(self._services.pipeline_ops)
         return validation.ok
+
+    @Property(bool, notify=stateChanged)
+    def selectionConfirmationRequired(self) -> bool:
+        return self._session.selection_confirmation_required
 
     @Property(bool, notify=stateChanged)
     def stale(self) -> bool:
@@ -296,6 +309,10 @@ class UiController(
             fallback=self.stepsModel,
         )
         self.stepsModel = self._pipeline_state.steps_model
+        if kind in {"reliability", "comparison", "regression"}:
+            self._session.clear_selection_provenance()
+        elif kind in {"variable_metadata", "data_cell"}:
+            self._session.invalidate_selection_confirmation()
         self._last_error = ""
         self._last_message = "단계가 변경되었습니다."
         self.stateChanged.emit()
@@ -323,6 +340,7 @@ class UiController(
 
         self.pipeline = load_result.pipeline
         self._services.replace_pipeline(load_result.pipeline)
+        self._session.clear_selection_provenance()
         self._refresh_recommendations()
         if load_result.path is not None:
             self._session.remember_recent_file(load_result.path)
@@ -391,6 +409,8 @@ class UiController(
         )
         self.stepsModel = self._pipeline_state.steps_model
         self._refresh_dataset_models()
+        self._session.invalidate_selection_confirmation()
+        self._refresh_recommendations()
         self._last_error = ""
         self._last_message = result.message_ko
         self.stateChanged.emit()
@@ -404,6 +424,8 @@ class UiController(
     def rerun(self) -> CommandResult:
         if self.pipeline is None:
             return self._command_error("다시 실행할 분석이 없습니다.", "no_pipeline")
+        if self._session.selection_confirmation_required:
+            return self._command_error(_RECONFIRMATION_RUN_MESSAGE, _RECONFIRMATION_ERROR_CODE)
         validation = self._services.run_validator.validate(self._services.pipeline_ops)
         if not validation.ok:
             return self._command_error(
@@ -432,10 +454,16 @@ class UiController(
         return self.rerun().ok
 
     def exportReport(self, options: ReportExportOptions) -> CommandResult:
+        if self._session.selection_confirmation_required:
+            return self._command_error(_RECONFIRMATION_REPORT_MESSAGE, _RECONFIRMATION_ERROR_CODE)
         exporter = self._report_exporter or export_report_from_pipeline
+        effective_options = replace(
+            options,
+            selection_provenance=self._session.selection_provenance,
+        )
         result = self._services.report_export_service.export(
             pipeline=self.pipeline,
-            options=options,
+            options=effective_options,
             exporter=exporter,
             pipeline_version=self._pipeline_state.pipeline_version,
         )
@@ -578,6 +606,7 @@ class UiController(
         self._last_message = result.message_ko
         self.stepsModel = self._pipeline_state.steps_model
         self._refresh_dataset_models()
+        self._session.clear_selection_provenance()
         self.stateChanged.emit()
         return CommandResult(
             ok=True,

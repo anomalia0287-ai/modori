@@ -47,7 +47,14 @@ def test_default_controller_reference_flow_runs_to_report(tmp_path) -> None:
     opened = controller.openDataFile(data_path, ImportOptions(confirm_new_session=True))
     assert opened.ok is True
 
-    rerun = controller.runPreparedRecommendation()
+    assert controller.recommendationKind == "descriptives"
+    configured = controller.configureDescriptivesSelection(
+        controller.preparedVariableKeys,
+        group_key=controller.preparedGroupKey,
+    )
+    assert configured.ok is True
+    controller.markExperimentalCandidateAssisted()
+    rerun = controller.rerun()
     assert rerun.ok is True
     assert controller.waitForLastRun(timeout=10) is True
 
@@ -85,7 +92,13 @@ def test_safe_caution_regression_recommendation_runs(tmp_path) -> None:
     )
     assert controller.selectRecommendationAt(caution_index) is True
 
-    rerun = controller.runPreparedRecommendation()
+    configured = controller.configureRegressionSelection(
+        controller.preparedOutcomeKey,
+        controller.preparedPredictorKeys,
+    )
+    assert configured.ok is True
+    controller.markExperimentalCandidateAssisted()
+    rerun = controller.rerun()
     assert rerun.ok is True
     assert controller.waitForLastRun(timeout=10) is True
     assert controller.status == "ready"

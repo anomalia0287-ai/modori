@@ -1,3 +1,4 @@
+
 class FakePipeline:
     def __init__(self) -> None:
         self.steps = [{"id": "reliability"}]
@@ -343,21 +344,24 @@ def test_default_open_data_file_imports_fixture_for_recommendations_without_work
 
 
 def test_export_report_with_selections_passes_expanded_family_options(tmp_path) -> None:
+    from docx import Document
+
     from modori.ui.contracts import ReportExportOptions
     from modori.ui.controller import UiController
 
     seen: list[ReportExportOptions] = []
     output_path = tmp_path / "report.docx"
-    output_path.write_bytes(b"docx")
 
     def exporter(pipeline, options):
         seen.append(options)
+        Document().save(output_path)
         return output_path
 
     controller = UiController(
         pipeline=ImportablePipeline(["import", "report"]),
         report_exporter=exporter,
     )
+    controller.markExperimentalCandidateAssisted()
 
     assert (
         controller.exportReportWithSelections(
@@ -385,8 +389,107 @@ def test_export_report_with_selections_passes_expanded_family_options(tmp_path) 
             include_dimension_reduction=True,
             include_regression=True,
             include_figures=False,
+            selection_provenance="experimental_candidate_assisted",
         )
     ]
+
+
+def test_dataset_replacement_clears_but_direct_mode_retains_applied_provenance(
+    tmp_path,
+) -> None:
+    from pathlib import Path
+
+    from modori.ui.contracts import ImportOptions
+    from modori.ui.controller import UiController
+
+    controller = UiController()
+    controller.markExperimentalCandidateAssisted()
+
+    opened = controller.openDataFile(
+        Path("tests/fixtures/psych_bfi.csv"),
+        ImportOptions(confirm_new_session=True),
+    )
+
+    assert opened.ok is True
+    assert controller.selectionProvenance == "manual"
+
+    controller.markExperimentalCandidateAssisted()
+    assert controller.chooseMode("standard") is True
+    assert controller.selectionProvenance == "experimental_candidate_assisted"
+    assert controller.selectionConfirmationRequired is False
+
+
+def test_context_change_blocks_assisted_rerun_until_manual_reconfiguration(
+    tmp_path,
+) -> None:
+    from pathlib import Path
+
+    from modori.ui.contracts import ImportOptions
+    from modori.ui.controller import UiController
+
+    controller = UiController()
+    assert controller.openDataFile(
+        Path("tests/fixtures/psych_bfi.csv"),
+        ImportOptions(confirm_new_session=True),
+    ).ok
+    assert controller.configureReliabilitySelection("E1, E2, E3").ok
+    controller.markExperimentalCandidateAssisted()
+
+    assert controller.canRerun is True
+    assert controller.updateVariableMetadata("E1", {"label": "Extraversion 1"}).ok
+
+    assert controller.selectionProvenance == "experimental_candidate_assisted"
+    assert controller.selectionConfirmationRequired is True
+    assert controller.canRerun is False
+    blocked = controller.rerun()
+    assert blocked.ok is False
+    assert blocked.error_code == "experimental_confirmation_required"
+
+    assert controller.configureReliabilitySelection("E1, E2, E3").ok
+    assert controller.selectionProvenance == "manual"
+    assert controller.selectionConfirmationRequired is False
+    assert controller.canRerun is True
+
+
+def test_reconfirmation_boundary_is_exposed_as_a_qml_property() -> None:
+    from modori.ui.controller import UiController
+
+    controller = UiController()
+
+    assert controller.metaObject().indexOfProperty("selectionConfirmationRequired") >= 0
+
+
+def test_context_change_blocks_assisted_report_recompute(tmp_path) -> None:
+    from pathlib import Path
+
+    from docx import Document
+
+    from modori.ui.contracts import ImportOptions, ReportExportOptions
+    from modori.ui.controller import UiController
+
+    exported: list[ReportExportOptions] = []
+    output_path = tmp_path / "report.docx"
+
+    def exporter(pipeline, options):
+        exported.append(options)
+        Document().save(output_path)
+        return output_path
+
+    controller = UiController(report_exporter=exporter)
+    assert controller.openDataFile(
+        Path("tests/fixtures/psych_bfi.csv"),
+        ImportOptions(confirm_new_session=True),
+    ).ok
+    assert controller.configureReliabilitySelection("E1, E2, E3").ok
+    controller.markExperimentalCandidateAssisted()
+    assert controller.updateVariableMetadata("E1", {"label": "Extraversion 1"}).ok
+
+    result = controller.exportReport(ReportExportOptions())
+
+    assert result.ok is False
+    assert result.error_code == "experimental_confirmation_required"
+    assert exported == []
+    assert output_path.exists() is False
 
 
 def test_select_recommendation_updates_prepared_fields_without_running(tmp_path) -> None:
@@ -438,7 +541,9 @@ def test_select_recommendation_updates_prepared_fields_without_running(tmp_path)
     assert controller.status == "ready"
 
 
-def test_run_prepared_recommendation_applies_selection_before_worker_submit(tmp_path) -> None:
+def test_confirmed_candidate_fields_use_manual_configuration_before_worker_submit(
+    tmp_path,
+) -> None:
     import pandas as pd
 
     from modori.core import Dataset, Measure, Variable
@@ -520,14 +625,19 @@ def test_run_prepared_recommendation_applies_selection_before_worker_submit(tmp_
     )
     assert controller.selectRecommendationAt(reliability_index) is True
 
-    result = controller.runPreparedRecommendation()
+    configured = controller.configureReliabilitySelection(
+        controller.preparedReliabilityItems
+    )
+    controller.markExperimentalCandidateAssisted()
+    result = controller.rerun()
 
+    assert configured.ok is True
     assert result.ok is True
     assert controller.pipeline.steps[0].params["items"] == ["A1", "A2", "A3"]
     assert len(worker.calls) == 1
 
 
-def test_advanced_recommendation_candidates_apply_to_pipeline_steps() -> None:
+def test_advanced_candidates_require_explicit_manual_configuration() -> None:
     import pandas as pd
 
     from modori.core import Dataset, Measure, Variable
@@ -622,7 +732,29 @@ def test_advanced_recommendation_candidates_apply_to_pipeline_steps() -> None:
         )
 
         assert controller.selectRecommendationAt(index) is True
-        result = controller.applySelectedRecommendation()
+        assert pipeline.edits == []
+        if kind == "repeated_measures_anova":
+            result = controller.configureRepeatedMeasuresAnovaSelection(
+                ", ".join(expected_params["measures"])
+            )
+        elif kind == "friedman":
+            result = controller.configureFriedmanSelection(
+                ", ".join(expected_params["measures"])
+            )
+        elif kind == "mediation":
+            result = controller.configureMediationSelection(
+                expected_params["x"],
+                expected_params["mediator"],
+                expected_params["y"],
+            )
+        else:
+            result = controller.configureModeratedMediationSelection(
+                str(expected_params["model"]),
+                expected_params["x"],
+                expected_params["mediator"],
+                expected_params["moderator"],
+                expected_params["y"],
+            )
 
         assert result.ok is True
         assert result.changed_step_ids == [expected_step_id]
@@ -633,7 +765,9 @@ def test_advanced_recommendation_candidates_apply_to_pipeline_steps() -> None:
             assert params[key] == value
 
 
-def test_default_run_prepared_recommendation_builds_real_dataset_pipeline_without_reference_steps() -> None:
+def test_explicit_configuration_builds_real_dataset_pipeline_without_reference_steps() -> (
+    None
+):
     from pathlib import Path
 
     from modori.ui.contracts import ImportOptions
@@ -672,8 +806,15 @@ def test_default_run_prepared_recommendation_builds_real_dataset_pipeline_withou
     )
     assert opened.ok is True
 
-    result = controller.runPreparedRecommendation()
+    assert controller.recommendationKind == "descriptives"
+    configured = controller.configureDescriptivesSelection(
+        controller.preparedVariableKeys,
+        group_key=controller.preparedGroupKey,
+    )
+    controller.markExperimentalCandidateAssisted()
+    result = controller.rerun()
 
+    assert configured.ok is True
     assert result.ok is True
     assert len(worker.calls) == 1
 

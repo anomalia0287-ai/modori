@@ -183,6 +183,16 @@ Dialog {
         }
 
         Label {
+            text: appBootstrap.text("boundary.reconfirmation_required")
+            Accessible.name: text
+            visible: uiController.selectionConfirmationRequired
+            color: theme.warning
+            font.bold: true
+            wrapMode: Text.WordWrap
+            Layout.fillWidth: true
+        }
+
+        Label {
             text: uiController.reportPath
             visible: uiController.reportPath.length > 0
             color: theme.deepTeal
@@ -210,6 +220,7 @@ Dialog {
                 variant: "primary"
                 semanticLight: enabled
                 enabled: uiController.resultSummary.length > 0
+                    && !uiController.selectionConfirmationRequired
                 onClicked: uiController.exportReportWithSelections(
                     root.selectedLanguage,
                     includeDescriptives.checked,

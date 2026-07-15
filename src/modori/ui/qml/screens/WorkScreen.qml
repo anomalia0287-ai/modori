@@ -64,10 +64,15 @@ Item {
                 }
 
                 AppButton {
-                    text: uiController.resultSummary.length > 0
-                        ? appBootstrap.text("work.analysis")
-                        : appBootstrap.text("work.analysis_run")
+                    text: uiController.selectionConfirmationRequired
+                        ? appBootstrap.text("work.reconfirmation_required")
+                        : uiController.resultSummary.length > 0
+                            ? appBootstrap.text("work.analysis")
+                            : appBootstrap.text("work.analysis_run")
                     Accessible.name: text
+                    Accessible.description: uiController.selectionConfirmationRequired
+                        ? appBootstrap.text("boundary.reconfirmation_required")
+                        : ""
                     variant: "secondary"
                     enabled: uiController.canRerun
                     onClicked: uiController.rerunNow()
