@@ -516,3 +516,30 @@ Expected production changes are limited to:
 The legacy product recommendation service, UI, calculation steps, data import, Decision
 Ledger storage, evidence-bundle quarantine, packaging, benchmark fixtures, and persisted
 passport schema are not changed by this work.
+
+## 13. Implementation evidence and disposition
+
+Implementation and locked evidence were completed on 2026-07-15 through commit
+`bb78ec6501ef1d90080a108ab32a104cb5861df5`. The normative evidence ledger is
+`docs/qa/counterfactual-clarification-planner-evidence.md`.
+
+The complete three-binary-fact matrix produced 108 root cases and 256 completed
+trajectories. Production agreed with the independent exhaustive oracle on all 108 roots,
+with zero E4/E5 comparative failures and zero roots worse than one-step greedy. Bounded
+lookahead was strictly better on two all-unknown roots at budgets two and three. All
+deliberate policy mutants were killed.
+
+The frozen all-unknown P1 slice evaluated 11,539 states with 5,172 memo hits, did not
+reach the 250,000-state cap, and produced one outcome across five executions. After one
+profile-guided optimization cycle that removed only duplicate serialization and rule
+evaluation, the fresh development-machine samples had a 3.286-second maximum and a
+67.883-MiB conservative process peak. The state count, selected question, loss ordering,
+and evidence traces were unchanged.
+
+The result is therefore **conditional-go for the internal deterministic clarification
+policy** and rejects simplification to one-step greedy under Section 11. It is not a
+product-release approval. AnalysisPassport schema version 1 still does not bind the
+question version and digest into `ClarifyPayload`; product integration remains blocked on
+an explicitly migrated schema revision. The formal oracle also does not validate the
+scientific truth of the C1 rule content, so no recommendation-accuracy, statistical-
+accuracy, expert-equivalence, or broad social-science coverage claim follows.

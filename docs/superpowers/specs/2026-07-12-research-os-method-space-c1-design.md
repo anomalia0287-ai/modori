@@ -830,6 +830,14 @@ validated source. Repeated state hashes and exhausted question budgets cause C1 
 recompute the normal primary-action precedence from the current facts; if no safe
 action exists, it abstains.
 
+**Normative refinement (2026-07-15):** the exact one-question, depth-at-most-three,
+risk-lexicographic bounded-minimax policy in
+`2026-07-15-risk-bounded-counterfactual-clarification-planner-design.md` supersedes this
+subsection's informal ranking and resource-exhaustion behavior. In particular, an
+exhausted budget or structural search cap returns a typed abstention and never silently
+falls back to this ranking. The implementation evidence and remaining product blocker are
+recorded in `docs/qa/counterfactual-clarification-planner-evidence.md`.
+
 ### 9.4 Estimand preservation
 
 Every branch has one classified contract:
