@@ -1,9 +1,20 @@
 import os
 from pathlib import Path
 
+import pytest
+
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6.QtCore import QAbstractTableModel, QByteArray, QModelIndex, QPoint, QPointF, Qt, QUrl
+from PySide6.QtCore import (
+    QAbstractTableModel,
+    QByteArray,
+    QModelIndex,
+    QMetaObject,
+    QPoint,
+    QPointF,
+    Qt,
+    QUrl,
+)
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQuick import QQuickItem, QQuickView
 from PySide6.QtTest import QSignalSpy, QTest
@@ -19,12 +30,22 @@ class _GridFixtureModel(QAbstractTableModel):
     VARIABLE_KEY_ROLE = int(Qt.ItemDataRole.UserRole) + 1
     MEASURE_VALUE_ROLE = int(Qt.ItemDataRole.UserRole) + 2
 
-    def __init__(self) -> None:
+    def __init__(self, rows: int = 2, columns: int = 2) -> None:
         super().__init__()
-        self._rows = (
-            ("alpha", "scale", ("r0c0", "r0c1")),
-            ("beta", "ordinal", ("r1c0", "r1c1")),
-        )
+        if rows == 2 and columns == 2:
+            self._rows = (
+                ("alpha", "scale", ("r0c0", "r0c1")),
+                ("beta", "ordinal", ("r1c0", "r1c1")),
+            )
+        else:
+            self._rows = tuple(
+                (
+                    f"variable-{row}",
+                    "scale",
+                    tuple(f"r{row}c{column}" for column in range(columns)),
+                )
+                for row in range(rows)
+            )
 
     def rowCount(self, parent: QModelIndex = QModelIndex()) -> int:
         if parent.isValid():
@@ -83,6 +104,14 @@ def _grid_body(root: object) -> QQuickItem:
     )
 
 
+def _quick_item(root: object, object_name: str) -> QQuickItem:
+    return next(
+        child
+        for child in root.findChildren(QQuickItem)
+        if child.objectName() == object_name
+    )
+
+
 def _grid_delegate(body: QQuickItem, row: int, column: int, columns: int) -> QQuickItem:
     content_item = next(
         child for child in body.childItems() if child.metaObject().className() == "QQuickItem"
@@ -137,6 +166,7 @@ def test_data_grid_contains_motion_and_places_basic_scrollbars_outside_cells() -
     assert "parent: horizontalScrollRail" in qml
     assert "parent: verticalScrollRail" in qml
     assert qml.count("AppScrollBar") == 2
+    assert qml.count("onPressedChanged: if (!pressed) root.settleViewport()") == 2
     assert "import QtQuick.Controls.Basic" in scrollbar
     for token in (
         "gridScrollRailSize",
@@ -258,11 +288,98 @@ def test_data_grid_runtime_click_navigation_and_copy_use_real_qml_objects() -> N
     app.processEvents()
 
 
+def test_data_grid_runtime_settles_wide_model_to_clamped_cell_boundaries() -> None:
+    app = _app()
+    model = _GridFixtureModel(rows=30, columns=108)
+    view = QQuickView()
+    bootstrap = AppBootstrap()
+    view.rootContext().setContextProperty("appBootstrap", bootstrap)
+    view.setResizeMode(QQuickView.SizeRootObjectToView)
+    view.setGeometry(0, 0, 480, 240)
+    view.setSource(QUrl.fromLocalFile(str((QML_ROOT / "components/DataGridView.qml").resolve())))
+    root = view.rootObject()
+
+    assert root is not None
+
+    root.setProperty("model", model)
+    root.setProperty("reduceEffects", True)
+    view.show()
+    QTest.qWait(250)
+    app.processEvents()
+
+    body = _quick_item(root, "dataGridBody")
+    body.setProperty("contentX", (42 * root.property("cellWidth")) + 37)
+    body.setProperty("contentY", (15 * root.property("cellHeight")) + 11)
+
+    assert QMetaObject.invokeMethod(root, "settleViewport")
+    app.processEvents()
+
+    content_x = float(body.property("contentX"))
+    content_y = float(body.property("contentY"))
+    maximum_x = max(0.0, float(body.property("contentWidth")) - body.width())
+    maximum_y = max(0.0, float(body.property("contentHeight")) - body.height())
+
+    assert content_x % root.property("cellWidth") == pytest.approx(0, abs=0.5)
+    assert content_y % root.property("cellHeight") == pytest.approx(0, abs=0.5)
+    assert 0 <= content_x <= maximum_x + 0.5
+    assert 0 <= content_y <= maximum_y + 0.5
+
+    body.setProperty("contentX", maximum_x + root.property("cellWidth"))
+    body.setProperty("contentY", -root.property("cellHeight"))
+
+    assert QMetaObject.invokeMethod(root, "settleViewport")
+    app.processEvents()
+
+    assert float(body.property("contentX")) == pytest.approx(maximum_x, abs=0.5)
+    assert float(body.property("contentY")) == pytest.approx(0, abs=0.5)
+
+    view.close()
+    view.deleteLater()
+    app.processEvents()
+
+
+def test_data_grid_runtime_retains_empty_scroll_rails_without_invalid_offsets() -> None:
+    app = _app()
+    model = _GridFixtureModel()
+    view = QQuickView()
+    bootstrap = AppBootstrap()
+    view.rootContext().setContextProperty("appBootstrap", bootstrap)
+    view.setResizeMode(QQuickView.SizeRootObjectToView)
+    view.setGeometry(0, 0, 480, 240)
+    view.setSource(QUrl.fromLocalFile(str((QML_ROOT / "components/DataGridView.qml").resolve())))
+    root = view.rootObject()
+
+    assert root is not None
+
+    root.setProperty("model", model)
+    root.setProperty("reduceEffects", True)
+    view.show()
+    QTest.qWait(200)
+    app.processEvents()
+
+    body = _quick_item(root, "dataGridBody")
+    body.setProperty("contentX", root.property("cellWidth"))
+    body.setProperty("contentY", root.property("cellHeight"))
+
+    assert QMetaObject.invokeMethod(root, "settleViewport")
+    app.processEvents()
+
+    assert float(body.property("contentX")) == pytest.approx(0, abs=0.5)
+    assert float(body.property("contentY")) == pytest.approx(0, abs=0.5)
+    assert _quick_item(root, "dataGridHorizontalScrollRail").height() > 0
+    assert _quick_item(root, "dataGridVerticalScrollRail").width() > 0
+
+    view.close()
+    view.deleteLater()
+    app.processEvents()
+
+
 def test_data_table_delegates_to_data_grid_without_losing_notice() -> None:
     qml = qml_text("components/DataTable.qml")
 
     assert "DataGridView" in qml
     assert "model: uiController.dataModel" in qml
+    assert "reduceEffects: uiController.reduceEffects" in qml
     assert "ToolTip.text: root.editPolicyText" in qml
     assert "uiController.dataViewNotice" in qml
     assert "transform.source_protected" in qml
@@ -273,6 +390,7 @@ def test_variable_table_delegates_to_data_grid_and_preserves_selection() -> None
 
     assert "DataGridView" in qml
     assert "model: uiController.variableModel" in qml
+    assert "reduceEffects: uiController.reduceEffects" in qml
     assert "selectedKey: root.selectedVariableKey" in qml
     assert "onCellActivated" in qml
     assert "root.selectVariable(variableKey, measureValue)" in qml

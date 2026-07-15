@@ -92,6 +92,7 @@ ApplicationWindow {
 
             DataGridView {
                 model: uiController.dataModel
+                reduceEffects: root.reduceEffects
                 cellWidth: theme.tableCellWidth
                 cellHeight: theme.tableCellHeight
                 emptyText: appBootstrap.text("data.grid_empty")

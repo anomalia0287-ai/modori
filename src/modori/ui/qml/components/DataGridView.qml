@@ -13,6 +13,7 @@ Item {
     property string emptyText: appBootstrap.text("data.grid_empty")
     property int currentRow: 0
     property int currentColumn: 0
+    property bool reduceEffects: false
 
     signal cellActivated(int row, int column, string variableKey, string measureValue)
 
@@ -57,6 +58,56 @@ Item {
         if (cellText !== undefined && cellText !== null) {
             appBootstrap.copyText(String(cellText))
         }
+    }
+
+    function clampedSnap(offset, step, maximum) {
+        if (step <= 0 || maximum <= 0) {
+            return 0
+        }
+        return clamp(Math.round(offset / step) * step, 0, maximum)
+    }
+
+    function settleViewport() {
+        horizontalSettleAnimation.stop()
+        verticalSettleAnimation.stop()
+
+        var maximumX = Math.max(0, body.contentWidth - body.width)
+        var maximumY = Math.max(0, body.contentHeight - body.height)
+        var targetX = clampedSnap(body.contentX, root.cellWidth, maximumX)
+        var targetY = clampedSnap(body.contentY, root.cellHeight, maximumY)
+
+        if (root.reduceEffects) {
+            body.contentX = targetX
+            body.contentY = targetY
+            return
+        }
+
+        if (Math.abs(body.contentX - targetX) > theme.borderWidth) {
+            horizontalSettleAnimation.from = body.contentX
+            horizontalSettleAnimation.to = targetX
+            horizontalSettleAnimation.start()
+        }
+        if (Math.abs(body.contentY - targetY) > theme.borderWidth) {
+            verticalSettleAnimation.from = body.contentY
+            verticalSettleAnimation.to = targetY
+            verticalSettleAnimation.start()
+        }
+    }
+
+    NumberAnimation {
+        id: horizontalSettleAnimation
+        target: body
+        property: "contentX"
+        duration: theme.gridScrollSettleDurationMs
+        easing.type: Easing.OutCubic
+    }
+
+    NumberAnimation {
+        id: verticalSettleAnimation
+        target: body
+        property: "contentY"
+        duration: theme.gridScrollSettleDurationMs
+        easing.type: Easing.OutCubic
     }
 
     ColumnLayout {
@@ -158,17 +209,25 @@ Item {
                     columnWidthProvider: function(column) { return root.cellWidth }
                     rowHeightProvider: function(row) { return root.cellHeight }
 
+                    onMovementStarted: {
+                        horizontalSettleAnimation.stop()
+                        verticalSettleAnimation.stop()
+                    }
+                    onMovementEnded: root.settleViewport()
+
                     ScrollBar.horizontal: AppScrollBar {
                         id: horizontalScrollBar
                         objectName: "dataGridHorizontalScrollBar"
                         parent: horizontalScrollRail
                         anchors.fill: parent
+                        onPressedChanged: if (!pressed) root.settleViewport()
                     }
                     ScrollBar.vertical: AppScrollBar {
                         id: verticalScrollBar
                         objectName: "dataGridVerticalScrollBar"
                         parent: verticalScrollRail
                         anchors.fill: parent
+                        onPressedChanged: if (!pressed) root.settleViewport()
                     }
 
                     Keys.onPressed: function(event) {

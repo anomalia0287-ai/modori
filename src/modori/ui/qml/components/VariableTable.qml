@@ -107,6 +107,7 @@ Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
             model: uiController.variableModel
+            reduceEffects: uiController.reduceEffects
             cellWidth: theme.variableCellWidth
             cellHeight: theme.variableCellHeight
             selectedKey: root.selectedVariableKey

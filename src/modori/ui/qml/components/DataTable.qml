@@ -40,6 +40,7 @@ Item {
 
         DataGridView {
             model: uiController.dataModel
+            reduceEffects: uiController.reduceEffects
             cellWidth: theme.tableCellWidth
             cellHeight: theme.tableCellHeight
             emptyText: appBootstrap.text("data.grid_empty")
