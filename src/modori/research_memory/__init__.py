@@ -56,12 +56,18 @@ from modori.research_memory.promotion import (
     PromotionReceipt,
     ResearchMemoryCoordinator,
 )
+from modori.research_memory.passport_state import (
+    CommittedPassportRecord,
+    PassportHistory,
+    PassportStateError,
+)
 
 __all__ = [
     "CANONICALIZATION_ID",
     "HASH_ALGORITHM",
     "ZERO_HASH",
     "CanonicalizationError",
+    "CommittedPassportRecord",
     "DecisionLedgerStore",
     "EvidenceBundle",
     "EvidenceBundleError",
@@ -95,6 +101,8 @@ __all__ = [
     "QuarantineStage",
     "PromotionError",
     "PromotionReceipt",
+    "PassportHistory",
+    "PassportStateError",
     "ResearchMemoryCoordinator",
     "artifact_id",
     "canonical_bytes",
