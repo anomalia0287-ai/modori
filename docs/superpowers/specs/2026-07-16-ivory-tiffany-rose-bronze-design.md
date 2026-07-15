@@ -40,7 +40,7 @@ The approved fixed values are:
 | Top command header | `#81D8D0` | Tiffany-blue work-shell header; not a general-purpose card color |
 | Modori wordmark | `#B9856E` | Parisienne logotype on entry, work, and splash surfaces |
 | Strong or emphasized boundary | `#B9856E` | Selected, focused, or structurally important edges |
-| Thin divider | `#D7B9AA` | Quiet grid, tab, rail, and panel separation |
+| Thin divider | `#D7B9AA` | Data-cell grid lines plus quiet tab, rail, and panel separation |
 | Scrollbar rail and resting thumb | `#FFFFFF` | The only deliberate pure-white surface role |
 
 The deep green-charcoal text and established action teal remain semantic text
@@ -82,7 +82,23 @@ visible colored wash:
   bloom, and nonessential motion.
 
 Exact ambient opacity may be reduced after running-app comparison, but it may
-not be increased until the nacre becomes an obvious color field.
+not be increased until the nacre becomes an obvious color field. Nacre and
+semantic light are optional supporting layers, not completion requirements. If
+they compete with each other or disturb the ivory, Tiffany, and rose-bronze
+hierarchy, remove either layer or both rather than forcing them to coexist.
+
+## Data-Grid Divider Contingency
+
+The first implementation applies the approved thin divider `#D7B9AA` to the
+numeric data-cell grid as well as surrounding structural divisions. Review the
+running grid at ordinary zoom, with dense numeric values, missing values,
+selection, and horizontal and vertical scrolling.
+
+If cell boundaries are difficult to follow, introduce a grid-only neutral
+grey or near-black token with sufficient contrast. Do not darken every thin
+divider in the application merely to solve a data-grid legibility problem.
+This is an evidence-based fallback and does not require preserving the
+rose-bronze cell grid at the expense of reading accuracy.
 
 ## Modori Wordmark
 
@@ -165,7 +181,8 @@ screen-by-screen literal-color rewrite.
    viewport.
 5. Compare the implementation with the supplied color references and current
    running-app captures, checking surface separation, header balance,
-   wordmark recognition, scrollbar containment, and unwanted floating cards.
+   wordmark recognition, scrollbar containment, numeric-cell traceability, and
+   unwanted floating cards.
 6. Tune only non-fixed opacity or spacing values when the running evidence is
    visually heavier or weaker than intended.
 
@@ -184,3 +201,6 @@ screen-by-screen literal-color rewrite.
    restrained ivory-and-nacre system.
 8. Existing UI tests and runtime loading pass, and the owner reviews the real
    running application rather than a generated mockup.
+9. Nacre and semantic light remain only when they improve hierarchy without
+   competing, and grid lines switch to a grid-only neutral when rose-bronze
+   does not provide sufficient numeric-cell legibility.
