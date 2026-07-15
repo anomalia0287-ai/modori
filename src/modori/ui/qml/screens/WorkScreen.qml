@@ -126,6 +126,7 @@ Item {
 
                         TabBar {
                             id: dataTabs
+                            objectName: "workDataTabs"
                             Layout.fillWidth: true
 
                             TabButton { text: appBootstrap.text("work.data_view") }

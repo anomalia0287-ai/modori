@@ -34,6 +34,15 @@ def test_transform_panel_calls_controller_transform_methods() -> None:
     assert "transform.source_protected" in transform_panel
 
 
+def test_transform_actions_describe_safe_outcomes() -> None:
+    from modori.ui.strings import UI_STRINGS_KO
+
+    assert UI_STRINGS_KO["transform.map_apply"] == "값 정리 단계 추가"
+    assert UI_STRINGS_KO["transform.apply_reverse"] == "역코딩 변수 만들기"
+    assert UI_STRINGS_KO["transform.apply_scale"] == "척도 점수 변수 만들기"
+    assert UI_STRINGS_KO["transform.unify_apply"] == "표기 통일 단계 추가"
+
+
 def test_data_table_shows_source_protection_notice() -> None:
     data_table = qml_text("components/DataTable.qml")
 

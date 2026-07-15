@@ -39,6 +39,18 @@ def test_results_panel_uses_structured_table_popover_and_report_dialog() -> None
     assert "ReportExportDialog" in results
 
 
+def test_results_offer_wide_detail_without_parsing_table_text() -> None:
+    results = qml_text("components/ResultsPanel.qml")
+    detail = qml_text("dialogs/ResultDetailDialog.qml")
+
+    assert "ResultDetailDialog" in results
+    assert 'appBootstrap.text("results.view_wide")' in results
+    assert "uiController.resultTableText" in detail
+    assert "TextEdit.NoWrap" in detail
+    assert "Canvas" not in detail
+    assert "TableView" not in detail
+
+
 def test_theme_exposes_porcelain_glass_tokens() -> None:
     theme = qml_text("theme/Theme.qml")
 
@@ -175,3 +187,11 @@ def test_report_dialog_exposes_expanded_analysis_family_filters() -> None:
         assert f"id: {expected_id}" in report
     for expected in expected_strings:
         assert expected in report
+
+
+def test_report_export_keeps_independent_choices_as_checkboxes() -> None:
+    report = qml_text("dialogs/ReportExportDialog.qml")
+
+    assert "PearlSurface" in report
+    assert report.count("CheckBox") >= 8
+    assert 'appBootstrap.text("dialog.report.export_word")' in report

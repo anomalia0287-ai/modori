@@ -111,6 +111,10 @@ Item {
                 Layout.rightMargin: theme.spaceMd
                 visible: uiController.valueUnificationSuggestions.length > 0
 
+                background: PearlSurface {
+                    fillColor: theme.surfaceQuiet
+                }
+
                 ColumnLayout {
                     anchors.left: parent.left
                     anchors.right: parent.right
@@ -137,7 +141,7 @@ Item {
                                 Layout.fillWidth: true
                             }
 
-                            Button {
+                            AppButton {
                                 text: appBootstrap.text("transform.unify_apply")
                                 enabled: root.canEditTransform
                                 Accessible.name: appBootstrap.text("transform.unify_apply")
@@ -154,6 +158,10 @@ Item {
                 Layout.leftMargin: theme.spaceMd
                 Layout.rightMargin: theme.spaceMd
                 visible: uiController.valueRecodeInventory.length > 0
+
+                background: PearlSurface {
+                    fillColor: theme.surfaceQuiet
+                }
 
                 GridLayout {
                     columns: 2
@@ -307,7 +315,7 @@ Item {
 
                     Item {}
 
-                    Button {
+                    AppButton {
                         text: appBootstrap.text("transform.map_apply")
                         Accessible.name: appBootstrap.text("transform.map_apply")
                         enabled: root.canEditTransform
@@ -332,6 +340,10 @@ Item {
                 Layout.fillWidth: true
                 Layout.leftMargin: theme.spaceMd
                 Layout.rightMargin: theme.spaceMd
+
+                background: PearlSurface {
+                    fillColor: theme.surfaceQuiet
+                }
 
                 GridLayout {
                     columns: 2
@@ -395,7 +407,7 @@ Item {
 
                     Item {}
 
-                    Button {
+                    AppButton {
                         text: appBootstrap.text("transform.apply_reverse")
                         Accessible.name: appBootstrap.text("transform.apply_reverse")
                         enabled: root.canEditTransform && root.hasText(reverseColumns.text)
@@ -415,6 +427,10 @@ Item {
                 Layout.leftMargin: theme.spaceMd
                 Layout.rightMargin: theme.spaceMd
                 Layout.bottomMargin: theme.spaceMd
+
+                background: PearlSurface {
+                    fillColor: theme.surfaceQuiet
+                }
 
                 GridLayout {
                     columns: 2
@@ -493,7 +509,7 @@ Item {
 
                     Item {}
 
-                    Button {
+                    AppButton {
                         text: appBootstrap.text("transform.apply_scale")
                         Accessible.name: appBootstrap.text("transform.apply_scale")
                         enabled: root.canEditTransform && root.hasText(scaleItems.text) && root.hasText(scaleName.text)

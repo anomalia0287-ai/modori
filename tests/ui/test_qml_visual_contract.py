@@ -40,6 +40,7 @@ def test_visual_qml_surfaces_use_theme_object() -> None:
         "components/VariableTable.qml",
         "dialogs/ImportDialog.qml",
         "dialogs/ReportExportDialog.qml",
+        "dialogs/ResultDetailDialog.qml",
         "dialogs/SettingsDialog.qml",
         "screens/EntryScreen.qml",
         "screens/SplashScreen.qml",

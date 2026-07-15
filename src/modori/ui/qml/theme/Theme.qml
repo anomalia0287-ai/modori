@@ -98,7 +98,7 @@ QtObject {
     readonly property int commandSurfaceHeight: 64
     readonly property int pipelineHeight: 176
     readonly property int pipelineCompactHeight: 68
-    readonly property int resultsPanelPreferredWidth: 360
+    readonly property int resultsPanelPreferredWidth: 420
     readonly property int guideRailPreferredWidth: 260
     readonly property int guideRailMinimumWidth: 220
     readonly property int guideRailMaximumWidth: 360
@@ -138,6 +138,9 @@ QtObject {
     readonly property int preferenceMinimumWidth: 320
     readonly property int settingsDialogWidth: 520
     readonly property int resultDetailWidth: 820
+    readonly property int resultDetailHeight: 560
+    readonly property int reportDialogWidth: 560
+    readonly property int reportDialogHeight: 520
     readonly property int tooltipDelayMs: 450
     readonly property int tablePreviewHeight: 206
     readonly property int chartPreviewHeight: 228

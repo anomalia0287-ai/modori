@@ -4,9 +4,10 @@ import QtQuick.Layouts
 import "../dialogs"
 import "../theme"
 
-Rectangle {
+PearlSurface {
     id: root
-    color: theme.porcelainBackground
+
+    fillColor: theme.surfaceQuiet
     Accessible.name: appBootstrap.text("results.title")
 
     Theme {
@@ -21,8 +22,28 @@ Rectangle {
         id: reportExportDialog
     }
 
+    ResultDetailDialog {
+        id: resultDetailDialog
+    }
+
     function hasResults() {
         return uiController.resultSummary.length > 0
+    }
+
+    function stateKind() {
+        if (uiController.lastError.length > 0) {
+            return "error"
+        }
+        if (uiController.status === "running") {
+            return "running"
+        }
+        if (uiController.stale && root.hasResults()) {
+            return "stale"
+        }
+        if (root.hasResults()) {
+            return "latest"
+        }
+        return "empty"
     }
 
     function stateLabel() {
@@ -41,44 +62,16 @@ Rectangle {
         return appBootstrap.text("results.empty")
     }
 
-    function stateTextColor() {
-        if (uiController.lastError.length > 0) {
-            return theme.danger
-        }
-        if (uiController.stale && root.hasResults()) {
-            return theme.warning
-        }
-        if (root.hasResults()) {
-            return theme.actionTeal
-        }
-        return theme.textMuted
-    }
-
-    function stateBackgroundColor() {
-        if (uiController.lastError.length > 0) {
-            return theme.dangerSurface
-        }
-        if (uiController.stale && root.hasResults()) {
-            return theme.warningSurface
-        }
-        if (root.hasResults()) {
-            return theme.aqua
-        }
-        return theme.quietSurface
-    }
-
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: theme.spaceMd
         spacing: theme.spaceMd
 
-        Rectangle {
+        PearlSurface {
             objectName: "resultsReportPreview"
             Layout.fillWidth: true
             Layout.fillHeight: true
-            radius: theme.radiusLarge
-            color: theme.paperSurface
-            border.color: theme.lineSubtle
+            fillColor: theme.paperSurface
 
             ColumnLayout {
                 anchors.fill: parent
@@ -96,32 +89,22 @@ Rectangle {
                         font.bold: true
                     }
 
-                    Rectangle {
+                    StateBadge {
                         objectName: "resultStateBadge"
-                        radius: theme.radiusPill
-                        color: root.stateBackgroundColor()
-                        border.color: Qt.rgba(root.stateTextColor().r, root.stateTextColor().g, root.stateTextColor().b, theme.stateBorderAlpha)
-                        Layout.preferredHeight: theme.badgeHeight
-                        Layout.preferredWidth: stateBadgeText.implicitWidth + theme.badgeHorizontalPadding
-
-                        Label {
-                            id: stateBadgeText
-                            anchors.centerIn: parent
-                            text: root.stateLabel()
-                            color: root.stateTextColor()
-                            font.pixelSize: theme.fontCaption
-                            font.bold: true
-                        }
+                        state: root.stateKind()
+                        label: root.stateLabel()
                     }
 
                     Item {
                         Layout.fillWidth: true
                     }
 
-                    Button {
+                    AppButton {
                         text: appBootstrap.text("dialog.report.export_word")
-                        Accessible.name: appBootstrap.text("dialog.report.export_word")
-                        enabled: uiController.resultSummary.length > 0
+                        Accessible.name: text
+                        variant: enabled ? "primary" : "secondary"
+                        semanticLight: enabled
+                        enabled: root.hasResults()
                         onClicked: reportExportDialog.open()
                     }
                 }
@@ -130,6 +113,7 @@ Rectangle {
                     id: resultScroll
                     Layout.fillWidth: true
                     Layout.fillHeight: true
+                    contentWidth: availableWidth
                     clip: true
                     ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
 
@@ -139,7 +123,7 @@ Rectangle {
 
                         Label {
                             text: appBootstrap.text("results.stale")
-                            visible: uiController.stale && uiController.resultSummary.length > 0
+                            visible: uiController.stale && root.hasResults()
                             color: theme.warning
                             font.bold: true
                             wrapMode: Text.WordWrap
@@ -175,55 +159,73 @@ Rectangle {
                             Layout.fillWidth: true
                         }
 
-                        Rectangle {
+                        PearlSurface {
                             objectName: "resultTableFrame"
                             visible: uiController.resultTableText.length > 0
                             Layout.fillWidth: true
                             Layout.preferredHeight: theme.tablePreviewHeight
-                            radius: theme.radiusMedium
-                            color: theme.subtleSurface
-                            border.color: theme.lineSubtle
+                            fillColor: theme.subtleSurface
 
                             ColumnLayout {
                                 anchors.fill: parent
                                 anchors.margins: theme.spaceSm
                                 spacing: theme.spaceSm
 
-                                Label {
-                                    text: appBootstrap.text("results.table")
-                                    color: theme.textMuted
-                                    font.pixelSize: theme.fontCaption
-                                    font.italic: true
+                                RowLayout {
                                     Layout.fillWidth: true
+                                    spacing: theme.spaceSm
+
+                                    Label {
+                                        text: appBootstrap.text("results.table")
+                                        color: theme.textMuted
+                                        font.pixelSize: theme.fontCaption
+                                        font.italic: true
+                                    }
+
+                                    Item {
+                                        Layout.fillWidth: true
+                                    }
+
+                                    AppButton {
+                                        text: appBootstrap.text("results.view_wide")
+                                        Accessible.name: text
+                                        variant: "quiet"
+                                        visible: uiController.resultTableText.length > 0
+                                        onClicked: resultDetailDialog.open()
+                                    }
                                 }
 
-                                TextArea {
-                                    text: uiController.resultTableText
-                                    readOnly: true
-                                    selectByMouse: true
-                                    wrapMode: TextEdit.NoWrap
-                                    font.family: "Consolas"
-                                    font.pixelSize: theme.fontBody
-                                    color: theme.textStrong
+                                ScrollView {
                                     Layout.fillWidth: true
                                     Layout.fillHeight: true
-                                    background: Rectangle {
-                                        color: theme.paperSurface
-                                        border.color: theme.lineSubtle
-                                        radius: theme.radiusSmall
+                                    clip: true
+                                    ScrollBar.horizontal.policy: ScrollBar.AsNeeded
+                                    ScrollBar.vertical.policy: ScrollBar.AsNeeded
+
+                                    TextArea {
+                                        text: uiController.resultTableText
+                                        readOnly: true
+                                        selectByMouse: true
+                                        wrapMode: TextEdit.NoWrap
+                                        font.family: "Consolas"
+                                        font.pixelSize: theme.fontBody
+                                        color: theme.textTable
+                                        background: Rectangle {
+                                            color: theme.paperSurface
+                                            border.color: theme.lineSubtle
+                                            radius: theme.radiusSmall
+                                        }
                                     }
                                 }
                             }
                         }
 
-                        Rectangle {
+                        PearlSurface {
                             objectName: "resultChartFigure"
                             visible: uiController.chartPathsText.length > 0
                             Layout.fillWidth: true
                             Layout.preferredHeight: theme.chartPreviewHeight
-                            radius: theme.radiusMedium
-                            color: theme.subtleSurface
-                            border.color: theme.lineSubtle
+                            fillColor: theme.subtleSurface
 
                             ColumnLayout {
                                 anchors.fill: parent
@@ -248,18 +250,18 @@ Rectangle {
                         }
 
                         Label {
-                            text: appBootstrap.text("results.path") + ": " + uiController.chartPathsText
-                            visible: uiController.chartPathsText.length > 0
-                            color: theme.textSoft
+                            text: appBootstrap.text("results.notes") + ": " + uiController.resultNotesText
+                            visible: uiController.resultNotesText.length > 0
+                            color: theme.warning
                             font.pixelSize: theme.fontCaption
                             wrapMode: Text.WordWrap
                             Layout.fillWidth: true
                         }
 
                         Label {
-                            text: appBootstrap.text("results.notes") + ": " + uiController.resultNotesText
-                            visible: uiController.resultNotesText.length > 0
-                            color: theme.warning
+                            text: appBootstrap.text("results.path") + ": " + uiController.chartPathsText
+                            visible: uiController.chartPathsText.length > 0
+                            color: theme.textSoft
                             font.pixelSize: theme.fontCaption
                             wrapMode: Text.WordWrap
                             Layout.fillWidth: true
@@ -280,12 +282,16 @@ Rectangle {
                     Layout.fillWidth: true
                     spacing: theme.spaceSm
 
-                    Button {
+                    AppButton {
                         text: appBootstrap.text("results.why_this_test")
-                        Accessible.name: appBootstrap.text("results.why_this_test")
+                        Accessible.name: text
+                        variant: "quiet"
                         visible: uiController.explainModeEnabled
                         onClicked: {
-                            explainPopover.bodyText = uiController.explainRichText("ui.result.cronbach_alpha", "ko")
+                            explainPopover.bodyText = uiController.explainRichText(
+                                "ui.result.cronbach_alpha",
+                                "ko"
+                            )
                             explainPopover.open()
                         }
                     }

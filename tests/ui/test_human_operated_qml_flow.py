@@ -197,7 +197,7 @@ def test_work_actions_are_disabled_until_required_state_exists() -> None:
 
     assert 'enabled: uiController.status !== "empty" && uiController.status !== "running"' in work
     assert "enabled: uiController.resultSummary.length > 0" in work
-    assert "enabled: uiController.resultSummary.length > 0" in results
+    assert "enabled: root.hasResults()" in results
     assert 'property bool canRunPipeline: uiController.status !== "empty" && uiController.status !== "running"' in pipeline
     assert "enabled: root.canRunPipeline" in pipeline
     assert "enabled: uiController.resultSummary.length > 0" in dialog

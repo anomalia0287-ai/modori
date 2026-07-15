@@ -182,3 +182,28 @@ def test_main_qml_exposes_openable_import_dialog() -> None:
         root.deleteLater()
         _app().processEvents()
         del engine
+
+
+def test_main_qml_exposes_openable_result_and_report_dialogs() -> None:
+    engine, root, messages = _load_main_with_warnings(UiController(reduce_effects=True))
+
+    try:
+        result_dialog = root.findChild(QObject, "resultDetailDialog")
+        report_dialog = root.findChild(QObject, "reportExportDialog")
+        assert result_dialog is not None
+        assert report_dialog is not None
+
+        assert QMetaObject.invokeMethod(result_dialog, "open") is True
+        _app().processEvents()
+        assert result_dialog.property("opened") is True
+        assert QMetaObject.invokeMethod(result_dialog, "close") is True
+        _app().processEvents()
+
+        assert QMetaObject.invokeMethod(report_dialog, "open") is True
+        _app().processEvents()
+        assert report_dialog.property("opened") is True
+        assert _significant_warnings(messages) == []
+    finally:
+        root.deleteLater()
+        _app().processEvents()
+        del engine
