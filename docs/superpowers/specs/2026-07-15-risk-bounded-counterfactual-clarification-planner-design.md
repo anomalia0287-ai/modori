@@ -334,8 +334,11 @@ The planner memoizes by:
 ```
 
 Equivalent answer classes with identical state digests are collapsed. Input fact order,
-rule order, capability order, registry order, and branch declaration order must not affect
-the selected question or trace.
+rule order, capability order, and registry order must not affect the selected question or
+trace. Branch declaration order must not affect the selected question, formal loss, or
+sorted branch-snapshot set. It can change the existing `ClarificationSpec.digest()` because
+that upstream digest binds serialized contract order; this planner does not silently
+rewrite a persisted provenance contract to make those digests equal.
 
 The search has a fixed state-evaluation cap, chosen after measuring the complete P1
 worst-case matrix. Wall-clock time is not used as a decision boundary because it would

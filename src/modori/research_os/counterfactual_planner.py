@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 import re
+from types import MappingProxyType
 from typing import Any
 
 from modori.research_os.clarification import (
@@ -12,7 +13,7 @@ from modori.research_os.clarification import (
     ClarificationRegistry,
     ClarificationSpec,
 )
-from modori.research_os.contracts import Fact, canonical_digest
+from modori.research_os.contracts import Fact, FactState, canonical_digest
 
 
 PLANNER_VERSION = "research-os-counterfactual-minimax-v1"
@@ -577,6 +578,346 @@ class PlannerResult:
 SnapshotProvider = Callable[[Mapping[str, Fact[Any]]], DecisionSnapshot]
 
 
+class _SearchLimit(Exception):
+    pass
+
+
+class _PlannerIntegrity(Exception):
+    def __init__(self, reason: str) -> None:
+        self.reason = reason
+        super().__init__(reason)
+
+
+@dataclass(frozen=True)
+class _SearchResult:
+    loss: TerminalLoss
+    selected_question_id: str | None
+
+
+@dataclass(frozen=True)
+class _CandidateEvaluation:
+    question: ClarificationSpec
+    branch_snapshot_digests: tuple[tuple[str, str], ...]
+    refusal_snapshot_digest: str
+    worst_loss: TerminalLoss
+    guaranteed_e3_plus_blockers_removed: int
+    dependency_deficit: int
+    answer_kind_cost: int
+
+
+class _SearchSession:
+    def __init__(
+        self,
+        registry: ClarificationRegistry,
+        snapshot_provider: SnapshotProvider,
+        max_state_evaluations: int,
+    ) -> None:
+        self._questions = {
+            question.question_id: question for question in registry.questions
+        }
+        self._snapshot_provider = snapshot_provider
+        self._max_state_evaluations = max_state_evaluations
+        self._snapshot_cache: dict[str, DecisionSnapshot] = {}
+        self._memo: dict[tuple[int, str], _SearchResult] = {}
+        self.evaluated_state_count = 0
+        self.memo_hit_count = 0
+
+    def build_plan(
+        self,
+        facts: Mapping[str, Fact[Any]],
+        question_budget_remaining: int,
+    ) -> PlannerResult:
+        initial = self._snapshot(facts)
+        if initial.action != "clarify":
+            return PlannerResult(
+                abstention_reason="integrity:planner_requires_clarify_snapshot"
+            )
+        questions, refused_count = self._candidate_questions(initial, facts)
+        if not questions:
+            reason = (
+                "clarification_answer_unavailable"
+                if refused_count == len(initial.blockers)
+                else "integrity:no_decision_relevant_clarification"
+            )
+            return PlannerResult(abstention_reason=reason)
+        evaluations = self._evaluate_candidates(
+            facts,
+            initial,
+            questions,
+            question_budget_remaining,
+        )
+        if not evaluations:
+            return PlannerResult(
+                abstention_reason="integrity:no_decision_relevant_clarification"
+            )
+        selected = min(
+            evaluations,
+            key=lambda item: (item.worst_loss, item.question.question_id),
+        )
+        traces = tuple(
+            QuestionEvaluationTrace(
+                question_id=item.question.question_id,
+                question_version=item.question.version,
+                question_digest=item.question.digest(),
+                fact_address=item.question.fact_address,
+                branch_snapshot_digests=item.branch_snapshot_digests,
+                refusal_snapshot_digest=item.refusal_snapshot_digest,
+                worst_loss=item.worst_loss,
+                guaranteed_e3_plus_blockers_removed=(
+                    item.guaranteed_e3_plus_blockers_removed
+                ),
+                dependency_deficit=item.dependency_deficit,
+                answer_kind_cost=item.answer_kind_cost,
+                evaluated_state_count=self.evaluated_state_count,
+                memo_hit_count=self.memo_hit_count,
+                selected=item.question.question_id == selected.question.question_id,
+            )
+            for item in sorted(evaluations, key=lambda item: item.question.question_id)
+        )
+        question = selected.question
+        return PlannerResult(
+            plan=ClarificationPlan(
+                planner_version=PLANNER_VERSION,
+                selected_question_id=question.question_id,
+                selected_fact_address=question.fact_address,
+                selected_question_version=question.version,
+                selected_question_digest=question.digest(),
+                initial_snapshot_digest=initial.digest(),
+                initial_risk_vector=initial.risk_vector,
+                question_budget_remaining=question_budget_remaining,
+                evaluations=traces,
+                evaluated_state_count=self.evaluated_state_count,
+                memo_hit_count=self.memo_hit_count,
+            )
+        )
+
+    def _search(
+        self,
+        facts: Mapping[str, Fact[Any]],
+        remaining_budget: int,
+    ) -> _SearchResult:
+        fact_digest = self._facts_digest(facts)
+        memo_key = (remaining_budget, fact_digest)
+        memoized = self._memo.get(memo_key)
+        if memoized is not None:
+            self.memo_hit_count += 1
+            return memoized
+        snapshot = self._snapshot(facts)
+        if snapshot.action != "clarify" or remaining_budget == 0:
+            result = _SearchResult(self._terminal_loss(snapshot), None)
+            self._memo[memo_key] = result
+            return result
+        questions, _ = self._candidate_questions(snapshot, facts)
+        evaluations = self._evaluate_candidates(
+            facts,
+            snapshot,
+            questions,
+            remaining_budget,
+        )
+        if not evaluations:
+            result = _SearchResult(self._terminal_loss(snapshot), None)
+        else:
+            selected = min(
+                evaluations,
+                key=lambda item: (item.worst_loss, item.question.question_id),
+            )
+            result = _SearchResult(
+                selected.worst_loss,
+                selected.question.question_id,
+            )
+        self._memo[memo_key] = result
+        return result
+
+    def _evaluate_candidates(
+        self,
+        facts: Mapping[str, Fact[Any]],
+        snapshot: DecisionSnapshot,
+        questions: tuple[ClarificationSpec, ...],
+        remaining_budget: int,
+    ) -> tuple[_CandidateEvaluation, ...]:
+        evaluations: list[_CandidateEvaluation] = []
+        for question in questions:
+            evaluation = self._evaluate_candidate(
+                facts,
+                snapshot,
+                question,
+                remaining_budget,
+            )
+            if evaluation is not None:
+                evaluations.append(evaluation)
+        return tuple(evaluations)
+
+    def _evaluate_candidate(
+        self,
+        facts: Mapping[str, Fact[Any]],
+        parent_snapshot: DecisionSnapshot,
+        question: ClarificationSpec,
+        remaining_budget: int,
+    ) -> _CandidateEvaluation | None:
+        try:
+            projections = project_question_answers(question)
+        except PlannerError as exc:
+            raise _PlannerIntegrity(
+                "integrity:invalid_clarification_projection"
+            ) from exc
+        dependency_deficit = sum(
+            1
+            for address in question.dependencies
+            if (
+                (fact := facts.get(address)) is None
+                or fact.state not in {FactState.OBSERVED, FactState.USER_CONFIRMED}
+            )
+        )
+        kind_cost = answer_kind_cost(question.answer_kind)
+        branch_snapshots: list[tuple[str, str]] = []
+        branch_losses: list[TerminalLoss] = []
+        immediate_snapshots: list[DecisionSnapshot] = []
+        seen_projection_digests: set[str] = set()
+        for projection in projections.substantive:
+            projected = self._with_projection(
+                facts,
+                question.fact_address,
+                projection.fact,
+            )
+            projected_digest = self._facts_digest(projected)
+            if projected_digest in seen_projection_digests:
+                continue
+            seen_projection_digests.add(projected_digest)
+            immediate = self._snapshot(projected)
+            if any(
+                blocker.fact_address == question.fact_address
+                for blocker in immediate.blockers
+            ):
+                raise _PlannerIntegrity(
+                    "integrity:clarification_cannot_resolve_fact"
+                )
+            immediate_snapshots.append(immediate)
+            branch_snapshots.append((projection.projection_id, immediate.digest()))
+            child = self._search(projected, remaining_budget - 1)
+            branch_losses.append(
+                child.loss.with_question_cost(
+                    dependency_deficit=dependency_deficit,
+                    answer_kind_cost=kind_cost,
+                )
+            )
+        if not branch_losses:
+            raise _PlannerIntegrity("integrity:invalid_clarification_projection")
+
+        refusal_facts = self._with_projection(
+            facts,
+            question.fact_address,
+            projections.not_sure.fact,
+        )
+        refusal_snapshot = self._snapshot(refusal_facts)
+        if refusal_snapshot.action in {"recommend_local", "route_external"}:
+            raise _PlannerIntegrity("integrity:unsafe_refusal_projection")
+        if all(
+            item.semantic_signature == parent_snapshot.semantic_signature
+            for item in immediate_snapshots
+        ):
+            return None
+
+        parent_high_risk = {
+            blocker.fact_address
+            for blocker in parent_snapshot.blockers
+            if blocker.severity_rank >= 3
+        }
+        remaining_in_any_branch: set[str] = set()
+        for item in immediate_snapshots:
+            remaining_in_any_branch.update(
+                blocker.fact_address for blocker in item.blockers
+            )
+        return _CandidateEvaluation(
+            question=question,
+            branch_snapshot_digests=tuple(sorted(branch_snapshots)),
+            refusal_snapshot_digest=refusal_snapshot.digest(),
+            worst_loss=max(branch_losses),
+            guaranteed_e3_plus_blockers_removed=len(
+                parent_high_risk - remaining_in_any_branch
+            ),
+            dependency_deficit=dependency_deficit,
+            answer_kind_cost=kind_cost,
+        )
+
+    def _candidate_questions(
+        self,
+        snapshot: DecisionSnapshot,
+        facts: Mapping[str, Fact[Any]],
+    ) -> tuple[tuple[ClarificationSpec, ...], int]:
+        selected: dict[str, ClarificationSpec] = {}
+        refused_count = 0
+        for blocker in snapshot.blockers:
+            question = self._questions.get(blocker.question_id)
+            if question is None or question.fact_address != blocker.fact_address:
+                raise _PlannerIntegrity(
+                    "integrity:no_decision_relevant_clarification"
+                )
+            fact = facts.get(blocker.fact_address)
+            if (
+                fact is not None
+                and fact.state is FactState.UNKNOWN
+                and fact.reason_code == f"user_not_sure:{question.question_id}"
+            ):
+                refused_count += 1
+                continue
+            selected[question.question_id] = question
+        return (
+            tuple(selected[key] for key in sorted(selected)),
+            refused_count,
+        )
+
+    def _snapshot(self, facts: Mapping[str, Fact[Any]]) -> DecisionSnapshot:
+        fact_digest = self._facts_digest(facts)
+        cached = self._snapshot_cache.get(fact_digest)
+        if cached is not None:
+            return cached
+        if self.evaluated_state_count >= self._max_state_evaluations:
+            raise _SearchLimit
+        self.evaluated_state_count += 1
+        try:
+            snapshot = self._snapshot_provider(MappingProxyType(dict(facts)))
+        except Exception as exc:
+            raise _PlannerIntegrity(
+                "integrity:counterfactual_snapshot_failed"
+            ) from exc
+        if not isinstance(snapshot, DecisionSnapshot):
+            raise _PlannerIntegrity("integrity:counterfactual_snapshot_failed")
+        self._snapshot_cache[fact_digest] = snapshot
+        return snapshot
+
+    @staticmethod
+    def _terminal_loss(snapshot: DecisionSnapshot) -> TerminalLoss:
+        return TerminalLoss(
+            risk_vector=snapshot.risk_vector,
+            frontier_size=snapshot.frontier_size,
+            blocking_fact_count=len(snapshot.blockers),
+            questions_asked=0,
+            dependency_deficit=0,
+            answer_kind_cost=0,
+        )
+
+    @staticmethod
+    def _facts_digest(facts: Mapping[str, Fact[Any]]) -> str:
+        return canonical_digest(
+            {
+                "facts": {
+                    address: facts[address].to_mapping()
+                    for address in sorted(facts)
+                }
+            }
+        )
+
+    @staticmethod
+    def _with_projection(
+        facts: Mapping[str, Fact[Any]],
+        fact_address: str,
+        projected_fact: Fact[Any],
+    ) -> dict[str, Fact[Any]]:
+        projected = dict(facts)
+        projected[fact_address] = projected_fact
+        return projected
+
+
 class CounterfactualPlanner:
     """Pure bounded clarification policy over a resolver-owned snapshot provider."""
 
@@ -602,7 +943,36 @@ class CounterfactualPlanner:
         facts: Mapping[str, Fact[Any]],
         question_budget_remaining: int,
     ) -> PlannerResult:
-        raise PlannerError("counterfactual search is not implemented")
+        if not isinstance(facts, Mapping):
+            raise PlannerError("facts must be a mapping")
+        normalized: dict[str, Fact[Any]] = {}
+        for address, fact in facts.items():
+            _require_nonblank(address, "fact address")
+            if not isinstance(fact, Fact):
+                raise PlannerError(f"fact at {address} must be a Fact")
+            normalized[address] = fact
+        if (
+            type(question_budget_remaining) is not int
+            or not 0 <= question_budget_remaining <= 3
+        ):
+            raise PlannerError("question_budget_remaining must be from 0 through 3")
+        if question_budget_remaining == 0:
+            return PlannerResult(
+                abstention_reason="clarification_budget_exhausted"
+            )
+        session = _SearchSession(
+            self._registry,
+            self._snapshot_provider,
+            self._max_state_evaluations,
+        )
+        try:
+            return session.build_plan(normalized, question_budget_remaining)
+        except _SearchLimit:
+            return PlannerResult(
+                abstention_reason="planner_search_limit_exceeded"
+            )
+        except _PlannerIntegrity as exc:
+            return PlannerResult(abstention_reason=exc.reason)
 
 
 def answer_kind_cost(answer_kind: AnswerKind) -> int:

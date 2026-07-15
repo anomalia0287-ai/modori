@@ -277,7 +277,8 @@ Also add tests for:
 - fixed state cap returning `planner_search_limit_exceeded`;
 - refusal branch never opening `recommend_local` or `route_external`;
 - refusal questions being excluded by exact reason code;
-- branch and registry order invariance;
+- full trace invariance under fact/registry order, plus policy/loss invariance under branch
+  declaration order (the existing order-binding question digest may differ);
 - memo hits on equivalent states; and
 - exactly one selected candidate in the audit trace.
 
