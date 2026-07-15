@@ -14,6 +14,18 @@ def test_work_header_has_data_analysis_report_surfaces() -> None:
     assert "uiController.rerunNow" in work
 
 
+def test_work_shell_uses_mode_segment_and_no_preference_checkboxes() -> None:
+    work = qml_text("screens/WorkScreen.qml")
+
+    assert "PearlSurface" in work
+    assert "ModeSegment" in work
+    assert "onGuidedRequested" in work
+    assert "onStandardRequested" in work
+    assert "work.explain_mode" not in work
+    assert "work.reduce_effects" not in work
+    assert "CheckBox" not in work
+
+
 def test_guide_rail_has_explicit_committed_run_anchor() -> None:
     guide = qml_text("components/GuideRail.qml")
 

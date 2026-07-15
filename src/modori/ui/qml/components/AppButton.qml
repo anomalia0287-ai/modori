@@ -7,6 +7,7 @@ Button {
 
     property string variant: "secondary"
     property bool semanticLight: false
+    property int textElide: Text.ElideRight
 
     implicitHeight: theme.controlHeight
     leftPadding: theme.spaceContent
@@ -45,7 +46,7 @@ Button {
         font: control.font
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
-        elide: Text.ElideRight
+        elide: control.textElide
     }
 
     background: Rectangle {

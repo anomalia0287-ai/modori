@@ -162,3 +162,23 @@ def test_main_qml_exposes_openable_settings_dialog() -> None:
         root.deleteLater()
         _app().processEvents()
         del engine
+
+
+def test_main_qml_exposes_openable_import_dialog() -> None:
+    controller = UiController(reduce_effects=True)
+    assert controller.previewDataFilePath(
+        str((Path("tests/fixtures/psych_bfi.csv")).resolve())
+    ) is True
+    engine, root, messages = _load_main_with_warnings(controller)
+
+    try:
+        dialog = root.findChild(QObject, "importDialog")
+        assert dialog is not None
+        assert QMetaObject.invokeMethod(dialog, "open") is True
+        _app().processEvents()
+        assert dialog.property("opened") is True
+        assert _significant_warnings(messages) == []
+    finally:
+        root.deleteLater()
+        _app().processEvents()
+        del engine

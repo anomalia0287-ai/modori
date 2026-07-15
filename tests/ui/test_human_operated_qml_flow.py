@@ -183,8 +183,10 @@ def test_guided_and_standard_modes_change_visible_work_surface() -> None:
     assert 'SplitView.preferredWidth: uiController.mode === "guided" ? theme.guideRailPreferredWidth : theme.spaceNone' in work
     assert 'SplitView.minimumWidth: uiController.mode === "guided" ? theme.guideRailMinimumWidth : theme.spaceNone' in work
     assert 'SplitView.maximumWidth: uiController.mode === "guided" ? theme.guideRailMaximumWidth : theme.spaceNone' in work
-    assert 'enabled: uiController.mode !== "guided"' in work
-    assert 'enabled: uiController.mode !== "standard"' in work
+    assert "ModeSegment" in work
+    assert "currentMode: uiController.mode" in work
+    assert 'onGuidedRequested: uiController.chooseMode("guided")' in work
+    assert 'onStandardRequested: uiController.chooseMode("standard")' in work
 
 
 def test_work_actions_are_disabled_until_required_state_exists() -> None:

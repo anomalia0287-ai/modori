@@ -84,6 +84,14 @@ QtObject {
 
     readonly property int windowDefaultWidth: 1180
     readonly property int windowDefaultHeight: 760
+    readonly property int entryViewportMargin: 56
+    readonly property int entryStartMaxWidth: 1000
+    readonly property int entryStartMaxHeight: 580
+    readonly property int entryBrandColumnWidth: 390
+    readonly property int entryRecentMaxHeight: 132
+    readonly property int entryCardPadding: 40
+    readonly property int entryColumnGap: 36
+    readonly property int workOuterMargin: 12
     readonly property int detachedSheetWidth: 980
     readonly property int detachedSheetHeight: 640
     readonly property int headerHeight: 56
@@ -97,7 +105,12 @@ QtObject {
     readonly property int dialogViewportMargin: 48
     readonly property int importDialogMaxWidth: 760
     readonly property int importDialogMaxHeight: 620
+    readonly property int importPreviewColumnWidth: 410
+    readonly property int importPreviewColumnMinimumWidth: 320
+    readonly property int importSettingsColumnMinimumWidth: 250
     readonly property int importReviewMaxHeight: 132
+    readonly property int importColumnMinimumHeight: 96
+    readonly property int importSettingsHeight: 264
     readonly property int importReviewRowNumberWidth: 24
     readonly property int importReviewRowSpacing: 1
     readonly property int popoverWidth: 420

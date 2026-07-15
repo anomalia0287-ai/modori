@@ -76,6 +76,22 @@ def test_main_qml_uses_import_dialog_before_importing() -> None:
     assert "dialog.import.confirm" in dialog
 
 
+def test_import_corrections_are_progressively_disclosed() -> None:
+    dialog = qml_text("dialogs/ImportDialog.qml")
+
+    assert "property bool settingsExpanded" in dialog
+    assert 'appBootstrap.text("dialog.import.settings")' in dialog
+    assert "visible: root.settingsExpanded" in dialog
+    assert "dialog.import.preserve_metadata_detail" in dialog
+
+
+def test_import_preview_and_column_picker_keep_bounded_widths() -> None:
+    dialog = qml_text("dialogs/ImportDialog.qml")
+
+    assert "Layout.maximumWidth: theme.importPreviewColumnWidth" in dialog
+    assert "Layout.minimumWidth: theme.importSettingsColumnMinimumWidth" in dialog
+
+
 def test_import_and_recent_file_paths_do_not_start_analysis_automatically() -> None:
     main = qml_text("Main.qml")
 

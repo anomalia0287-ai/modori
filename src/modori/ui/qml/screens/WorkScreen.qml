@@ -16,19 +16,24 @@ Item {
         id: theme
     }
 
-    Rectangle {
+    PearlSurface {
         anchors.fill: parent
-        color: theme.flatBackground
+        fillColor: theme.canvasCream
+        ambient: true
+        reduceEffects: root.reduceEffects
+        radius: theme.spaceNone
+        border.width: theme.spaceNone
     }
 
     ColumnLayout {
         anchors.fill: parent
         spacing: theme.spaceNone
 
-        Rectangle {
-            color: theme.deepTeal
+        PearlSurface {
+            fillColor: theme.surfaceQuiet
+            radius: theme.spaceNone
             Layout.fillWidth: true
-            Layout.preferredHeight: theme.headerHeight
+            Layout.preferredHeight: theme.commandSurfaceHeight
 
             RowLayout {
                 anchors.fill: parent
@@ -38,52 +43,49 @@ Item {
 
                 Label {
                     text: appBootstrap.text("app.title")
-                    color: theme.onBrand
+                    color: theme.textStrong
                     font.pixelSize: theme.fontSubtitle
                     font.bold: true
                 }
 
-                Button {
+                AppButton {
                     text: appBootstrap.text("work.data")
                     Accessible.name: appBootstrap.text("work.data_menu")
+                    variant: "quiet"
                     onClicked: root.openDataRequested()
                 }
 
-                Button {
+                AppButton {
                     text: appBootstrap.text("work.data_sheet_window")
                     Accessible.name: appBootstrap.text("work.data_sheet_window")
+                    variant: "quiet"
                     enabled: uiController.status !== "empty" && uiController.status !== "running"
                     onClicked: root.dataSheetRequested()
                 }
 
-                Button {
+                AppButton {
                     text: appBootstrap.text("work.analysis")
                     Accessible.name: appBootstrap.text("work.analysis_run")
+                    variant: "secondary"
                     enabled: uiController.status !== "empty" && uiController.status !== "running"
                     onClicked: uiController.rerunNow()
                 }
 
-                Button {
+                AppButton {
                     text: appBootstrap.text("work.report")
                     Accessible.name: appBootstrap.text("work.report_menu")
+                    variant: "secondary"
+                    semanticLight: enabled
                     enabled: uiController.resultSummary.length > 0
                     onClicked: root.reportRequested()
                 }
 
                 Item { Layout.fillWidth: true }
 
-                Button {
-                    text: appBootstrap.text("work.guided")
-                    Accessible.name: appBootstrap.text("entry.guided")
-                    enabled: uiController.mode !== "guided"
-                    onClicked: uiController.chooseMode("guided")
-                }
-
-                Button {
-                    text: appBootstrap.text("work.standard")
-                    Accessible.name: appBootstrap.text("entry.standard")
-                    enabled: uiController.mode !== "standard"
-                    onClicked: uiController.chooseMode("standard")
+                ModeSegment {
+                    currentMode: uiController.mode
+                    onGuidedRequested: uiController.chooseMode("guided")
+                    onStandardRequested: uiController.chooseMode("standard")
                 }
 
                 AppIconButton {
@@ -94,57 +96,65 @@ Item {
             }
         }
 
-        SplitView {
-            id: splitView
+        ColumnLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            orientation: Qt.Horizontal
+            Layout.margins: theme.workOuterMargin
+            spacing: theme.spaceMd
 
-            GuideRail {
-                visible: uiController.mode === "guided"
-                SplitView.preferredWidth: uiController.mode === "guided" ? theme.guideRailPreferredWidth : theme.spaceNone
-                SplitView.minimumWidth: uiController.mode === "guided" ? theme.guideRailMinimumWidth : theme.spaceNone
-                SplitView.maximumWidth: uiController.mode === "guided" ? theme.guideRailMaximumWidth : theme.spaceNone
-            }
+            SplitView {
+                id: splitView
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                orientation: Qt.Horizontal
 
-            Rectangle {
-                SplitView.fillWidth: true
-                color: theme.paperSurface
+                GuideRail {
+                    visible: uiController.mode === "guided"
+                    SplitView.preferredWidth: uiController.mode === "guided" ? theme.guideRailPreferredWidth : theme.spaceNone
+                    SplitView.minimumWidth: uiController.mode === "guided" ? theme.guideRailMinimumWidth : theme.spaceNone
+                    SplitView.maximumWidth: uiController.mode === "guided" ? theme.guideRailMaximumWidth : theme.spaceNone
+                }
 
-                ColumnLayout {
-                    anchors.fill: parent
-                    spacing: theme.spaceNone
+                PearlSurface {
+                    SplitView.fillWidth: true
+                    fillColor: theme.paperSurface
+                    clip: true
 
-                    TabBar {
-                        id: dataTabs
-                        Layout.fillWidth: true
+                    ColumnLayout {
+                        anchors.fill: parent
+                        spacing: theme.spaceNone
 
-                        TabButton { text: appBootstrap.text("work.data_view") }
-                        TabButton { text: appBootstrap.text("work.variable_view") }
-                        TabButton { text: appBootstrap.text("work.transform_view") }
+                        TabBar {
+                            id: dataTabs
+                            Layout.fillWidth: true
+
+                            TabButton { text: appBootstrap.text("work.data_view") }
+                            TabButton { text: appBootstrap.text("work.variable_view") }
+                            TabButton { text: appBootstrap.text("work.transform_view") }
+                        }
+
+                        StackLayout {
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            currentIndex: dataTabs.currentIndex
+
+                            DataTable {}
+                            VariableTable {}
+                            TransformPanel {}
+                        }
                     }
+                }
 
-                    StackLayout {
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        currentIndex: dataTabs.currentIndex
-
-                        DataTable {}
-                        VariableTable {}
-                        TransformPanel {}
-                    }
+                ResultsPanel {
+                    SplitView.preferredWidth: theme.resultsPanelPreferredWidth
                 }
             }
 
-            ResultsPanel {
-                SplitView.preferredWidth: theme.resultsPanelPreferredWidth
+            PipelineRail {
+                Layout.fillWidth: true
+                Layout.preferredHeight: theme.pipelineHeight
+                onRerunRequested: uiController.rerunNow()
             }
-        }
-
-        PipelineRail {
-            Layout.fillWidth: true
-            Layout.preferredHeight: theme.pipelineHeight
-            onRerunRequested: uiController.rerunNow()
         }
     }
 

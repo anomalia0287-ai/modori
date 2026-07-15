@@ -1,10 +1,13 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import "../components"
 import "../theme"
 
 Dialog {
     id: root
+
+    objectName: "importDialog"
     title: appBootstrap.text("dialog.import.title")
     modal: true
     standardButtons: Dialog.NoButton
@@ -13,10 +16,13 @@ Dialog {
     y: Math.round((parent.height - height) / 2)
     width: Math.min(parent.width - theme.dialogViewportMargin * 2, theme.importDialogMaxWidth)
     height: Math.min(parent.height - theme.dialogViewportMargin * 2, theme.importDialogMaxHeight)
+    padding: theme.spaceXl
+
     signal importAccepted(bool dropAggregateRows, bool dropDuplicateRows, var includedColumns)
     signal layoutPreviewRequested(int headerRow, int headerRowCount, int dataStartRow, string sheetName, bool dropAggregateRows, bool dropDuplicateRows, var includedColumns)
 
     property var includedColumnNames: []
+    property bool settingsExpanded: false
 
     function includedColumns() {
         return includedColumnNames
@@ -70,7 +76,10 @@ Dialog {
             + uiController.importColumnRows.length
     }
 
-    onOpened: resetIncludedColumns()
+    onOpened: {
+        root.settingsExpanded = false
+        root.resetIncludedColumns()
+    }
 
     Connections {
         target: uiController
@@ -81,267 +90,358 @@ Dialog {
         }
     }
 
-    Theme {
-        id: theme
+    background: PearlSurface {
+        ambient: true
+        reduceEffects: uiController.reduceEffects
     }
 
-    ColumnLayout {
-        anchors.fill: parent
+    header: Label {
+        text: root.title
+        color: theme.textStrong
+        font.bold: true
+        leftPadding: theme.spaceXl
+        rightPadding: theme.spaceXl
+        topPadding: theme.spaceContent
+        bottomPadding: theme.spaceContent
+        background: Rectangle {
+            color: theme.surfaceCream
+        }
+    }
+
+    contentItem: ColumnLayout {
         spacing: theme.spaceMd
 
-        ScrollView {
+        RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            clip: true
+            spacing: theme.spaceLg
 
-            TextArea {
-                text: uiController.importPreviewText
-                color: theme.textControl
-                readOnly: true
-                selectByMouse: true
-                wrapMode: TextEdit.Wrap
-                Accessible.name: appBootstrap.text("dialog.import.preview_accessible")
-                background: Rectangle {
-                    color: theme.flatBackground
-                    border.color: theme.lineDialog
-                    radius: theme.radiusSmall
-                }
-            }
-        }
-
-        ColumnLayout {
-            Layout.fillWidth: true
-            spacing: theme.spaceXs
-            visible: uiController.importReviewRows.length > 0
-
-            Label {
-                text: appBootstrap.text("dialog.import.review_title")
-                color: theme.textStrong
-                font.bold: true
-            }
-
-            ScrollView {
-                Layout.fillWidth: true
-                Layout.preferredHeight: Math.min(reviewColumn.implicitHeight + theme.spaceSm, theme.importReviewMaxHeight)
-                clip: true
-
-                ColumnLayout {
-                    id: reviewColumn
-                    width: parent.width
-                    spacing: theme.importReviewRowSpacing
-                    Accessible.name: appBootstrap.text("dialog.import.review_accessible")
-
-                    Repeater {
-                        model: uiController.importReviewRows
-
-                        delegate: RowLayout {
-                            Layout.fillWidth: true
-                            spacing: theme.spaceSm
-
-                            Label {
-                                text: modelData.row_number
-                                color: theme.textMuted
-                                Layout.preferredWidth: theme.importReviewRowNumberWidth
-                                horizontalAlignment: Text.AlignRight
-                            }
-
-                            Rectangle {
-                                radius: theme.radiusSmall
-                                color: modelData.role === "header"
-                                    ? theme.selectionSurface
-                                    : modelData.role === "data"
-                                        ? theme.paperSurface
-                                        : theme.quietSurface
-                                border.color: modelData.role === "header" ? theme.linePopover : theme.lineSubtle
-                                implicitWidth: reviewRoleLabel.implicitWidth + theme.spaceSm * 2
-                                implicitHeight: reviewRoleLabel.implicitHeight + theme.spaceXs
-
-                                Label {
-                                    id: reviewRoleLabel
-                                    anchors.centerIn: parent
-                                    text: modelData.role_label
-                                    color: modelData.role === "skipped" ? theme.textMuted : theme.textLevel
-                                }
-                            }
-
-                            Label {
-                                text: modelData.cells
-                                color: modelData.role === "skipped" ? theme.textMuted : theme.textControl
-                                elide: Text.ElideRight
-                                Layout.fillWidth: true
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        ColumnLayout {
-            Layout.fillWidth: true
-            spacing: theme.spaceXs
-            visible: uiController.importColumnRows.length > 0
-
-            RowLayout {
-                Layout.fillWidth: true
+            ColumnLayout {
+                Layout.preferredWidth: theme.importPreviewColumnWidth
+                Layout.minimumWidth: theme.importPreviewColumnMinimumWidth
+                Layout.maximumWidth: theme.importPreviewColumnWidth
+                Layout.fillHeight: true
+                spacing: theme.spaceSm
 
                 Label {
-                    text: appBootstrap.text("dialog.import.columns_title")
+                    text: appBootstrap.text("dialog.import.preview_accessible")
                     color: theme.textStrong
                     font.bold: true
                     Layout.fillWidth: true
                 }
 
-                Label {
-                    text: root.columnCountText()
-                    color: theme.textMuted
-                }
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: theme.spaceSm
-
-                TextField {
-                    id: columnSearch
+                ScrollView {
                     Layout.fillWidth: true
-                    placeholderText: appBootstrap.text("dialog.import.columns_search")
-                    Accessible.name: appBootstrap.text("dialog.import.columns_search")
-                }
+                    Layout.fillHeight: true
+                    clip: true
 
-                Button {
-                    text: appBootstrap.text("dialog.import.columns_reset")
-                    Accessible.name: appBootstrap.text("dialog.import.columns_reset")
-                    onClicked: root.includeAllColumns()
+                    TextArea {
+                        text: uiController.importPreviewText
+                        color: theme.textControl
+                        readOnly: true
+                        selectByMouse: true
+                        wrapMode: TextEdit.Wrap
+                        Accessible.name: appBootstrap.text("dialog.import.preview_accessible")
+                        background: Rectangle {
+                            color: theme.surfaceCream
+                            border.color: theme.lineDialog
+                            radius: theme.radiusSmall
+                        }
+                    }
                 }
-            }
-
-            ScrollView {
-                Layout.fillWidth: true
-                Layout.preferredHeight: Math.min(columnList.implicitHeight + theme.spaceSm, theme.importReviewMaxHeight)
-                clip: true
 
                 ColumnLayout {
-                    id: columnList
-                    width: parent.width
-                    spacing: theme.importReviewRowSpacing
-                    Accessible.name: appBootstrap.text("dialog.import.columns_title")
+                    Layout.fillWidth: true
+                    spacing: theme.spaceXs
+                    visible: uiController.importReviewRows.length > 0
 
-                    Repeater {
-                        model: uiController.importColumnRows
+                    Label {
+                        text: appBootstrap.text("dialog.import.review_title")
+                        color: theme.textStrong
+                        font.bold: true
+                    }
 
-                        delegate: CheckBox {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: visible ? implicitHeight : 0
-                            visible: root.columnMatchesFilter(modelData.name)
-                            text: modelData.name
-                            checked: root.isColumnIncluded(modelData.name)
-                            Accessible.name: modelData.name
-                            onToggled: root.setColumnIncluded(modelData.name, checked)
+                    ScrollView {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: Math.min(
+                            reviewColumn.implicitHeight + theme.spaceSm,
+                            theme.importReviewMaxHeight
+                        )
+                        clip: true
+
+                        ColumnLayout {
+                            id: reviewColumn
+                            width: parent.width
+                            spacing: theme.importReviewRowSpacing
+                            Accessible.name: appBootstrap.text("dialog.import.review_accessible")
+
+                            Repeater {
+                                model: uiController.importReviewRows
+
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: theme.spaceSm
+
+                                    Label {
+                                        text: modelData.row_number
+                                        color: theme.textMuted
+                                        Layout.preferredWidth: theme.importReviewRowNumberWidth
+                                        horizontalAlignment: Text.AlignRight
+                                    }
+
+                                    Rectangle {
+                                        radius: theme.radiusSmall
+                                        color: modelData.role === "header"
+                                            ? theme.selectionSurface
+                                            : modelData.role === "data"
+                                                ? theme.paperSurface
+                                                : theme.quietSurface
+                                        border.color: modelData.role === "header"
+                                            ? theme.linePopover
+                                            : theme.lineSubtle
+                                        implicitWidth: reviewRoleLabel.implicitWidth + theme.spaceSm * 2
+                                        implicitHeight: reviewRoleLabel.implicitHeight + theme.spaceXs
+
+                                        Label {
+                                            id: reviewRoleLabel
+                                            anchors.centerIn: parent
+                                            text: modelData.role_label
+                                            color: modelData.role === "skipped"
+                                                ? theme.textMuted
+                                                : theme.textLevel
+                                        }
+                                    }
+
+                                    Label {
+                                        text: modelData.cells
+                                        color: modelData.role === "skipped"
+                                            ? theme.textMuted
+                                            : theme.textControl
+                                        elide: Text.ElideRight
+                                        Layout.fillWidth: true
+                                    }
+                                }
+                            }
                         }
                     }
                 }
             }
 
-            Label {
+            PearlSurface {
                 Layout.fillWidth: true
-                visible: root.includedColumnNames.length === 0
-                text: appBootstrap.text("dialog.import.columns_empty")
-                color: theme.danger
-            }
-        }
+                Layout.minimumWidth: theme.importSettingsColumnMinimumWidth
+                Layout.fillHeight: true
+                fillColor: theme.surfaceQuiet
 
-        CheckBox {
-            text: appBootstrap.text("dialog.import.preserve_metadata")
-            checked: true
-            enabled: false
-            Accessible.name: appBootstrap.text("dialog.import.preserve_metadata")
-        }
+                ColumnLayout {
+                    anchors.fill: parent
+                    anchors.margins: theme.spaceMd
+                    spacing: theme.spaceSm
 
-        CheckBox {
-            id: dropAggregateRows
-            text: appBootstrap.text("dialog.import.drop_aggregate_rows")
-            checked: false
-            Accessible.name: appBootstrap.text("dialog.import.drop_aggregate_rows")
-        }
+                    RowLayout {
+                        Layout.fillWidth: true
 
-        CheckBox {
-            id: dropDuplicateRows
-            text: appBootstrap.text("dialog.import.drop_duplicate_rows")
-            checked: false
-            Accessible.name: appBootstrap.text("dialog.import.drop_duplicate_rows")
-        }
+                        Label {
+                            text: appBootstrap.text("dialog.import.columns_title")
+                            color: theme.textStrong
+                            font.bold: true
+                            Layout.fillWidth: true
+                        }
 
-        GridLayout {
-            Layout.fillWidth: true
-            columns: 4
-            columnSpacing: theme.spaceSm
-            rowSpacing: theme.spaceXs
+                        Label {
+                            text: root.columnCountText()
+                            color: theme.textMuted
+                        }
+                    }
 
-            Label {
-                text: appBootstrap.text("dialog.import.sheet_name")
-            }
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: theme.spaceSm
 
-            TextField {
-                id: sheetName
-                Layout.fillWidth: true
-                placeholderText: appBootstrap.text("dialog.import.sheet_name")
-                Accessible.name: appBootstrap.text("dialog.import.sheet_name")
-            }
+                        TextField {
+                            id: columnSearch
+                            Layout.fillWidth: true
+                            placeholderText: appBootstrap.text("dialog.import.columns_search")
+                            Accessible.name: appBootstrap.text("dialog.import.columns_search")
+                        }
 
-            Label {
-                text: appBootstrap.text("dialog.import.header_row")
-            }
+                        AppButton {
+                            text: appBootstrap.text("dialog.import.columns_reset")
+                            Accessible.name: text
+                            variant: "quiet"
+                            onClicked: root.includeAllColumns()
+                        }
+                    }
 
-            SpinBox {
-                id: headerRow
-                from: 1
-                to: 999
-                value: 1
-                editable: true
-                Accessible.name: appBootstrap.text("dialog.import.header_row")
-            }
+                    ScrollView {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        Layout.minimumHeight: theme.importColumnMinimumHeight
+                        clip: true
 
-            Label {
-                text: appBootstrap.text("dialog.import.header_rows")
-            }
+                        ColumnLayout {
+                            id: columnList
+                            width: parent.width
+                            spacing: theme.importReviewRowSpacing
+                            Accessible.name: appBootstrap.text("dialog.import.columns_title")
 
-            SpinBox {
-                id: headerRows
-                from: 1
-                to: 3
-                value: 1
-                editable: true
-                Accessible.name: appBootstrap.text("dialog.import.header_rows")
-            }
+                            Repeater {
+                                model: uiController.importColumnRows
 
-            Label {
-                text: appBootstrap.text("dialog.import.data_start_row")
-            }
+                                CheckBox {
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: visible ? implicitHeight : theme.spaceNone
+                                    visible: root.columnMatchesFilter(modelData.name)
+                                    text: modelData.name
+                                    checked: root.isColumnIncluded(modelData.name)
+                                    Accessible.name: modelData.name
+                                    onToggled: root.setColumnIncluded(modelData.name, checked)
+                                }
+                            }
+                        }
+                    }
 
-            RowLayout {
-                Layout.fillWidth: true
+                    Label {
+                        Layout.fillWidth: true
+                        visible: root.includedColumnNames.length === 0
+                        text: appBootstrap.text("dialog.import.columns_empty")
+                        color: theme.danger
+                        wrapMode: Text.WordWrap
+                    }
 
-                SpinBox {
-                    id: dataStartRow
-                    from: 1
-                    to: 999
-                    value: 2
-                    editable: true
-                    Accessible.name: appBootstrap.text("dialog.import.data_start_row")
-                }
+                    AppButton {
+                        text: root.settingsExpanded
+                            ? appBootstrap.text("dialog.import.settings_collapse")
+                            : appBootstrap.text("dialog.import.settings")
+                        Accessible.name: text
+                        variant: "quiet"
+                        Layout.fillWidth: true
+                        onClicked: root.settingsExpanded = !root.settingsExpanded
+                    }
 
-                Button {
-                    text: appBootstrap.text("dialog.import.refresh_preview")
-                    Accessible.name: appBootstrap.text("dialog.import.refresh_preview")
-                    onClicked: root.layoutPreviewRequested(
-                        headerRow.value,
-                        headerRows.value,
-                        dataStartRow.value,
-                        sheetName.text,
-                        dropAggregateRows.checked,
-                        dropDuplicateRows.checked,
-                        root.includedColumns()
-                    )
+                    PearlSurface {
+                        visible: root.settingsExpanded
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: theme.importSettingsHeight
+                        fillColor: theme.surfaceCream
+
+                        ScrollView {
+                            id: settingsScroll
+                            anchors.fill: parent
+                            anchors.margins: theme.spaceMd
+                            clip: true
+
+                            ColumnLayout {
+                                width: settingsScroll.availableWidth
+                                spacing: theme.spaceSm
+
+                                CheckBox {
+                                    text: appBootstrap.text("dialog.import.preserve_metadata")
+                                    checked: true
+                                    enabled: false
+                                    Accessible.name: text
+                                    Layout.fillWidth: true
+                                }
+
+                                Label {
+                                    text: appBootstrap.text("dialog.import.preserve_metadata_detail")
+                                    color: theme.textMuted
+                                    wrapMode: Text.WordWrap
+                                    Layout.fillWidth: true
+                                }
+
+                                CheckBox {
+                                    id: dropAggregateRows
+                                    text: appBootstrap.text("dialog.import.drop_aggregate_rows")
+                                    checked: false
+                                    Accessible.name: text
+                                    Layout.fillWidth: true
+                                }
+
+                                CheckBox {
+                                    id: dropDuplicateRows
+                                    text: appBootstrap.text("dialog.import.drop_duplicate_rows")
+                                    checked: false
+                                    Accessible.name: text
+                                    Layout.fillWidth: true
+                                }
+
+                                GridLayout {
+                                    Layout.fillWidth: true
+                                    columns: 2
+                                    columnSpacing: theme.spaceSm
+                                    rowSpacing: theme.spaceXs
+
+                                    Label {
+                                        text: appBootstrap.text("dialog.import.sheet_name")
+                                    }
+
+                                    TextField {
+                                        id: sheetName
+                                        Layout.fillWidth: true
+                                        placeholderText: appBootstrap.text("dialog.import.sheet_name")
+                                        Accessible.name: appBootstrap.text("dialog.import.sheet_name")
+                                    }
+
+                                    Label {
+                                        text: appBootstrap.text("dialog.import.header_row")
+                                    }
+
+                                    SpinBox {
+                                        id: headerRow
+                                        from: 1
+                                        to: 999
+                                        value: 1
+                                        editable: true
+                                        Accessible.name: appBootstrap.text("dialog.import.header_row")
+                                    }
+
+                                    Label {
+                                        text: appBootstrap.text("dialog.import.header_rows")
+                                    }
+
+                                    SpinBox {
+                                        id: headerRows
+                                        from: 1
+                                        to: 3
+                                        value: 1
+                                        editable: true
+                                        Accessible.name: appBootstrap.text("dialog.import.header_rows")
+                                    }
+
+                                    Label {
+                                        text: appBootstrap.text("dialog.import.data_start_row")
+                                    }
+
+                                    SpinBox {
+                                        id: dataStartRow
+                                        from: 1
+                                        to: 999
+                                        value: 2
+                                        editable: true
+                                        Accessible.name: appBootstrap.text("dialog.import.data_start_row")
+                                    }
+
+                                    AppButton {
+                                        text: appBootstrap.text("dialog.import.refresh_preview")
+                                        Accessible.name: text
+                                        variant: "secondary"
+                                        Layout.columnSpan: 2
+                                        Layout.fillWidth: true
+                                        onClicked: root.layoutPreviewRequested(
+                                            headerRow.value,
+                                            headerRows.value,
+                                            dataStartRow.value,
+                                            sheetName.text,
+                                            dropAggregateRows.checked,
+                                            dropDuplicateRows.checked,
+                                            root.includedColumns()
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -349,18 +449,22 @@ Dialog {
         RowLayout {
             Layout.fillWidth: true
 
-            Item { Layout.fillWidth: true }
+            Item {
+                Layout.fillWidth: true
+            }
 
-            Button {
+            AppButton {
                 text: appBootstrap.text("dialog.import.cancel")
-                Accessible.name: appBootstrap.text("dialog.import.cancel")
+                Accessible.name: text
+                variant: "quiet"
                 onClicked: root.close()
             }
 
-            Button {
+            AppButton {
                 text: appBootstrap.text("dialog.import.confirm")
-                Accessible.name: appBootstrap.text("dialog.import.confirm")
-                highlighted: true
+                Accessible.name: text
+                variant: "primary"
+                semanticLight: enabled
                 enabled: root.includedColumnNames.length > 0
                 onClicked: root.importAccepted(
                     dropAggregateRows.checked,
@@ -369,5 +473,9 @@ Dialog {
                 )
             }
         }
+    }
+
+    Theme {
+        id: theme
     }
 }
