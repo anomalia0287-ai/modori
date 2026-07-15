@@ -79,3 +79,18 @@ def test_report_is_internal_fidelity_evidence_with_no_safety_disagreement() -> N
         "getrusage_ru_maxrss",
         "windows_peak_working_set",
     }
+
+
+def test_locked_p1_slice_finishes_below_the_structural_state_cap() -> None:
+    report = build_report(iterations=1)
+    p1 = report["p1_locked_slice"]
+
+    assert p1["fact_count"] == 15
+    assert p1["question_budget"] == 3
+    assert p1["state_cap"] == 250_000
+    assert p1["state_cap_hit"] is False
+    assert p1["evaluated_state_count"] == 11_539
+    assert p1["memo_hit_count"] == 5_172
+    assert p1["selected_question_id"] == "confirm_research_goal"
+    assert p1["deterministic_outcome_count"] == 1
+    assert p1["peak_process_memory_bytes"] > 0

@@ -532,3 +532,24 @@ def test_plan_trace_marks_exactly_one_candidate_and_records_memoization() -> Non
     assert sum(item.selected for item in result.plan.evaluations) == 1
     assert result.plan.evaluated_state_count > 1
     assert result.plan.memo_hit_count > 0
+
+
+def test_planner_canonicalizes_each_input_fact_only_once(monkeypatch) -> None:
+    facts = _unknown_facts(_BALANCED, _GREEDY, _TAIL)
+    input_fact_ids = {id(fact) for fact in facts.values()}
+    mapping_calls = {fact_id: 0 for fact_id in input_fact_ids}
+    original = Fact.to_mapping
+
+    def counting_mapping(self: Fact[object]) -> dict[str, object]:
+        if id(self) in mapping_calls:
+            mapping_calls[id(self)] += 1
+        return original(self)
+
+    monkeypatch.setattr(Fact, "to_mapping", counting_mapping)
+    result = CounterfactualPlanner(
+        _lookahead_registry(),
+        _lookahead_snapshot,
+    ).plan(facts, question_budget_remaining=2)
+
+    assert result.plan is not None
+    assert set(mapping_calls.values()) == {1}

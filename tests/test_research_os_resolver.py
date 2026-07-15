@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import replace
 from enum import Enum
 
@@ -30,6 +31,7 @@ from modori.research_os.resolver import (
     ResolutionContext,
     ResolverError,
     RuleEvaluation,
+    RuleTrace,
 )
 from modori.research_os.p1_clarifications import build_p1_clarification_registry
 
@@ -319,6 +321,45 @@ def test_multiple_unknowns_return_exactly_one_counterfactually_selected_question
     assert decision.clarification_plan.selected_question_id == (
         decision.clarification_ids[0]
     )
+
+
+def test_planner_reuses_rule_results_for_immutable_facts(monkeypatch) -> None:
+    calls = 0
+    mapping_calls = 0
+    original = C1Resolver._evaluate_rule
+    original_mapping = Fact.to_mapping
+
+    def counting_evaluation(
+        self: C1Resolver,
+        rule: HardRule,
+        facts: Mapping[str, Fact[object]],
+    ) -> RuleTrace:
+        nonlocal calls
+        calls += 1
+        return original(self, rule, facts)
+
+    unknown = Fact.unknown(reason_code="not_answered")
+
+    def counting_mapping(self: Fact[object]) -> dict[str, object]:
+        nonlocal mapping_calls
+        if self is unknown:
+            mapping_calls += 1
+        return original_mapping(self)
+
+    monkeypatch.setattr(C1Resolver, "_evaluate_rule", counting_evaluation)
+    monkeypatch.setattr(Fact, "to_mapping", counting_mapping)
+    decision = _resolver(_space()).resolve(
+        _context(
+            goal=unknown,
+            scale=unknown,
+            dependence=unknown,
+            weight=unknown,
+        )
+    )
+
+    assert decision.clarification_plan is not None
+    assert calls <= 20
+    assert mapping_calls <= 2
 
 
 def test_duplicate_capability_rules_do_not_multiply_unique_fact_risk() -> None:

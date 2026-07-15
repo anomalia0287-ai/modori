@@ -26,6 +26,7 @@ from modori.research_os.clarification import (
 )
 from modori.research_os.contracts import Fact, FactState, canonical_digest
 from modori.research_os.counterfactual_planner import (
+    DEFAULT_MAX_STATE_EVALUATIONS,
     PLANNER_VERSION,
     BlockingFact,
     CounterfactualPlanner,
@@ -33,6 +34,13 @@ from modori.research_os.counterfactual_planner import (
     TerminalLoss,
     answer_kind_cost,
     project_question_answers,
+)
+from modori.research_os.p1_catalog import build_p1_method_space
+from modori.research_os.p1_clarifications import build_p1_clarification_registry
+from modori.research_os.resolver import (
+    C1Resolver,
+    ProductSurface,
+    ResolutionContext,
 )
 
 
@@ -794,6 +802,83 @@ def _performance(iterations: int) -> dict[str, Any]:
     }
 
 
+def _p1_locked_slice(iterations: int) -> dict[str, Any]:
+    measured_iterations = min(iterations, 5)
+    method_space = build_p1_method_space()
+    registry = build_p1_clarification_registry()
+    resolver = C1Resolver(
+        method_space,
+        registry,
+        planner_state_cap=DEFAULT_MAX_STATE_EVALUATIONS,
+    )
+    addresses = tuple(sorted({rule.fact_address for rule in method_space.rules}))
+    context = ResolutionContext(
+        facts={
+            address: Fact.unknown(reason_code="p1_locked_slice_unknown")
+            for address in addresses
+        },
+        surface=ProductSurface.EXPERIMENTAL,
+        question_budget_remaining=3,
+    )
+    samples: list[float] = []
+    outcomes: list[dict[str, Any]] = []
+    for _ in range(measured_iterations):
+        started = time.perf_counter_ns()
+        decision = resolver.resolve(context)
+        samples.append(
+            round((time.perf_counter_ns() - started) / 1_000_000, 3)
+        )
+        plan = decision.clarification_plan
+        outcomes.append(
+            {
+                "action": decision.action.value,
+                "reason_codes": list(decision.reason_codes),
+                "selected_question_id": (
+                    None if plan is None else plan.selected_question_id
+                ),
+                "evaluated_state_count": (
+                    None if plan is None else plan.evaluated_state_count
+                ),
+                "memo_hit_count": None if plan is None else plan.memo_hit_count,
+            }
+        )
+    outcome_digests = {
+        canonical_digest({"outcome": outcome}) for outcome in outcomes
+    }
+    first = outcomes[0]
+    process_peak, process_memory_measurement = _peak_process_memory_bytes()
+    memory_gate_bytes = 256 * 1024 * 1024
+    elapsed_gate_ms = 5_000
+    return {
+        "method_space_digest": method_space.digest(),
+        "clarification_registry_digest": registry.digest(),
+        "fact_count": len(addresses),
+        "question_budget": 3,
+        "state_cap": DEFAULT_MAX_STATE_EVALUATIONS,
+        "state_cap_hit": any(
+            "planner_search_limit_exceeded" in outcome["reason_codes"]
+            for outcome in outcomes
+        ),
+        "iterations": measured_iterations,
+        "elapsed_ms_samples": samples,
+        "min_elapsed_ms": min(samples),
+        "median_elapsed_ms": round(float(median(samples)), 3),
+        "max_elapsed_ms": max(samples),
+        "development_elapsed_gate_ms": elapsed_gate_ms,
+        "development_elapsed_gate_passed": max(samples) < elapsed_gate_ms,
+        "peak_process_memory_bytes": process_peak,
+        "peak_process_memory_measurement": process_memory_measurement,
+        "development_memory_gate_bytes": memory_gate_bytes,
+        "development_memory_gate_passed": process_peak < memory_gate_bytes,
+        "selected_question_id": first["selected_question_id"],
+        "evaluated_state_count": first["evaluated_state_count"],
+        "memo_hit_count": first["memo_hit_count"],
+        "deterministic_outcome_count": len(outcome_digests),
+        "outcome_digest": min(outcome_digests),
+        "setup_excluded_from_elapsed": True,
+    }
+
+
 def build_report(*, iterations: int = 50) -> dict[str, Any]:
     if type(iterations) is not int or iterations < 1:
         raise ValueError("iterations must be a positive integer")
@@ -825,6 +910,7 @@ def build_report(*, iterations: int = 50) -> dict[str, Any]:
         "e4_e5_failures": e4_e5_failures,
         "mutation_checks": mutation_checks(),
         "performance": _performance(iterations),
+        "p1_locked_slice": _p1_locked_slice(iterations),
         "nonclaims": [
             "not_human_gold",
             "not_recommendation_validity",

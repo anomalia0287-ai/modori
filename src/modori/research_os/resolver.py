@@ -194,6 +194,13 @@ class _ResolverState:
     snapshot: DecisionSnapshot
 
 
+_RuleTraceCache = dict[
+    tuple[str, int | None],
+    tuple[Fact[Any] | None, RuleTrace],
+]
+_FactDigestCache = dict[int, tuple[Fact[Any], str]]
+
+
 _SEVERITY_RANK = {
     RuleSeverity.E1: 1,
     RuleSeverity.E2: 2,
@@ -238,8 +245,15 @@ class C1Resolver:
                 ),
             )
 
+        rule_trace_cache: _RuleTraceCache = {}
+        fact_digest_cache: _FactDigestCache = {}
         try:
-            state = self._build_state(context, context.facts)
+            state = self._build_state(
+                context,
+                context.facts,
+                rule_trace_cache,
+                fact_digest_cache,
+            )
         except ResolverError:
             return ResolutionDecision(
                 action=PrimaryAction.ABSTAIN,
@@ -261,7 +275,12 @@ class C1Resolver:
                 )
             planner = CounterfactualPlanner(
                 self._clarification_registry,
-                lambda facts: self._build_state(context, facts).snapshot,
+                lambda facts: self._build_state(
+                    context,
+                    facts,
+                    rule_trace_cache,
+                    fact_digest_cache,
+                ).snapshot,
                 max_state_evaluations=self._planner_state_cap,
             )
             planner_result = planner.plan(
@@ -310,9 +329,15 @@ class C1Resolver:
         self,
         context: ResolutionContext,
         facts: Mapping[str, Fact[Any]],
+        rule_trace_cache: _RuleTraceCache,
+        fact_digest_cache: _FactDigestCache,
     ) -> _ResolverState:
         evaluations = tuple(
-            self._evaluate_capability(capability, facts)
+            self._evaluate_capability(
+                capability,
+                facts,
+                rule_trace_cache,
+            )
             for capability in sorted(
                 self._method_space.capabilities,
                 key=lambda item: item.identity.key,
@@ -366,7 +391,7 @@ class C1Resolver:
             sorted(
                 (
                     address,
-                    canonical_digest({"fact": fact.to_mapping()}),
+                    self._fact_digest_cached(fact, fact_digest_cache),
                 )
                 for address, fact in facts.items()
                 if address.startswith("estimand.role.")
@@ -380,7 +405,7 @@ class C1Resolver:
         }
         data_policy_marks = tuple(
             sorted(
-                f"{address}:{canonical_digest({'fact': facts[address].to_mapping()})}"
+                f"{address}:{self._fact_digest_cached(facts[address], fact_digest_cache)}"
                 for address in data_policy_addresses
                 if address in facts
             )
@@ -430,13 +455,31 @@ class C1Resolver:
             snapshot=snapshot,
         )
 
+    @staticmethod
+    def _fact_digest_cached(
+        fact: Fact[Any],
+        cache: _FactDigestCache,
+    ) -> str:
+        identity = id(fact)
+        cached = cache.get(identity)
+        if cached is not None and cached[0] is fact:
+            return cached[1]
+        digest = canonical_digest({"fact": fact.to_mapping()})
+        cache[identity] = (fact, digest)
+        return digest
+
     def _evaluate_capability(
         self,
         capability: Capability,
         facts: Mapping[str, Fact[Any]],
+        rule_trace_cache: _RuleTraceCache,
     ) -> _CapabilityEvaluation:
         traces = tuple(
-            self._evaluate_rule(self._rules[rule_id], facts)
+            self._evaluate_rule_cached(
+                self._rules[rule_id],
+                facts,
+                rule_trace_cache,
+            )
             for rule_id in sorted(capability.rule_ids)
         )
         if any(trace.evaluation is RuleEvaluation.EXCLUDED for trace in traces):
@@ -450,6 +493,22 @@ class C1Resolver:
             state=state,
             traces=traces,
         )
+
+    def _evaluate_rule_cached(
+        self,
+        rule: HardRule,
+        facts: Mapping[str, Fact[Any]],
+        cache: _RuleTraceCache,
+    ) -> RuleTrace:
+        fact = facts.get(rule.fact_address)
+        identity = None if fact is None else id(fact)
+        key = (rule.rule_id, identity)
+        cached = cache.get(key)
+        if cached is not None and cached[0] is fact:
+            return cached[1]
+        trace = self._evaluate_rule(rule, facts)
+        cache[key] = (fact, trace)
+        return trace
 
     def _evaluate_rule(
         self,

@@ -576,6 +576,7 @@ class PlannerResult:
 
 
 SnapshotProvider = Callable[[Mapping[str, Fact[Any]]], DecisionSnapshot]
+_FactsKey = tuple[tuple[str, str], ...]
 
 
 class _SearchLimit(Exception):
@@ -617,8 +618,10 @@ class _SearchSession:
         }
         self._snapshot_provider = snapshot_provider
         self._max_state_evaluations = max_state_evaluations
-        self._snapshot_cache: dict[str, DecisionSnapshot] = {}
-        self._memo: dict[tuple[int, str], _SearchResult] = {}
+        self._snapshot_cache: dict[_FactsKey, DecisionSnapshot] = {}
+        self._memo: dict[tuple[int, _FactsKey], _SearchResult] = {}
+        self._fact_digest_cache: dict[int, tuple[Fact[Any], str]] = {}
+        self._projection_cache: dict[str, _ProjectedAnswers] = {}
         self.evaluated_state_count = 0
         self.memo_hit_count = 0
 
@@ -695,14 +698,17 @@ class _SearchSession:
         self,
         facts: Mapping[str, Fact[Any]],
         remaining_budget: int,
+        *,
+        facts_key: _FactsKey | None = None,
     ) -> _SearchResult:
-        fact_digest = self._facts_digest(facts)
-        memo_key = (remaining_budget, fact_digest)
+        if facts_key is None:
+            facts_key = self._facts_key(facts)
+        memo_key = (remaining_budget, facts_key)
         memoized = self._memo.get(memo_key)
         if memoized is not None:
             self.memo_hit_count += 1
             return memoized
-        snapshot = self._snapshot(facts)
+        snapshot = self._snapshot(facts, facts_key=facts_key)
         if snapshot.action != "clarify" or remaining_budget == 0:
             result = _SearchResult(self._terminal_loss(snapshot), None)
             self._memo[memo_key] = result
@@ -755,7 +761,7 @@ class _SearchSession:
         remaining_budget: int,
     ) -> _CandidateEvaluation | None:
         try:
-            projections = project_question_answers(question)
+            projections = self._projected_answers(question)
         except PlannerError as exc:
             raise _PlannerIntegrity(
                 "integrity:invalid_clarification_projection"
@@ -772,18 +778,18 @@ class _SearchSession:
         branch_snapshots: list[tuple[str, str]] = []
         branch_losses: list[TerminalLoss] = []
         immediate_snapshots: list[DecisionSnapshot] = []
-        seen_projection_digests: set[str] = set()
+        seen_projection_keys: set[_FactsKey] = set()
         for projection in projections.substantive:
             projected = self._with_projection(
                 facts,
                 question.fact_address,
                 projection.fact,
             )
-            projected_digest = self._facts_digest(projected)
-            if projected_digest in seen_projection_digests:
+            projected_key = self._facts_key(projected)
+            if projected_key in seen_projection_keys:
                 continue
-            seen_projection_digests.add(projected_digest)
-            immediate = self._snapshot(projected)
+            seen_projection_keys.add(projected_key)
+            immediate = self._snapshot(projected, facts_key=projected_key)
             if any(
                 blocker.fact_address == question.fact_address
                 for blocker in immediate.blockers
@@ -793,7 +799,11 @@ class _SearchSession:
                 )
             immediate_snapshots.append(immediate)
             branch_snapshots.append((projection.projection_id, immediate.digest()))
-            child = self._search(projected, remaining_budget - 1)
+            child = self._search(
+                projected,
+                remaining_budget - 1,
+                facts_key=projected_key,
+            )
             branch_losses.append(
                 child.loss.with_question_cost(
                     dependency_deficit=dependency_deficit,
@@ -866,9 +876,15 @@ class _SearchSession:
             refused_count,
         )
 
-    def _snapshot(self, facts: Mapping[str, Fact[Any]]) -> DecisionSnapshot:
-        fact_digest = self._facts_digest(facts)
-        cached = self._snapshot_cache.get(fact_digest)
+    def _snapshot(
+        self,
+        facts: Mapping[str, Fact[Any]],
+        *,
+        facts_key: _FactsKey | None = None,
+    ) -> DecisionSnapshot:
+        if facts_key is None:
+            facts_key = self._facts_key(facts)
+        cached = self._snapshot_cache.get(facts_key)
         if cached is not None:
             return cached
         if self.evaluated_state_count >= self._max_state_evaluations:
@@ -882,7 +898,7 @@ class _SearchSession:
             ) from exc
         if not isinstance(snapshot, DecisionSnapshot):
             raise _PlannerIntegrity("integrity:counterfactual_snapshot_failed")
-        self._snapshot_cache[fact_digest] = snapshot
+        self._snapshot_cache[facts_key] = snapshot
         return snapshot
 
     @staticmethod
@@ -896,16 +912,30 @@ class _SearchSession:
             answer_kind_cost=0,
         )
 
-    @staticmethod
-    def _facts_digest(facts: Mapping[str, Fact[Any]]) -> str:
-        return canonical_digest(
-            {
-                "facts": {
-                    address: facts[address].to_mapping()
-                    for address in sorted(facts)
-                }
-            }
+    def _facts_key(self, facts: Mapping[str, Fact[Any]]) -> _FactsKey:
+        return tuple(
+            (address, self._fact_digest(facts[address]))
+            for address in sorted(facts)
         )
+
+    def _fact_digest(self, fact: Fact[Any]) -> str:
+        identity = id(fact)
+        cached = self._fact_digest_cache.get(identity)
+        if cached is not None and cached[0] is fact:
+            return cached[1]
+        digest = canonical_digest({"fact": fact.to_mapping()})
+        self._fact_digest_cache[identity] = (fact, digest)
+        return digest
+
+    def _projected_answers(
+        self,
+        question: ClarificationSpec,
+    ) -> _ProjectedAnswers:
+        cached = self._projection_cache.get(question.question_id)
+        if cached is None:
+            cached = project_question_answers(question)
+            self._projection_cache[question.question_id] = cached
+        return cached
 
     @staticmethod
     def _with_projection(
