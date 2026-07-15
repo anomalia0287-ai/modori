@@ -68,6 +68,16 @@ _RECOVERY_BY_REASON = {
     "clarification_budget_exhausted": (
         "resolve_blocking_facts_or_restart_question_budget"
     ),
+    "clarification_answer_unavailable": (
+        "complete_structured_intake_or_revise_scope"
+    ),
+    "planner_search_limit_exceeded": (
+        "complete_structured_intake_or_reduce_method_space"
+    ),
+    "integrity:no_decision_relevant_clarification": (
+        "repair_clarification_registry"
+    ),
+    "integrity:invalid_planner_result": "repair_clarification_planner",
     "no_surface_authorized_capability": (
         "enable_experimental_surface_or_wait_for_validation"
     ),
@@ -205,7 +215,10 @@ class ResearchOsService:
             raise ResearchServiceError(
                 "clarification registry must exactly cover Method Space questions"
             )
-        self._resolver = C1Resolver(self._method_space)
+        self._resolver = C1Resolver(
+            self._method_space,
+            self._clarification_registry,
+        )
 
     @property
     def method_space_digest(self) -> str:

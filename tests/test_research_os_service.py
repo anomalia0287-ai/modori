@@ -33,6 +33,7 @@ from modori.research_os.contracts import (
     UnitKind,
 )
 from modori.research_os.resolver import PrimaryAction, ProductSurface
+from modori.research_os.p1_clarifications import build_p1_clarification_registry
 from modori.research_os.decision_evidence import (
     DecisionEvidenceKind,
     DecisionEvidenceRef,
@@ -370,7 +371,11 @@ def test_unknown_pairing_returns_clarification_without_candidate() -> None:
 
     assert decision.action is PrimaryAction.CLARIFY
     assert decision.capability_keys == ()
-    assert "confirm_dependence" in decision.clarification_ids
+    assert decision.clarification_ids == ("confirm_dependence",)
+    assert decision.clarification_plan is not None
+    assert decision.clarification_plan.selected_question_digest == (
+        build_p1_clarification_registry().get("confirm_dependence").digest()
+    )
 
 
 def test_inferred_pairing_cannot_open_paired_recommendation() -> None:

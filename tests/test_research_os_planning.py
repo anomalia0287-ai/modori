@@ -46,7 +46,10 @@ from modori.research_os.decision_evidence import (
 )
 from modori.research_os.p1_catalog import build_p1_method_space
 from modori.research_os.passport import ClaimClass
-from modori.research_os.resolver import PrimaryAction, ResolutionDecision
+from modori.research_os.resolver import (
+    PrimaryAction,
+    ResolverError,
+)
 from modori.research_os.service import (
     ResearchOsService,
     ResearchRequest,
@@ -324,15 +327,14 @@ def test_clarify_plan_resolves_exact_registered_questions_without_candidates() -
     )
 
 
-def test_clarification_lookup_fails_closed_on_registry_address_mismatch() -> None:
-    decision = ResolutionDecision(
-        action=PrimaryAction.CLARIFY,
-        clarification_ids=("confirm_dependence",),
-        blocking_fact_addresses=("study.role.weight",),
+def test_clarification_decision_rejects_plan_address_mismatch() -> None:
+    decision = ResearchOsService().resolve(
+        _request(study=_study(Fact.unknown(reason_code="dependence_not_confirmed")))
     )
+    assert decision.clarification_plan is not None
 
-    with pytest.raises(ResearchServiceError, match="fact address mismatch"):
-        ResearchOsService().clarifications_for(decision)
+    with pytest.raises(ResolverError, match="blocking fact address"):
+        replace(decision, blocking_fact_addresses=("study.role.weight",))
 
 
 def test_plan_maps_causal_and_stale_dataset_abstentions_to_recovery() -> None:

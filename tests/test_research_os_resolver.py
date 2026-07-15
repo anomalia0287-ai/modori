@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from enum import Enum
 
 import pytest
 
 import modori.research_os as research_os
+from modori.research_os.clarification import ClarificationRegistry
 from modori.research_os.contracts import Fact, FactState, StaleSnapshot
 from modori.research_os.method_space import (
     Capability,
@@ -29,6 +31,7 @@ from modori.research_os.resolver import (
     ResolverError,
     RuleEvaluation,
 )
+from modori.research_os.p1_clarifications import build_p1_clarification_registry
 
 
 class _Dependence(str, Enum):
@@ -78,7 +81,7 @@ def _rules(
             fact_address="estimand.effect_scale",
             mode=RuleMode.REQUIRE,
             predicate=PredicateKind.IN,
-            expected_values=("mean",),
+            expected_values=("difference",),
             trust_floor=TrustFloor.USER_CONFIRMED,
             clarification_id="confirm_effect_scale",
             severity=RuleSeverity.E4,
@@ -159,6 +162,55 @@ def _space(
     )
 
 
+def _registry_for(space: MethodSpace) -> ClarificationRegistry:
+    required = tuple(
+        sorted(
+            {
+                rule.clarification_id
+                for rule in space.rules
+                if rule.clarification_id is not None
+            }
+        )
+    )
+    source = build_p1_clarification_registry()
+    return ClarificationRegistry(
+        questions=tuple(
+            question
+            for question in source.questions
+            if question.question_id in required
+        ),
+        required_question_ids=required,
+    )
+
+
+def _duplicated_rule_space() -> MethodSpace:
+    first_identity = _identity()
+    second_identity = _identity(variant="duplicate_welch")
+    first_rules = _rules(first_identity)
+    second_rules = _rules(second_identity, prefix="p1.duplicate")
+    return MethodSpace(
+        version="p1-duplicate-v1",
+        ruleset_version="c1-p1-v1",
+        capabilities=(
+            _capability(first_identity, first_rules),
+            _capability(second_identity, second_rules),
+        ),
+        rules=first_rules + second_rules,
+    )
+
+
+def _resolver(
+    space: MethodSpace,
+    *,
+    planner_state_cap: int = 250_000,
+) -> C1Resolver:
+    return C1Resolver(
+        space,
+        _registry_for(space),
+        planner_state_cap=planner_state_cap,
+    )
+
+
 def _confirmed(value: object, ref: str) -> Fact[object]:
     return Fact.user_confirmed(value, provenance_refs=(ref,))
 
@@ -178,7 +230,7 @@ def _context(
             "question.research_goal": goal
             or _confirmed("compare", "answer:goal"),
             "estimand.effect_scale": scale
-            or _confirmed("mean", "answer:scale"),
+            or _confirmed("difference", "answer:scale"),
             "study.dependence_structure": dependence
             or _confirmed(_Dependence.INDEPENDENT, "answer:dependence"),
             "study.role.weight": weight
@@ -191,7 +243,7 @@ def _context(
 
 
 def test_integrity_failure_precedes_every_candidate() -> None:
-    decision = C1Resolver(_space()).resolve(
+    decision = _resolver(_space()).resolve(
         _context(integrity_errors=("mixed_ruleset",))
     )
 
@@ -209,7 +261,7 @@ def test_integrity_failure_does_not_evaluate_malformed_fact_value() -> None:
         provenance_refs=("corrupt:value",),
     )
 
-    decision = C1Resolver(_space()).resolve(
+    decision = _resolver(_space()).resolve(
         ResolutionContext(
             facts=malformed_facts,
             surface=ProductSurface.EXPERIMENTAL,
@@ -230,7 +282,7 @@ def test_malformed_rule_value_fails_closed_instead_of_raising() -> None:
         provenance_refs=("corrupt:value",),
     )
 
-    decision = C1Resolver(_space()).resolve(
+    decision = _resolver(_space()).resolve(
         ResolutionContext(
             facts=malformed_facts,
             surface=ProductSurface.EXPERIMENTAL,
@@ -242,7 +294,7 @@ def test_malformed_rule_value_fails_closed_instead_of_raising() -> None:
 
 
 def test_unknown_human_fact_clarifies_before_recommendation() -> None:
-    decision = C1Resolver(_space()).resolve(
+    decision = _resolver(_space()).resolve(
         _context(dependence=Fact.unknown(reason_code="not_answered"))
     )
 
@@ -252,13 +304,70 @@ def test_unknown_human_fact_clarifies_before_recommendation() -> None:
     assert decision.blocking_fact_addresses == ("study.dependence_structure",)
 
 
+def test_multiple_unknowns_return_exactly_one_counterfactually_selected_question() -> None:
+    decision = _resolver(_space()).resolve(
+        _context(
+            goal=Fact.unknown(reason_code="not_answered"),
+            dependence=Fact.unknown(reason_code="not_answered"),
+            weight=Fact.unknown(reason_code="not_answered"),
+        )
+    )
+
+    assert decision.action is PrimaryAction.CLARIFY
+    assert len(decision.clarification_ids) == 1
+    assert decision.clarification_plan is not None
+    assert decision.clarification_plan.selected_question_id == (
+        decision.clarification_ids[0]
+    )
+
+
+def test_duplicate_capability_rules_do_not_multiply_unique_fact_risk() -> None:
+    decision = _resolver(_duplicated_rule_space()).resolve(
+        _context(dependence=Fact.unknown(reason_code="not_answered"))
+    )
+
+    assert decision.clarification_plan is not None
+    assert decision.clarification_plan.initial_risk_vector[1] == 1
+
+
+def test_planner_state_cap_abstains_without_candidate_or_route_leakage() -> None:
+    decision = _resolver(_space(), planner_state_cap=1).resolve(
+        _context(dependence=Fact.unknown(reason_code="not_answered"))
+    )
+
+    assert decision.action is PrimaryAction.ABSTAIN
+    assert decision.reason_codes == ("planner_search_limit_exceeded",)
+    assert decision.capability_keys == ()
+    assert decision.route_ids == ()
+    assert decision.clarification_ids == ()
+
+
+def test_rule_question_value_mismatch_is_rejected_before_resolution() -> None:
+    space = _space()
+    malformed_rules = tuple(
+        replace(rule, expected_values=("unregistered_value",))
+        if rule.fact_address == "estimand.effect_scale"
+        else rule
+        for rule in space.rules
+    )
+    malformed = MethodSpace(
+        version=space.version,
+        ruleset_version=space.ruleset_version,
+        capabilities=space.capabilities,
+        rules=malformed_rules,
+    )
+
+    with pytest.raises(ResolverError, match="registered choice values"):
+        _resolver(malformed)
+
+
 def test_inferred_human_fact_cannot_open_recommendation() -> None:
     inferred = Fact.inferred(
         _Dependence.INDEPENDENT,
         provenance_refs=("lexical:column-name",),
     )
 
-    decision = C1Resolver(_space()).resolve(_context(dependence=inferred))
+    decision = _resolver(_space()).resolve(_context(dependence=inferred))
 
     assert decision.action is PrimaryAction.CLARIFY
     trace = next(
@@ -269,7 +378,7 @@ def test_inferred_human_fact_cannot_open_recommendation() -> None:
 
 
 def test_stable_experimental_local_identity_recommends_on_experimental_surface() -> None:
-    decision = C1Resolver(_space()).resolve(_context())
+    decision = _resolver(_space()).resolve(_context())
 
     assert decision.action is PrimaryAction.RECOMMEND_LOCAL
     assert decision.capability_keys == (_identity().key,)
@@ -277,7 +386,7 @@ def test_stable_experimental_local_identity_recommends_on_experimental_surface()
 
 
 def test_experimental_identity_is_not_authorized_on_ordinary_surface() -> None:
-    decision = C1Resolver(_space()).resolve(
+    decision = _resolver(_space()).resolve(
         _context(surface=ProductSurface.ORDINARY)
     )
 
@@ -287,7 +396,7 @@ def test_experimental_identity_is_not_authorized_on_ordinary_surface() -> None:
 
 
 def test_validated_identity_is_authorized_on_ordinary_surface() -> None:
-    decision = C1Resolver(
+    decision = _resolver(
         _space(recommendation=RecommendationEvidence.VALIDATED)
     ).resolve(_context(surface=ProductSurface.ORDINARY))
 
@@ -295,7 +404,7 @@ def test_validated_identity_is_authorized_on_ordinary_surface() -> None:
 
 
 def test_wrong_confirmed_dependence_excludes_method_without_clarification() -> None:
-    decision = C1Resolver(_space()).resolve(
+    decision = _resolver(_space()).resolve(
         _context(
             dependence=_confirmed(_Dependence.PAIRED, "answer:dependence"),
         )
@@ -309,6 +418,41 @@ def test_wrong_confirmed_dependence_excludes_method_without_clarification() -> N
     assert trace.evaluation is RuleEvaluation.EXCLUDED
 
 
+def test_not_applicable_fact_counts_as_empty_for_empty_rule() -> None:
+    decision = _resolver(_space()).resolve(
+        _context(
+            weight=Fact.not_applicable(reason_code="no_weight_role"),
+        )
+    )
+
+    assert decision.action is PrimaryAction.RECOMMEND_LOCAL
+
+
+def test_not_applicable_fact_cannot_satisfy_nonempty_rule() -> None:
+    space = _space()
+    nonempty_rules = tuple(
+        replace(rule, predicate=PredicateKind.NONEMPTY)
+        if rule.fact_address == "study.role.weight"
+        else rule
+        for rule in space.rules
+    )
+    nonempty_space = MethodSpace(
+        version=space.version,
+        ruleset_version=space.ruleset_version,
+        capabilities=space.capabilities,
+        rules=nonempty_rules,
+    )
+
+    decision = _resolver(nonempty_space).resolve(
+        _context(
+            weight=Fact.not_applicable(reason_code="no_weight_role"),
+        )
+    )
+
+    assert decision.action is PrimaryAction.ABSTAIN
+    assert decision.capability_keys == ()
+
+
 def test_conflicting_action_fact_returns_clarification() -> None:
     conflict = Fact.conflict(
         (_Dependence.INDEPENDENT, _Dependence.PAIRED),
@@ -316,14 +460,14 @@ def test_conflicting_action_fact_returns_clarification() -> None:
         reason_code="incompatible_dependence_evidence",
     )
 
-    decision = C1Resolver(_space()).resolve(_context(dependence=conflict))
+    decision = _resolver(_space()).resolve(_context(dependence=conflict))
 
     assert decision.action is PrimaryAction.CLARIFY
     assert decision.clarification_ids == ("confirm_dependence",)
 
 
 def test_exhausted_question_budget_abstains_instead_of_looping() -> None:
-    decision = C1Resolver(_space()).resolve(
+    decision = _resolver(_space()).resolve(
         _context(
             dependence=Fact.unknown(reason_code="not_answered"),
             question_budget_remaining=0,
@@ -374,7 +518,7 @@ def _route_space(route_evidence: RouteEvidence) -> MethodSpace:
 
 
 def test_only_validated_roundtrip_route_can_be_returned() -> None:
-    decision = C1Resolver(_route_space(RouteEvidence.ROUNDTRIP_VERIFIED)).resolve(
+    decision = _resolver(_route_space(RouteEvidence.ROUNDTRIP_VERIFIED)).resolve(
         _context()
     )
 
@@ -384,7 +528,7 @@ def test_only_validated_roundtrip_route_can_be_returned() -> None:
 
 
 def test_ready_external_route_clarifies_missing_selection_fact() -> None:
-    decision = C1Resolver(_route_space(RouteEvidence.ROUNDTRIP_VERIFIED)).resolve(
+    decision = _resolver(_route_space(RouteEvidence.ROUNDTRIP_VERIFIED)).resolve(
         _context(dependence=Fact.unknown(reason_code="not_answered"))
     )
 
@@ -403,7 +547,7 @@ def test_ready_external_route_clarifies_missing_selection_fact() -> None:
     ],
 )
 def test_unready_route_never_emits(route_status: RouteEvidence) -> None:
-    decision = C1Resolver(_route_space(route_status)).resolve(_context())
+    decision = _resolver(_route_space(route_status)).resolve(_context())
 
     assert decision.action is PrimaryAction.ABSTAIN
     assert decision.route_ids == ()
@@ -443,7 +587,7 @@ def _fact_for_state(state: FactState) -> Fact[object]:
 
 @pytest.mark.parametrize("state", tuple(FactState))
 def test_resolver_is_total_for_every_fact_state(state: FactState) -> None:
-    decision = C1Resolver(_space()).resolve(
+    decision = _resolver(_space()).resolve(
         _context(dependence=_fact_for_state(state))
     )
 
@@ -457,8 +601,8 @@ def test_fact_insertion_order_does_not_change_decision() -> None:
         surface=context.surface,
     )
 
-    left = C1Resolver(_space()).resolve(context)
-    right = C1Resolver(_space()).resolve(reversed_context)
+    left = _resolver(_space()).resolve(context)
+    right = _resolver(_space()).resolve(reversed_context)
 
     assert left.semantic_signature == right.semantic_signature
 
@@ -483,8 +627,8 @@ def test_rule_insertion_order_does_not_change_decision_or_trace_order() -> None:
         rules=tuple(reversed(space.rules)),
     )
 
-    left = C1Resolver(space).resolve(_context())
-    right = C1Resolver(reversed_space).resolve(_context())
+    left = _resolver(space).resolve(_context())
+    right = _resolver(reversed_space).resolve(_context())
 
     assert left.semantic_signature == right.semantic_signature
     assert left.rule_trace == right.rule_trace
