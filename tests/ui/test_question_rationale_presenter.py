@@ -313,6 +313,60 @@ def test_presenter_rejects_non_result_input() -> None:
         )
 
 
+def test_presenter_rejects_a_mutated_false_caution_code() -> None:
+    projection = available_projection_fixture()
+    object.__setattr__(
+        projection,
+        "caution_code",
+        "recommendation_is_guaranteed_valid",
+    )
+    result = QuestionRationaleResult(
+        QuestionRationaleStatus.AVAILABLE,
+        "rationale_available",
+        projection,
+    )
+
+    with pytest.raises(QuestionRationalePresentationError, match="caution"):
+        QuestionRationalePresenter().present(
+            result,
+            language="ko",
+            mode="guided",
+        )
+
+
+def test_presenter_fails_closed_if_a_required_catalog_key_is_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import modori.ui.question_rationale_presenter as presenter_module
+
+    summaries = presenter_module._PAIRWISE_SUMMARIES["ko"]
+    monkeypatch.delitem(
+        summaries,
+        DecisiveDimension.STABLE_QUESTION_ID,
+    )
+    tied = TerminalLoss((0, 0, 0, 0, 0), 0, 0, 1, 0, 1)
+    case = rationale_case(
+        selected_loss=tied,
+        runner_up_loss=tied,
+        selected_question_id="confirm_a_selected",
+        runner_up_question_id="confirm_z_runner",
+    )
+    result = project_current_question_rationale(
+        case.history,
+        project_id=case.project_id,
+        request_binding_digest=case.request_binding_digest,
+        clarification_registry_digest=case.clarification_registry_digest,
+        registry=case.registry,
+    )
+
+    with pytest.raises(QuestionRationalePresentationError, match="catalog"):
+        QuestionRationalePresenter().present(
+            result,
+            language="ko",
+            mode="guided",
+        )
+
+
 def test_view_contracts_are_frozen_values() -> None:
     evidence = QuestionRationaleEvidenceRow("code", "label", "1", "2")
     view = QuestionRationalePresenter().present(

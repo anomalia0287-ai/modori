@@ -300,6 +300,7 @@ _CONTEXT_LABEL = {
         "deciding metric)"
     ),
 }
+_EXPECTED_CAUTION_CODE = "question_priority_not_recommendation_validity"
 
 
 class QuestionRationalePresenter:
@@ -381,6 +382,10 @@ def _available_view(
     language: str,
     mode: str,
 ) -> QuestionRationaleView:
+    if projection.caution_code != _EXPECTED_CAUTION_CODE:
+        raise QuestionRationalePresentationError(
+            "projection caution code does not permit rationale presentation"
+        )
     question = projection.selected_question
     question_text = question.template_ko if language == "ko" else question.template_en
     base_reason = question.why_ko if language == "ko" else question.why_en
