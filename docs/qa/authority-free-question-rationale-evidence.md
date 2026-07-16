@@ -1,9 +1,13 @@
 # Authority-Free Question Rationale — QA Evidence
 
-**Evidence class:** `planner_explanation_fidelity_internal`  
-**Date:** 2026-07-16 (Asia/Seoul)  
-**Branch:** `codex/research-os-contract-design`  
-**Measured tree:** `cf90294526c2fe122e5005d6ba17baed4852a094`  
+**Evidence class:** `planner_explanation_fidelity_internal`
+
+**Date:** 2026-07-16 (Asia/Seoul)
+
+**Branch:** `codex/research-os-contract-design`
+
+**Measured tree:** `cf90294526c2fe122e5005d6ba17baed4852a094`
+
 **Status:** resource and integrity gates passed; product UI integration remains out of scope
 
 ## 1. Claim boundary
