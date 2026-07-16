@@ -2,11 +2,13 @@
 
 **Date:** 2026-07-16
 
-**Status:** Concept approved; written-spec review pending
+**Status:** Concept and review reconciliation approved; written-spec review pending
 
 **Branch:** `codex/research-os-contract-design`
 
 **Source baseline:** `83fad7a661ce3140b209b488b80dfd2f00f3660f`
+
+**Review baseline:** `eaf6503d3e97d8dc58b9f4f6c84a40ce9e87dcd7`
 
 ## 1. Decision
 
@@ -14,15 +16,18 @@ Use a **dual-key finish** for Modori UI work:
 
 1. the repository owner builds and verifies the functional UI, its first visual pass,
    all product states, and every authority boundary;
-2. an external visual reviewer may critique screenshots of that running UI and propose
-   bounded changes to spacing, typography, colour, density, and hierarchy; and
-3. the repository owner selectively applies those proposals, reruns the product and
+2. advisory review operates in one explicitly declared mode: a fresh-session aesthetic
+   critique over synthetic renders, or an optional source-aware technical visual audit
+   over a bounded, sanitised evidence package; and
+3. the repository owner selectively applies advisory findings, reruns the product and
    verification gates, and remains the only party that commits the final change in this
    worktree.
 
-The external reviewer may be Claude, but this design does not depend on a particular
-vendor. The reviewer is an art director, not a source of statistical truth, state
-semantics, application authority, or final code ownership.
+Either advisory mode may use Claude, but this design does not depend on a particular
+vendor. A new conversation in a locally launched cloud-model client is fresh in context;
+it is not local inference and is not automatically inside Modori's trusted local
+boundary. Both modes remain advisory rather than sources of statistical truth, state
+semantics, application authority, accessibility conformance, or final code ownership.
 
 This combines two different strengths without pretending they are interchangeable:
 
@@ -75,10 +80,13 @@ The repository audit found:
    StudySpec, outstanding V2 passport, or verified project-memory lifecycle.
 6. `Theme.qml` centralises colour, spacing, typography, geometry, and effect tokens.
    Existing visual-contract tests reject local literal colours and layout metrics.
-7. QML layout depends on `SplitView`, `ScrollView`, implicit sizing, clipping, Korean and
+7. The current visual-contract tests do not enumerate intended foreground/background
+   pairs or calculate WCAG contrast ratios. An external “all pairs passed” statement is
+   therefore not reproducible repository evidence yet.
+8. QML layout depends on `SplitView`, `ScrollView`, implicit sizing, clipping, Korean and
    English wrapping, Windows font rendering, and scaling. A single happy-path screenshot
    cannot validate these constraints.
-8. The supplied light split-entry and work-screen screenshots are useful visual
+9. The supplied light split-entry and work-screen screenshots are useful visual
    references, but the checked-in `EntryScreen.qml` is not identical to those captures.
    The repository render is the implementation baseline unless a later approved design
    explicitly replaces it.
@@ -96,7 +104,8 @@ Benefits:
 - authority and state semantics stay under one accountable owner;
 - proposed polish can be rejected when it breaks accessibility, performance, or
   provenance;
-- the external reviewer needs no project data or repository access; and
+- the default aesthetic reviewer needs no project data or repository access, while any
+  source-aware audit has an explicit, narrower access contract; and
 - the process has a bounded end.
 
 Cost: the owner must render and inspect the gallery after each accepted revision.
@@ -123,8 +132,11 @@ flowchart LR
     C["Closed product and authority contracts"] --> I["Owner implementation"]
     I --> T["Contract, runtime, accessibility and performance tests"]
     T --> G["Synthetic golden-state gallery"]
-    G --> R["External visual critique"]
-    R --> D["Owner triage: accept, adapt or reject"]
+    T --> E["Deterministic visual evidence bundle"]
+    G --> R1["Fresh-session aesthetic critique"]
+    E --> R2["Optional source-aware technical audit"]
+    R1 --> D["Owner triage: accept, adapt or reject"]
+    R2 --> D
     D --> I2["Owner applies bounded visual changes"]
     I2 --> T2["Full rerender and verification"]
     T2 --> A{"All gates pass?"}
@@ -132,7 +144,7 @@ flowchart LR
     A -->|no| D
 ```
 
-The critique path is advisory and one-way. It does not feed new product text, research
+Both review paths are advisory and one-way. They do not feed new product text, research
 facts, runtime state, or authority into the application.
 
 For the future question-rationale UI, the product path remains separately bounded:
@@ -167,9 +179,17 @@ The repository owner controls and is accountable for:
 - test evidence; and
 - the final commit.
 
-### 6.2 External visual reviewer
+### 6.2 Mode A: fresh-session aesthetic critic
 
-The external visual reviewer may recommend:
+Mode A is the default external review. It starts in a new conversation without source,
+prior critique history, or implementation rationale. Its value is perceptual independence
+rather than technical authority.
+
+“Fresh” means that Modori supplies no prior project-specific task context to that
+conversation. It is not a claim about a vendor's account-level memory, logging, retention,
+or model-training policy.
+
+The critic may recommend:
 
 - spacing and alignment;
 - typographic scale, weight, and line length;
@@ -179,7 +199,39 @@ The external visual reviewer may recommend:
 - visual focus and rhythm; and
 - bounded motion, only where `reduceEffects` remains authoritative.
 
-The reviewer may not change:
+It receives only the sanitised synthetic gallery and bounded aesthetic brief defined in
+Section 8.2.
+
+### 6.3 Mode B: source-aware technical visual auditor
+
+Mode B is optional and event-triggered. Use it only when a slice changes theme tokens,
+contrast-pair declarations, shared visual-contract tests, accessibility-critical state
+rendering, or reaches a release candidate that justifies independent technical review.
+
+Its default input is a generated audit bundle containing:
+
+- exported theme-token names and exact values;
+- the declared foreground/background and component/adjacent-colour pair manifest;
+- deterministic contrast results and thresholds;
+- the canonical-state manifest and sanitised renders;
+- the visual-contract test inventory and results; and
+- only the selected QML excerpts necessary to inspect an identified risk.
+
+Repository-wide read access is not the default. If a bounded bundle cannot answer a
+specific audit question, broader source inspection requires explicit user authorisation
+and an isolated read-only snapshot outside the active worktree, without user data, VCS
+credentials, write capability, or commit authority. “Read only” must be technically
+enforced; a prompt instruction alone is not a permission boundary. If enforcement is not
+available, provide a static sanitised bundle instead.
+
+The auditor may challenge omitted colour pairs, incorrect classifications, missing state
+coverage, or tests that do not prove their stated claim. A model-reported contrast result
+is not acceptance evidence. Only the repository's deterministic calculation and declared
+pair manifest can satisfy the contrast gate.
+
+### 6.4 Common reviewer boundary
+
+Neither advisory mode may change:
 
 - statistical or research meaning;
 - closed rationale copy;
@@ -192,16 +244,18 @@ The reviewer may not change:
 - dependencies, fonts, icons, or packages without explicit owner review; or
 - acceptance thresholds.
 
-The reviewer does not modify this exclusive worktree. If code is exceptionally useful
-as a communication artifact, it is created in a separate worktree and treated as an
-untrusted proposal rather than merged or copied wholesale.
+Neither mode modifies this exclusive worktree. If code is exceptionally useful as a
+communication artifact, it is created in a separate isolated workspace and treated as
+an untrusted proposal rather than merged or copied wholesale.
 
-### 6.3 User
+### 6.5 User
 
 The user is not required to supervise each change. The user is asked only for:
 
 1. written-spec approval before implementation planning; and
-2. a final subjective preference decision if two verified visual variants remain
+2. explicit authorisation before any Mode B source snapshot is disclosed beyond the
+   bounded audit bundle; and
+3. a final subjective preference decision if two verified visual variants remain
    materially equivalent.
 
 ## 7. Golden-state gallery contract
@@ -226,11 +280,25 @@ packet contains at least these canonical states when they apply to the slice:
 When a slice has collapsed and expanded disclosure, both forms are included. When an
 interaction changes focus, the keyboard-focused state is included.
 
+Canonical content states are accompanied by a bounded **interaction-state strip** for
+each primary action and expand/collapse control. The strip renders:
+
+1. default;
+2. pointer hover;
+3. keyboard focus;
+4. disabled; and
+5. pressed, only when pressed has a distinct authored appearance.
+
+This is not a demand for a separate full-window screenshot for every button. One
+component-level strip may cover the declared controls, but it must use the production
+component and theme rather than a hand-drawn approximation.
+
 Every gallery item records:
 
 - state identifier;
 - locale;
 - mode;
+- interaction state, when the item is part of the interaction-state strip;
 - viewport size;
 - scale factor;
 - reduced-effects setting;
@@ -253,21 +321,35 @@ Before external review, the owner must produce a runnable first pass that satisf
 state and authority tests. The reviewer does not design around missing states or broken
 behaviour.
 
-### 8.2 Visual critique packet
+### 8.2 Mode A aesthetic packet
 
-The reviewer receives:
+The fresh-session critic receives:
 
 - the synthetic gallery images;
 - a one-page visual brief;
 - immutable-copy and forbidden-change lists;
-- theme-token inventory;
 - minimum window and scaling constraints; and
 - a request for proposals in measurements or annotated images, not unrestricted code.
+
+The packet excludes source, token files, previous review discussions, real product data,
+and the owner's implementation rationale. Even when the same model vendor is used, Mode
+A starts in a separate new conversation from Mode B.
 
 Recommendations must identify the affected state and observable problem. “Make it more
 modern” is not actionable.
 
-### 8.3 Owner triage
+### 8.3 Mode B technical audit packet
+
+When a Mode B trigger in Section 6.3 applies, the auditor receives the generated audit
+bundle rather than the aesthetic packet alone. The bundle has a manifest, source commit,
+digest for every artifact, and an explicit question list. It must be sanitised using the
+same privacy inspection as the gallery.
+
+Technical findings are hypotheses until the owner reproduces them from repository
+sources or tests. A source-aware model may find an omitted pair or a misleading test, but
+its assertion cannot replace the corrected manifest and passing deterministic gate.
+
+### 8.4 Owner triage
 
 Each proposal receives one of three dispositions:
 
@@ -279,9 +361,9 @@ Each proposal receives one of three dispositions:
 The disposition record is concise. It is design provenance, not a new product authority
 system.
 
-### 8.4 Bounded loops
+### 8.5 Bounded loops
 
-Use at most two external critique loops for one implementation slice:
+Use at most two Mode A critique loops for one implementation slice:
 
 1. composition and hierarchy;
 2. final spacing, typography, and edge-state polish.
@@ -289,6 +371,10 @@ Use at most two external critique loops for one implementation slice:
 If a major problem remains after the second loop, classify it as a structural design
 failure. The owner revisits the component boundary or information architecture instead
 of continuing unbounded cosmetic iteration.
+
+Mode B receives one audit pass for a qualifying slice. One verification follow-up is
+allowed only when an accepted finding changes the audited evidence. It does not create a
+third aesthetic loop.
 
 ## 9. Visual acceptance gates
 
@@ -303,7 +389,9 @@ A surface is not finished until all applicable gates pass:
    severity or E1-E5 vocabulary;
 5. Standard mode shows only the bounded evidence authorised by its presenter;
 6. keyboard traversal, visible focus, accessible names, and reading order are coherent;
-7. colour contrast and non-colour state cues remain sufficient;
+7. every declared text, active control, state indicator, focus indicator, and meaningful
+   graphic pair passes the deterministic contrast contract below, while non-colour state
+   cues remain sufficient;
 8. reduced-effects mode disables optional motion and costly effects;
 9. office-PC UI responsiveness and memory do not regress beyond the slice's predeclared
    gate;
@@ -316,6 +404,41 @@ Pixel-perfect image equality is not a sole acceptance test. Windows font rasteri
 graphics backends, and scaling can create irrelevant pixel differences. Use geometry and
 state assertions for objective invariants, then side-by-side human review for perceptual
 quality.
+
+### 9.1 Deterministic contrast contract
+
+Modori adopts the WCAG 2.2 Level AA contrast ratios as internal native-desktop visual
+gates:
+
+- normal text: at least `4.5:1`;
+- explicitly qualified large text: at least `3:1`; and
+- visual information required to identify an active control, state, focus indicator, or
+  meaningful graphic: at least `3:1` against its declared adjacent colour.
+
+The W3C treats these as unrounded thresholds and recommends evaluating the authored
+foreground/background values rather than anti-aliased screen pixels. See
+[SC 1.4.3 Contrast (Minimum)](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html)
+and
+[SC 1.4.11 Non-text Contrast](https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html).
+
+The repository must contain a closed pair manifest. Each row declares the foreground or
+indicator token, background or adjacent-colour token, semantic role, applicable state,
+mode, locale class where relevant, and required threshold. The test reads exact
+`Theme.qml` values and implements the W3C sRGB relative-luminance formula. It must not:
+
+- sample colours from screenshots;
+- round a failing ratio up to a threshold;
+- accept a model's reported calculation as evidence;
+- classify text as large merely to obtain the lower threshold; or
+- ignore alpha composition, gradients, or state-specific adjacent colours.
+
+If large-text equivalence is uncertain for the delivered Qt font metrics, classify the
+pair as normal text. Alpha colours are composited over their declared background before
+calculation. A gradient-backed element must pass against every declared adjacent stop or
+the computed worst case used by the component.
+
+Modori is a native Qt application. Passing these selected WCAG-derived gates is not, by
+itself, a claim of complete WCAG conformance or legal accessibility compliance.
 
 ## 10. Error and mismatch behaviour
 
@@ -337,10 +460,17 @@ quality.
 
 The external visual path is outside the trusted local product boundary. Therefore:
 
-- only synthetic screenshots and the bounded brief leave the worktree;
-- screenshots are inspected for accidental path, filename, project, and ledger leakage;
-- repository archives, source trees, databases, benchmark evidence, and user datasets
-  are not uploaded for visual review;
+- only synthetic renders and the bounded, mode-specific sanitised package leave the
+  worktree;
+- captures contain application content only: crop out the title bar, taskbar, desktop,
+  notifications, background windows, and other operating-system chrome;
+- captures are inspected for accidental path, filename, project, ledger, tooltip, and
+  recent-item leakage, and image metadata is stripped before transfer;
+- Mode A receives no repository archive or source tree;
+- Mode B receives only the audit bundle defined in Sections 6.3 and 8.3 unless the user
+  separately authorises an isolated read-only source snapshot;
+- databases, benchmark evidence containing environment identity, and user datasets are
+  never uploaded for either mode;
 - reviewer-supplied code is treated as untrusted input;
 - reviewer-suggested assets require licence and integrity review;
 - external fonts, icon libraries, analytics, CDN assets, and network calls are forbidden
@@ -356,31 +486,41 @@ The future implementation plan must include tests before implementation for:
 - Guided and Standard disclosure differences;
 - closed-copy preservation;
 - QML runtime loading for every canonical state;
+- production-component rendering for default, hover, keyboard-focus, disabled, and any
+  distinct pressed state declared by the interaction-state strip;
 - component geometry at minimum size and supported scaling;
 - long Korean and English wrapping;
 - keyboard focus and accessible names;
+- a closed contrast-pair manifest, exact sRGB luminance calculation, known formula
+  anchors, unrounded `4.499:1` and `2.999:1` rejection boundaries, alpha composition,
+  and any gradient worst case used by the slice;
 - `reduceEffects` behaviour;
 - absence of network and new external assets;
+- application-content-only capture and metadata sanitation;
 - fixture exclusion from production packaging; and
 - a measured resource comparison against the pre-change baseline.
 
 The visual review record must link its rendered images to a source commit and state
 manifest. A polished image without a reproducible state is illustration, not evidence.
+Likewise, an “all contrast pairs pass” statement without the checked-in pair manifest and
+fresh deterministic output is an opinion, not evidence.
 
 ## 13. Implementation sequence boundary
 
 After this written spec is approved, the detailed implementation plan should sequence:
 
-1. state manifest and failing contract tests;
+1. state, interaction, and contrast-pair manifests plus failing contract tests;
 2. a thin UI adapter over the existing closed presenter contract;
 3. isolated, reusable rationale/question-card QML components;
-4. a synthetic gallery harness excluded from production;
-5. runtime, accessibility, geometry, privacy, and resource verification;
+4. a synthetic gallery and sanitised-capture harness excluded from production;
+5. runtime, accessibility, deterministic contrast, geometry, privacy, and resource
+   verification;
 6. owner-side first visual pass;
-7. first external screenshot critique and owner triage;
+7. first Mode A fresh-session critique and owner triage;
 8. bounded visual revision and complete rerender;
-9. optional second critique loop;
-10. full verification and final evidence record.
+9. optional second Mode A critique loop;
+10. one Mode B audit and owner-side reproduction when its trigger applies; and
+11. full verification and final evidence record.
 
 Production visibility remains gated on an honest live Research OS source for the current
 outstanding V2 passport. The plan must not connect the rationale component to legacy
@@ -399,6 +539,12 @@ Stop or reduce the visual slice rather than weaken product guarantees if:
   status;
 - the only live data source is the unrelated legacy recommendation service;
 - the design requires raw user data to be sent to an external reviewer;
+- a source-aware audit cannot be bounded to a sanitised package or technically enforced
+  read-only snapshot;
+- required text, control, state, focus, or meaningful-graphic pairs continue to fail the
+  deterministic contrast gate after focused visual revision;
+- application-only captures cannot be separated from identifying operating-system chrome
+  or metadata;
 - visual effects make the office-PC target materially slower after focused optimisation;
 - low-resolution or scaling defects persist after a structural revision;
 - reviewer proposals repeatedly alter closed meaning or authority; or
@@ -418,6 +564,7 @@ It does not establish:
 - recommendation validity;
 - calculation accuracy;
 - human or expert equivalence;
+- complete WCAG or legal accessibility compliance;
 - broad social-science coverage;
 - SPSS superiority;
 - the usability of the entire multi-round research flow; or
