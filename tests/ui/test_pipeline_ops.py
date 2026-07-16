@@ -5,8 +5,9 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from modori.core import Dataset, Measure, Pipeline, Variable
+from modori.core import Dataset, Measure, Pipeline, Step, StepResult, Variable
 from modori.results import ChartSpec, ReliabilityResult
+from modori.steps import MapValuesStep, VariableMetadataPatchStep
 from modori.steps.anova_factorial import FactorialAnovaStep
 from modori.ui.chart_assets import ChartAssetResult
 from modori.ui.contracts import DisplayResult, ReportExportOptions
@@ -61,6 +62,102 @@ class FakePipeline:
 
     def recompute(self, dirty_from):
         self.recomputed = True
+
+
+class PassThroughStep(Step):
+    step_type = "import.table"
+
+    def compute(self, ctx):
+        return StepResult()
+
+    def reads(self) -> set[str]:
+        return set()
+
+    def writes(self) -> set[str]:
+        return set()
+
+
+class MarkerAnalysisStep(Step):
+    step_type = "test.marker_analysis"
+    produces_analysis = True
+
+    def compute(self, ctx):
+        marker = Path(str(self.params["marker_path"]))
+        marker.write_text(self.id, encoding="utf-8")
+        return StepResult(analysis=self.id)
+
+    def reads(self) -> set[str]:
+        return {str(value) for value in self.params.get("reads", [])}
+
+    def writes(self) -> set[str]:
+        return {str(self.params["result_key"])}
+
+
+def _pipeline_with_deferred_analysis(
+    tmp_path: Path,
+    *,
+    metadata_step: VariableMetadataPatchStep | None = None,
+    transform_step: MapValuesStep | None = None,
+) -> tuple[Pipeline, Path, Path]:
+    frame = pd.DataFrame({"score": [1, 2, 3], "group": ["a", "b", "a"]})
+    pipeline = Pipeline(
+        Dataset(
+            df=frame,
+            variables={
+                "score": Variable(
+                    name="score",
+                    label="Score",
+                    measure=Measure.SCALE,
+                    value_labels={},
+                    missing_values=[],
+                    dtype=str(frame["score"].dtype),
+                    origin_step_id="origin",
+                ),
+                "group": Variable(
+                    name="group",
+                    label="Group",
+                    measure=Measure.NOMINAL,
+                    value_labels={},
+                    missing_values=[],
+                    dtype=str(frame["group"].dtype),
+                    origin_step_id="origin",
+                ),
+            },
+        )
+    )
+    pipeline.add(PassThroughStep(id="origin", title="Origin", params={}))
+    if metadata_step is not None:
+        pipeline.add(metadata_step)
+    if transform_step is not None:
+        pipeline.add(transform_step)
+    analysis_marker = tmp_path / "analysis-ran.txt"
+    report_marker = tmp_path / "report-ran.txt"
+    pipeline.add(
+        MarkerAnalysisStep(
+            id="analysis",
+            title="Analysis",
+            params={
+                "marker_path": str(analysis_marker),
+                "reads": ["score", "group_수정"],
+                "result_key": "analysis_result",
+            },
+        )
+    )
+    pipeline.add(
+        MarkerAnalysisStep(
+            id="report",
+            title="Report",
+            params={
+                "marker_path": str(report_marker),
+                "reads": ["analysis_result"],
+                "result_key": "report_result",
+            },
+        )
+    )
+    pipeline.recompute(dirty_from=None)
+    analysis_marker.unlink()
+    report_marker.unlink()
+    return pipeline, analysis_marker, report_marker
 
 
 def _factorial_dataset() -> Dataset:
@@ -169,6 +266,54 @@ def test_pipeline_operations_inserts_metadata_step_after_origin() -> None:
     assert pipeline.insertions == [("import", step, "metadata:score")]
 
 
+def test_metadata_insert_recomputes_data_prep_without_running_analysis_or_report(
+    tmp_path: Path,
+) -> None:
+    pipeline, analysis_marker, report_marker = _pipeline_with_deferred_analysis(tmp_path)
+    step = VariableMetadataPatchStep(
+        id="metadata:score",
+        title="Edit score metadata",
+        params={"variable_key": "score", "measure": "ordinal"},
+    )
+
+    PipelineOperations(pipeline).insert_metadata_step("score", step)
+
+    assert pipeline.current_dataset.variables["score"].measure is Measure.ORDINAL
+    assert [item.id for item in pipeline.steps] == [
+        "origin",
+        "metadata:score",
+        "analysis",
+        "report",
+    ]
+    assert pipeline.analysis_objects == {}
+    assert analysis_marker.exists() is False
+    assert report_marker.exists() is False
+
+
+def test_metadata_edit_recomputes_data_prep_without_running_analysis_or_report(
+    tmp_path: Path,
+) -> None:
+    metadata_step = VariableMetadataPatchStep(
+        id="metadata:score",
+        title="Edit score metadata",
+        params={"variable_key": "score", "measure": "nominal"},
+    )
+    pipeline, analysis_marker, report_marker = _pipeline_with_deferred_analysis(
+        tmp_path,
+        metadata_step=metadata_step,
+    )
+
+    PipelineOperations(pipeline).edit_metadata_params(
+        "metadata:score",
+        {"variable_key": "score", "measure": "ordinal"},
+    )
+
+    assert pipeline.current_dataset.variables["score"].measure is Measure.ORDINAL
+    assert pipeline.analysis_objects == {}
+    assert analysis_marker.exists() is False
+    assert report_marker.exists() is False
+
+
 def test_pipeline_operations_inserts_transform_after_existing_recode_steps() -> None:
     pipeline = FakePipeline()
     pipeline.steps = [
@@ -182,6 +327,75 @@ def test_pipeline_operations_inserts_transform_after_existing_recode_steps() -> 
     PipelineOperations(pipeline).insert_or_replace_transform_step(step)
 
     assert pipeline.insertions == [("transform:map:region", step, "transform:map:gender")]
+
+
+def test_transform_insert_recomputes_data_prep_without_running_analysis_or_report(
+    tmp_path: Path,
+) -> None:
+    pipeline, analysis_marker, report_marker = _pipeline_with_deferred_analysis(tmp_path)
+    step = MapValuesStep(
+        id="transform:map:group",
+        title="Map group values",
+        params={
+            "column": "group",
+            "mapping": {"a": "A"},
+            "to_missing": [],
+            "suffix": "_수정",
+        },
+    )
+
+    PipelineOperations(pipeline).insert_or_replace_transform_step(step)
+
+    assert pipeline.current_dataset.df["group_수정"].tolist() == ["A", "b", "A"]
+    assert [item.id for item in pipeline.steps] == [
+        "origin",
+        "transform:map:group",
+        "analysis",
+        "report",
+    ]
+    assert pipeline.analysis_objects == {}
+    assert analysis_marker.exists() is False
+    assert report_marker.exists() is False
+
+
+def test_transform_edit_recomputes_data_prep_without_running_analysis_or_report(
+    tmp_path: Path,
+) -> None:
+    transform_step = MapValuesStep(
+        id="transform:map:group",
+        title="Map group values",
+        params={
+            "column": "group",
+            "mapping": {"a": "A"},
+            "to_missing": [],
+            "suffix": "_수정",
+        },
+    )
+    pipeline, analysis_marker, report_marker = _pipeline_with_deferred_analysis(
+        tmp_path,
+        transform_step=transform_step,
+    )
+    replacement = MapValuesStep(
+        id="transform:map:group",
+        title="Map group values",
+        params={
+            "column": "group",
+            "mapping": {"a": "Changed"},
+            "to_missing": [],
+            "suffix": "_수정",
+        },
+    )
+
+    PipelineOperations(pipeline).insert_or_replace_transform_step(replacement)
+
+    assert pipeline.current_dataset.df["group_수정"].tolist() == [
+        "Changed",
+        "b",
+        "Changed",
+    ]
+    assert pipeline.analysis_objects == {}
+    assert analysis_marker.exists() is False
+    assert report_marker.exists() is False
 
 
 def test_replace_managed_analysis_steps_refreshes_dataset_before_worker_recompute(

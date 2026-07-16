@@ -25,6 +25,31 @@
 - The execution conflict inventory must remain the audited 36 `changed in both` plus 2 `added in both` paths. If it changes, stop and amend this plan before resolving.
 - The final P0 branch contains one exact two-parent merge commit plus a later evidence commit. P0 does not add live Research OS UI wiring.
 
+### Pre-merge source-correction checkpoint (2026-07-17)
+
+The release lane was frozen at `ca40471297da5f69e90c4519a28ecf0864fd1c08`,
+and the third integration worktree was created, but no merge was started. Independent
+release-baseline inspection then demonstrated that inserting or editing variable
+metadata or a data transform synchronously recomputed downstream analysis and report
+steps. The existing confirmation test detected the later rerun block but did not
+assert the absence of the earlier analysis/report side effect.
+
+Because this violates the already approved non-automatic experimental boundary, the
+Research OS source pin is temporarily reopened for one bounded correction before Task
+4. The correction must:
+
+- preserve immediate data-preparation recomputation;
+- defer every step whose contract declares `produces_analysis = True`;
+- clear stale analysis/report caches without deleting the configured steps;
+- preserve rollback when a data-preparation step fails;
+- cover metadata insert/edit and transform insert/edit with failing-first tests;
+- pass the complete Research OS quality gate before a new source pin is recorded.
+
+After that commit, regenerate the source manifest from the unchanged release pin and
+the new Research OS pin. The audited 38 shared paths remain a hard stop condition; a
+changed shared-path count still requires a separate plan amendment. The original
+release worktree remains read-only throughout this correction.
+
 ---
 
 ## File map

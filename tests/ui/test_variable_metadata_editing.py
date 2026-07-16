@@ -6,6 +6,7 @@ import pandas as pd
 
 from modori.core import Dataset, Measure, Pipeline, Step, StepResult, Variable
 from modori.steps import ImportStep, VariableMetadataPatchStep
+from modori.ui.contracts import ImportOptions
 from modori.ui.controller import UiController
 
 
@@ -24,9 +25,8 @@ class MeasureEchoStep(Step):
         return {str(self.params["result_key"])}
 
 
-class FailingMetadataDependentStep(Step):
-    step_type = "test.failing_metadata_dependent"
-    produces_analysis = True
+class FailingMetadataDependentDataPrepStep(Step):
+    step_type = "test.failing_metadata_dependent_data_prep"
 
     def compute(self, ctx):
         raise RuntimeError("metadata-dependent recompute failed")
@@ -132,6 +132,26 @@ def test_controller_changes_variable_measure_through_metadata_step(tmp_path) -> 
     assert controller.stale is True
     assert controller.pipeline_version == 1
     assert "Edit metadata: group" in controller.stepChainText
+
+
+def test_controller_metadata_update_does_not_execute_analysis_or_report(
+    tmp_path: Path,
+) -> None:
+    data_path = tmp_path / "psych_bfi.csv"
+    data_path.write_bytes(Path("tests/fixtures/psych_bfi.csv").read_bytes())
+    output_dir = tmp_path / "modori-output"
+    controller = UiController()
+    assert controller.openDataFile(
+        data_path,
+        ImportOptions(confirm_new_session=True),
+    ).ok
+    assert controller.configureReliabilitySelection("E1, E2, E3").ok
+
+    result = controller.updateVariableMetadata("E1", {"label": "Extraversion 1"})
+
+    assert result.ok is True
+    assert controller.pipeline.analysis_objects == {}
+    assert output_dir.exists() is False
 
 
 def test_controller_maps_missing_codes_to_engine_missing_values(tmp_path) -> None:
@@ -274,9 +294,9 @@ def test_controller_rolls_back_inserted_metadata_step_when_recompute_fails(tmp_p
     )
     pipeline.recompute(dirty_from=None)
     pipeline.add(
-        FailingMetadataDependentStep(
-            id="analysis:failing",
-            title="Failing metadata-dependent analysis",
+        FailingMetadataDependentDataPrepStep(
+            id="data:failing",
+            title="Failing metadata-dependent data preparation",
             params={"variable_key": "group", "result_key": "failing_result"},
         )
     )
@@ -290,7 +310,7 @@ def test_controller_rolls_back_inserted_metadata_step_when_recompute_fails(tmp_p
     assert result.ok is False
     assert result.error_code == "engine_error"
     assert pipeline.steps == before_steps
-    assert [step.id for step in pipeline.steps] == ["import", "analysis:failing"]
+    assert [step.id for step in pipeline.steps] == ["import", "data:failing"]
     assert pipeline.current_dataset is before_dataset
     assert pipeline.current_dataset.variables["group"].measure is not Measure.NOMINAL
     assert controller.pipeline_version == before_version

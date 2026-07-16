@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
@@ -152,10 +152,19 @@ class PipelineOperations:
             raise RuntimeError("Pipeline does not support metadata step insertion")
         if not hasattr(self._pipeline, "insert_after_and_recompute"):
             raise RuntimeError("Pipeline does not support metadata step insertion")
-        self._pipeline.insert_after_and_recompute(
-            after_step_id,
-            step,
-            dirty_from=str(getattr(step, "id")),
+        self._mutate_data_prep_without_analysis(
+            lambda: self._pipeline.insert_after_and_recompute(
+                after_step_id,
+                step,
+                dirty_from=str(getattr(step, "id")),
+            )
+        )
+
+    def edit_metadata_params(self, step_id: str, params: dict[str, Any]) -> None:
+        if not self.can_edit_steps():
+            raise RuntimeError("Pipeline does not support metadata step editing")
+        self._mutate_data_prep_without_analysis(
+            lambda: self._pipeline.edit_params(step_id, params)
         )
 
     def insert_or_replace_transform_step(self, step: object) -> None:
@@ -163,17 +172,24 @@ class PipelineOperations:
             raise RuntimeError("Pipeline does not support transform insertion")
         step_id = str(getattr(step, "id"))
         if self.has_step(step_id):
-            self.edit_params(step_id, dict(getattr(step, "params")))
+            self._mutate_data_prep_without_analysis(
+                lambda: self._pipeline.edit_params(
+                    step_id,
+                    dict(getattr(step, "params")),
+                )
+            )
             return
         after_step_id = self._last_data_prep_step_id()
         if after_step_id is None:
             raise RuntimeError("Pipeline does not support transform insertion")
         if not hasattr(self._pipeline, "insert_after_and_recompute"):
             raise RuntimeError("Pipeline does not support transform insertion")
-        self._pipeline.insert_after_and_recompute(
-            after_step_id,
-            step,
-            dirty_from=step_id,
+        self._mutate_data_prep_without_analysis(
+            lambda: self._pipeline.insert_after_and_recompute(
+                after_step_id,
+                step,
+                dirty_from=step_id,
+            )
         )
 
     def metadata_insert_after_step_id(self, variable_key: str) -> str | None:
@@ -373,6 +389,55 @@ class PipelineOperations:
             self._pipeline.analysis_objects = {}
             return
         raise RuntimeError("Pipeline does not support preserved step recompute")
+
+    def _mutate_data_prep_without_analysis(self, mutation: Callable[[], None]) -> None:
+        if self._pipeline is None:
+            raise RuntimeError("Pipeline does not support data preparation")
+        snapshot = self._snapshot_pipeline_state()
+        original_steps = self.steps()
+        deferred = self._deferred_analysis_placements(original_steps)
+        data_prep_steps = [
+            step
+            for step in original_steps
+            if not bool(getattr(step, "produces_analysis", False))
+        ]
+        try:
+            self._replace_steps_preserving_cached_imports(data_prep_steps)
+            mutation()
+            self._restore_deferred_analysis_steps(deferred)
+        except Exception:
+            self._restore_pipeline_state(snapshot)
+            raise
+
+    def _restore_deferred_analysis_steps(
+        self,
+        deferred: list[tuple[str | None, object]],
+    ) -> None:
+        by_next_data_step: dict[str | None, list[object]] = {}
+        for next_data_step_id, step in deferred:
+            by_next_data_step.setdefault(next_data_step_id, []).append(step)
+
+        restored: list[object] = []
+        for step in self.steps():
+            restored.extend(by_next_data_step.pop(self._step_id(step), []))
+            restored.append(step)
+        restored.extend(by_next_data_step.pop(None, []))
+        if by_next_data_step:
+            raise RuntimeError("Data preparation mutation removed an existing step")
+        self._pipeline.steps = restored
+
+    def _deferred_analysis_placements(
+        self,
+        steps: list[object],
+    ) -> list[tuple[str | None, object]]:
+        next_data_step_id: str | None = None
+        reversed_placements: list[tuple[str | None, object]] = []
+        for step in reversed(steps):
+            if bool(getattr(step, "produces_analysis", False)):
+                reversed_placements.append((next_data_step_id, step))
+            else:
+                next_data_step_id = self._step_id(step)
+        return list(reversed(reversed_placements))
 
     def _snapshot_pipeline_state(self) -> tuple[str, object]:
         snapshot_state = getattr(self._pipeline, "_snapshot_state", None)

@@ -63,7 +63,7 @@ class VariableMetadataEditor:
         step_id = f"metadata:{variable_key}"
         try:
             if self._pipeline_ops.has_step(step_id):
-                self._pipeline_ops.edit_params(step_id, params)
+                self._pipeline_ops.edit_metadata_params(step_id, params)
             else:
                 step = VariableMetadataPatchStep(
                     id=step_id,
