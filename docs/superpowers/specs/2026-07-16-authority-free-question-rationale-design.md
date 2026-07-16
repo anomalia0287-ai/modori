@@ -208,6 +208,16 @@ This preserves the established distinction:
 
 The projector must not silently downgrade a `failure` to a generic explanation.
 
+Reason codes are closed by disposition:
+
+- `available`: `rationale_available`;
+- `not_applicable`: `current_clarification_absent`, `passport_not_outstanding`;
+- `unavailable`: `registry_preimage_unavailable`; and
+- `failure`: `registry_contract_invalid`, `registry_digest_mismatch`,
+  `selected_question_missing`, `selected_question_mismatch`,
+  `evaluation_question_mismatch`, `selected_rank_mismatch`,
+  `selected_identity_mismatch`, `plan_digest_mismatch`.
+
 `QuestionRationaleResult` contains exactly `status`, `reason_code`, and
 `projection`. `projection` is present if and only if status is `available`. Every other
 status carries no question copy, metric, or stale cached projection.
@@ -276,8 +286,8 @@ Required fields:
 - `question_budget_remaining`
 - `candidate_count`
 - `decisive_dimension`
-- `selected_decisive_value`
-- `runner_up_decisive_value | None`
+- `selected_decisive_value: int | str | None`
+- `runner_up_decisive_value: int | str | None`
 - `selected_guaranteed_e3_plus_blockers_removed`
 - `selected_worst_case_blocking_fact_count`
 - `selected_worst_case_frontier_size`
@@ -288,6 +298,11 @@ Required fields:
 
 The source digests support audit display and equality tests. They do not grant lookup,
 transition, or persistence authority.
+
+`comparisons` is ordered by ascending `(worst_loss, question_id)`, not by registry or
+declaration order. Its first row is therefore the independently verified selected row
+and its second row, when present, is the runner-up. For `only_candidate`, both decisive
+values are `None`; no synthetic comparison value is invented.
 
 ## 9. Exact ranking explanation
 
