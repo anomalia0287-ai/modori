@@ -7,7 +7,7 @@ import "../theme"
 PearlSurface {
     id: root
 
-    fillColor: theme.paperSurface
+    fillColor: theme.surfaceCream
     radius: theme.radiusSmall
     Accessible.name: appBootstrap.text("results.title")
 
@@ -65,16 +65,13 @@ PearlSurface {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: theme.spaceMd
-        spacing: theme.spaceMd
+        anchors.margins: theme.spaceNone
+        spacing: theme.spaceNone
 
-        PearlSurface {
+        Item {
             objectName: "resultsReportPreview"
             Layout.fillWidth: true
             Layout.fillHeight: true
-            fillColor: theme.paperSurface
-            radius: theme.spaceNone
-            border.width: theme.spaceNone
 
             ColumnLayout {
                 anchors.fill: parent
@@ -87,7 +84,7 @@ PearlSurface {
 
                     Label {
                         text: appBootstrap.text("results.report_preview")
-                        color: theme.deepTeal
+                        color: theme.bronzeDeep
                         font.pixelSize: theme.fontSection
                         font.bold: true
                     }
@@ -145,7 +142,7 @@ PearlSurface {
                         Label {
                             text: uiController.lastMessage
                             visible: uiController.lastMessage.length > 0
-                            color: theme.deepTeal
+                            color: theme.bronzeDeep
                             font.bold: true
                             wrapMode: Text.WordWrap
                             Layout.fillWidth: true
@@ -273,7 +270,7 @@ PearlSurface {
                         Label {
                             text: uiController.reportPath
                             visible: uiController.reportPath.length > 0
-                            color: theme.deepTeal
+                            color: theme.bronzeDeep
                             font.pixelSize: theme.fontCaption
                             wrapMode: Text.WordWrap
                             Layout.fillWidth: true

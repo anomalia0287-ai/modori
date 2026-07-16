@@ -70,7 +70,7 @@ Basic.Pane {
                     width: root.reduceEffects ? parent.width : theme.splashProgressSegmentWidth
                     height: parent.height
                     radius: theme.splashProgressHeight / 2
-                    color: theme.actionTeal
+                    color: theme.bronzeAction
 
                     NumberAnimation on x {
                         running: !root.reduceEffects

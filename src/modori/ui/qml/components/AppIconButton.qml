@@ -23,8 +23,8 @@ Button {
     background: Rectangle {
         radius: theme.radiusMedium
         color: control.hovered || control.down ? theme.selectionSurface : theme.transparent
-        border.color: control.activeFocus ? theme.focusRing : theme.lineSubtle
-        border.width: control.activeFocus ? theme.borderWidthFocus : theme.borderWidth
+        border.color: control.activeFocus ? theme.focusRing : theme.transparent
+        border.width: control.activeFocus ? theme.borderWidthFocus : theme.spaceNone
     }
 
     Theme {

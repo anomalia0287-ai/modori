@@ -29,27 +29,31 @@ Item {
         anchors.fill: parent
         spacing: theme.spaceNone
 
-        PearlSurface {
-            fillColor: theme.headerTiffany
+        AuroraGlassSurface {
+            reduceEffects: root.reduceEffects
+            tiffanyBloomEnabled: true
+            bottomAnchorVisible: true
             radius: theme.spaceNone
             Layout.fillWidth: true
             Layout.preferredHeight: theme.commandSurfaceHeight
 
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: theme.spaceXl
-                anchors.rightMargin: theme.spaceXl
+                anchors.leftMargin: theme.headerHorizontalPadding
+                anchors.rightMargin: theme.headerHorizontalPadding
                 spacing: theme.spaceHeaderGap
 
                 BrandWordmark {
                     text: appBootstrap.text("app.title")
-                    font.pixelSize: theme.fontSubtitle
+                    font.pixelSize: theme.workWordmarkSize
+                    Layout.rightMargin: theme.workWordmarkCommandGap
                 }
 
                 AppButton {
                     text: appBootstrap.text("work.data")
                     Accessible.name: appBootstrap.text("work.data_menu")
                     variant: "quiet"
+                    compact: true
                     onClicked: root.openDataRequested()
                 }
 
@@ -57,6 +61,7 @@ Item {
                     text: appBootstrap.text("work.data_sheet_window")
                     Accessible.name: appBootstrap.text("work.data_sheet_window")
                     variant: "quiet"
+                    compact: true
                     enabled: uiController.status !== "empty" && uiController.status !== "running"
                     onClicked: root.dataSheetRequested()
                 }
@@ -71,7 +76,8 @@ Item {
                     Accessible.description: uiController.selectionConfirmationRequired
                         ? appBootstrap.text("boundary.reconfirmation_required")
                         : ""
-                    variant: "secondary"
+                    variant: "quiet"
+                    compact: true
                     enabled: uiController.canRerun
                     onClicked: uiController.rerunNow()
                 }
@@ -79,7 +85,8 @@ Item {
                 AppButton {
                     text: appBootstrap.text("work.report")
                     Accessible.name: appBootstrap.text("work.report_menu")
-                    variant: "secondary"
+                    variant: "quiet"
+                    compact: true
                     semanticLight: enabled
                     enabled: uiController.resultSummary.length > 0
                     onClicked: root.reportRequested()
@@ -104,14 +111,26 @@ Item {
         ColumnLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.margins: theme.workOuterMargin
-            spacing: theme.spaceMd
+            spacing: theme.spaceNone
 
             SplitView {
-                id: splitView
+                id: mainWorkspace
                 Layout.fillWidth: true
                 Layout.fillHeight: true
+                Layout.margins: theme.workOuterMargin
                 orientation: Qt.Horizontal
+
+                handle: Rectangle {
+                    implicitWidth: theme.spaceSm
+                    color: theme.transparent
+
+                    Rectangle {
+                        anchors.centerIn: parent
+                        width: theme.borderWidth
+                        height: parent.height
+                        color: theme.lineSubtle
+                    }
+                }
 
                 GuideRail {
                     visible: uiController.mode === "guided"
@@ -134,9 +153,16 @@ Item {
                             id: dataTabs
                             objectName: "workDataTabs"
                             Layout.fillWidth: true
+                            Layout.preferredHeight: theme.tabHeight
+                            spacing: theme.spaceNone
+                            background: Rectangle {
+                                color: theme.surfaceRaised
+                            }
 
                             TabButton {
                                 id: dataTab
+                                implicitHeight: theme.tabHeight
+                                focusPolicy: Qt.TabFocus
                                 text: appBootstrap.text("work.data_view")
                                 Accessible.name: text
                                 contentItem: Label {
@@ -147,22 +173,22 @@ Item {
                                 }
                                 background: Rectangle {
                                     color: dataTab.checked ? theme.surfaceCream : theme.surfaceRaised
-                                    border.color: dataTab.activeFocus ? theme.focusRing : theme.lineSubtle
-                                    border.width: dataTab.activeFocus ? theme.borderWidthFocus : theme.borderWidth
 
                                     Rectangle {
                                         anchors.left: parent.left
                                         anchors.right: parent.right
                                         anchors.bottom: parent.bottom
                                         height: theme.borderWidthFocus
-                                        color: theme.actionTeal
-                                        visible: dataTab.checked
+                                        color: dataTab.activeFocus ? theme.focusRing : theme.lineStrong
+                                        visible: dataTab.checked || dataTab.activeFocus
                                     }
                                 }
                             }
 
                             TabButton {
                                 id: variableTab
+                                implicitHeight: theme.tabHeight
+                                focusPolicy: Qt.TabFocus
                                 text: appBootstrap.text("work.variable_view")
                                 Accessible.name: text
                                 contentItem: Label {
@@ -173,22 +199,22 @@ Item {
                                 }
                                 background: Rectangle {
                                     color: variableTab.checked ? theme.surfaceCream : theme.surfaceRaised
-                                    border.color: variableTab.activeFocus ? theme.focusRing : theme.lineSubtle
-                                    border.width: variableTab.activeFocus ? theme.borderWidthFocus : theme.borderWidth
 
                                     Rectangle {
                                         anchors.left: parent.left
                                         anchors.right: parent.right
                                         anchors.bottom: parent.bottom
                                         height: theme.borderWidthFocus
-                                        color: theme.actionTeal
-                                        visible: variableTab.checked
+                                        color: variableTab.activeFocus ? theme.focusRing : theme.lineStrong
+                                        visible: variableTab.checked || variableTab.activeFocus
                                     }
                                 }
                             }
 
                             TabButton {
                                 id: transformTab
+                                implicitHeight: theme.tabHeight
+                                focusPolicy: Qt.TabFocus
                                 text: appBootstrap.text("work.transform_view")
                                 Accessible.name: text
                                 contentItem: Label {
@@ -199,16 +225,14 @@ Item {
                                 }
                                 background: Rectangle {
                                     color: transformTab.checked ? theme.surfaceCream : theme.surfaceRaised
-                                    border.color: transformTab.activeFocus ? theme.focusRing : theme.lineSubtle
-                                    border.width: transformTab.activeFocus ? theme.borderWidthFocus : theme.borderWidth
 
                                     Rectangle {
                                         anchors.left: parent.left
                                         anchors.right: parent.right
                                         anchors.bottom: parent.bottom
                                         height: theme.borderWidthFocus
-                                        color: theme.actionTeal
-                                        visible: transformTab.checked
+                                        color: transformTab.activeFocus ? theme.focusRing : theme.lineStrong
+                                        visible: transformTab.checked || transformTab.activeFocus
                                     }
                                 }
                             }
@@ -243,6 +267,7 @@ Item {
 
     LoadingOverlay {
         anchors.fill: parent
+        reduceEffects: root.reduceEffects
         visible: uiController.status === "running"
     }
 }

@@ -121,12 +121,10 @@ Item {
             Layout.fillHeight: true
             clip: true
             color: theme.paperSurface
-            border.width: theme.borderWidth
-            border.color: theme.lineSubtle
+            border.width: theme.spaceNone
 
             GridLayout {
                 anchors.fill: parent
-                anchors.margins: theme.borderWidth
                 columns: 3
                 rowSpacing: theme.spaceNone
                 columnSpacing: theme.spaceNone
@@ -148,7 +146,22 @@ Item {
                         implicitWidth: root.cellWidth
                         implicitHeight: theme.gridHeaderHeight
                         color: theme.gridColumnHeaderSurface
-                        border.color: theme.lineStrong
+
+                        Rectangle {
+                            objectName: "columnHeaderDivider"
+                            anchors.right: parent.right
+                            width: theme.borderWidth
+                            height: parent.height
+                            color: theme.lineGrid
+                        }
+
+                        Rectangle {
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.bottom: parent.bottom
+                            height: theme.borderWidth
+                            color: theme.lineGrid
+                        }
 
                         Text {
                             anchors.centerIn: parent
@@ -165,7 +178,7 @@ Item {
                 Rectangle {
                     Layout.preferredWidth: theme.gridScrollRailSize
                     Layout.preferredHeight: theme.gridHeaderHeight
-                    color: theme.surfaceQuiet
+                    color: theme.scrollRailSurface
                 }
 
                 VerticalHeaderView {
@@ -179,7 +192,22 @@ Item {
                         implicitWidth: theme.gridRowLabelWidth
                         implicitHeight: root.cellHeight
                         color: theme.gridRowHeaderSurface
-                        border.color: theme.lineStrong
+
+                        Rectangle {
+                            objectName: "rowHeaderDivider"
+                            anchors.right: parent.right
+                            width: theme.borderWidth
+                            height: parent.height
+                            color: theme.lineGrid
+                        }
+
+                        Rectangle {
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.bottom: parent.bottom
+                            height: theme.borderWidth
+                            color: theme.lineGrid
+                        }
 
                         Text {
                             anchors.centerIn: parent
@@ -270,17 +298,20 @@ Item {
                         property string measureValue: model.measureValue ?? ""
                         property string cellText: model.display ?? ""
                         property bool isCurrentCell: root.currentRow === row && root.currentColumn === column
+                        property bool selectedVariable: root.selectedKey.length > 0
+                            && root.selectedKey === variableKey
 
                         implicitWidth: root.cellWidth
                         implicitHeight: root.cellHeight
-                        color: isCurrentCell
+                        color: isCurrentCell || selectedVariable
                             ? theme.selectionSurface
-                            : (root.selectedKey.length > 0 && root.selectedKey === variableKey
-                                ? theme.selectionSurface
-                                : theme.paperSurface)
-                        border.color: isCurrentCell ? theme.actionTeal : theme.lineGrid
+                            : cellPointer.containsMouse
+                                ? theme.gridCellHoverSurface
+                                : theme.paperSurface
+                        border.color: isCurrentCell ? theme.lineStrong : theme.lineGrid
 
                         MouseArea {
+                            id: cellPointer
                             anchors.fill: parent
                             hoverEnabled: true
                             onClicked: {
@@ -289,8 +320,6 @@ Item {
                                 root.currentColumn = column
                                 root.cellActivated(row, column, variableKey, measureValue)
                             }
-                            ToolTip.visible: containsMouse && cellText.length > 0
-                            ToolTip.text: cellText
                         }
 
                         Text {
@@ -314,7 +343,7 @@ Item {
                 Rectangle {
                     Layout.preferredWidth: theme.gridRowLabelWidth
                     Layout.preferredHeight: theme.gridScrollRailSize
-                    color: theme.surfaceQuiet
+                    color: theme.scrollRailSurface
                 }
 
                 Item {
@@ -327,7 +356,7 @@ Item {
                 Rectangle {
                     Layout.preferredWidth: theme.gridScrollRailSize
                     Layout.preferredHeight: theme.gridScrollRailSize
-                    color: theme.surfaceQuiet
+                    color: theme.scrollRailSurface
                 }
             }
         }

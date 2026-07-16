@@ -28,7 +28,7 @@ Popup {
         Label {
             text: appBootstrap.text("explain.title")
             font.bold: true
-            color: theme.deepTeal
+            color: theme.bronzeDeep
         }
 
         ScrollView {

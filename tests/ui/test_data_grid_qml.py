@@ -16,6 +16,7 @@ from PySide6.QtCore import (
     QUrl,
 )
 from PySide6.QtGui import QGuiApplication
+from PySide6.QtQml import QQmlComponent, QQmlEngine
 from PySide6.QtQuick import QQuickItem, QQuickView
 from PySide6.QtTest import QSignalSpy, QTest
 
@@ -180,8 +181,76 @@ def test_data_grid_contains_motion_and_places_basic_scrollbars_outside_cells() -
     assert "height: root.horizontal ? root.thumbThickness : parent.height" in scrollbar
     assert "theme.scrollRailSurface" in scrollbar
     assert "theme.scrollThumbSurface" in scrollbar
-    assert "theme.headerTiffany" in scrollbar
-    assert "theme.lineStrong" in scrollbar
+    assert "theme.scrollThumbActiveSurface" in scrollbar
+    assert "border.color" not in scrollbar
+
+
+def test_data_grid_uses_quiet_one_direction_boundaries() -> None:
+    qml = qml_text("components/DataGridView.qml")
+
+    assert "border.width: theme.spaceNone" in qml
+    assert 'objectName: "columnHeaderDivider"' in qml
+    assert 'objectName: "rowHeaderDivider"' in qml
+    assert "color: theme.lineGrid" in qml
+    assert qml.count("color: theme.scrollRailSurface") == 3
+
+
+def test_shared_vertical_scrollbar_uses_the_trailing_edge_of_scroll_views() -> None:
+    app = _app()
+    engine = QQmlEngine()
+    component = QQmlComponent(engine)
+    component.setData(
+        b'''\
+import QtQuick
+import QtQuick.Controls
+import "../../src/modori/ui/qml/components"
+
+ScrollView {
+    id: root
+    width: 410
+    height: 300
+    clip: true
+    contentWidth: availableWidth
+    contentHeight: 900
+    ScrollBar.vertical: AppScrollBar {
+        objectName: "probeBar"
+        height: parent ? parent.height : implicitHeight
+    }
+    ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+
+    Item {
+        width: root.availableWidth
+        height: 900
+    }
+}
+''',
+        QUrl.fromLocalFile(str((Path.cwd() / "tests/ui/").resolve()) + "/"),
+    )
+
+    assert component.status() == QQmlComponent.Status.Ready, [
+        error.toString() for error in component.errors()
+    ]
+    root = component.create()
+    assert root is not None
+    app.processEvents()
+
+    bar = root.findChild(QQuickItem, "probeBar")
+    assert bar is not None
+    assert bar.x() == pytest.approx(root.width() - bar.width(), abs=0.5)
+    assert bar.height() == pytest.approx(root.height(), abs=0.5)
+
+    flickable = root.property("contentItem")
+    assert flickable is not None
+    initial_position = float(bar.property("visualPosition"))
+    flickable.setProperty(
+        "contentY",
+        float(flickable.property("contentHeight")) - flickable.height(),
+    )
+    app.processEvents()
+    assert float(bar.property("visualPosition")) > initial_position
+
+    root.deleteLater()
+    app.processEvents()
 
 
 def test_data_grid_headers_have_distinct_visual_treatment() -> None:
@@ -230,7 +299,20 @@ def test_data_grid_has_visible_current_cell_state() -> None:
     assert "property bool isCurrentCell" in qml
     assert "root.currentRow === row" in qml
     assert "root.currentColumn === column" in qml
-    assert "theme.actionTeal" in qml
+    assert "isCurrentCell ? theme.lineStrong : theme.lineGrid" in qml
+
+
+def test_data_grid_hover_is_a_subtle_surface_shift_without_value_tooltips() -> None:
+    qml = qml_text("components/DataGridView.qml")
+    theme = qml_text("theme/Theme.qml")
+    cell_section = qml[qml.index("property bool isCurrentCell"):qml.index("Text {", qml.index("property bool isCurrentCell"))]
+
+    assert "gridCellHoverSurface" in theme
+    assert "cellPointer.containsMouse" in cell_section
+    assert "theme.gridCellHoverSurface" in cell_section
+    assert "ToolTip.visible" not in cell_section
+    assert "ToolTip.text" not in cell_section
+    assert cell_section.index("isCurrentCell") < cell_section.index("cellPointer.containsMouse")
 
 
 def test_data_grid_emits_cell_activated_with_variable_roles() -> None:

@@ -128,13 +128,54 @@ def test_pipeline_shows_only_selected_direct_analysis_form() -> None:
     assert 'appBootstrap.text("pipeline.run")' in rail
 
 
-def test_work_tabs_use_the_cream_nacre_palette_instead_of_default_gray() -> None:
+def test_work_tabs_use_cream_surfaces_with_rose_bronze_selection() -> None:
     work = qml_text("screens/WorkScreen.qml")
 
     assert work.count("background: Rectangle") >= 3
     assert "theme.surfaceCream" in work
     assert "theme.surfaceRaised" in work
-    assert "theme.actionTeal" in work
+    assert "theme.lineStrong" in work
+    assert "theme.actionTeal" not in work
+
+
+def test_all_repeated_guide_choices_use_glass_rows_with_one_edge_selection() -> None:
+    guide = qml_text("components/GuideRail.qml")
+    candidate_start = guide.index(
+        "Repeater {",
+        guide.index('appBootstrap.text("guide.other_recommendations")'),
+    )
+    candidate_end = guide.index('appBootstrap.text("guide.manual_selection")')
+    candidate_section = guide[candidate_start:candidate_end]
+    manual_start = guide.index('id: manualIntentList')
+    manual_end = guide.index('id: reliabilityItemsField')
+    manual_section = guide[manual_start:manual_end]
+
+    assert 'variant: "glass"' in candidate_section
+    assert 'variant: "glass"' in guide[guide.index('appBootstrap.text("guide.other_recommendations")'):candidate_start]
+    assert 'variant: "glass"' in guide[candidate_end:manual_start]
+    assert "Flow {" not in manual_section
+    assert manual_section.count('variant: "glass"') == 10
+    assert manual_section.count("selected: root.selectedIntent ===") == 10
+    assert manual_section.count("Layout.fillWidth: true") >= 10
+
+
+def test_final_mode_entry_loading_and_footer_copy_contract() -> None:
+    from modori.ui.strings import UI_STRINGS_KO
+
+    entry = qml_text("screens/EntryScreen.qml")
+    pipeline = qml_text("components/PipelineRail.qml")
+
+    assert UI_STRINGS_KO["entry.guided"] == "CASUAL MODE"
+    assert UI_STRINGS_KO["entry.standard"] == "PRO MODE"
+    assert UI_STRINGS_KO["work.guided"] == "CASUAL MODE"
+    assert UI_STRINGS_KO["work.standard"] == "PRO MODE"
+    assert UI_STRINGS_KO["entry.promise"] == (
+        "통계 작업을 위한 선택,\n모도리에 오신 것을 환영합니다."
+    )
+    assert UI_STRINGS_KO["loading.calculating"] == "로딩 중"
+    assert entry.count("ModeChoiceButton {") == 2
+    assert 'variant: "glass"' in entry[entry.index("id: recentFilesScroll"):]
+    assert 'variant: "glassStrong"' in pipeline[:2500]
 
 
 def test_report_language_names_are_localized_for_korean_ui() -> None:

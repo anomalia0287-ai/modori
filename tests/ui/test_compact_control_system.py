@@ -24,16 +24,25 @@ def test_primary_work_controls_are_compact() -> None:
     assert int_token(theme, "iconButtonSize") <= 36
     assert int_token(theme, "switchTrackWidth") <= 40
     assert int_token(theme, "switchTrackHeight") <= 22
+    assert int_token(theme, "headerControlHeight") <= 32
+    assert int_token(theme, "workWordmarkSize") <= 18
+    assert int_token(theme, "spaceHeaderGap") <= 6
+    assert int_token(theme, "workWordmarkCommandGap") == 40
 
 
-def test_mode_selector_is_one_real_compact_switch() -> None:
+def test_mode_selector_uses_two_equal_underlined_actions() -> None:
     source = qml_text("components/ModeSegment.qml")
+    choice = qml_text("components/ModeChoiceButton.qml")
 
-    assert re.search(r"\bSwitch\s*\{", source)
-    assert "AppButton" not in source
-    assert "Layout.fillWidth" not in source
+    assert not re.search(r"\bSwitch\s*\{", source)
+    assert source.count("ModeChoiceButton {") == 2
     assert "guidedRequested" in source
     assert "standardRequested" in source
+    assert "property bool selected: false" in choice
+    assert "control.selected || control.hovered || control.activeFocus" in choice
+    assert "color: theme.modeChoiceSurface" in choice
+    assert "Accessible.role: Accessible.RadioButton" in choice
+    assert "Accessible.checked: control.selected" in choice
 
 
 def test_checkbox_has_soft_square_galaxy_like_corners() -> None:
@@ -81,6 +90,23 @@ def test_shared_form_controls_use_basic_style_and_common_geometry() -> None:
         assert re.search(rf"\b{root}\s*\{{", source)
         assert "theme.controlHeight" in source
         assert "theme.focusRing" in source
+
+
+def test_work_header_commands_rest_without_outlined_boxes() -> None:
+    button = qml_text("components/AppButton.qml")
+    icon_button = qml_text("components/AppIconButton.qml")
+    work = qml_text("screens/WorkScreen.qml")
+
+    assert "property bool compact: false" in button
+    assert "control.compact ? theme.headerControlHeight : theme.controlHeight" in button
+    assert 'control.variant === "quiet" || control.glassVariant' in button
+    assert "? theme.transparent" in button
+    assert "border.width: control.activeFocus ? theme.borderWidthFocus : theme.spaceNone" in button
+    assert "border.width: control.activeFocus ? theme.borderWidthFocus : theme.spaceNone" in icon_button
+    assert work.count("compact: true") == 4
+    assert "font.pixelSize: theme.workWordmarkSize" in work
+    assert "Layout.rightMargin: theme.workWordmarkCommandGap" in work
+    assert "AuroraGlassSurface {" in work
 
 
 def test_transform_groups_reserve_space_for_titles() -> None:

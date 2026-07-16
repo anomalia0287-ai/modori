@@ -16,6 +16,8 @@ Basic.ScrollBar {
     padding: theme.spaceNone
     implicitWidth: vertical ? theme.gridScrollRailSize : theme.gridScrollMinimumThumbLength
     implicitHeight: horizontal ? theme.gridScrollRailSize : theme.gridScrollMinimumThumbLength
+    x: root.vertical && parent ? Math.max(theme.spaceNone, parent.width - width) : theme.spaceNone
+    y: root.horizontal && parent ? Math.max(theme.spaceNone, parent.height - height) : theme.spaceNone
     minimumSize: Math.min(
         1.0,
         theme.gridScrollMinimumThumbLength
@@ -28,15 +30,6 @@ Basic.ScrollBar {
 
     background: Rectangle {
         color: theme.scrollRailSurface
-        border.color: theme.lineSubtle
-        border.width: theme.borderWidth
-
-        Rectangle {
-            anchors.centerIn: parent
-            width: root.horizontal ? parent.width : theme.borderWidth
-            height: root.horizontal ? theme.borderWidth : parent.height
-            color: theme.lineSubtle
-        }
     }
 
     contentItem: Item {
@@ -50,9 +43,7 @@ Basic.ScrollBar {
             width: root.horizontal ? parent.width : root.thumbThickness
             height: root.horizontal ? root.thumbThickness : parent.height
             radius: root.thumbThickness / 2
-            color: root.engaged ? theme.headerTiffany : theme.scrollThumbSurface
-            border.color: theme.lineStrong
-            border.width: theme.borderWidth
+            color: root.engaged ? theme.scrollThumbActiveSurface : theme.scrollThumbSurface
 
             Behavior on width {
                 enabled: root.vertical

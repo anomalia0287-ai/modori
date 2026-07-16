@@ -33,7 +33,7 @@ ComboBox {
     background: Rectangle {
         radius: theme.radiusSmall
         color: control.enabled ? theme.surfaceCream : theme.surfaceQuiet
-        border.color: control.activeFocus ? theme.focusRing : theme.lineStrong
+        border.color: control.activeFocus ? theme.focusRing : theme.lineSubtle
         border.width: control.activeFocus ? theme.borderWidthFocus : theme.borderWidth
     }
 

@@ -24,7 +24,7 @@ GroupBox {
     }
 
     background: PearlSurface {
-        fillColor: theme.surfaceCream
+        fillColor: theme.surfaceQuiet
         radius: theme.radiusSmall
     }
 

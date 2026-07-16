@@ -14,6 +14,21 @@ ApplicationWindow {
 
     property bool reduceEffects: uiController.reduceEffects
     property string currentScreen: "splash"
+    property bool transientLoading: false
+
+    function runWithLoading(callback) {
+        if (root.transientLoading) {
+            return
+        }
+        root.transientLoading = true
+        Qt.callLater(function() {
+            try {
+                callback()
+            } finally {
+                root.transientLoading = false
+            }
+        })
+    }
 
     Theme {
         id: theme
@@ -32,13 +47,32 @@ ApplicationWindow {
     SplashScreen {
         anchors.fill: parent
         reduceEffects: root.reduceEffects
-        visible: root.currentScreen === "splash"
+        opacity: root.currentScreen === "splash" ? theme.opacityFull : theme.opacityNone
+        visible: opacity > theme.opacityNone
+        enabled: root.currentScreen === "splash"
+
+        Behavior on opacity {
+            NumberAnimation {
+                duration: root.reduceEffects ? theme.spaceNone : theme.screenTransitionDuration
+                easing.type: Easing.InOutQuad
+            }
+        }
     }
 
     EntryScreen {
         anchors.fill: parent
         reduceEffects: root.reduceEffects
-        visible: root.currentScreen === "entry"
+        opacity: root.currentScreen === "entry" ? theme.opacityFull : theme.opacityNone
+        visible: opacity > theme.opacityNone
+        enabled: root.currentScreen === "entry"
+
+        Behavior on opacity {
+            NumberAnimation {
+                duration: root.reduceEffects ? theme.spaceNone : theme.screenTransitionDuration
+                easing.type: Easing.InOutQuad
+            }
+        }
+
         onGuidedRequested: {
             if (uiController.chooseMode("guided")) {
                 root.currentScreen = "work"
@@ -52,16 +86,28 @@ ApplicationWindow {
         onOpenDataRequested: dataFileDialog.open()
         onSettingsRequested: settingsDialog.open()
         onRecentFileRequested: {
-            if (uiController.openRecentFileAt(index)) {
-                root.currentScreen = "work"
-            }
+            root.runWithLoading(function() {
+                if (uiController.openRecentFileAt(index)) {
+                    root.currentScreen = "work"
+                }
+            })
         }
     }
 
     WorkScreen {
         anchors.fill: parent
         reduceEffects: root.reduceEffects
-        visible: root.currentScreen === "work"
+        opacity: root.currentScreen === "work" ? theme.opacityFull : theme.opacityNone
+        visible: opacity > theme.opacityNone
+        enabled: root.currentScreen === "work"
+
+        Behavior on opacity {
+            NumberAnimation {
+                duration: root.reduceEffects ? theme.spaceNone : theme.screenTransitionDuration
+                easing.type: Easing.InOutQuad
+            }
+        }
+
         onOpenDataRequested: dataFileDialog.open()
         onReportRequested: reportExportDialog.open()
         onDataSheetRequested: dataSheetWindow.show()
@@ -105,13 +151,17 @@ ApplicationWindow {
     ImportDialog {
         id: importDialog
         onLayoutPreviewRequested: function(headerRow, headerRowCount, dataStartRow, sheetName, dropAggregateRows, dropDuplicateRows, includedColumns) {
-            uiController.previewPendingImportLayout(headerRow, headerRowCount, dataStartRow, sheetName, dropAggregateRows, dropDuplicateRows, includedColumns)
+            root.runWithLoading(function() {
+                uiController.previewPendingImportLayout(headerRow, headerRowCount, dataStartRow, sheetName, dropAggregateRows, dropDuplicateRows, includedColumns)
+            })
         }
         onImportAccepted: function(dropAggregateRows, dropDuplicateRows, includedColumns) {
-            if (uiController.confirmPendingImport(dropAggregateRows, dropDuplicateRows, includedColumns)) {
-                root.currentScreen = "work"
-                importDialog.close()
-            }
+            root.runWithLoading(function() {
+                if (uiController.confirmPendingImport(dropAggregateRows, dropDuplicateRows, includedColumns)) {
+                    root.currentScreen = "work"
+                    importDialog.close()
+                }
+            })
         }
     }
 
@@ -128,9 +178,19 @@ ApplicationWindow {
         title: appBootstrap.text("entry.open_data")
         nameFilters: ["Data files (*.csv *.xlsx *.xls *.sav)"]
         onAccepted: {
-            if (uiController.previewDataFilePath(selectedFile.toString())) {
-                importDialog.open()
-            }
+            var selectedPath = selectedFile.toString()
+            root.runWithLoading(function() {
+                if (uiController.previewDataFilePath(selectedPath)) {
+                    importDialog.open()
+                }
+            })
         }
+    }
+
+    LoadingOverlay {
+        anchors.fill: parent
+        reduceEffects: root.reduceEffects
+        visible: root.transientLoading
+        z: theme.overlayLayer
     }
 }

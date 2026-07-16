@@ -13,7 +13,7 @@ SpinBox {
         z: 2
         text: control.textFromValue(control.value, control.locale)
         color: control.enabled ? theme.textControl : theme.textMuted
-        selectionColor: theme.actionTeal
+        selectionColor: theme.bronzeAction
         selectedTextColor: theme.onBrand
         font: control.font
         horizontalAlignment: Qt.AlignLeft
@@ -66,7 +66,7 @@ SpinBox {
     background: Rectangle {
         radius: theme.radiusSmall
         color: control.enabled ? theme.surfaceCream : theme.surfaceQuiet
-        border.color: control.activeFocus ? theme.focusRing : theme.lineStrong
+        border.color: control.activeFocus ? theme.focusRing : theme.lineSubtle
         border.width: control.activeFocus ? theme.borderWidthFocus : theme.borderWidth
     }
 

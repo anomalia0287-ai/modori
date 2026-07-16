@@ -19,6 +19,8 @@ Dialog {
     background: PearlSurface {
         ambient: true
         reduceEffects: uiController.reduceEffects
+        outlined: true
+        outlineColor: theme.lineDialog
     }
 
     contentItem: ColumnLayout {

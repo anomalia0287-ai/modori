@@ -93,6 +93,8 @@ Dialog {
     background: PearlSurface {
         ambient: true
         reduceEffects: uiController.reduceEffects
+        outlined: true
+        outlineColor: theme.lineDialog
     }
 
     header: Label {
@@ -104,7 +106,7 @@ Dialog {
         topPadding: theme.spaceContent
         bottomPadding: theme.spaceContent
         background: Rectangle {
-            color: theme.surfaceCream
+            color: theme.transparent
         }
     }
 
@@ -134,6 +136,10 @@ Dialog {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     clip: true
+                    ScrollBar.vertical: AppScrollBar {
+                        height: parent ? parent.height : implicitHeight
+                    }
+                    ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
 
                     TextArea {
                         text: uiController.importPreviewText
@@ -143,8 +149,8 @@ Dialog {
                         wrapMode: TextEdit.Wrap
                         Accessible.name: appBootstrap.text("dialog.import.preview_accessible")
                         background: Rectangle {
-                            color: theme.surfaceCream
-                            border.color: theme.lineDialog
+                            color: theme.surfaceRaised
+                            border.width: theme.spaceNone
                             radius: theme.radiusSmall
                         }
                     }
@@ -168,6 +174,10 @@ Dialog {
                             theme.importReviewMaxHeight
                         )
                         clip: true
+                        ScrollBar.vertical: AppScrollBar {
+                            height: parent ? parent.height : implicitHeight
+                        }
+                        ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
 
                         ColumnLayout {
                             id: reviewColumn
@@ -196,9 +206,7 @@ Dialog {
                                             : modelData.role === "data"
                                                 ? theme.paperSurface
                                                 : theme.quietSurface
-                                        border.color: modelData.role === "header"
-                                            ? theme.linePopover
-                                            : theme.lineSubtle
+                                        border.width: theme.spaceNone
                                         implicitWidth: reviewRoleLabel.implicitWidth + theme.spaceSm * 2
                                         implicitHeight: reviewRoleLabel.implicitHeight + theme.spaceXs
 
@@ -278,6 +286,10 @@ Dialog {
                         Layout.fillHeight: true
                         Layout.minimumHeight: theme.importColumnMinimumHeight
                         clip: true
+                        ScrollBar.vertical: AppScrollBar {
+                            height: parent ? parent.height : implicitHeight
+                        }
+                        ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
 
                         ColumnLayout {
                             id: columnList
@@ -330,6 +342,10 @@ Dialog {
                             anchors.fill: parent
                             anchors.margins: theme.spaceMd
                             clip: true
+                            ScrollBar.vertical: AppScrollBar {
+                                height: parent ? parent.height : implicitHeight
+                            }
+                            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
 
                             ColumnLayout {
                                 width: settingsScroll.availableWidth

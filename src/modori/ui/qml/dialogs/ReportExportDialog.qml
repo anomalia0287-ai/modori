@@ -23,6 +23,8 @@ Dialog {
     background: PearlSurface {
         ambient: true
         reduceEffects: uiController.reduceEffects
+        outlined: true
+        outlineColor: theme.lineDialog
     }
 
     header: Label {
@@ -34,7 +36,7 @@ Dialog {
         topPadding: theme.spaceContent
         bottomPadding: theme.spaceContent
         background: Rectangle {
-            color: theme.surfaceCream
+            color: theme.transparent
         }
     }
 
@@ -195,7 +197,7 @@ Dialog {
         Label {
             text: uiController.reportPath
             visible: uiController.reportPath.length > 0
-            color: theme.deepTeal
+            color: theme.bronzeDeep
             wrapMode: Text.WordWrap
             Layout.fillWidth: true
         }

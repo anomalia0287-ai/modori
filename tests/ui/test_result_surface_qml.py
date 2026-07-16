@@ -62,7 +62,7 @@ def test_theme_exposes_porcelain_glass_tokens() -> None:
         "readonly property color porcelainBackground",
         "readonly property color paperSurface",
         "readonly property color lineSubtle",
-        "readonly property color actionTeal",
+        "readonly property color bronzeAction",
         "readonly property color textStrong",
         "readonly property color textMuted",
         "readonly property color warning",

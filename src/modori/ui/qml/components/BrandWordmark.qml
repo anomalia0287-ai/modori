@@ -5,15 +5,12 @@ Text {
     id: root
 
     color: theme.brandWordmark
-    font.family: parisienne.name
+    font.family: theme.brandFontFamily
     font.pixelSize: theme.fontSubtitle
-    font.weight: Font.Normal
+    font.weight: Font.DemiBold
+    font.capitalization: Font.AllUppercase
+    font.letterSpacing: theme.brandLetterSpacing
     Accessible.name: text
-
-    FontLoader {
-        id: parisienne
-        source: Qt.resolvedUrl("../assets/fonts/Parisienne-Regular.ttf")
-    }
 
     Theme {
         id: theme

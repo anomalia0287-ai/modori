@@ -22,10 +22,10 @@ Rectangle {
             return theme.warning
         }
         if (root.state === "latest") {
-            return theme.actionTeal
+            return theme.bronzeAction
         }
         if (root.state === "running") {
-            return theme.brandTeal
+            return theme.bronzeDeep
         }
         return theme.textMuted
     }
@@ -38,7 +38,7 @@ Rectangle {
             return theme.warningSurface
         }
         if (root.state === "latest") {
-            return theme.aqua
+            return theme.bronzeWash
         }
         if (root.state === "running") {
             return theme.pearlLilac

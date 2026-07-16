@@ -18,7 +18,7 @@ Switch {
         x: control.width - width
         y: Math.round((control.height - height) / 2)
         radius: height / 2
-        color: control.checked ? theme.actionTeal : theme.surfaceRaised
+        color: control.checked ? theme.bronzeAction : theme.surfaceRaised
         border.color: control.activeFocus ? theme.focusRing : theme.lineStrong
         border.width: control.activeFocus ? theme.borderWidthFocus : theme.borderWidth
 
@@ -31,7 +31,7 @@ Switch {
             y: theme.switchThumbInset
             radius: width / 2
             color: control.checked ? theme.onBrand : theme.surfaceCream
-            border.color: control.checked ? theme.actionTeal : theme.lineStrong
+            border.color: control.checked ? theme.bronzeAction : theme.lineStrong
             border.width: theme.borderWidth
         }
     }

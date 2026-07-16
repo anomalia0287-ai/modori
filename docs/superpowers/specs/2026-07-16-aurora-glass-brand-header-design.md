@@ -56,6 +56,7 @@ The new shared component owns all glass layers and exposes only layout-safe cont
 
 - `reduceEffects`: selects the simplified neutral fallback;
 - `tiffanyBloomEnabled`: includes or removes the Tiffany layer;
+- `bottomAnchorVisible`: shows the one-edge anchor only in the work header;
 - `radius`: matches the containing surface where needed.
 
 All colors, opacities, dimensions, and separator values come from `Theme.qml`. Non-theme QML contains no literal colors or visual metric literals.

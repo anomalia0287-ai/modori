@@ -3,11 +3,13 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import "../theme"
 
-PearlSurface {
+AuroraGlassSurface {
     id: root
 
-    fillColor: theme.paperSurface
-    radius: theme.radiusSmall
+    surfaceTreatment: "footer"
+    tiffanyBloomEnabled: false
+    bottomAnchorVisible: false
+    radius: theme.spaceNone
 
     signal rerunRequested()
 
@@ -54,7 +56,7 @@ PearlSurface {
                     ? appBootstrap.text("pipeline.rerun")
                     : appBootstrap.text("pipeline.run")
                 Accessible.name: text
-                variant: "secondary"
+                variant: "glassStrong"
                 enabled: uiController.canRerun
                 onClicked: root.rerunRequested()
             }

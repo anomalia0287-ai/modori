@@ -21,6 +21,8 @@ Dialog {
     background: PearlSurface {
         ambient: true
         reduceEffects: uiController.reduceEffects
+        outlined: true
+        outlineColor: theme.lineDialog
     }
 
     header: Label {
@@ -32,7 +34,7 @@ Dialog {
         topPadding: theme.spaceContent
         bottomPadding: theme.spaceContent
         background: Rectangle {
-            color: theme.surfaceCream
+            color: theme.transparent
         }
     }
 

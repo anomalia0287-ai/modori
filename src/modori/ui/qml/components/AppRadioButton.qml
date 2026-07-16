@@ -21,7 +21,7 @@ RadioButton {
         border.color: control.activeFocus
             ? theme.focusRing
             : control.checked
-                ? theme.actionTeal
+                ? theme.bronzeAction
                 : theme.lineStrong
         border.width: control.activeFocus ? theme.borderWidthFocus : theme.borderWidth
 
@@ -30,7 +30,7 @@ RadioButton {
             width: theme.radioDotSize
             height: theme.radioDotSize
             radius: width / 2
-            color: theme.actionTeal
+            color: theme.bronzeAction
             visible: control.checked
         }
     }

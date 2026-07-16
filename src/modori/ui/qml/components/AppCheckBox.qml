@@ -19,12 +19,12 @@ CheckBox {
         radius: theme.checkboxRadius
         color: control.checkState === Qt.Unchecked
             ? theme.surfaceCream
-            : theme.actionTeal
+            : theme.bronzeAction
         border.color: control.activeFocus
             ? theme.focusRing
             : control.checkState === Qt.Unchecked
                 ? theme.lineStrong
-                : theme.actionTeal
+                : theme.bronzeAction
         border.width: control.activeFocus ? theme.borderWidthFocus : theme.borderWidth
 
         Image {

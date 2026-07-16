@@ -3,23 +3,49 @@ import QtQuick
 QtObject {
     readonly property color canvasCream: "#FEFDFC"
     readonly property color surfaceCream: "#FEFDFC"
-    readonly property color surfaceRaised: "#FBF9F7"
-    readonly property color surfaceQuiet: "#FBF9F7"
-    readonly property color pearlMint: "#FCFFFE"
+    readonly property color surfaceRaised: "#FAF8F5"
+    readonly property color surfaceQuiet: "#FAF8F5"
+    readonly property color pearlIce: "#FCFDFE"
     readonly property color pearlRose: "#FFFCFB"
     readonly property color pearlLilac: "#FEFCFF"
-    readonly property color headerTiffany: "#81D8D0"
-    readonly property color brandWordmark: "#B9856E"
-    readonly property color scrollRailSurface: "#FFFFFF"
-    readonly property color scrollThumbSurface: "#FFFFFF"
-    readonly property color focusRing: "#2B6F65"
+    readonly property color brandWordmark: "#171717"
+    readonly property color auroraGlassTop: "#AACFD3"
+    readonly property color auroraGlassMiddle: "#D5E1E1"
+    readonly property color auroraGlassBottom: "#E8D7DC"
+    readonly property color auroraNeutralTop: "#BCC9CA"
+    readonly property color auroraNeutralMiddle: "#D5DCDC"
+    readonly property color auroraNeutralBottom: "#E1DDDC"
+    readonly property color auroraTiffanyBloom: "#69CEC6"
+    readonly property color auroraIceBloom: "#B8DDE8"
+    readonly property color auroraLilacBloom: "#CFC4E2"
+    readonly property color auroraRoseBloom: "#E1BEC5"
+    readonly property color auroraGlassVeil: "#FFFFFF"
+    readonly property color auroraGlassAnchor: "#B9856E"
+    readonly property color auroraTiffanyTransparent: Qt.rgba(auroraTiffanyBloom.r, auroraTiffanyBloom.g, auroraTiffanyBloom.b, 0)
+    readonly property color auroraIceTransparent: Qt.rgba(auroraIceBloom.r, auroraIceBloom.g, auroraIceBloom.b, 0)
+    readonly property color auroraLilacTransparent: Qt.rgba(auroraLilacBloom.r, auroraLilacBloom.g, auroraLilacBloom.b, 0)
+    readonly property color auroraRoseTransparent: Qt.rgba(auroraRoseBloom.r, auroraRoseBloom.g, auroraRoseBloom.b, 0)
+    readonly property color auroraVeilTransparent: Qt.rgba(auroraGlassVeil.r, auroraGlassVeil.g, auroraGlassVeil.b, 0)
+    readonly property color footerGlassTop: "#C4D2D2"
+    readonly property color footerGlassMiddle: "#D6D4D2"
+    readonly property color footerGlassBottom: "#D8C5C5"
+    readonly property color glassListSurface: "#F8F2EF"
+    readonly property color glassListHoverSurface: "#F1E4DE"
+    readonly property color glassListSheen: "#FFFCFA"
+    readonly property color modeChoiceSurface: bronzeWash
+    readonly property color gridCellHoverSurface: "#FCF5F2"
+    readonly property color scrollRailSurface: "#EEEAE6"
+    readonly property color scrollThumbSurface: "#8C8580"
+    readonly property color scrollThumbActiveSurface: "#7B4F3F"
+    readonly property color bronzeDeep: "#684437"
+    readonly property color bronzeHover: "#7B4F3F"
+    readonly property color bronzeAction: "#8D5B48"
+    readonly property color bronzeFocus: "#8D5B48"
+    readonly property color bronzeWash: "#F2E7E2"
+    readonly property color focusRing: bronzeFocus
     readonly property color semanticGlow: "#B9856E"
     readonly property color transparent: "transparent"
 
-    readonly property color deepTeal: "#2E4D47"
-    readonly property color brandTeal: "#376F67"
-    readonly property color actionTeal: "#2C776B"
-    readonly property color aqua: "#E2ECE7"
     readonly property color gold: "#B98B3E"
     readonly property color orange: "#B87743"
     readonly property color transformAccent: "#A96F78"
@@ -30,32 +56,34 @@ QtObject {
     readonly property color popoverSurface: surfaceCream
     readonly property color paperSurface: surfaceCream
     readonly property color surface: surfaceCream
-    readonly property color gridColumnHeaderSurface: "#FBF9F7"
-    readonly property color gridRowHeaderSurface: "#FBF9F7"
-    readonly property color gridHeaderText: "#27423B"
+    readonly property color gridColumnHeaderSurface: "#FAF8F5"
+    readonly property color gridRowHeaderSurface: "#FAF8F5"
+    readonly property color gridHeaderText: "#403633"
     readonly property color flatBackground: canvasCream
     readonly property color lineSubtle: "#D7B9AA"
     readonly property color lineStrong: "#B9856E"
-    readonly property color lineGrid: "#D7B9AA"
+    readonly property color lineGrid: "#D8D4D0"
     readonly property color lineRail: "#D7B9AA"
     readonly property color lineDialog: "#D7B9AA"
     readonly property color linePopover: "#B9856E"
-    readonly property color textStrong: "#24332F"
-    readonly property color textBody: "#485A54"
-    readonly property color textControl: "#35463F"
-    readonly property color textTable: "#1E2925"
-    readonly property color textSecondary: "#5A6B65"
-    readonly property color textLevel: "#48675F"
-    readonly property color textMuted: "#6E7B76"
-    readonly property color textSoft: "#89958F"
+    readonly property color textStrong: "#2E2927"
+    readonly property color textBody: "#514A47"
+    readonly property color textControl: "#3D3734"
+    readonly property color textTable: "#24201E"
+    readonly property color textSecondary: "#675F5B"
+    readonly property color textLevel: "#6B5C55"
+    readonly property color textMuted: "#766F6B"
+    readonly property color textSoft: "#928A85"
     readonly property color onBrand: "#FFFFFF"
     readonly property color onBrandDanger: "#FFE6E6"
-    readonly property color selectionSurface: "#E3ECE7"
+    readonly property color selectionSurface: "#F2E7E2"
     readonly property color warning: "#8B641F"
     readonly property color warningSurface: "#F5E8C8"
     readonly property color danger: "#A33D4B"
     readonly property color dangerSurface: "#F5E2E3"
-    readonly property color brandScrim: "#80243E38"
+    readonly property color brandScrim: "#80604438"
+
+    readonly property string brandFontFamily: "Segoe UI"
 
     readonly property int radiusSmall: 6
     readonly property int radiusMedium: 10
@@ -69,7 +97,7 @@ QtObject {
     readonly property int spaceSm: 8
     readonly property int spaceGridColumn: 10
     readonly property int spaceMd: 12
-    readonly property int spaceHeaderGap: 10
+    readonly property int spaceHeaderGap: 6
     readonly property int spaceContent: 16
     readonly property int spaceLg: 18
     readonly property int spaceRailHorizontal: 20
@@ -86,6 +114,7 @@ QtObject {
     readonly property int fontSection: 14
     readonly property int fontBody: 12
     readonly property int fontCaption: 11
+    readonly property int fontCommand: 11
 
     readonly property int windowDefaultWidth: 1180
     readonly property int windowDefaultHeight: 760
@@ -95,12 +124,21 @@ QtObject {
     readonly property int entryBrandColumnWidth: 390
     readonly property int entryRecentMaxHeight: 132
     readonly property int entryCardPadding: 40
+    readonly property int entryBrandRegionWidth: 430
+    readonly property int entryBrandPanelPadding: 32
     readonly property int entryColumnGap: 36
     readonly property int workOuterMargin: 12
     readonly property int detachedSheetWidth: 980
     readonly property int detachedSheetHeight: 640
     readonly property int headerHeight: 56
-    readonly property int commandSurfaceHeight: 52
+    readonly property int commandSurfaceHeight: 50
+    readonly property int headerControlHeight: 30
+    readonly property int headerControlHorizontalPadding: 12
+    readonly property int headerHorizontalPadding: 16
+    readonly property int workWordmarkSize: 18
+    readonly property int workWordmarkCommandGap: 40
+    readonly property int modeChoiceMinimumWidth: 104
+    readonly property int tabHeight: 32
     readonly property int pipelineHeight: 176
     readonly property int pipelineCompactHeight: 68
     readonly property int resultsPanelPreferredWidth: 420
@@ -145,7 +183,7 @@ QtObject {
     readonly property int badgeHeight: 22
     readonly property int badgeHorizontalPadding: 18
     readonly property int controlHeight: 34
-    readonly property int iconButtonSize: 34
+    readonly property int iconButtonSize: 32
     readonly property int iconSize: 16
     readonly property int compactGlyphSize: 12
     readonly property int checkboxIndicatorSize: 18
@@ -167,8 +205,19 @@ QtObject {
     readonly property int radiusPill: 999
     readonly property int splashFastDelayMs: 100
     readonly property int splashDelayMs: 800
+    readonly property int screenTransitionDuration: 160
+    readonly property int overlayLayer: 100
 
+    readonly property real opacityFull: 1.0
+    readonly property real opacityNone: 0.0
     readonly property real opacityHigh: 0.9
+    readonly property real brandLetterSpacing: 2.4
+    readonly property real auroraTiffanyOpacity: 0.48
+    readonly property real auroraChromaticOpacity: 0.54
+    readonly property real footerAuroraChromaticOpacity: 0.38
+    readonly property real auroraVeilOpacity: 0.18
+    readonly property real auroraSheenOpacity: 0.62
+    readonly property real auroraAnchorOpacity: 0.58
     readonly property real opacityPrivacy: 0.86
     readonly property real opacitySplashPrivacy: 0.85
     readonly property real opacitySoft: 0.72

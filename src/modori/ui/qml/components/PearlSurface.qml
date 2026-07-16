@@ -8,11 +8,13 @@ Rectangle {
     property bool ambient: false
     property bool reduceEffects: false
     property bool selected: false
+    property bool outlined: false
+    property color outlineColor: theme.lineSubtle
 
     radius: theme.radiusLarge
     color: root.fillColor
-    border.color: root.selected ? theme.focusRing : theme.lineSubtle
-    border.width: root.selected ? theme.borderWidthFocus : theme.borderWidth
+    border.color: root.outlineColor
+    border.width: root.outlined ? theme.borderWidth : theme.spaceNone
     gradient: Gradient {
         GradientStop {
             position: 0.0
@@ -20,12 +22,24 @@ Rectangle {
         }
         GradientStop {
             position: 0.58
-            color: root.ambient && !root.reduceEffects ? theme.pearlMint : root.fillColor
+            color: root.ambient && !root.reduceEffects ? theme.pearlIce : root.fillColor
         }
         GradientStop {
             position: 1.0
             color: root.ambient && !root.reduceEffects ? theme.pearlRose : root.fillColor
         }
+    }
+
+    Rectangle {
+        objectName: "selectedSurfaceIndicator"
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.leftMargin: theme.spaceMd
+        anchors.rightMargin: theme.spaceMd
+        height: theme.borderWidthFocus
+        color: theme.lineStrong
+        visible: root.selected
     }
 
     Theme {

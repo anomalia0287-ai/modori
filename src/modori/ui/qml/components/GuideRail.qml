@@ -234,7 +234,7 @@ PearlSurface {
         Label {
             text: appBootstrap.text("guide.title")
             font.bold: true
-            color: theme.deepTeal
+            color: theme.bronzeDeep
             Layout.fillWidth: true
         }
 
@@ -291,7 +291,7 @@ PearlSurface {
                     Label {
                         text: appBootstrap.text("guide.default_recommendation")
                         font.bold: true
-                        color: theme.deepTeal
+                        color: theme.bronzeDeep
                         Layout.fillWidth: true
                     }
 
@@ -338,7 +338,8 @@ PearlSurface {
             AppButton {
                 text: appBootstrap.text("guide.other_recommendations")
                 Accessible.name: text
-                variant: "quiet"
+                variant: "glass"
+                selected: root.showOtherRecommendations
                 enabled: root.canEditSelection && uiController.recommendationCount > 1
                 Layout.fillWidth: true
                 onClicked: {
@@ -357,7 +358,7 @@ PearlSurface {
                     required property int index
                     text: uiController.recommendationCandidateTitleAt(index)
                     Accessible.name: text
-                    variant: "quiet"
+                    variant: "glass"
                     enabled: root.canEditSelection
                     Layout.fillWidth: true
                     onClicked: {
@@ -370,7 +371,8 @@ PearlSurface {
             AppButton {
                 text: appBootstrap.text("guide.manual_selection")
                 Accessible.name: text
-                variant: "quiet"
+                variant: "glass"
+                selected: root.manualSelectionMode
                 enabled: root.canEditSelection
                 Layout.fillWidth: true
                 onClicked: root.startManualSelection()
@@ -384,15 +386,18 @@ PearlSurface {
                 Layout.fillWidth: true
             }
 
-            Flow {
+            ColumnLayout {
+                id: manualIntentList
                 visible: root.manualSelectionMode
                 Layout.fillWidth: true
-                Layout.preferredHeight: childrenRect.height
                 spacing: theme.spaceXs
 
                 AppButton {
                     text: appBootstrap.text("guide.descriptives")
-                    variant: root.selectedIntent === "descriptives" ? "primary" : "quiet"
+                    Accessible.name: text
+                    variant: "glass"
+                    selected: root.selectedIntent === "descriptives"
+                    Layout.fillWidth: true
                     onClicked: root.chooseManualIntent(
                         "descriptives",
                         "analysis.descriptives_table1"
@@ -401,7 +406,10 @@ PearlSurface {
 
                 AppButton {
                     text: appBootstrap.text("guide.reliability")
-                    variant: root.selectedIntent === "reliability" ? "primary" : "quiet"
+                    Accessible.name: text
+                    variant: "glass"
+                    selected: root.selectedIntent === "reliability"
+                    Layout.fillWidth: true
                     onClicked: root.chooseManualIntent(
                         "reliability",
                         "ui.result.cronbach_alpha"
@@ -410,7 +418,10 @@ PearlSurface {
 
                 AppButton {
                     text: appBootstrap.text("guide.frequency_crosstab")
-                    variant: root.selectedIntent === "frequency_crosstab" ? "primary" : "quiet"
+                    Accessible.name: text
+                    variant: "glass"
+                    selected: root.selectedIntent === "frequency_crosstab"
+                    Layout.fillWidth: true
                     onClicked: root.chooseManualIntent(
                         "frequency_crosstab",
                         "analysis.frequency_crosstab"
@@ -419,7 +430,10 @@ PearlSurface {
 
                 AppButton {
                     text: appBootstrap.text("guide.correlation")
-                    variant: root.selectedIntent === "correlation" ? "primary" : "quiet"
+                    Accessible.name: text
+                    variant: "glass"
+                    selected: root.selectedIntent === "correlation"
+                    Layout.fillWidth: true
                     onClicked: root.chooseManualIntent(
                         "correlation",
                         "analysis.correlation"
@@ -428,7 +442,10 @@ PearlSurface {
 
                 AppButton {
                     text: appBootstrap.text("guide.factor_pca")
-                    variant: root.selectedIntent === "factor_pca" ? "primary" : "quiet"
+                    Accessible.name: text
+                    variant: "glass"
+                    selected: root.selectedIntent === "factor_pca"
+                    Layout.fillWidth: true
                     onClicked: root.chooseManualIntent(
                         "factor_pca",
                         "analysis.factor_pca"
@@ -437,7 +454,10 @@ PearlSurface {
 
                 AppButton {
                     text: appBootstrap.text("guide.comparison")
-                    variant: root.selectedIntent === "comparison" ? "primary" : "quiet"
+                    Accessible.name: text
+                    variant: "glass"
+                    selected: root.selectedIntent === "comparison"
+                    Layout.fillWidth: true
                     onClicked: root.chooseManualIntent(
                         "comparison",
                         "ui.result.welch_t"
@@ -446,7 +466,10 @@ PearlSurface {
 
                 AppButton {
                     text: appBootstrap.text("guide.anova_oneway")
-                    variant: root.selectedIntent === "anova_oneway" ? "primary" : "quiet"
+                    Accessible.name: text
+                    variant: "glass"
+                    selected: root.selectedIntent === "anova_oneway"
+                    Layout.fillWidth: true
                     onClicked: root.chooseManualIntent(
                         "anova_oneway",
                         "analysis.anova_oneway"
@@ -455,7 +478,10 @@ PearlSurface {
 
                 AppButton {
                     text: appBootstrap.text("guide.kruskal_wallis")
-                    variant: root.selectedIntent === "kruskal_wallis" ? "primary" : "quiet"
+                    Accessible.name: text
+                    variant: "glass"
+                    selected: root.selectedIntent === "kruskal_wallis"
+                    Layout.fillWidth: true
                     onClicked: root.chooseManualIntent(
                         "kruskal_wallis",
                         "analysis.kruskal_wallis"
@@ -464,7 +490,10 @@ PearlSurface {
 
                 AppButton {
                     text: appBootstrap.text("guide.ancova")
-                    variant: root.selectedIntent === "ancova" ? "primary" : "quiet"
+                    Accessible.name: text
+                    variant: "glass"
+                    selected: root.selectedIntent === "ancova"
+                    Layout.fillWidth: true
                     onClicked: root.chooseManualIntent(
                         "ancova",
                         "analysis.ancova"
@@ -473,7 +502,10 @@ PearlSurface {
 
                 AppButton {
                     text: appBootstrap.text("guide.regression")
-                    variant: root.selectedIntent === "regression" ? "primary" : "quiet"
+                    Accessible.name: text
+                    variant: "glass"
+                    selected: root.selectedIntent === "regression"
+                    Layout.fillWidth: true
                     onClicked: root.chooseManualIntent(
                         "regression",
                         "ui.result.r_squared"

@@ -25,6 +25,7 @@ def test_visual_qml_surfaces_use_theme_object() -> None:
         "Main.qml",
         "components/AppButton.qml",
         "components/AppIconButton.qml",
+        "components/AuroraGlassSurface.qml",
         "components/BrandWordmark.qml",
         "components/DataGridView.qml",
         "components/DataTable.qml",
@@ -102,10 +103,17 @@ def test_theme_exposes_layout_and_typography_tokens() -> None:
 def test_theme_exposes_effect_and_opacity_tokens() -> None:
     theme = (QML_ROOT / "theme/Theme.qml").read_text(encoding="utf-8")
     expected_int_tokens = {
+        "screenTransitionDuration",
         "splashFastDelayMs",
         "splashDelayMs",
     }
     expected_real_tokens = {
+        "brandLetterSpacing",
+        "auroraTiffanyOpacity",
+        "auroraChromaticOpacity",
+        "auroraVeilOpacity",
+        "auroraSheenOpacity",
+        "auroraAnchorOpacity",
         "opacityHigh",
         "opacityPrivacy",
         "opacitySplashPrivacy",
@@ -160,3 +168,42 @@ def test_non_theme_qml_does_not_define_visual_effect_literals() -> None:
             offenders[str(path.relative_to(QML_ROOT))] = matches
 
     assert offenders == {}
+
+
+def test_passive_surfaces_are_borderless_and_selected_surfaces_use_one_edge() -> None:
+    surface = (QML_ROOT / "components/PearlSurface.qml").read_text(encoding="utf-8")
+
+    assert "property bool outlined: false" in surface
+    assert "property color outlineColor: theme.lineSubtle" in surface
+    assert "border.width: root.outlined ? theme.borderWidth : theme.spaceNone" in surface
+    assert 'objectName: "selectedSurfaceIndicator"' in surface
+    assert "anchors.bottom: parent.bottom" in surface
+    assert "color: theme.lineStrong" in surface
+    assert "visible: root.selected" in surface
+
+
+def test_work_tabs_use_bottom_emphasis_without_persistent_frames() -> None:
+    work = (QML_ROOT / "screens/WorkScreen.qml").read_text(encoding="utf-8")
+
+    for tab_id in ("dataTab", "variableTab", "transformTab"):
+        assert f"border.color: {tab_id}.activeFocus" not in work
+    assert work.count("focusPolicy: Qt.TabFocus") == 3
+    assert work.count(": theme.lineStrong") >= 3
+    assert work.count("anchors.bottom: parent.bottom") >= 3
+
+
+def test_loading_and_screen_changes_use_truthful_reduced_motion_feedback() -> None:
+    main = (QML_ROOT / "Main.qml").read_text(encoding="utf-8")
+    overlay = (QML_ROOT / "components/LoadingOverlay.qml").read_text(encoding="utf-8")
+    work = (QML_ROOT / "screens/WorkScreen.qml").read_text(encoding="utf-8")
+
+    assert "property bool transientLoading: false" in main
+    assert "function runWithLoading(callback)" in main
+    assert "Qt.callLater" in main
+    assert main.count("Behavior on opacity") == 3
+    assert "theme.screenTransitionDuration" in main
+    assert "root.reduceEffects ? theme.spaceNone" in main
+    assert "BusyIndicator" in overlay
+    assert "property bool reduceEffects: false" in overlay
+    assert "visible: !root.reduceEffects" in overlay
+    assert "reduceEffects: root.reduceEffects" in work[work.index("LoadingOverlay {"):]

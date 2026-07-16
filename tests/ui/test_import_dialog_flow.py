@@ -91,6 +91,20 @@ def test_import_preview_and_column_picker_keep_bounded_widths() -> None:
     assert "Layout.minimumWidth: theme.importSettingsColumnMinimumWidth" in dialog
 
 
+def test_import_dialog_keeps_one_rounded_frame_and_uses_shared_scrollbars() -> None:
+    dialog = qml_text("dialogs/ImportDialog.qml")
+
+    assert "background: PearlSurface {" in dialog
+    assert "outlined: true" in dialog
+    assert "outlineColor: theme.lineDialog" in dialog
+    assert "color: theme.transparent" in dialog
+    assert dialog.count("ScrollBar.vertical: AppScrollBar {") == 4
+    assert dialog.count("height: parent ? parent.height : implicitHeight") == 4
+    assert dialog.count("ScrollBar.horizontal.policy: ScrollBar.AlwaysOff") == 4
+    assert "color: theme.surfaceRaised" in dialog
+    assert "border.width: theme.spaceNone" in dialog
+
+
 def test_import_and_recent_file_paths_do_not_start_analysis_automatically() -> None:
     main = qml_text("Main.qml")
 
