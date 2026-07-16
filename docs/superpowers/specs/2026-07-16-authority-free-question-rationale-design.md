@@ -1,7 +1,7 @@
 # Authority-Free Question Rationale Projection Design
 
 **Date:** 2026-07-16
-**Status:** Review candidate; scope approved in chat, implementation pending written-spec review
+**Status:** Approved; external review reconciled, implementation pending
 **Branch:** `codex/research-os-contract-design`
 **Source baseline:** `9bc9269c7fa51e9d92884d915d461b370edfdb20`
 
@@ -255,6 +255,12 @@ digest as branch content.
 
 ### 8.3 `QuestionRationaleProjection`
 
+In V1 this is an in-memory read-model contract only. `schema_id` and
+`schema_version` reserve a stable identity for a possible later wire contract; this
+slice adds no `to_mapping`/`from_mapping`, serialization, export, evidence-bundle, or
+ledger-persistence path. Any such path requires a separately reviewed schema and
+versioning decision.
+
 Required fields:
 
 - `schema_id = "modori.question_rationale_projection"`
@@ -312,6 +318,10 @@ values are:
 - `answer_kind_cost`
 - `stable_question_id`
 
+`decisive_dimension` is strictly a pairwise explanation of the selected candidate
+versus the recorded runner-up. It is not a global explanation of every candidate's
+position, and neither presenter may describe it as explaining the complete ordering.
+
 This prevents a smooth but false explanation. In particular,
 `guaranteed_e3_plus_blockers_removed` is useful contextual evidence but is **not part of
 the current rank key**. The presenter must never say that this field caused the
@@ -342,6 +352,7 @@ forged plan that previously decoded despite marking a non-winning trace.
 The presenter creates a `QuestionRationaleView` with:
 
 - `status`
+- `status_message`
 - `title`
 - `question_text`
 - `base_reason`
@@ -355,6 +366,12 @@ The presenter creates a `QuestionRationaleView` with:
 All labels and sentence frames are fixed Korean/English catalog entries. Substitutions
 are restricted to closed question copy, non-negative integers, enum labels, and short
 digest prefixes. No free-form composition is permitted.
+
+The presenter returns `None` for `not_applicable`, which removes or invalidates any
+cached rationale control. For `unavailable` or `failure`, it returns a status-only view:
+`title` and `status_message` come from the closed catalog, while question, reason,
+summary, uncertainty, guidance, caution, source-identity, and evidence fields are empty.
+It must clear a prior available view before rendering that status-only view.
 
 The user-approved casual/pro distinction maps to the repository's existing
 `guided`/`standard` product modes. This slice does not rename modes or create a third
@@ -370,10 +387,26 @@ The future `guided` UI consumes:
 - a “잘 모르겠습니다 / Not sure” explanation; and
 - the validity caution.
 
+The concise view must not expose internal `E1`-`E5` codes or numeric severity ranks.
+It uses this closed everyday-language catalog when a remaining-risk component is
+decisive:
+
+| Rank component | Korean concise label | English concise label |
+|---|---|---|
+| severity 5 or 4 | 안전한 분석 선택을 가로막을 수 있는 중대한 불확실성 | critical uncertainty that could block a safe analysis choice |
+| severity 3 | 분석 선택이나 결과 해석을 크게 바꿀 수 있는 불확실성 | uncertainty that could materially change the analysis choice or interpretation |
+| severity 2 | 더 적합한 분석을 좁히는 데 필요한 확인 사항 | information needed to narrow the analysis to a more suitable choice |
+| severity 1 | 사용 흐름을 다듬기 위한 낮은 위험의 확인 사항 | low-risk information that helps streamline the workflow |
+
+The two highest ranks share concise wording because both require the user to understand
+that safe progression is blocked; their exact numeric counts and distinct ranks remain
+available only in the evidence view.
+
 Example when severity-4 risk is decisive:
 
 > 가능한 답 중 가장 불리한 경우를 비교했을 때, 이 질문은 다음 후보보다
-> 심각도 4의 미확인 조건을 더 적게 남겨 먼저 선택되었습니다.
+> 안전한 분석 선택을 가로막을 수 있는 중대한 불확실성을 더 적게 남겨 먼저
+> 선택되었습니다.
 
 Example when only the stable ID decides:
 
@@ -397,7 +430,26 @@ The future `standard` UI consumes the same summary plus:
 The evidence view does not show all 14 KiB of plan JSON. Full canonical evidence remains
 in the ledger/export path.
 
-### 10.3 Mandatory caution
+Only this view may expose the exact `E1`-`E5` codes, numeric rank, and selected/runner-up
+counts. It must still pair each code with the closed everyday-language label rather than
+assuming that a user knows the internal taxonomy.
+
+### 10.3 Closed unavailable and failure copy
+
+For non-available results, `status_message` is selected from this exact catalog; it is
+not assembled from exception text or free-form prose:
+
+| Status | Korean | English |
+|---|---|---|
+| `unavailable` | 이 질문이 먼저 선택된 근거를 재현하는 데 필요한 기록을 현재 확인할 수 없습니다. 근거를 추정해서 표시하지 않습니다. | The record needed to reproduce why this question was selected first is currently unavailable. Modori does not infer or display a reason. |
+| `failure` | 질문 선택 기록과 검증 정보가 일치하지 않아 근거를 표시하지 않습니다. 이 상태만으로 프로젝트 원장 전체가 손상되었다고 판단하지 않습니다. | The question-selection record does not match its verification evidence, so no rationale is shown. This status alone does not mean the entire project ledger is corrupt. |
+
+An available view uses an empty `status_message`. `not_applicable` creates no visible
+rationale control and therefore no user-facing status copy. A future adapter that had
+already opened a rationale control may show the `unavailable` copy; it must not turn
+that copy into a generic explanation.
+
+### 10.4 Mandatory caution
 
 Every available view includes this meaning in the selected language:
 
@@ -508,6 +560,10 @@ The product-wording gate forbids claims equivalent to:
 Allowed wording refers to the fixed planner, recorded candidates, worst-case ordering,
 remaining uncertainty, and reproducibility.
 
+Tests also compare every Korean and English unavailable/failure sentence exactly, scan
+the concise view for `E1`-`E5`, `severity`, and `심각도`, and prove that numeric risk
+ranks appear only in the evidence view.
+
 ### 13.6 Resource gate
 
 Projection is `O(number_of_recorded_candidate_questions)` and performs no search. On
@@ -566,6 +622,11 @@ must define:
 - guided versus standard rendering placement;
 - keyboard and screen-reader behavior; and
 - the explicit experimental recommendation boundary.
+
+`QuestionCopy` is the canonical read model for the future clarification question card,
+not merely the rationale control. The later UI must reuse its question text, registered
+authored reason, identity, and “not sure” availability instead of inventing a parallel
+question-card read model.
 
 It must not retrofit the explanation onto legacy heuristic candidates.
 
