@@ -20,6 +20,7 @@ AUDITED_FILE_OPERATION_FILES = {
     "scripts/run_office_research_memory_benchmark.py",
     "scripts/stress_matrix.py",
     "scripts/verify_office_research_memory_kit.py",
+    "scripts/verify_release_integration.py",
     "src/modori/app.py",
     "src/modori/cache.py",
     "src/modori/knowledge/loader.py",
