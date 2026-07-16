@@ -637,7 +637,10 @@ git commit -m "test: attack question rationale boundaries"
 - Create: `docs/qa/authority-free-question-rationale-evidence.md`
 
 **Interfaces:**
-- Measures the full pure projection plus standard presenter over the real 15-candidate locked P1 passport fixture.
+- Measures the full pure projection plus standard presenter over the locked P1
+  fixture: a 15-question registry whose recorded passport contains the 4 candidates
+  actually eligible and evaluated for that request. Registry size and recorded
+  candidate count must be reported separately.
 - Records fidelity evidence only; it does not create recommendation-validity evidence.
 
 - [ ] **Step 1: Add the fixed resource test**
