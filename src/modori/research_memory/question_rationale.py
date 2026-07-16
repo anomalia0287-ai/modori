@@ -5,6 +5,20 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum
 
+from modori.research_memory.passport_state import PassportHistory
+from modori.research_os.clarification import (
+    ClarificationError,
+    ClarificationLifecycle,
+    ClarificationRegistry,
+    ClarificationSpec,
+)
+from modori.research_os.counterfactual_planner import QuestionEvaluationTrace
+from modori.research_os.passport import ClarifyPayloadV2
+from modori.research_os.passport_audit import (
+    PassportRegistryAuditStatus,
+    audit_passport_registry,
+)
+
 
 class QuestionRationaleError(ValueError):
     """Raised when a rationale read-model contract is malformed."""
@@ -428,3 +442,215 @@ _REASONS_BY_STATUS = {
         }
     ),
 }
+
+
+def project_current_question_rationale(
+    history: PassportHistory,
+    *,
+    project_id: str,
+    request_binding_digest: str,
+    clarification_registry_digest: str,
+    registry: ClarificationRegistry | None,
+) -> QuestionRationaleResult:
+    if not isinstance(history, PassportHistory):
+        raise QuestionRationaleError("history must be a PassportHistory")
+    _require_nonblank(project_id, "project_id")
+    _require_digest(request_binding_digest, "request_binding_digest")
+    _require_digest(
+        clarification_registry_digest,
+        "clarification_registry_digest",
+    )
+    matches = history.outstanding_for(
+        project_id=project_id,
+        request_binding_digest=request_binding_digest,
+        clarification_registry_digest=clarification_registry_digest,
+    )
+    if not matches:
+        key = (
+            project_id,
+            request_binding_digest,
+            clarification_registry_digest,
+        )
+        reason_code = (
+            "passport_not_outstanding"
+            if any(record.key == key for record in history.records)
+            else "current_clarification_absent"
+        )
+        return QuestionRationaleResult(
+            QuestionRationaleStatus.NOT_APPLICABLE,
+            reason_code,
+            None,
+        )
+    if len(matches) != 1:
+        raise QuestionRationaleError(
+            "history returned multiple outstanding passports for one key"
+        )
+    record = matches[0]
+    passport = record.passport
+    if (
+        passport.envelope.schema_version != 2
+        or not isinstance(passport.clarify, ClarifyPayloadV2)
+    ):
+        return QuestionRationaleResult(
+            QuestionRationaleStatus.NOT_APPLICABLE,
+            "current_clarification_absent",
+            None,
+        )
+    audit = audit_passport_registry(passport, registry)
+    if audit.status is PassportRegistryAuditStatus.UNAVAILABLE:
+        return QuestionRationaleResult(
+            QuestionRationaleStatus.UNAVAILABLE,
+            "registry_preimage_unavailable",
+            None,
+        )
+    if audit.status is PassportRegistryAuditStatus.FAILURE:
+        return QuestionRationaleResult(
+            QuestionRationaleStatus.FAILURE,
+            audit.reason_code,
+            None,
+        )
+    assert registry is not None
+    payload = passport.clarify
+    plan = payload.clarification_plan
+    reference = payload.clarification_ref
+    ordered = tuple(sorted(plan.evaluations, key=lambda item: item.rank_key))
+    marked = tuple(item for item in plan.evaluations if item.selected)
+    if len(marked) != 1 or marked[0].question_id != ordered[0].question_id:
+        return QuestionRationaleResult(
+            QuestionRationaleStatus.FAILURE,
+            "selected_rank_mismatch",
+            None,
+        )
+    selected = marked[0]
+    selected_identity = (
+        selected.question_id,
+        selected.question_version,
+        selected.question_digest,
+        selected.fact_address,
+    )
+    if selected_identity != (
+        plan.selected_question_id,
+        plan.selected_question_version,
+        plan.selected_question_digest,
+        plan.selected_fact_address,
+    ) or selected_identity != (
+        reference.question_id,
+        reference.question_version,
+        reference.question_digest,
+        reference.fact_address,
+    ):
+        return QuestionRationaleResult(
+            QuestionRationaleStatus.FAILURE,
+            "selected_identity_mismatch",
+            None,
+        )
+    if plan.digest() != reference.clarification_plan_digest:
+        return QuestionRationaleResult(
+            QuestionRationaleStatus.FAILURE,
+            "plan_digest_mismatch",
+            None,
+        )
+    questions: dict[str, ClarificationSpec] = {}
+    for trace in ordered:
+        try:
+            question = registry.get(trace.question_id)
+        except ClarificationError:
+            return QuestionRationaleResult(
+                QuestionRationaleStatus.FAILURE,
+                "evaluation_question_mismatch",
+                None,
+            )
+        if (
+            question.lifecycle is not ClarificationLifecycle.ACTIVE
+            or question.version != trace.question_version
+            or question.digest() != trace.question_digest
+            or question.fact_address != trace.fact_address
+        ):
+            return QuestionRationaleResult(
+                QuestionRationaleStatus.FAILURE,
+                "evaluation_question_mismatch",
+                None,
+            )
+        questions[trace.question_id] = question
+    comparisons = tuple(_comparison_from_trace(trace) for trace in ordered)
+    if len(comparisons) == 1:
+        dimension = DecisiveDimension.ONLY_CANDIDATE
+        selected_value: int | str | None = None
+        runner_up_value: int | str | None = None
+        runner_up_question = None
+    else:
+        runner_up = comparisons[1]
+        dimension = next(
+            item
+            for item in _PAIRWISE_DIMENSIONS
+            if _component_value(comparisons[0], item)
+            != _component_value(runner_up, item)
+        )
+        selected_value = _component_value(comparisons[0], dimension)
+        runner_up_value = _component_value(runner_up, dimension)
+        runner_up_question = _question_copy(questions[runner_up.question_id])
+    first = comparisons[0]
+    projection = QuestionRationaleProjection(
+        source_passport_digest=passport.digest(),
+        source_plan_digest=reference.clarification_plan_digest,
+        source_commit_event_id=record.commit_event_id,
+        source_commit_sequence=record.commit_sequence,
+        selected_question=_question_copy(questions[first.question_id]),
+        runner_up_question=runner_up_question,
+        initial_risk_vector=plan.initial_risk_vector,
+        question_budget_remaining=plan.question_budget_remaining,
+        candidate_count=len(comparisons),
+        decisive_dimension=dimension,
+        selected_decisive_value=selected_value,
+        runner_up_decisive_value=runner_up_value,
+        selected_guaranteed_e3_plus_blockers_removed=(
+            first.guaranteed_e3_plus_blockers_removed
+        ),
+        selected_worst_case_blocking_fact_count=(
+            first.worst_case_blocking_fact_count
+        ),
+        selected_worst_case_frontier_size=first.worst_case_frontier_size,
+        selected_worst_case_risk_vector=first.worst_case_risk_vector,
+        comparisons=comparisons,
+    )
+    return QuestionRationaleResult(
+        QuestionRationaleStatus.AVAILABLE,
+        "rationale_available",
+        projection,
+    )
+
+
+def _comparison_from_trace(
+    trace: QuestionEvaluationTrace,
+) -> QuestionLossComparison:
+    loss = trace.worst_loss
+    return QuestionLossComparison(
+        question_id=trace.question_id,
+        question_version=trace.question_version,
+        question_digest=trace.question_digest,
+        fact_address=trace.fact_address,
+        worst_case_risk_vector=loss.risk_vector,
+        worst_case_frontier_size=loss.frontier_size,
+        worst_case_blocking_fact_count=loss.blocking_fact_count,
+        worst_case_questions_asked=loss.questions_asked,
+        worst_case_dependency_deficit=loss.dependency_deficit,
+        worst_case_answer_kind_cost=loss.answer_kind_cost,
+        guaranteed_e3_plus_blockers_removed=(
+            trace.guaranteed_e3_plus_blockers_removed
+        ),
+        selected=trace.selected,
+    )
+
+
+def _question_copy(question: ClarificationSpec) -> QuestionCopy:
+    return QuestionCopy(
+        question_id=question.question_id,
+        question_version=question.version,
+        question_digest=question.digest(),
+        fact_address=question.fact_address,
+        template_ko=question.template_ko,
+        template_en=question.template_en,
+        why_ko=question.why_ko,
+        why_en=question.why_en,
+        not_sure_enabled=question.not_sure_enabled,
+    )

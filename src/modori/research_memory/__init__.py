@@ -62,6 +62,16 @@ from modori.research_memory.passport_state import (
     PassportHistory,
     PassportStateError,
 )
+from modori.research_memory.question_rationale import (
+    DecisiveDimension,
+    QuestionCopy,
+    QuestionLossComparison,
+    QuestionRationaleError,
+    QuestionRationaleProjection,
+    QuestionRationaleResult,
+    QuestionRationaleStatus,
+    project_current_question_rationale,
+)
 
 __all__ = [
     "CANONICALIZATION_ID",
@@ -70,6 +80,7 @@ __all__ = [
     "CanonicalizationError",
     "CommittedPassportRecord",
     "DecisionLedgerStore",
+    "DecisiveDimension",
     "EvidenceBundle",
     "EvidenceBundleError",
     "EvidenceBundleErrorCode",
@@ -102,6 +113,12 @@ __all__ = [
     "QuarantineStage",
     "PromotionError",
     "PromotionReceipt",
+    "QuestionCopy",
+    "QuestionLossComparison",
+    "QuestionRationaleError",
+    "QuestionRationaleProjection",
+    "QuestionRationaleResult",
+    "QuestionRationaleStatus",
     "PassportHistory",
     "PassportCommitReceipt",
     "PassportStateError",
@@ -112,4 +129,5 @@ __all__ = [
     "default_ledger_path",
     "event_hash",
     "open_decision_memory",
+    "project_current_question_rationale",
 ]

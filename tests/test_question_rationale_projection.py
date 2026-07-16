@@ -15,7 +15,10 @@ from modori.research_memory.question_rationale import (
     QuestionRationaleProjection,
     QuestionRationaleResult,
     QuestionRationaleStatus,
+    project_current_question_rationale,
 )
+from modori.research_memory.passport_state import PassportHistory
+from modori.research_os.clarification import ClarificationRegistry
 from modori.research_os.counterfactual_planner import TerminalLoss
 from tests.question_rationale_fixtures import (
     available_projection_fixture,
@@ -38,7 +41,24 @@ def test_question_rationale_module_exposes_closed_contract_types() -> None:
         "QuestionLossComparison",
         "QuestionRationaleProjection",
         "QuestionRationaleResult",
+        "project_current_question_rationale",
     }.issubset(vars(module))
+
+
+def test_research_memory_exports_question_rationale_public_api() -> None:
+    module = import_module("modori.research_memory")
+
+    assert module.QuestionRationaleError is QuestionRationaleError
+    assert module.QuestionRationaleStatus is QuestionRationaleStatus
+    assert module.DecisiveDimension is DecisiveDimension
+    assert module.QuestionCopy is QuestionCopy
+    assert module.QuestionLossComparison is QuestionLossComparison
+    assert module.QuestionRationaleProjection is QuestionRationaleProjection
+    assert module.QuestionRationaleResult is QuestionRationaleResult
+    assert (
+        module.project_current_question_rationale
+        is project_current_question_rationale
+    )
 
 
 def test_question_rationale_enums_are_closed_and_ordered() -> None:
@@ -277,3 +297,236 @@ def test_typed_rationale_case_fixture_builds_a_fresh_valid_passport() -> None:
         case.clarification_registry_digest
     )
     assert case.plan.selected_question_id == "confirm_z_selected"
+
+
+def _project(case, *, registry=None, request_binding_digest: str | None = None):
+    return project_current_question_rationale(
+        case.history,
+        project_id=case.project_id,
+        request_binding_digest=(
+            case.request_binding_digest
+            if request_binding_digest is None
+            else request_binding_digest
+        ),
+        clarification_registry_digest=case.clarification_registry_digest,
+        registry=case.registry if registry is None else registry,
+    )
+
+
+@pytest.mark.parametrize(
+    (
+        "selected_loss",
+        "runner_loss",
+        "dimension",
+        "selected_value",
+        "runner_value",
+    ),
+    (
+        (
+            TerminalLoss((0, 0, 0, 0, 0), 0, 0, 1, 0, 0),
+            TerminalLoss((1, 0, 0, 0, 0), 0, 0, 1, 0, 0),
+            DecisiveDimension.REMAINING_SEVERITY_5,
+            0,
+            1,
+        ),
+        (
+            TerminalLoss((0, 0, 0, 0, 0), 0, 0, 1, 0, 0),
+            TerminalLoss((0, 1, 0, 0, 0), 0, 0, 1, 0, 0),
+            DecisiveDimension.REMAINING_SEVERITY_4,
+            0,
+            1,
+        ),
+        (
+            TerminalLoss((0, 0, 0, 0, 0), 0, 0, 1, 0, 0),
+            TerminalLoss((0, 0, 1, 0, 0), 0, 0, 1, 0, 0),
+            DecisiveDimension.REMAINING_SEVERITY_3,
+            0,
+            1,
+        ),
+        (
+            TerminalLoss((0, 0, 0, 0, 0), 0, 0, 1, 0, 0),
+            TerminalLoss((0, 0, 0, 1, 0), 0, 0, 1, 0, 0),
+            DecisiveDimension.REMAINING_SEVERITY_2,
+            0,
+            1,
+        ),
+        (
+            TerminalLoss((0, 0, 0, 0, 0), 0, 0, 1, 0, 0),
+            TerminalLoss((0, 0, 0, 0, 1), 0, 0, 1, 0, 0),
+            DecisiveDimension.REMAINING_SEVERITY_1,
+            0,
+            1,
+        ),
+        (
+            TerminalLoss((0, 0, 0, 0, 0), 0, 0, 1, 0, 0),
+            TerminalLoss((0, 0, 0, 0, 0), 1, 0, 1, 0, 0),
+            DecisiveDimension.REMAINING_FRONTIER_SIZE,
+            0,
+            1,
+        ),
+        (
+            TerminalLoss((0, 0, 0, 0, 0), 0, 0, 1, 0, 0),
+            TerminalLoss((0, 0, 0, 0, 0), 0, 1, 1, 0, 0),
+            DecisiveDimension.REMAINING_BLOCKING_FACT_COUNT,
+            0,
+            1,
+        ),
+        (
+            TerminalLoss((0, 0, 0, 0, 0), 0, 0, 1, 0, 0),
+            TerminalLoss((0, 0, 0, 0, 0), 0, 0, 2, 0, 0),
+            DecisiveDimension.QUESTIONS_ASKED,
+            1,
+            2,
+        ),
+        (
+            TerminalLoss((0, 0, 0, 0, 0), 0, 0, 1, 0, 0),
+            TerminalLoss((0, 0, 0, 0, 0), 0, 0, 1, 1, 0),
+            DecisiveDimension.DEPENDENCY_DEFICIT,
+            0,
+            1,
+        ),
+        (
+            TerminalLoss((0, 0, 0, 0, 0), 0, 0, 1, 0, 0),
+            TerminalLoss((0, 0, 0, 0, 0), 0, 0, 1, 0, 1),
+            DecisiveDimension.ANSWER_KIND_COST,
+            0,
+            1,
+        ),
+    ),
+)
+def test_projection_reports_first_numeric_pairwise_rank_difference(
+    selected_loss: TerminalLoss,
+    runner_loss: TerminalLoss,
+    dimension: DecisiveDimension,
+    selected_value: int,
+    runner_value: int,
+) -> None:
+    case = rationale_case(
+        selected_loss=selected_loss,
+        runner_up_loss=runner_loss,
+    )
+
+    result = _project(case)
+
+    assert result.status is QuestionRationaleStatus.AVAILABLE
+    assert result.reason_code == "rationale_available"
+    assert result.projection is not None
+    assert result.projection.decisive_dimension is dimension
+    assert result.projection.selected_decisive_value == selected_value
+    assert result.projection.runner_up_decisive_value == runner_value
+
+
+def test_projection_reports_stable_id_tie_without_inventing_risk_advantage() -> None:
+    tied = TerminalLoss((0, 0, 0, 0, 0), 0, 0, 1, 0, 1)
+    case = rationale_case(
+        selected_loss=tied,
+        runner_up_loss=tied,
+        selected_question_id="confirm_a_selected",
+        runner_up_question_id="confirm_z_runner",
+    )
+
+    result = _project(case)
+
+    assert result.projection is not None
+    assert result.projection.decisive_dimension is (
+        DecisiveDimension.STABLE_QUESTION_ID
+    )
+    assert result.projection.selected_decisive_value == "confirm_a_selected"
+    assert result.projection.runner_up_decisive_value == "confirm_z_runner"
+
+
+def test_projection_reports_only_candidate_without_synthetic_comparison() -> None:
+    case = rationale_case(
+        selected_loss=TerminalLoss((0, 0, 0, 0, 0), 0, 0, 1, 0, 1),
+        runner_up_loss=None,
+    )
+
+    result = _project(case)
+
+    assert result.projection is not None
+    assert result.projection.decisive_dimension is DecisiveDimension.ONLY_CANDIDATE
+    assert result.projection.selected_decisive_value is None
+    assert result.projection.runner_up_decisive_value is None
+    assert result.projection.runner_up_question is None
+
+
+def test_projection_binds_exact_source_and_registry_copy() -> None:
+    case = rationale_case(
+        selected_loss=TerminalLoss((0, 0, 0, 0, 0), 0, 0, 1, 0, 1),
+        runner_up_loss=TerminalLoss((0, 1, 0, 0, 0), 0, 0, 1, 0, 1),
+    )
+
+    result = _project(case)
+
+    projection = result.projection
+    assert projection is not None
+    assert projection.source_passport_digest == case.passport.digest()
+    assert projection.source_plan_digest == case.plan.digest()
+    assert projection.source_commit_event_id == "event:rationale:2"
+    assert projection.source_commit_sequence == 2
+    selected_spec = case.registry.get(case.plan.selected_question_id)
+    assert projection.selected_question.template_ko == selected_spec.template_ko
+    assert projection.selected_question.why_en == selected_spec.why_en
+    assert projection.comparisons[0].selected is True
+    assert projection.comparisons[1].selected is False
+    assert projection.selected_guaranteed_e3_plus_blockers_removed == 2
+
+
+def test_projection_distinguishes_absent_registry_and_mismatched_registry() -> None:
+    case = rationale_case(
+        selected_loss=TerminalLoss((0, 0, 0, 0, 0), 0, 0, 1, 0, 1),
+        runner_up_loss=TerminalLoss((0, 1, 0, 0, 0), 0, 0, 1, 0, 1),
+    )
+
+    unavailable = project_current_question_rationale(
+        case.history,
+        project_id=case.project_id,
+        request_binding_digest=case.request_binding_digest,
+        clarification_registry_digest=case.clarification_registry_digest,
+        registry=None,
+    )
+    changed_questions = (
+        replace(case.registry.questions[0], version=2),
+        *case.registry.questions[1:],
+    )
+    changed_registry = ClarificationRegistry(
+        questions=changed_questions,
+        required_question_ids=case.registry.required_question_ids,
+    )
+    failure = _project(case, registry=changed_registry)
+
+    assert unavailable.status is QuestionRationaleStatus.UNAVAILABLE
+    assert unavailable.reason_code == "registry_preimage_unavailable"
+    assert unavailable.projection is None
+    assert failure.status is QuestionRationaleStatus.FAILURE
+    assert failure.reason_code == "registry_digest_mismatch"
+    assert failure.projection is None
+
+
+def test_projection_rejects_stale_or_no_longer_outstanding_source() -> None:
+    case = rationale_case(
+        selected_loss=TerminalLoss((0, 0, 0, 0, 0), 0, 0, 1, 0, 1),
+        runner_up_loss=None,
+    )
+
+    stale = _project(case, request_binding_digest="e" * 64)
+    consumed_history = PassportHistory(
+        records=(
+            replace(
+                case.history.records[0],
+                consumed_by_event_id="event:answer:3",
+            ),
+        )
+    )
+    consumed = project_current_question_rationale(
+        consumed_history,
+        project_id=case.project_id,
+        request_binding_digest=case.request_binding_digest,
+        clarification_registry_digest=case.clarification_registry_digest,
+        registry=case.registry,
+    )
+
+    assert stale.status is QuestionRationaleStatus.NOT_APPLICABLE
+    assert stale.reason_code == "current_clarification_absent"
+    assert consumed.status is QuestionRationaleStatus.NOT_APPLICABLE
+    assert consumed.reason_code == "passport_not_outstanding"
