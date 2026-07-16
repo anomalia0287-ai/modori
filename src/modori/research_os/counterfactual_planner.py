@@ -651,6 +651,9 @@ class ClarificationPlan:
         selected = tuple(item for item in self.evaluations if item.selected)
         if len(selected) != 1 or selected[0].question_id != self.selected_question_id:
             raise PlannerError("evaluations must mark exactly the selected question")
+        minimum = min(self.evaluations, key=lambda item: item.rank_key)
+        if selected[0].question_id != minimum.question_id:
+            raise PlannerError("selected evaluation must be the minimum rank key")
         if selected[0].fact_address != self.selected_fact_address:
             raise PlannerError("selected fact address does not match its evaluation")
         if selected[0].question_version != self.selected_question_version:

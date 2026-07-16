@@ -171,6 +171,22 @@ def test_clarification_plan_strict_roundtrip_recomputes_derived_rank_key() -> No
         ClarificationPlan.from_mapping(forged)
 
 
+def test_clarification_plan_rejects_nonminimal_selected_trace() -> None:
+    payload = locked_p1_plan().to_mapping()
+    evaluations = payload["evaluations"]
+    selected = next(item for item in evaluations if item["selected"])
+    loser = next(item for item in evaluations if not item["selected"])
+    selected["selected"] = False
+    loser["selected"] = True
+    payload["selected_question_id"] = loser["question_id"]
+    payload["selected_fact_address"] = loser["fact_address"]
+    payload["selected_question_version"] = loser["question_version"]
+    payload["selected_question_digest"] = loser["question_digest"]
+
+    with pytest.raises(PlannerError, match="minimum rank key"):
+        ClarificationPlan.from_mapping(payload)
+
+
 @pytest.mark.parametrize(
     ("mutator", "message"),
     (
