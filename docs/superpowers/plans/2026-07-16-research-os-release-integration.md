@@ -22,7 +22,11 @@
 - Canonical Python: `C:\Users\V\Desktop\TongTong\.venv\Scripts\python.exe`.
 - Canonical Rscript: `C:\Users\V\Desktop\TongTong\.tools\r-env\Scripts\Rscript.exe`.
 - Set `PYTHONPATH` to the active worktree's `src` directory and prepend all four R runtime directories before running pytest or the quality gate.
-- The execution conflict inventory must remain the audited 36 `changed in both` plus 2 `added in both` paths. If it changes, stop and amend this plan before resolving.
+- The semantic review inventory must remain the audited 36 `changed in both` plus 2
+  `added in both` paths. Git is expected to leave 35 of those paths unmerged and to
+  auto-merge exactly `pyproject.toml`, `src/modori/steps/reporting.py`, and
+  `src/modori/ui/run_validation.py`. All 38 remain ledger-gated. If either set changes,
+  stop and amend this plan before resolving.
 - The final P0 branch contains one exact two-parent merge commit plus a later evidence commit. P0 does not add live Research OS UI wiring.
 
 ### Pre-merge source-correction checkpoint (2026-07-17)
@@ -49,6 +53,13 @@ After that commit, regenerate the source manifest from the unchanged release pin
 the new Research OS pin. The audited 38 shared paths remain a hard stop condition; a
 changed shared-path count still requires a separate plan amendment. The original
 release worktree remains read-only throughout this correction.
+
+The first merge attempt with the corrected source pin was intentionally aborted after
+Git left 35 paths unmerged rather than all 38 shared paths. Inspection showed that
+`pyproject.toml`, `src/modori/steps/reporting.py`, and
+`src/modori/ui/run_validation.py` merged textually without conflict. This does not
+remove them from semantic review or the ledger; it corrects the earlier false
+assumption that every changed-in-both path must also produce an unmerged index entry.
 
 ---
 
@@ -952,27 +963,24 @@ if ($LASTEXITCODE -ne 1) {
 
 Expected: Git enters a merge state and reports conflicts. A zero exit would mean the audited topology changed; an exit other than 1 is an operational failure. Stop in either case.
 
-- [ ] **Step 2: Compare unresolved paths with the fixed 38-path contract**
+- [ ] **Step 2: Compare the 35 unresolved and 3 auto-merged paths with the fixed 38-path contract**
 
 ```powershell
-$ExpectedConflicts = @(
+$ExpectedUnresolved = @(
     'docs/security/file-operations-audit-2026-06-29.md',
     'docs/superpowers/specs/2026-07-11-experimental-recommendation-boundary-design.md',
-    'pyproject.toml',
     'scripts/package_engine_smoke.py',
     'scripts/package_environment.py',
     'scripts/package_public_data_smoke.py',
     'scripts/package_windows.py',
     'scripts/quality_gate.py',
     'src/modori/app.py',
-    'src/modori/steps/reporting.py',
     'src/modori/ui/contracts.py',
     'src/modori/ui/controller.py',
     'src/modori/ui/qml/components/DataGridView.qml',
     'src/modori/ui/qml/components/GuideRail.qml',
     'src/modori/ui/qml/components/PipelineRail.qml',
     'src/modori/ui/recommendation_controller.py',
-    'src/modori/ui/run_validation.py',
     'src/modori/ui/strings.py',
     'tests/test_app_engine_smoke.py',
     'tests/test_file_operation_audit.py',
@@ -995,16 +1003,36 @@ $ExpectedConflicts = @(
     'tests/ui/test_smoke_qml.py',
     'tests/ui/test_variable_metadata_editing.py'
 ) | Sort-Object
-$ActualConflicts = @(git diff --name-only --diff-filter=U) | Sort-Object
-$Difference = @(Compare-Object $ExpectedConflicts $ActualConflicts)
-if ($Difference.Count -ne 0) {
-    $Difference
+$ExpectedAutoMergedShared = @(
+    'pyproject.toml',
+    'src/modori/steps/reporting.py',
+    'src/modori/ui/run_validation.py'
+) | Sort-Object
+$ManifestPayload = Get-Content -Raw `
+    'docs\qa\research-os-release-integration-source-manifest.json' |
+    ConvertFrom-Json
+$SharedPaths = @($ManifestPayload.shared | ForEach-Object path) | Sort-Object
+$ActualUnresolved = @(git diff --name-only --diff-filter=U) | Sort-Object
+$ActualAutoMergedShared = @(
+    $SharedPaths | Where-Object { $_ -notin $ActualUnresolved }
+) | Sort-Object
+$UnresolvedDifference = @(
+    Compare-Object $ExpectedUnresolved $ActualUnresolved
+)
+$AutoMergedDifference = @(
+    Compare-Object $ExpectedAutoMergedShared $ActualAutoMergedShared
+)
+if ($UnresolvedDifference.Count -ne 0 -or $AutoMergedDifference.Count -ne 0) {
+    $UnresolvedDifference
+    $AutoMergedDifference
     git merge --abort
-    throw 'Unresolved path set differs from the approved design'
+    throw 'Shared-path merge disposition differs from the approved design'
 }
 ```
 
-Expected: no comparison output and exactly 38 unresolved paths.
+Expected: no comparison output, exactly 35 unresolved paths, exactly 3 auto-merged
+shared paths, and 38 total ledger-gated shared paths. Auto-merged does not mean
+verified; each of the three paths still requires semantic review and focused tests.
 
 - [ ] **Step 3: Generate the fail-closed initial ledger**
 
