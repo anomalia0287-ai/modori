@@ -158,7 +158,10 @@ class CommittedPassportRecord:
             return None
         request_digest = self.passport.request_binding_digest
         registry_digest = self.passport.clarification_registry_digest
-        assert request_digest is not None and registry_digest is not None
+        if request_digest is None or registry_digest is None:
+            raise PassportStateError(
+                "version 2 clarify passport is missing binding digests"
+            )
         return (
             self.passport.envelope.project_id,
             request_digest,

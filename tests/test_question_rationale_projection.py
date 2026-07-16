@@ -20,6 +20,10 @@ from modori.research_memory.question_rationale import (
 from modori.research_memory.passport_state import PassportHistory
 from modori.research_os.clarification import ClarificationRegistry
 from modori.research_os.counterfactual_planner import TerminalLoss
+from modori.research_os.passport_audit import (
+    PassportRegistryAudit,
+    PassportRegistryAuditStatus,
+)
 from tests.question_rationale_fixtures import (
     available_projection_fixture,
     rationale_case,
@@ -501,6 +505,34 @@ def test_projection_distinguishes_absent_registry_and_mismatched_registry() -> N
     assert failure.status is QuestionRationaleStatus.FAILURE
     assert failure.reason_code == "registry_digest_mismatch"
     assert failure.projection is None
+
+
+def test_projection_rejects_verified_audit_without_registry(monkeypatch) -> None:
+    case = rationale_case(
+        selected_loss=TerminalLoss((0, 0, 0, 0, 0), 0, 0, 1, 0, 1),
+        runner_up_loss=None,
+    )
+    module = import_module("modori.research_memory.question_rationale")
+    monkeypatch.setattr(
+        module,
+        "audit_passport_registry",
+        lambda _passport, _registry: PassportRegistryAudit(
+            PassportRegistryAuditStatus.VERIFIED,
+            "registry_verified",
+        ),
+    )
+
+    with pytest.raises(
+        QuestionRationaleError,
+        match="verified audit requires a registry",
+    ):
+        project_current_question_rationale(
+            case.history,
+            project_id=case.project_id,
+            request_binding_digest=case.request_binding_digest,
+            clarification_registry_digest=case.clarification_registry_digest,
+            registry=None,
+        )
 
 
 def test_projection_rejects_stale_or_no_longer_outstanding_source() -> None:

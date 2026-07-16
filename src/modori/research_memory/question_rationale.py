@@ -509,7 +509,10 @@ def project_current_question_rationale(
             audit.reason_code,
             None,
         )
-    assert registry is not None
+    if registry is None:
+        raise QuestionRationaleError(
+            "verified audit requires a registry preimage"
+        )
     payload = passport.clarify
     plan = payload.clarification_plan
     reference = payload.clarification_ref

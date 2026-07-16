@@ -36,6 +36,15 @@ def test_passport_commit_is_outstanding_only_after_exact_unchanged_snapshot() ->
     assert records[0].commit_event_id == passport.envelope.created_event_ref
 
 
+def test_v2_record_key_rejects_missing_binding_digest() -> None:
+    events, artifacts, _request, _passport = history_with_passport_commit()
+    record = PassportHistory.inspect(events, artifacts).records[0]
+    object.__setattr__(record.passport, "request_binding_digest", None)
+
+    with pytest.raises(PassportStateError, match="binding digests"):
+        _ = record.key
+
+
 @pytest.mark.parametrize(
     "forgery",
     (
