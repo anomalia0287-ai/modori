@@ -36,6 +36,7 @@ from modori.research_flow.fingerprint import (
 from modori.research_flow.handoff import (
     PassportHandoffError,
     map_passport_to_step,
+    validate_passport_bound_preparation,
 )
 from modori.research_flow.task_session import (
     ResearchTaskHandle,
@@ -85,6 +86,7 @@ __all__ = [
     "fingerprint_dataset",
     "map_passport_to_step",
     "preflight_mapped_step",
+    "validate_passport_bound_preparation",
 ]
 
 

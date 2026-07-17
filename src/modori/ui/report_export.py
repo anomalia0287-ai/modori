@@ -7,6 +7,10 @@ from typing import Callable
 
 from docx import Document
 
+from modori.steps.reporting import (
+    RESEARCH_OS_SELECTION_DISCLOSURE,
+    SELECTION_DISCLOSURE,
+)
 from modori.ui.contracts import CommandResult, ReportExportOptions
 
 
@@ -19,7 +23,23 @@ EXPERIMENTAL_DISCLOSURE_EN = (
     "selection. Numerical results were produced by the same calculation module used "
     "for direct execution."
 )
-_KNOWN_DISCLOSURES = {EXPERIMENTAL_DISCLOSURE_KO, EXPERIMENTAL_DISCLOSURE_EN}
+RESEARCH_OS_DISCLOSURE_KO = (
+    "선택 경로 안내: 로컬 Research OS의 실험적 후보를 검토하고 분석 설정을 "
+    "확정했습니다. 이 안내는 추천 타당성을 보증하지 않습니다."
+)
+RESEARCH_OS_DISCLOSURE_EN = (
+    "Selection path: A local Research OS experimental candidate was reviewed and "
+    "its analysis settings were confirmed. This notice does not guarantee "
+    "recommendation validity."
+)
+_KNOWN_DISCLOSURES = {
+    EXPERIMENTAL_DISCLOSURE_KO,
+    EXPERIMENTAL_DISCLOSURE_EN,
+    RESEARCH_OS_DISCLOSURE_KO,
+    RESEARCH_OS_DISCLOSURE_EN,
+    *SELECTION_DISCLOSURE.values(),
+    *RESEARCH_OS_SELECTION_DISCLOSURE.values(),
+}
 
 
 def _remove_paragraph(paragraph: object) -> None:
@@ -29,11 +49,15 @@ def _remove_paragraph(paragraph: object) -> None:
 
 def _apply_selection_disclosure(path: Path, options: ReportExportOptions) -> None:
     provenance = options.selection_provenance
-    if provenance not in {"manual", "experimental_candidate_assisted"}:
+    if provenance not in {
+        "manual",
+        "experimental_candidate_assisted",
+        "research_os_assisted",
+    }:
         raise RuntimeError("Unsupported selection provenance")
 
     if not zipfile.is_zipfile(path):
-        if provenance == "experimental_candidate_assisted":
+        if provenance != "manual":
             raise RuntimeError("Report cannot represent selection provenance")
         return
 
@@ -49,6 +73,14 @@ def _apply_selection_disclosure(path: Path, options: ReportExportOptions) -> Non
             EXPERIMENTAL_DISCLOSURE_EN
             if options.language == "en"
             else EXPERIMENTAL_DISCLOSURE_KO
+        )
+        document.add_paragraph(disclosure)
+        changed = True
+    elif provenance == "research_os_assisted":
+        disclosure = (
+            RESEARCH_OS_DISCLOSURE_EN
+            if options.language == "en"
+            else RESEARCH_OS_DISCLOSURE_KO
         )
         document.add_paragraph(disclosure)
         changed = True

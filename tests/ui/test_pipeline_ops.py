@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -7,13 +6,17 @@ import pandas as pd
 import pytest
 
 from modori.core import Dataset, Measure, Pipeline, Step, StepResult, Variable
+from modori.research_flow import PreflightDisposition, preflight_mapped_step
+from modori.research_os import P1TaskProfile
 from modori.results import ChartSpec, ReliabilityResult
 from modori.steps import MapValuesStep, VariableMetadataPatchStep
 from modori.steps.anova_factorial import FactorialAnovaStep
+from modori.steps.statistics import PairedComparisonStep
 from modori.ui.chart_assets import ChartAssetResult
 from modori.ui.contracts import DisplayResult, ReportExportOptions
 from modori.ui.pipeline_ops import PipelineOperations
 from modori.workflow import AnalysisPreferences, build_reference_slice_pipeline
+from tests.test_research_flow_preflight import _mapping, _valid_dataset
 
 
 class FakeVariable:
@@ -92,6 +95,61 @@ class MarkerAnalysisStep(Step):
 
     def writes(self) -> set[str]:
         return {str(self.params["result_key"])}
+
+
+class NoRunPipeline(Pipeline):
+    def recompute(self, dirty_from: str | None) -> None:
+        raise AssertionError(f"Research OS confirmation must not run: {dirty_from}")
+
+
+def _ready_research_preparation(profile: P1TaskProfile):
+    result = preflight_mapped_step(
+        _mapping(profile),
+        _valid_dataset(profile),
+        captured_pipeline_version=1,
+        current_pipeline_version=lambda: 1,
+    )
+    assert result.disposition is PreflightDisposition.PREPARE_READY
+    assert result.preparation is not None
+    return result.preparation
+
+
+def test_research_os_replacement_adds_exact_paired_step_without_report_or_run() -> None:
+    preparation = _ready_research_preparation(P1TaskProfile.PAIRED_TWO_TIME_MEAN_CHANGE)
+    pipeline = NoRunPipeline(_valid_dataset(P1TaskProfile.PAIRED_TWO_TIME_MEAN_CHANGE))
+    committed: list[str] = []
+
+    result = PipelineOperations(pipeline).replace_research_os_analysis_step(
+        preparation,
+        commit_pipeline_change=lambda value: (
+            committed.append(value.preparation_digest) or 2
+        ),
+    )
+
+    assert result == ("paired_comparison", 2)
+    assert committed == [preparation.preparation_digest]
+    assert len(pipeline.steps) == 1
+    assert isinstance(pipeline.steps[0], PairedComparisonStep)
+    assert pipeline.steps[0].params == {
+        "schema_version": 1,
+        "before": "before",
+        "after": "after",
+        "routing_policy": {"preset": "classic"},
+    }
+    assert pipeline.analysis_objects == {}
+
+
+def test_research_os_replacement_requires_atomic_host_commit() -> None:
+    preparation = _ready_research_preparation(P1TaskProfile.LINEAR_CO_MOVEMENT)
+    pipeline = NoRunPipeline(_valid_dataset(P1TaskProfile.LINEAR_CO_MOVEMENT))
+
+    with pytest.raises(TypeError, match="commit_pipeline_change"):
+        PipelineOperations(pipeline).replace_research_os_analysis_step(  # type: ignore[call-arg]
+            preparation
+        )
+
+    assert pipeline.steps == []
+    assert pipeline.analysis_objects == {}
 
 
 def _pipeline_with_deferred_analysis(
@@ -270,7 +328,9 @@ def test_pipeline_operations_inserts_metadata_step_after_origin() -> None:
 def test_metadata_insert_recomputes_data_prep_without_running_analysis_or_report(
     tmp_path: Path,
 ) -> None:
-    pipeline, analysis_marker, report_marker = _pipeline_with_deferred_analysis(tmp_path)
+    pipeline, analysis_marker, report_marker = _pipeline_with_deferred_analysis(
+        tmp_path
+    )
     step = VariableMetadataPatchStep(
         id="metadata:score",
         title="Edit score metadata",
@@ -327,13 +387,17 @@ def test_pipeline_operations_inserts_transform_after_existing_recode_steps() -> 
 
     PipelineOperations(pipeline).insert_or_replace_transform_step(step)
 
-    assert pipeline.insertions == [("transform:map:region", step, "transform:map:gender")]
+    assert pipeline.insertions == [
+        ("transform:map:region", step, "transform:map:gender")
+    ]
 
 
 def test_transform_insert_recomputes_data_prep_without_running_analysis_or_report(
     tmp_path: Path,
 ) -> None:
-    pipeline, analysis_marker, report_marker = _pipeline_with_deferred_analysis(tmp_path)
+    pipeline, analysis_marker, report_marker = _pipeline_with_deferred_analysis(
+        tmp_path
+    )
     step = MapValuesStep(
         id="transform:map:group",
         title="Map group values",
@@ -435,7 +499,9 @@ def test_replace_managed_analysis_steps_refreshes_dataset_before_worker_recomput
     )
 
 
-def test_pipeline_operations_returns_display_results_by_known_analysis_kind(monkeypatch) -> None:
+def test_pipeline_operations_returns_display_results_by_known_analysis_kind(
+    monkeypatch,
+) -> None:
     pipeline = FakePipeline()
     pipeline.analysis_objects = {
         "reliability:scale": object(),
@@ -663,8 +729,9 @@ def test_pipeline_operations_factorial_result_key_is_public_step_id() -> None:
     assert pipeline.analysis_objects["anova_factorial"].analysis_key == (
         "anova_factorial"
     )
-    assert pipeline.analysis_objects["analysis:anova_factorial"] is (
-        pipeline.analysis_objects["anova_factorial"]
+    assert (
+        pipeline.analysis_objects["analysis:anova_factorial"]
+        is (pipeline.analysis_objects["anova_factorial"])
     )
 
 
@@ -724,7 +791,9 @@ def test_pipeline_operations_export_report_recomputes_missing_report(tmp_path) -
     assert pipeline.recomputed is True
 
 
-def test_pipeline_operations_export_report_applies_dialog_options_to_report_step(tmp_path) -> None:
+def test_pipeline_operations_export_report_applies_dialog_options_to_report_step(
+    tmp_path,
+) -> None:
     output_path = tmp_path / "report.docx"
     output_path.write_bytes(b"docx")
 
@@ -784,7 +853,9 @@ def test_pipeline_operations_export_report_applies_dialog_options_to_report_step
     assert "selection_provenance" not in pipeline.edits[-1][1]
 
 
-def test_pipeline_operations_export_report_filters_all_analysis_families(tmp_path) -> None:
+def test_pipeline_operations_export_report_filters_all_analysis_families(
+    tmp_path,
+) -> None:
     output_path = tmp_path / "report.docx"
     output_path.write_bytes(b"docx")
 
@@ -822,7 +893,10 @@ def test_pipeline_operations_export_report_filters_all_analysis_families(tmp_pat
             },
         )
     )
-    pipeline.analysis_objects = {"report": Report(), **{key: object() for key in include_keys}}
+    pipeline.analysis_objects = {
+        "report": Report(),
+        **{key: object() for key in include_keys},
+    }
 
     PipelineOperations(pipeline).export_report(
         ReportExportOptions(
@@ -858,7 +932,9 @@ def test_factorial_report_inclusion_follows_group_model_toggle() -> None:
     )
 
 
-def test_pipeline_operations_report_export_options_can_be_toggled_back_on(tmp_path) -> None:
+def test_pipeline_operations_report_export_options_can_be_toggled_back_on(
+    tmp_path,
+) -> None:
     output_path = tmp_path / "report.docx"
     output_path.write_bytes(b"docx")
 

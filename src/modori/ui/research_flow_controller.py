@@ -27,6 +27,8 @@ from modori.research_flow import (
     LiveResearchFlowConflictError,
     LiveResearchFlowIntegrityError,
     LiveResearchFlowUnavailableError,
+    PassportBoundPreparation,
+    PreflightDisposition,
     ResearchFlowState,
     ResearchTaskSessionStore,
     SourceSchemaDescriptor,
@@ -60,6 +62,10 @@ from modori.ui.research_flow_presenter import (
     present_static_boundary,
     present_transient_state,
 )
+from modori.ui.research_preparation_editor import (
+    PreparationReview,
+    ResearchPreparationEditor,
+)
 from modori.ui.worker import EngineJobResult
 
 
@@ -77,6 +83,8 @@ class ResearchFlowStaleError(RuntimeError):
 
 class _ResearchFlowRuntime(Protocol):
     def note_pipeline_version(self, pipeline_version: int) -> None: ...
+
+    def current_dataset_fingerprint(self) -> str | None: ...
 
     def start(self, **kwargs: object) -> "ResearchFlowViews": ...
 
@@ -233,12 +241,24 @@ class ResearchFlowViews:
 
     guided: ResearchFlowView
     standard: ResearchFlowView
+    preparation: PassportBoundPreparation | None = None
 
     def __post_init__(self) -> None:
         if self.guided.mode is not ControllerMode.GUIDED:
             raise ResearchFlowControllerError("guided view must use guided mode")
         if self.standard.mode is not ControllerMode.STANDARD:
             raise ResearchFlowControllerError("standard view must use standard mode")
+        if self.preparation is not None:
+            if not isinstance(self.preparation, PassportBoundPreparation):
+                raise ResearchFlowControllerError("preparation must be passport-bound")
+            self.preparation.__post_init__()
+            if (
+                self.preparation.preflight_disposition
+                is not PreflightDisposition.PREPARE_READY
+            ):
+                raise ResearchFlowControllerError(
+                    "only a ready preparation may enter the controller"
+                )
         comparable = (
             "state",
             "language",
@@ -473,6 +493,10 @@ class ResearchFlowRuntime:
                 if key == (pipeline_version, FINGERPRINT_CONTRACT_ID)
             }
 
+    def current_dataset_fingerprint(self) -> str | None:
+        identity = self._identity
+        return None if identity is None else identity.dataset_fingerprint
+
     def _identity_for(
         self,
         snapshot: ResearchFlowPipelineSnapshot,
@@ -598,6 +622,12 @@ class ResearchFlowRuntime:
                 language=self._language,
                 preflight=preflight,
                 variable_labels=snapshot.variable_labels,
+            ),
+            preparation=(
+                preflight.preparation
+                if preflight is not None
+                and preflight.disposition is PreflightDisposition.PREPARE_READY
+                else None
             ),
         )
 
@@ -1045,9 +1075,17 @@ class ResearchFlowRuntime:
             )
             if current.standard.state is not ResearchFlowState.CANDIDATE_READY:
                 return current
-            return _transient_views(
-                ResearchFlowState.PREPARE_REVIEW,
-                language=self._language,
+            if current.preparation is None:
+                raise ResearchFlowControllerError(
+                    "ready candidate has no sealed preparation"
+                )
+            review = _transient_views(
+                ResearchFlowState.PREPARE_REVIEW, language=self._language
+            )
+            return ResearchFlowViews(
+                guided=review.guided,
+                standard=review.standard,
+                preparation=current.preparation,
             )
         except (
             FingerprintCancelled,
@@ -1071,11 +1109,7 @@ def _local_reference(prefix: str) -> str:
 
 
 def _utc_now() -> str:
-    return (
-        datetime.now(timezone.utc)
-        .isoformat(timespec="microseconds")
-        .replace("+00:00", "Z")
-    )
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
 
 
 class _LazyDependency:
@@ -1138,6 +1172,8 @@ class ResearchFlowController(QObject):
         mode_change_request: Callable[[str], bool],
         initial_mode: ControllerMode,
         language: Language,
+        preparation_editor: ResearchPreparationEditor | None = None,
+        confirmation_published: Callable[[], None] | None = None,
     ) -> None:
         super().__init__()
         self._runtime = runtime
@@ -1153,6 +1189,9 @@ class ResearchFlowController(QObject):
         self._cancel_event: Event | None = None
         self._previous_views = self._views
         self._selected_profile: P1TaskProfile | None = None
+        self._preparation_editor = preparation_editor
+        self._confirmation_published = confirmation_published or (lambda: None)
+        self._preparation_review: PreparationReview | None = None
         self.workerResultReady.connect(self._apply_worker_result)
 
     @property
@@ -1161,7 +1200,24 @@ class ResearchFlowController(QObject):
 
     @Property("QVariantMap", notify=stateChanged)
     def stateModel(self) -> dict[str, object]:
-        return _view_model(self.current_view)
+        model = _view_model(self.current_view)
+        review = self._preparation_review
+        if review is not None and self.current_view.state in {
+            ResearchFlowState.PREPARE_REVIEW,
+            ResearchFlowState.CONFIRMED,
+        }:
+            preparation = review.preparation
+            model["preparationReview"] = {
+                "stepType": preparation.step_type,
+                "visiblePreparationDigest": preparation.preparation_digest[:12],
+                "experimental": True,
+                "automaticRun": False,
+                "settingsRows": [
+                    {"label": label, "value": value}
+                    for label, value in review.settings_rows
+                ],
+            }
+        return model
 
     @Property(bool, notify=stateChanged)
     def busy(self) -> bool:
@@ -1399,6 +1455,8 @@ class ResearchFlowController(QObject):
 
     @Slot(result=bool)
     def retract(self) -> bool:
+        if self.current_view.state is ResearchFlowState.PREPARE_REVIEW:
+            self._discard_pending_confirmation()
         if self.current_view.state not in {
             ResearchFlowState.CLARIFY_READY,
             ResearchFlowState.CANDIDATE_READY,
@@ -1443,6 +1501,49 @@ class ResearchFlowController(QObject):
         )
 
     @Slot(result=bool)
+    def confirm(self) -> bool:
+        review = self._preparation_review
+        if (
+            self._busy
+            or self.current_view.state is not ResearchFlowState.PREPARE_REVIEW
+            or review is None
+            or self._preparation_editor is None
+        ):
+            return False
+        result = self._preparation_editor.confirm(
+            review,
+            pipeline_version=self._pipeline_version_provider(),
+        )
+        if not result.ok:
+            self._preparation_review = None
+            state = (
+                ResearchFlowState.REPLAN_REQUIRED
+                if result.error_code
+                in {
+                    "research_preparation_stale",
+                    "research_preparation_blocked",
+                }
+                else ResearchFlowState.FAILURE
+            )
+            self._views = _transient_views(state, language=self._language)
+            self.stateChanged.emit()
+            return False
+        self._active_pipeline_version = result.pipeline_version
+        self._runtime.note_pipeline_version(result.pipeline_version)
+        confirmed = _transient_views(
+            ResearchFlowState.CONFIRMED,
+            language=self._language,
+        )
+        self._views = ResearchFlowViews(
+            guided=confirmed.guided,
+            standard=confirmed.standard,
+            preparation=review.preparation,
+        )
+        self._confirmation_published()
+        self.stateChanged.emit()
+        return True
+
+    @Slot(result=bool)
     def cancel(self) -> bool:
         if not self._busy or self._cancel_event is None:
             return False
@@ -1478,6 +1579,7 @@ class ResearchFlowController(QObject):
         if not self._mode_change_request(requested.value):
             return False
         if self._mode is not requested:
+            self._discard_pending_confirmation()
             self._mode = requested
             self.stateChanged.emit()
         return True
@@ -1489,8 +1591,19 @@ class ResearchFlowController(QObject):
             return
         if adopted is self._mode:
             return
+        self._discard_pending_confirmation()
         self._mode = adopted
         self.stateChanged.emit()
+
+    def _discard_pending_confirmation(self) -> None:
+        if (
+            self._preparation_review is None
+            or self.current_view.state is not ResearchFlowState.PREPARE_REVIEW
+        ):
+            return
+        if self._previous_views.standard.state is ResearchFlowState.CANDIDATE_READY:
+            self._views = self._previous_views
+        self._preparation_review = None
 
     @Slot()
     def syncPipelineVersion(self) -> None:
@@ -1504,6 +1617,7 @@ class ResearchFlowController(QObject):
         self._active_pipeline_version = version
         self._runtime.note_pipeline_version(version)
         self._busy = False
+        self._preparation_review = None
         if was_idle:
             return
         self._views = _transient_views(
@@ -1523,7 +1637,31 @@ class ResearchFlowController(QObject):
         self._busy = False
         self._cancel_event = None
         if result.ok and isinstance(result.payload, ResearchFlowViews):
-            self._views = result.payload
+            payload = result.payload
+            if payload.standard.state is ResearchFlowState.PREPARE_REVIEW:
+                if self._preparation_editor is None or payload.preparation is None:
+                    self._views = _transient_views(
+                        ResearchFlowState.FAILURE,
+                        language=self._language,
+                    )
+                    self._preparation_review = None
+                else:
+                    try:
+                        self._preparation_review = self._preparation_editor.review(
+                            payload.preparation,
+                            pipeline_version=result.pipeline_version,
+                        )
+                        self._views = payload
+                    except (TypeError, ValueError):
+                        self._views = _transient_views(
+                            ResearchFlowState.FAILURE,
+                            language=self._language,
+                        )
+                        self._preparation_review = None
+            else:
+                self._views = payload
+                if payload.standard.state is not ResearchFlowState.CANDIDATE_READY:
+                    self._preparation_review = None
         else:
             self._views = _transient_views(
                 ResearchFlowState.FAILURE,

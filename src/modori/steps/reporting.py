@@ -171,7 +171,9 @@ def _reliability_prose(result: ReliabilityResult, language: str = "ko") -> str:
             f"The {result.scale_name} scale showed {_alpha_qualifier_en(result.cronbach_alpha)} internal consistency "
             f"(Cronbach's α = {alpha}, McDonald's ω = {omega})."
         )
-    scale_name = "선택한 문항" if result.scale_name == "selected_scale" else result.scale_name
+    scale_name = (
+        "선택한 문항" if result.scale_name == "selected_scale" else result.scale_name
+    )
     return (
         f"{scale_name} 척도는 {_alpha_qualifier_ko(result.cronbach_alpha)} 내적 일관성을 보였다"
         f"(Cronbach's α = {alpha}, McDonald's ω = {omega})."
@@ -851,7 +853,9 @@ def _factorial_chart_values(value: object, label: str) -> list[float]:
     values: list[float] = []
     for item in raw:
         if isinstance(item, bool):
-            raise ValueError(f"factorial_interaction {label} must be finite numeric data")
+            raise ValueError(
+                f"factorial_interaction {label} must be finite numeric data"
+            )
         try:
             numeric = float(item)
         except (TypeError, ValueError) as exc:
@@ -859,7 +863,9 @@ def _factorial_chart_values(value: object, label: str) -> list[float]:
                 f"factorial_interaction {label} must be finite numeric data"
             ) from exc
         if not math.isfinite(numeric):
-            raise ValueError(f"factorial_interaction {label} must be finite numeric data")
+            raise ValueError(
+                f"factorial_interaction {label} must be finite numeric data"
+            )
         values.append(numeric)
     return values
 
@@ -910,9 +916,7 @@ def _render_factorial_interaction(spec: ChartSpec, output_path: str | Path) -> N
         means = _factorial_chart_values(item.get("means"), "means")
         lower = _factorial_chart_values(item.get("ci_low"), "ci_low")
         upper = _factorial_chart_values(item.get("ci_high"), "ci_high")
-        if not (
-            len(means) == len(lower) == len(upper) == expected_length
-        ):
+        if not (len(means) == len(lower) == len(upper) == expected_length):
             raise ValueError(
                 "factorial_interaction means and intervals must be aligned with factor A"
             )
@@ -1325,6 +1329,18 @@ SELECTION_DISCLOSURE = {
     ),
 }
 
+RESEARCH_OS_SELECTION_DISCLOSURE = {
+    "ko": (
+        "분석 방법 선택에 로컬 Research OS의 실험적 후보가 사용되었습니다. "
+        "이 기록은 설정의 출처를 표시할 뿐 추천 타당성을 보증하지 않습니다."
+    ),
+    "en": (
+        "A local Research OS experimental candidate was used to select this method. "
+        "This records the setting's origin; it does not guarantee recommendation "
+        "validity."
+    ),
+}
+
 
 @dataclass
 class ReportStep(Step):
@@ -1342,6 +1358,7 @@ class ReportStep(Step):
         if selection_origin not in {
             "manual",
             "experimental_candidate_assisted",
+            "research_os_assisted",
         }:
             raise ValueError("Unsupported selection origin")
 
@@ -1356,6 +1373,8 @@ class ReportStep(Step):
         prose: list[str] = []
         if selection_origin == "experimental_candidate_assisted":
             prose.append(SELECTION_DISCLOSURE[language])
+        elif selection_origin == "research_os_assisted":
+            prose.append(RESEARCH_OS_SELECTION_DISCLOSURE[language])
         tables: dict[str, list[dict[str, str]]] = {}
         figure_paths: dict[str, list[str]] = {}
         try:

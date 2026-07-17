@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
 import re
 from types import MappingProxyType
 
-from modori.research_flow.contracts import PassportStepMapping
+from modori.research_flow.contracts import (
+    PassportBoundPreparation,
+    PassportStepMapping,
+)
 from modori.research_memory.canonical import CanonicalizationError, canonical_bytes
 from modori.research_memory.ledger_contracts import (
     LedgerArtifact,
@@ -51,8 +55,7 @@ _EXPECTED_CLARIFICATION_REGISTRY_DIGEST = (
     "ed762a596485de8b678357619455de3519d13659c157208cf9a8e05b0414029e"
 )
 _SUMMARY_KEY = (
-    "descriptive_summary:unweighted_summary:summary:"
-    "independent_unweighted:roles-v1"
+    "descriptive_summary:unweighted_summary:summary:independent_unweighted:roles-v1"
 )
 _FREQUENCY_KEY = (
     "frequency_distribution:unweighted_frequency:frequency_distribution:"
@@ -207,9 +210,9 @@ def _validate_catalog_identity(passport: AnalysisPassport) -> None:
         raise PassportHandoffError(
             "current P1 catalogs drifted from the closed handoff oracle"
         )
-    if tuple(capability.identity.key for capability in method_space.capabilities) != tuple(
-        row.capability_key for row in _ROWS
-    ):
+    if tuple(
+        capability.identity.key for capability in method_space.capabilities
+    ) != tuple(row.capability_key for row in _ROWS):
         raise PassportHandoffError(
             "P1 Method Space no longer matches the closed handoff table"
         )
@@ -315,9 +318,7 @@ def _validate_semantics_and_roles(
         values[binding.role] = fact.value
 
     expected_study_roles = (StudyRole.CLUSTER, StudyRole.WEIGHT)
-    actual_study_roles = tuple(
-        binding.role for binding in request.study.design_roles
-    )
+    actual_study_roles = tuple(binding.role for binding in request.study.design_roles)
     if actual_study_roles != expected_study_roles:
         raise PassportHandoffError(
             "study roles do not exactly match the unweighted P1 boundary"
@@ -366,15 +367,11 @@ def _build_params(
             "focal predictor role",
         )
         if outcome == predictor:
-            raise PassportHandoffError(
-                "outcome and focal predictor must be distinct"
-            )
+            raise PassportHandoffError("outcome and focal predictor must be distinct")
         return {
             "schema_version": 1,
             "pairs": [[outcome, predictor]],
-            "method": (
-                "pearson" if row.capability_key == _PEARSON_KEY else "spearman"
-            ),
+            "method": ("pearson" if row.capability_key == _PEARSON_KEY else "spearman"),
             "missing_policy": "pairwise",
             "p_adjust": "none",
         }
@@ -446,6 +443,168 @@ def _validate_current_step_schema(
         ) from exc
 
 
+def _require_exact_param_keys(
+    params: dict[str, object],
+    expected: set[str],
+) -> None:
+    if set(params) != expected:
+        raise PassportHandoffError("params do not match the closed handoff oracle")
+
+
+def _require_variable(value: object) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise PassportHandoffError("params do not match the closed handoff oracle")
+    return value
+
+
+def _require_variables(value: object) -> tuple[str, ...]:
+    if not isinstance(value, list) or not value:
+        raise PassportHandoffError("params do not match the closed handoff oracle")
+    variables = tuple(_require_variable(item) for item in value)
+    if len(variables) != len(set(variables)):
+        raise PassportHandoffError("params do not match the closed handoff oracle")
+    return variables
+
+
+def _validate_closed_step_params(
+    row: _HandoffRow,
+    params: dict[str, object],
+) -> None:
+    """Validate the fixed parts of the sole six-row P1 handoff oracle."""
+
+    if (
+        params.get("schema_version") != 1
+        or type(params.get("schema_version")) is not int
+    ):
+        raise PassportHandoffError("params do not match the closed handoff oracle")
+    if row.capability_key == _SUMMARY_KEY:
+        _require_exact_param_keys(
+            params,
+            {
+                "schema_version",
+                "variables",
+                "group",
+                "include_missing_counts",
+                "language",
+            },
+        )
+        _require_variables(params["variables"])
+        valid = (
+            params["group"] is None
+            and params["include_missing_counts"] is True
+            and params["language"] in {"ko", "en"}
+        )
+    elif row.capability_key == _FREQUENCY_KEY:
+        _require_exact_param_keys(
+            params,
+            {"schema_version", "mode", "variables", "language"},
+        )
+        _require_variables(params["variables"])
+        valid = params["mode"] == "frequency" and params["language"] in {
+            "ko",
+            "en",
+        }
+    elif row.capability_key in {_PEARSON_KEY, _SPEARMAN_KEY}:
+        _require_exact_param_keys(
+            params,
+            {
+                "schema_version",
+                "pairs",
+                "method",
+                "missing_policy",
+                "p_adjust",
+            },
+        )
+        pairs = params["pairs"]
+        if (
+            not isinstance(pairs, list)
+            or len(pairs) != 1
+            or not isinstance(pairs[0], list)
+            or len(pairs[0]) != 2
+        ):
+            raise PassportHandoffError("params do not match the closed handoff oracle")
+        left = _require_variable(pairs[0][0])
+        right = _require_variable(pairs[0][1])
+        expected_method = (
+            "pearson" if row.capability_key == _PEARSON_KEY else "spearman"
+        )
+        valid = (
+            left != right
+            and params["method"] == expected_method
+            and params["missing_policy"] == "pairwise"
+            and params["p_adjust"] == "none"
+        )
+    elif row.capability_key == _WELCH_KEY:
+        _require_exact_param_keys(
+            params,
+            {"schema_version", "dv", "group", "routing_policy"},
+        )
+        outcome = _require_variable(params["dv"])
+        group = _require_variable(params["group"])
+        valid = outcome != group and params["routing_policy"] == {
+            "preset": "always_welch"
+        }
+    elif row.capability_key == _PAIRED_KEY:
+        _require_exact_param_keys(
+            params,
+            {"schema_version", "before", "after", "routing_policy"},
+        )
+        before = _require_variable(params["before"])
+        after = _require_variable(params["after"])
+        valid = before != after and params["routing_policy"] == {"preset": "classic"}
+    else:  # pragma: no cover - callers close over the six-row table.
+        valid = False
+    if not valid:
+        raise PassportHandoffError("params do not match the closed handoff oracle")
+
+
+def validate_passport_bound_preparation(
+    preparation: PassportBoundPreparation,
+) -> None:
+    """Recheck mapping continuity and the closed oracle before confirmation."""
+
+    if not isinstance(preparation, PassportBoundPreparation):
+        raise PassportHandoffError(
+            "preparation does not match the closed handoff oracle"
+        )
+    try:
+        preparation.__post_init__()
+        row = _ROWS_BY_KEY.get(preparation.capability_key)
+        if row is None or preparation.step_type != row.step_type:
+            raise PassportHandoffError(
+                "preparation does not match the closed handoff oracle"
+            )
+        expected_mapping_digest = PassportStepMapping.compute_digest(
+            passport_artifact_id=preparation.passport_artifact_id,
+            passport_digest=preparation.passport_digest,
+            capability_key=preparation.capability_key,
+            dataset_fingerprint=preparation.dataset_fingerprint,
+            step_type=preparation.step_type,
+            canonical_step_params=preparation.canonical_step_params,
+            experimental=preparation.experimental,
+            requires_explicit_configure_confirm_run=(
+                preparation.requires_explicit_configure_confirm_run
+            ),
+        )
+        if preparation.mapping_digest != expected_mapping_digest:
+            raise PassportHandoffError(
+                "preparation no longer matches the sealed handoff oracle"
+            )
+        params = json.loads(preparation.canonical_step_params.decode("utf-8"))
+        if not isinstance(params, dict):  # pragma: no cover - contract rejects it.
+            raise PassportHandoffError(
+                "preparation does not match the closed handoff oracle"
+            )
+        _validate_closed_step_params(row, params)
+        _validate_current_step_schema(row.step_type, params)
+    except PassportHandoffError:
+        raise
+    except (TypeError, ValueError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise PassportHandoffError(
+            "preparation does not match the closed handoff oracle"
+        ) from exc
+
+
 def map_passport_to_step(
     passport: AnalysisPassport,
     request: ResearchRequest,
@@ -478,21 +637,15 @@ def map_passport_to_step(
             "passport does not bind the current request"
         ) from exc
     if passport.action is not PrimaryAction.RECOMMEND_LOCAL:
-        raise PassportHandoffError(
-            "only a recommend-local passport can enter handoff"
-        )
+        raise PassportHandoffError("only a recommend-local passport can enter handoff")
     _validate_catalog_identity(passport)
     payload = passport.recommend_local
     if payload is None or len(payload.capability_keys) != 1:
-        raise PassportHandoffError(
-            "handoff requires exactly one local capability"
-        )
+        raise PassportHandoffError("handoff requires exactly one local capability")
     capability_key = payload.capability_keys[0]
     row = _ROWS_BY_KEY.get(capability_key)
     if row is None:
-        raise PassportHandoffError(
-            "capability is outside the exact six-row P1 handoff"
-        )
+        raise PassportHandoffError("capability is outside the exact six-row P1 handoff")
     if (
         payload.local_analysis_kinds != (row.local_analysis_kind,)
         or payload.claim_permissions != (row.claim_permission,)
@@ -505,6 +658,7 @@ def map_passport_to_step(
         )
     roles = _validate_semantics_and_roles(request, row)
     params = _build_params(row, request, roles)
+    _validate_closed_step_params(row, params)
     _validate_current_step_schema(row.step_type, params)
     try:
         params_bytes = canonical_bytes(params)
@@ -518,6 +672,4 @@ def map_passport_to_step(
             canonical_step_params=params_bytes,
         )
     except (CanonicalizationError, LedgerContractError, ValueError, TypeError) as exc:
-        raise PassportHandoffError(
-            "passport handoff could not be sealed"
-        ) from exc
+        raise PassportHandoffError("passport handoff could not be sealed") from exc

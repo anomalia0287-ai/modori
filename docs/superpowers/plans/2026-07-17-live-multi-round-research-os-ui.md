@@ -1012,6 +1012,7 @@ class PassportBoundPreparation:
     dataset_fingerprint: str
     step_type: str
     canonical_step_params: bytes
+    mapping_digest: str
     preflight_disposition: PreflightDisposition
     experimental: Literal[True]
     requires_explicit_configure_confirm_run: Literal[True]
@@ -1537,6 +1538,13 @@ git commit -m "feat: expose asynchronous Research OS flow"
 - Modify: `tests/ui/test_research_flow_controller.py`
 - Modify: `tests/ui/test_experimental_recommendation_flow.py`
 
+Implementation review also required a narrow correction to
+`research_flow/contracts.py`, `handoff.py`, and `preflight.py` so the preparation
+retains the verified source `mapping_digest`, plus the existing report contracts and
+tests so Research OS provenance remains distinct and is rendered exactly once. The
+preparation digest contract advances to in-memory schema version 2; no persisted or
+exported artifact requires migration.
+
 **Interfaces:**
 
 ```python
@@ -1563,14 +1571,14 @@ class ResearchPreparationEditor:
     ) -> CommandResult: ...
 ```
 
-- [ ] **Step 1: Write the no-mutation Prepare test**
+- [x] **Step 1: Write the no-mutation Prepare test**
 
 Selecting a Research OS candidate and invoking Prepare must only open a review model of
 the exact mapped settings. Assert unchanged steps, results, selection, pipeline version,
 and run tracker. The review contains the passport/preparation digest, experimental and
 no-auto-run boundary, exact roles/method/policy, and no editable method substitution.
 
-- [ ] **Step 2: Write exact Confirm tests for all six capabilities**
+- [x] **Step 2: Write exact Confirm tests for all six capabilities**
 
 Confirm adds exactly one mapped step using existing pipeline operations and increments
 the pipeline version once. Add the missing exact paired-comparison construction/result
@@ -1578,7 +1586,7 @@ binding in `pipeline_ops.py`; do not change the engine schema. Assert Pearson/Sp
 `always_welch`, `classic`, language, and before/after identity byte-for-byte. Record
 Research OS-assisted provenance separately from legacy recommendation provenance.
 
-- [ ] **Step 3: Write confirmation invalidation and separate-Run tests**
+- [x] **Step 3: Write confirmation invalidation and separate-Run tests**
 
 Mode change, role/method/param edit, fingerprint change, pipeline mutation, stale
 passport, retraction, or changed preparation digest invalidates pending confirmation.
@@ -1587,7 +1595,7 @@ existing later explicit Run command executes the configured step. A manual edit 
 Confirm remains a normal user-authored pipeline change and cannot retain the original
 passport-bound claim.
 
-- [ ] **Step 4: Run the tests and confirm failure**
+- [x] **Step 4: Run the tests and confirm failure**
 
 Run:
 
@@ -1598,14 +1606,14 @@ Run:
 Expected: FAIL because the exact Research OS editor and paired pipeline operation are
 absent.
 
-- [ ] **Step 5: Implement exact review and confirmation**
+- [x] **Step 5: Implement exact review and confirmation**
 
 Delegate pipeline construction to typed operations; never accept a QML-provided raw
 step mapping as authority. Store only the provenance identities needed to invalidate
 the review and render status. Preserve current direct/manual and legacy Prepare flows as
 separate types and commands.
 
-- [ ] **Step 6: Run preparation, pipeline, and statistics regression tests**
+- [x] **Step 6: Run preparation, pipeline, and statistics regression tests**
 
 Run:
 
@@ -1615,7 +1623,33 @@ Run:
 
 Expected: all pass; no test observes analysis execution during Prepare or Confirm.
 
-- [ ] **Step 7: Commit**
+Fail-first evidence included the absent editor and production wiring; a missing paired
+operation; four self-resealed method/routing/order mutants; a host-commit callback
+failure; review-time version/fingerprint/preflight drift; retraction; a missing atomic
+host-commit requirement; confirmed state reverting to a candidate on mode change; and
+duplicate Research OS disclosure paragraphs. The preparation-only digest initially
+could not distinguish a before/after swap after resealing. The corrected version-2
+preparation binds the source mapping digest, and the sole handoff oracle rechecks that
+continuity and the closed six-row parameter contract at review, confirmation, and the
+pipeline operation boundary.
+
+Final evidence on 2026-07-17, using the worktree-local pinned `.venv` and disabling the
+pytest cache provider:
+
+- Task 12 functional/statistical/report/architecture/security cohort: `210 passed`;
+- complete UI cohort: `680 passed`;
+- complete repository cohort: `3001 passed, 13 skipped`;
+- changed and new Python files: Ruff format and check passed; and
+- `git diff --check` and the complete direct-file-operation audit passed.
+
+An earlier whole-suite diagnostic used the system Python and correctly failed three
+PyInstaller and one NumPy version gate; those results were not treated as product
+failures or as final evidence. The same run exposed a real pre-existing omission of
+`research_memory/task_index.py` from the central file-operation audit. Its fixed
+`%LOCALAPPDATA%\Modori\research-task-index.sqlite3` parent-creation boundary is now
+listed and documented without weakening the audit set.
+
+- [x] **Step 7: Commit**
 
 ```powershell
 git add -- src/modori/ui/research_preparation_editor.py src/modori/ui/pipeline_ops.py src/modori/ui/session.py src/modori/ui/research_flow_controller.py tests/ui/test_research_preparation_editor.py tests/ui/test_pipeline_ops.py tests/ui/test_session.py tests/ui/test_research_flow_controller.py tests/ui/test_experimental_recommendation_flow.py

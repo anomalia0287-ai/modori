@@ -165,6 +165,39 @@ def test_assisted_report_discloses_selection_origin_once(
     assert [paragraph.text for paragraph in document.paragraphs].count(expected) == 1
 
 
+@pytest.mark.parametrize(
+    ("language", "expected"),
+    [
+        (
+            "ko",
+            "분석 방법 선택에 로컬 Research OS의 실험적 후보가 사용되었습니다. "
+            "이 기록은 설정의 출처를 표시할 뿐 추천 타당성을 보증하지 않습니다.",
+        ),
+        (
+            "en",
+            "A local Research OS experimental candidate was used to select this "
+            "method. This records the setting's origin; it does not guarantee "
+            "recommendation validity.",
+        ),
+    ],
+)
+def test_research_os_report_uses_distinct_nonvalidity_disclosure(
+    tmp_path: Path,
+    language: str,
+    expected: str,
+) -> None:
+    report = _report_for_selection_origin(
+        tmp_path,
+        selection_origin="research_os_assisted",
+        language=language,
+    )
+
+    assert report.prose[0] == expected
+    assert report.prose.count(expected) == 1
+    document = Document(report.docx_path)
+    assert [paragraph.text for paragraph in document.paragraphs].count(expected) == 1
+
+
 def test_selection_origin_does_not_change_analysis_tables(
     tmp_path: Path,
 ) -> None:
@@ -289,9 +322,7 @@ def test_report_step_exports_factorial_type_iii_table_plot_and_docx(
     assert isinstance(report, ReportResult)
     assert "동일 셀 가중 Type III" in report.prose[0]
     assert [row["section"] for row in report.tables["factorial"]][0] == "interaction"
-    assert "marginal_mean" in {
-        row["section"] for row in report.tables["factorial"]
-    }
+    assert "marginal_mean" in {row["section"] for row in report.tables["factorial"]}
     figure_paths = [Path(path) for path in report.figure_paths["factorial"]]
     assert sorted(path.suffix for path in figure_paths) == [".eps", ".png", ".svg"]
     assert all(path.stat().st_size > 0 for path in figure_paths)
@@ -299,8 +330,7 @@ def test_report_step_exports_factorial_type_iii_table_plot_and_docx(
     document = Document(report.docx_path)
     assert len(document.inline_shapes) == 1
     assert any(
-        "동일 셀 가중 Type III" in paragraph.text
-        for paragraph in document.paragraphs
+        "동일 셀 가중 Type III" in paragraph.text for paragraph in document.paragraphs
     )
     table_cells = [
         cell.text

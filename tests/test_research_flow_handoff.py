@@ -14,6 +14,7 @@ from modori.research_flow import (
     PreflightDisposition,
     ResearchFlowContractError,
     map_passport_to_step,
+    validate_passport_bound_preparation,
 )
 from modori.research_memory import LedgerArtifact, canonical_bytes, canonical_digest
 from modori.research_os import (
@@ -43,8 +44,7 @@ from tests.test_research_os_p1_intake import (
 
 
 SUMMARY_KEY = (
-    "descriptive_summary:unweighted_summary:summary:"
-    "independent_unweighted:roles-v1"
+    "descriptive_summary:unweighted_summary:summary:independent_unweighted:roles-v1"
 )
 FREQUENCY_KEY = (
     "frequency_distribution:unweighted_frequency:frequency_distribution:"
@@ -197,6 +197,8 @@ def _preparation_digest_payload(
 ) -> dict[str, object]:
     payload = _mapping_digest_payload(mapping)
     payload["schema_id"] = "modori.passport_bound_preparation"
+    payload["schema_version"] = 2
+    payload["mapping_digest"] = mapping.mapping_digest
     payload["preflight_disposition"] = disposition.value
     return payload
 
@@ -227,9 +229,9 @@ def test_all_six_passports_map_to_exact_canonical_current_step_params(
         "requires_explicit_configure_confirm_run",
         "mapping_digest",
     )
-    assert mapping.passport_artifact_id == LedgerArtifact.from_value(
-        passport
-    ).artifact_id
+    assert (
+        mapping.passport_artifact_id == LedgerArtifact.from_value(passport).artifact_id
+    )
     assert mapping.passport_digest == passport.digest()
     assert mapping.capability_key == expected_key
     assert mapping.dataset_fingerprint == request.current_dataset_fingerprint
@@ -237,9 +239,7 @@ def test_all_six_passports_map_to_exact_canonical_current_step_params(
     assert mapping.canonical_step_params == canonical_bytes(expected_params)
     assert mapping.experimental is True
     assert mapping.requires_explicit_configure_confirm_run is True
-    assert mapping.mapping_digest == canonical_digest(
-        _mapping_digest_payload(mapping)
-    )
+    assert mapping.mapping_digest == canonical_digest(_mapping_digest_payload(mapping))
 
     raw_params = json.loads(mapping.canonical_step_params.decode("utf-8"))
     migrated = step_class.migrate_params(raw_params)
@@ -263,6 +263,7 @@ def test_preparation_contract_is_separate_and_binds_preflight_disposition() -> N
         dataset_fingerprint=mapping.dataset_fingerprint,
         step_type=mapping.step_type,
         canonical_step_params=mapping.canonical_step_params,
+        mapping_digest=mapping.mapping_digest,
         preflight_disposition=disposition,
         experimental=True,
         requires_explicit_configure_confirm_run=True,
@@ -278,15 +279,66 @@ def test_preparation_contract_is_separate_and_binds_preflight_disposition() -> N
         "dataset_fingerprint",
         "step_type",
         "canonical_step_params",
+        "mapping_digest",
         "preflight_disposition",
         "experimental",
         "requires_explicit_configure_confirm_run",
         "preparation_digest",
     )
+    assert preparation.mapping_digest == mapping.mapping_digest
+    validate_passport_bound_preparation(preparation)
     with pytest.raises(ResearchFlowContractError):
         replace(preparation, preflight_disposition="ready")  # type: ignore[arg-type]
     with pytest.raises(ResearchFlowContractError):
         replace(preparation, preparation_digest="0" * 64)
+
+
+def test_preparation_oracle_rejects_params_resealed_without_source_mapping() -> None:
+    request, passport = _terminal(P1TaskProfile.PAIRED_TWO_TIME_MEAN_CHANGE)
+    mapping = map_passport_to_step(
+        passport,
+        request,
+        current_dataset_fingerprint=request.current_dataset_fingerprint,
+    )
+    disposition = PreflightDisposition.PREPARE_READY
+    preparation = PassportBoundPreparation(
+        passport_artifact_id=mapping.passport_artifact_id,
+        passport_digest=mapping.passport_digest,
+        capability_key=mapping.capability_key,
+        dataset_fingerprint=mapping.dataset_fingerprint,
+        step_type=mapping.step_type,
+        canonical_step_params=mapping.canonical_step_params,
+        mapping_digest=mapping.mapping_digest,
+        preflight_disposition=disposition,
+        experimental=True,
+        requires_explicit_configure_confirm_run=True,
+        preparation_digest=canonical_digest(
+            _preparation_digest_payload(mapping, disposition)
+        ),
+    )
+    params = json.loads(mapping.canonical_step_params.decode("utf-8"))
+    params["before"], params["after"] = params["after"], params["before"]
+    forged_params = canonical_bytes(params)
+    forged_digest = PassportBoundPreparation.compute_digest(
+        passport_artifact_id=preparation.passport_artifact_id,
+        passport_digest=preparation.passport_digest,
+        capability_key=preparation.capability_key,
+        dataset_fingerprint=preparation.dataset_fingerprint,
+        step_type=preparation.step_type,
+        canonical_step_params=forged_params,
+        mapping_digest=preparation.mapping_digest,
+        preflight_disposition=preparation.preflight_disposition,
+        experimental=True,
+        requires_explicit_configure_confirm_run=True,
+    )
+    forged = replace(
+        preparation,
+        canonical_step_params=forged_params,
+        preparation_digest=forged_digest,
+    )
+
+    with pytest.raises(PassportHandoffError, match="handoff oracle"):
+        validate_passport_bound_preparation(forged)
 
 
 @pytest.mark.parametrize(
@@ -309,6 +361,7 @@ def test_stale_or_failed_preflight_cannot_be_sealed_as_a_preparation(
         "dataset_fingerprint": mapping.dataset_fingerprint,
         "step_type": mapping.step_type,
         "canonical_step_params": mapping.canonical_step_params,
+        "mapping_digest": mapping.mapping_digest,
         "preflight_disposition": disposition,
         "experimental": True,
         "requires_explicit_configure_confirm_run": True,
@@ -525,7 +578,9 @@ def test_nearby_or_stale_passport_payloads_fail_without_fallback(change: str) ->
         )
 
 
-def test_changed_fingerprint_wrong_request_and_nonrecommend_passport_fail_closed() -> None:
+def test_changed_fingerprint_wrong_request_and_nonrecommend_passport_fail_closed() -> (
+    None
+):
     request, passport = _terminal(P1TaskProfile.NUMERIC_DISTRIBUTION)
     with pytest.raises(PassportHandoffError, match="fingerprint|stale"):
         map_passport_to_step(
@@ -534,9 +589,7 @@ def test_changed_fingerprint_wrong_request_and_nonrecommend_passport_fail_closed
             current_dataset_fingerprint="f" * 64,
         )
 
-    foreign_request, _foreign_passport = _terminal(
-        P1TaskProfile.CATEGORY_FREQUENCY
-    )
+    foreign_request, _foreign_passport = _terminal(P1TaskProfile.CATEGORY_FREQUENCY)
     with pytest.raises(PassportHandoffError, match="bind|current|request"):
         map_passport_to_step(
             passport,
@@ -545,10 +598,14 @@ def test_changed_fingerprint_wrong_request_and_nonrecommend_passport_fail_closed
         )
 
     initial = _request(P1TaskProfile.NUMERIC_DISTRIBUTION)
-    clarify = ResearchOsService().resolve_and_plan(
-        initial,
-        _passport_envelope(initial, 1),
-    ).passport
+    clarify = (
+        ResearchOsService()
+        .resolve_and_plan(
+            initial,
+            _passport_envelope(initial, 1),
+        )
+        .passport
+    )
     with pytest.raises(PassportHandoffError, match="recommend|action"):
         map_passport_to_step(
             clarify,

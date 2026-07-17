@@ -6,7 +6,11 @@ from typing import Any, Literal
 
 
 Language = Literal["ko", "en"]
-SelectionOrigin = Literal["manual", "experimental_candidate_assisted"]
+SelectionOrigin = Literal[
+    "manual",
+    "experimental_candidate_assisted",
+    "research_os_assisted",
+]
 ControllerModeValue = Literal["guided", "standard"]
 RunStatusValue = Literal["empty", "ready", "running", "error"]
 SelectionProvenance = SelectionOrigin
@@ -71,10 +75,15 @@ class ReportExportOptions:
 
     def __post_init__(self) -> None:
         origin: SelectionOrigin = (
-            "experimental_candidate_assisted"
-            if "experimental_candidate_assisted"
+            "research_os_assisted"
+            if "research_os_assisted"
             in {self.selection_provenance, self.selection_origin}
-            else "manual"
+            else (
+                "experimental_candidate_assisted"
+                if "experimental_candidate_assisted"
+                in {self.selection_provenance, self.selection_origin}
+                else "manual"
+            )
         )
         object.__setattr__(self, "selection_provenance", origin)
         object.__setattr__(self, "selection_origin", origin)

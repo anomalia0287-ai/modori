@@ -7,6 +7,7 @@ from typing import Any, Callable, Mapping
 from PySide6.QtCore import Property, QObject, Signal, Slot
 
 from modori.knowledge import Library
+from modori.research_flow import PassportBoundPreparation
 from modori.research_os import Language as ResearchLanguage
 from modori.ui.analysis_selection_controller import AnalysisSelectionControllerMixin
 from modori.ui.contracts import (
@@ -32,6 +33,7 @@ from modori.ui.recommendation_controller import (
     empty_recommendation_state,
 )
 from modori.ui.research_flow_controller import ResearchFlowController
+from modori.ui.research_preparation_editor import ResearchPreparationEditor
 from modori.ui.result_state import UiResultState
 from modori.ui.report_export_controller import ReportExportControllerMixin
 from modori.ui.run_tracker import UiRunTracker
@@ -100,6 +102,15 @@ def _worker_boundaries(
     runtime = owner._services.build_research_flow_runtime(
         pipeline_version_provider=lambda: owner.pipeline_version
     )
+    preparation_editor = ResearchPreparationEditor(
+        owner._services.pipeline_ops,
+        version_provider=lambda: owner.pipeline_version,
+        current_dataset_fingerprint=runtime.current_dataset_fingerprint,
+        commit_pipeline_change=lambda preparation: _commit_research_preparation(
+            owner,
+            preparation,
+        ),
+    )
     flow = ResearchFlowController(
         runtime=runtime,
         worker=bound_worker,
@@ -107,9 +118,30 @@ def _worker_boundaries(
         mode_change_request=lambda mode: owner.setMode(mode).ok,
         initial_mode=ControllerMode(owner._mode),
         language=ResearchLanguage.KO,
+        preparation_editor=preparation_editor,
+        confirmation_published=owner.stateChanged.emit,
     )
     owner.stateChanged.connect(flow.syncPipelineVersion)
     return bound_worker, flow
+
+
+def _commit_research_preparation(
+    owner: object,
+    preparation: PassportBoundPreparation,
+) -> int:
+    owner._pipeline_state.mark_step_changed(
+        owner._services.pipeline_ops,
+        fallback=owner.stepsModel,
+    )
+    owner.stepsModel = owner._pipeline_state.steps_model
+    owner._result_state.clear()
+    owner.resultsModel = owner._result_state.results_model
+    owner._session.mark_research_os_assisted(preparation.preparation_digest)
+    owner._last_error = ""
+    owner._last_message = (
+        "분석 설정을 확정했습니다. 실행 버튼을 눌러야 계산이 시작됩니다."
+    )
+    return owner.pipeline_version
 
 
 class UiController(

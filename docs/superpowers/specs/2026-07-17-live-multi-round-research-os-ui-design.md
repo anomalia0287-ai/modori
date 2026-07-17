@@ -568,11 +568,21 @@ capability_key
 dataset_fingerprint
 step_type
 canonical_step_params
+mapping_digest
 preflight_disposition
 experimental = true
 requires_explicit_configure_confirm_run = true
 preparation_digest
 ```
+
+The preparation digest contract is schema version 2. `mapping_digest` is copied from
+the verified `PassportStepMapping`, and `preparation_digest` binds that source digest
+along with the preflight disposition and every visible setting. Before review and
+again before confirmation, the sole handoff oracle recomputes the mapping digest from
+the preparation fields and rejects any mismatch. This continuity is required to catch
+a method, routing-policy, role, or before/after mutation even when later code recomputes
+a self-consistent preparation digest. The preparation remains an in-memory application
+contract; it is not persisted, exported, or accepted as authority from QML.
 
 It is separate from the legacy `RecommendationPreparation` type. Reusing the legacy
 type would erase the passport binding and recreate the false-provenance problem.
@@ -604,7 +614,15 @@ CASUAL presents research meaning, the next action, and a concise closed explanat
 PRO additionally exposes method identity, role mapping, claim boundary, passport digest
 abbreviation, and evidence details. Switching modes preserves the task and passport but
 invalidates any pending manual confirmation, as required by the existing experimental
-boundary.
+boundary. A mode switch after Confirm preserves the confirmed state and its read-only
+review; it cannot revive the candidate or authorize a second confirmation.
+
+Research OS-assisted report provenance is distinct from both manual and legacy
+experimental-candidate provenance. `ReportStep` carries a fail-closed calculation-layer
+disclosure, while final DOCX publication replaces any known calculation-layer or prior
+publication disclosure with exactly one locale-matched Research OS selection-path
+notice. Direct `ReportStep` use therefore remains labeled, and normal product export
+does not duplicate the notice.
 
 The collapsed legacy quick-candidate area remains visually and semantically separate.
 Its cards keep their existing experimental badge, review status, Prepare action, and

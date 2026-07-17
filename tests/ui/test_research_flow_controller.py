@@ -10,7 +10,7 @@ from threading import Event
 import pandas as pd
 import pytest
 
-from modori.core import Dataset, Measure, StepResult, Variable
+from modori.core import Dataset, Measure, Pipeline, StepResult, Variable
 from modori.research_flow import (
     FINGERPRINT_CONTRACT_ID,
     DatasetIdentity,
@@ -20,9 +20,12 @@ from modori.research_flow import (
     SourceSchemaDescriptor,
     TaskSessionIntegrityError,
     TaskSessionUnavailableError,
+    preflight_mapped_step,
 )
 from modori.research_os import Language
 from modori.ui.contracts import ControllerMode
+from modori.ui.controller import UiController
+from modori.ui.controller_services import UiControllerServices
 from modori.ui.research_flow_controller import (
     ResearchFlowController,
     ResearchFlowControllerError,
@@ -31,6 +34,8 @@ from modori.ui.research_flow_controller import (
     ResearchFlowRuntime,
     ResearchFlowViews,
 )
+from modori.ui.pipeline_ops import PipelineOperations
+from modori.ui.research_preparation_editor import ResearchPreparationEditor
 from modori.ui.research_flow_presenter import (
     ResearchUiCommand,
     present_transient_state,
@@ -42,6 +47,7 @@ from tests.ui.test_research_flow_presenter import (
     _preflight,
     _terminal_record,
 )
+from tests.test_research_flow_preflight import _mapping, _valid_dataset
 from modori.research_os import P1RoleBindings, P1TaskProfile
 from modori.ui.research_flow_presenter import present_durable_record
 
@@ -83,6 +89,17 @@ def _candidate_views() -> ResearchFlowViews:
     )
 
 
+def _ready_preparation(profile: P1TaskProfile, *, version: int = 1):
+    result = preflight_mapped_step(
+        _mapping(profile),
+        _valid_dataset(profile),
+        captured_pipeline_version=version,
+        current_pipeline_version=lambda: version,
+    )
+    assert result.preparation is not None
+    return result.preparation
+
+
 def _clarify_views() -> ResearchFlowViews:
     record = _clarify_record()
     return ResearchFlowViews(
@@ -102,13 +119,22 @@ def _clarify_views() -> ResearchFlowViews:
 
 
 class FakeRuntime:
-    def __init__(self, start_result: ResearchFlowViews) -> None:
+    def __init__(
+        self,
+        start_result: ResearchFlowViews,
+        *,
+        dataset_fingerprint: str | None = None,
+    ) -> None:
         self.start_result = start_result
+        self.dataset_fingerprint = dataset_fingerprint
         self.calls: list[tuple[str, dict[str, object]]] = []
         self.noted_versions: list[int] = []
 
     def note_pipeline_version(self, pipeline_version: int) -> None:
         self.noted_versions.append(pipeline_version)
+
+    def current_dataset_fingerprint(self) -> str | None:
+        return self.dataset_fingerprint
 
     def start(self, **kwargs: object) -> ResearchFlowViews:
         self.calls.append(("start", kwargs))
@@ -888,6 +914,8 @@ def test_real_runtime_commits_then_recovers_multi_round_candidate(
 
     prepared = runtime.prepare(pipeline_version=1, cancel_event=Event())
     assert prepared.standard.state is ResearchFlowState.PREPARE_REVIEW
+    assert prepared.preparation is not None
+    assert prepared.preparation.preflight_disposition.value == "prepare_ready"
 
     retracted = runtime.retract(pipeline_version=1, cancel_event=Event())
     assert retracted.standard.state is ResearchFlowState.RETRACTED
@@ -932,6 +960,230 @@ def test_controller_queues_only_typed_durable_commands() -> None:
         assert len(worker.submissions) == 1
         worker.execute()
         assert runtime.calls[0][0] == expected_call
+
+
+def test_prepare_reviews_exact_settings_and_confirm_never_submits_run() -> None:
+    profile = P1TaskProfile.LINEAR_CO_MOVEMENT
+    preparation = _ready_preparation(profile)
+    dataset = _valid_dataset(profile)
+    pipeline = Pipeline(dataset)
+    version = [1]
+    commits: list[str] = []
+    publications: list[str] = []
+
+    def commit_pipeline_change(value) -> int:
+        commits.append(value.preparation_digest)
+        version[0] += 1
+        return version[0]
+
+    editor = ResearchPreparationEditor(
+        PipelineOperations(pipeline),
+        version_provider=lambda: version[0],
+        current_dataset_fingerprint=lambda: preparation.dataset_fingerprint,
+        commit_pipeline_change=commit_pipeline_change,
+    )
+    review_base = _transient_views(ResearchFlowState.PREPARE_REVIEW)
+    review_views = ResearchFlowViews(
+        guided=review_base.guided,
+        standard=review_base.standard,
+        preparation=preparation,
+    )
+    candidate_base = _candidate_views()
+    candidate_views = ResearchFlowViews(
+        guided=candidate_base.guided,
+        standard=candidate_base.standard,
+        preparation=preparation,
+    )
+    runtime = FakeRuntime(review_views)
+    worker = ControllableWorker()
+    controller = ResearchFlowController(
+        runtime=runtime,
+        worker=worker,
+        pipeline_version_provider=lambda: version[0],
+        mode_change_request=lambda _mode: True,
+        initial_mode=ControllerMode.STANDARD,
+        language=Language.KO,
+        preparation_editor=editor,
+        confirmation_published=lambda: publications.append("published"),
+    )
+    controller._views = candidate_views
+
+    assert controller.prepare() is True
+    assert len(worker.submissions) == 1
+    worker.finish(worker.execute())
+
+    assert controller.current_view.state is ResearchFlowState.PREPARE_REVIEW
+    assert pipeline.steps == []
+    review_model = controller.stateModel["preparationReview"]
+    assert review_model["stepType"] == "stats.correlation"
+    assert (
+        review_model["visiblePreparationDigest"]
+        == (preparation.preparation_digest[:12])
+    )
+    assert review_model["automaticRun"] is False
+
+    assert controller.confirm() is True
+
+    assert len(worker.submissions) == 1
+    assert len(pipeline.steps) == 1
+    assert pipeline.analysis_objects == {}
+    assert version == [2]
+    assert commits == [preparation.preparation_digest]
+    assert publications == ["published"]
+    assert controller.current_view.state is ResearchFlowState.CONFIRMED
+
+    controller.adoptMode("guided")
+
+    assert controller.current_view.state is ResearchFlowState.CONFIRMED
+    assert controller.stateModel["preparationReview"] == review_model
+    assert len(pipeline.steps) == 1
+    assert controller.confirm() is False
+
+
+def test_mode_change_discards_pending_confirmation_but_keeps_candidate() -> None:
+    preparation = _ready_preparation(P1TaskProfile.LINEAR_CO_MOVEMENT)
+    candidate_base = _candidate_views()
+    review_base = _transient_views(ResearchFlowState.PREPARE_REVIEW)
+    candidate = ResearchFlowViews(
+        guided=candidate_base.guided,
+        standard=candidate_base.standard,
+        preparation=preparation,
+    )
+    review = ResearchFlowViews(
+        guided=review_base.guided,
+        standard=review_base.standard,
+        preparation=preparation,
+    )
+    runtime = FakeRuntime(review)
+    worker = ControllableWorker()
+    version = [1]
+    editor = ResearchPreparationEditor(
+        PipelineOperations(Pipeline(_valid_dataset(P1TaskProfile.LINEAR_CO_MOVEMENT))),
+        version_provider=lambda: version[0],
+        current_dataset_fingerprint=lambda: preparation.dataset_fingerprint,
+        commit_pipeline_change=lambda _preparation: 2,
+    )
+    controller = ResearchFlowController(
+        runtime=runtime,
+        worker=worker,
+        pipeline_version_provider=lambda: version[0],
+        mode_change_request=lambda _mode: True,
+        initial_mode=ControllerMode.STANDARD,
+        language=Language.KO,
+        preparation_editor=editor,
+    )
+    controller._views = candidate
+    assert controller.prepare() is True
+    worker.finish(worker.execute())
+    assert controller.current_view.state is ResearchFlowState.PREPARE_REVIEW
+
+    controller.adoptMode("guided")
+
+    assert controller.current_view.state is ResearchFlowState.CANDIDATE_READY
+    assert controller.confirm() is False
+
+
+def test_retract_from_prepare_review_discards_uncommitted_confirmation() -> None:
+    preparation = _ready_preparation(P1TaskProfile.LINEAR_CO_MOVEMENT)
+    candidate_base = _candidate_views()
+    review_base = _transient_views(ResearchFlowState.PREPARE_REVIEW)
+    candidate = ResearchFlowViews(
+        guided=candidate_base.guided,
+        standard=candidate_base.standard,
+        preparation=preparation,
+    )
+    review = ResearchFlowViews(
+        guided=review_base.guided,
+        standard=review_base.standard,
+        preparation=preparation,
+    )
+    runtime = FakeRuntime(review)
+    worker = ControllableWorker()
+    version = [1]
+    pipeline = Pipeline(_valid_dataset(P1TaskProfile.LINEAR_CO_MOVEMENT))
+    editor = ResearchPreparationEditor(
+        PipelineOperations(pipeline),
+        version_provider=lambda: version[0],
+        current_dataset_fingerprint=lambda: preparation.dataset_fingerprint,
+        commit_pipeline_change=lambda _preparation: 2,
+    )
+    controller = ResearchFlowController(
+        runtime=runtime,
+        worker=worker,
+        pipeline_version_provider=lambda: version[0],
+        mode_change_request=lambda _mode: True,
+        initial_mode=ControllerMode.STANDARD,
+        language=Language.KO,
+        preparation_editor=editor,
+    )
+    controller._views = candidate
+    assert controller.prepare() is True
+    worker.finish(worker.execute())
+    assert controller.current_view.state is ResearchFlowState.PREPARE_REVIEW
+
+    runtime.start_result = _transient_views(ResearchFlowState.FAILURE)
+    assert controller.retract() is True
+
+    assert controller.confirm() is False
+    assert pipeline.steps == []
+    assert len(worker.submissions) == 2
+    retracted = worker.execute()
+    assert runtime.calls[-1][0] == "retract"
+    worker.finish(retracted)
+    assert controller.current_view.state is ResearchFlowState.FAILURE
+
+
+def test_ui_controller_commits_research_os_provenance_once_and_manual_edit_clears_it(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    profile = P1TaskProfile.LINEAR_CO_MOVEMENT
+    preparation = _ready_preparation(profile, version=0)
+    candidate_base = _candidate_views()
+    review_base = _transient_views(ResearchFlowState.PREPARE_REVIEW)
+    candidate = ResearchFlowViews(
+        guided=candidate_base.guided,
+        standard=candidate_base.standard,
+        preparation=preparation,
+    )
+    review = ResearchFlowViews(
+        guided=review_base.guided,
+        standard=review_base.standard,
+        preparation=preparation,
+    )
+    runtime = FakeRuntime(
+        review,
+        dataset_fingerprint=preparation.dataset_fingerprint,
+    )
+    monkeypatch.setattr(
+        UiControllerServices,
+        "build_research_flow_runtime",
+        lambda self, *, pipeline_version_provider: runtime,
+    )
+    worker = ControllableWorker()
+    host = UiController(pipeline=Pipeline(_valid_dataset(profile)), worker=worker)
+    flow = host.researchFlow
+    assert isinstance(flow, ResearchFlowController)
+    flow._views = candidate
+
+    assert flow.prepare() is True
+    worker.finish(worker.execute())
+    assert flow.confirm() is True
+
+    assert host.pipeline_version == 1
+    assert len(host.pipeline.steps) == 1
+    assert host.selectionProvenance == "research_os_assisted"
+    assert host._session.research_os_preparation_digest == (
+        preparation.preparation_digest
+    )
+    assert flow.current_view.state is ResearchFlowState.CONFIRMED
+    assert len(worker.submissions) == 1
+
+    changed = host.configureCorrelationSelection("y, x")
+
+    assert changed.ok is True
+    assert host.selectionProvenance == "manual"
+    assert host._session.research_os_preparation_digest is None
+    assert flow.current_view.state is ResearchFlowState.REPLAN_REQUIRED
 
 
 class SimulatedRuntimeCrash(RuntimeError):

@@ -32,6 +32,7 @@ AUDITED_FILE_OPERATION_FILES = {
     "src/modori/recommendation_baseline.py",
     "src/modori/recommendation_benchmark_io.py",
     "src/modori/research_memory/ledger_store.py",
+    "src/modori/research_memory/task_index.py",
     "src/modori/ui/chart_assets.py",
     "src/modori/steps/reporting.py",
     "src/modori/ui/worker.py",

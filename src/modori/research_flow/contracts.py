@@ -109,9 +109,7 @@ def _require_closed_id(value: object, field_name: str) -> str:
         or _CLOSED_ID.fullmatch(value) is None
         or value != unicodedata.normalize("NFC", value)
     ):
-        raise ResearchFlowContractError(
-            f"{field_name} must be a closed NFC identifier"
-        )
+        raise ResearchFlowContractError(f"{field_name} must be a closed NFC identifier")
     return value
 
 
@@ -129,9 +127,7 @@ def _canonical_copy(value: object, *, depth: int) -> object:
             )
         return value
     if isinstance(value, float):
-        raise ResearchFlowContractError(
-            "canonical_step_params cannot contain floats"
-        )
+        raise ResearchFlowContractError("canonical_step_params cannot contain floats")
     if isinstance(value, str):
         if value != unicodedata.normalize("NFC", value):
             raise ResearchFlowContractError(
@@ -180,16 +176,12 @@ def _reject_duplicate_pairs(pairs: list[tuple[str, object]]) -> dict[str, object
 
 
 def _reject_json_constant(value: str) -> object:
-    raise ResearchFlowContractError(
-        f"canonical_step_params cannot contain {value}"
-    )
+    raise ResearchFlowContractError(f"canonical_step_params cannot contain {value}")
 
 
 def _decode_canonical_step_params(value: object) -> dict[str, object]:
     if not isinstance(value, bytes) or not value:
-        raise ResearchFlowContractError(
-            "canonical_step_params must be non-empty bytes"
-        )
+        raise ResearchFlowContractError("canonical_step_params must be non-empty bytes")
     try:
         text = value.decode("utf-8", errors="strict")
         decoded = json.loads(
@@ -208,12 +200,11 @@ def _decode_canonical_step_params(value: object) -> dict[str, object]:
             "canonical_step_params must encode one JSON object"
         )
     if _canonical_bytes(decoded) != value:
-        raise ResearchFlowContractError(
-            "canonical_step_params bytes are not canonical"
-        )
-    if decoded.get("schema_version") != 1 or type(
-        decoded.get("schema_version")
-    ) is not int:
+        raise ResearchFlowContractError("canonical_step_params bytes are not canonical")
+    if (
+        decoded.get("schema_version") != 1
+        or type(decoded.get("schema_version")) is not int
+    ):
         raise ResearchFlowContractError(
             "canonical_step_params must use exact schema_version 1"
         )
@@ -241,9 +232,7 @@ def _mapping_digest_payload(
         "capability_key": capability_key,
         "dataset_fingerprint": dataset_fingerprint,
         "step_type": step_type,
-        "canonical_step_params": _decode_canonical_step_params(
-            canonical_step_params
-        ),
+        "canonical_step_params": _decode_canonical_step_params(canonical_step_params),
         "experimental": experimental,
         "requires_explicit_configure_confirm_run": (
             requires_explicit_configure_confirm_run
@@ -251,6 +240,38 @@ def _mapping_digest_payload(
     }
     if preflight_disposition is not None:
         payload["preflight_disposition"] = preflight_disposition.value
+    return payload
+
+
+def _preparation_digest_payload(
+    *,
+    passport_artifact_id: str,
+    passport_digest: str,
+    capability_key: str,
+    dataset_fingerprint: str,
+    step_type: str,
+    canonical_step_params: bytes,
+    mapping_digest: str,
+    experimental: bool,
+    requires_explicit_configure_confirm_run: bool,
+    preflight_disposition: PreflightDisposition,
+) -> dict[str, object]:
+    payload = _mapping_digest_payload(
+        schema_id="modori.passport_bound_preparation",
+        passport_artifact_id=passport_artifact_id,
+        passport_digest=passport_digest,
+        capability_key=capability_key,
+        dataset_fingerprint=dataset_fingerprint,
+        step_type=step_type,
+        canonical_step_params=canonical_step_params,
+        experimental=experimental,
+        requires_explicit_configure_confirm_run=(
+            requires_explicit_configure_confirm_run
+        ),
+        preflight_disposition=preflight_disposition,
+    )
+    payload["schema_version"] = 2
+    payload["mapping_digest"] = mapping_digest
     return payload
 
 
@@ -425,6 +446,7 @@ class PassportBoundPreparation:
     dataset_fingerprint: str
     step_type: str
     canonical_step_params: bytes
+    mapping_digest: str
     preflight_disposition: PreflightDisposition
     experimental: Literal[True]
     requires_explicit_configure_confirm_run: Literal[True]
@@ -454,6 +476,7 @@ class PassportBoundPreparation:
             raise ResearchFlowContractError(
                 "a preparation may only be ready or blocked"
             )
+        _require_digest(self.mapping_digest, "mapping_digest")
         _require_digest(self.preparation_digest, "preparation_digest")
         expected = self.compute_digest(
             passport_artifact_id=self.passport_artifact_id,
@@ -462,6 +485,7 @@ class PassportBoundPreparation:
             dataset_fingerprint=self.dataset_fingerprint,
             step_type=self.step_type,
             canonical_step_params=self.canonical_step_params,
+            mapping_digest=self.mapping_digest,
             preflight_disposition=self.preflight_disposition,
             experimental=self.experimental,
             requires_explicit_configure_confirm_run=(
@@ -482,6 +506,7 @@ class PassportBoundPreparation:
         dataset_fingerprint: str,
         step_type: str,
         canonical_step_params: bytes,
+        mapping_digest: str,
         preflight_disposition: PreflightDisposition,
         experimental: bool,
         requires_explicit_configure_confirm_run: bool,
@@ -497,15 +522,16 @@ class PassportBoundPreparation:
             raise ResearchFlowContractError(
                 "a preparation may only be ready or blocked"
             )
+        _require_digest(mapping_digest, "mapping_digest")
         return _contract_digest(
-            _mapping_digest_payload(
-                schema_id="modori.passport_bound_preparation",
+            _preparation_digest_payload(
                 passport_artifact_id=passport_artifact_id,
                 passport_digest=passport_digest,
                 capability_key=capability_key,
                 dataset_fingerprint=dataset_fingerprint,
                 step_type=step_type,
                 canonical_step_params=canonical_step_params,
+                mapping_digest=mapping_digest,
                 preflight_disposition=preflight_disposition,
                 experimental=experimental,
                 requires_explicit_configure_confirm_run=(

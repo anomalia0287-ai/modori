@@ -2,12 +2,22 @@ from __future__ import annotations
 
 from docx import Document
 
+from modori.steps.reporting import RESEARCH_OS_SELECTION_DISCLOSURE
 from modori.ui.contracts import ReportExportOptions
 from modori.ui.report_export import (
     EXPERIMENTAL_DISCLOSURE_EN,
     EXPERIMENTAL_DISCLOSURE_KO,
+    RESEARCH_OS_DISCLOSURE_EN,
+    RESEARCH_OS_DISCLOSURE_KO,
     ReportExportService,
 )
+
+
+def test_report_options_preserve_distinct_research_os_origin() -> None:
+    options = ReportExportOptions(selection_provenance="research_os_assisted")
+
+    assert options.selection_provenance == "research_os_assisted"
+    assert options.selection_origin == "research_os_assisted"
 
 
 def test_report_export_service_rejects_missing_pipeline() -> None:
@@ -120,6 +130,61 @@ def test_manual_report_export_has_no_experimental_selection_disclosure(
     assert result.ok is True
     assert EXPERIMENTAL_DISCLOSURE_KO not in paragraphs
     assert EXPERIMENTAL_DISCLOSURE_EN not in paragraphs
+
+
+def test_report_export_uses_distinct_research_os_disclosure(tmp_path) -> None:
+    output_path = tmp_path / "report.docx"
+
+    def exporter(pipeline, options):
+        document = Document()
+        document.add_paragraph("Body")
+        document.save(output_path)
+        return output_path
+
+    result = ReportExportService().export(
+        pipeline=object(),
+        options=ReportExportOptions(
+            language="en",
+            selection_provenance="research_os_assisted",
+        ),
+        exporter=exporter,
+        pipeline_version=5,
+    )
+
+    paragraphs = [paragraph.text for paragraph in Document(output_path).paragraphs]
+    assert result.ok is True
+    assert RESEARCH_OS_DISCLOSURE_EN in paragraphs
+    assert RESEARCH_OS_DISCLOSURE_KO not in paragraphs
+    assert EXPERIMENTAL_DISCLOSURE_EN not in paragraphs
+
+
+def test_report_export_replaces_calculation_disclosure_instead_of_duplicating_it(
+    tmp_path,
+) -> None:
+    output_path = tmp_path / "report.docx"
+
+    def exporter(pipeline, options):
+        document = Document()
+        document.add_paragraph(RESEARCH_OS_SELECTION_DISCLOSURE["en"])
+        document.add_paragraph("Body")
+        document.save(output_path)
+        return output_path
+
+    result = ReportExportService().export(
+        pipeline=object(),
+        options=ReportExportOptions(
+            language="en",
+            selection_provenance="research_os_assisted",
+        ),
+        exporter=exporter,
+        pipeline_version=5,
+    )
+
+    paragraphs = [paragraph.text for paragraph in Document(output_path).paragraphs]
+    assert result.ok is True
+    assert RESEARCH_OS_SELECTION_DISCLOSURE["en"] not in paragraphs
+    assert paragraphs.count(RESEARCH_OS_DISCLOSURE_EN) == 1
+    assert paragraphs.count("Body") == 1
 
 
 def test_experimental_report_export_fails_closed_when_docx_cannot_hold_disclosure(

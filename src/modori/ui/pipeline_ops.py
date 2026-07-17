@@ -2,12 +2,18 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping
 from dataclasses import replace
+import json
 from pathlib import Path
 from typing import Any
 
 from modori.ui.chart_assets import ChartAssetRenderer
 from modori.ui.contracts import DisplayNote, DisplayResult, ReportExportOptions
 from modori.ui.results import display_result_from_engine_result
+from modori.research_flow import (
+    PassportBoundPreparation,
+    PreflightDisposition,
+    validate_passport_bound_preparation,
+)
 from modori.steps import (
     AncovaStep,
     CompareGroupsStep,
@@ -22,6 +28,7 @@ from modori.steps import (
     ModeratedMediationStep,
     MultipleRegressionStep,
     OneWayAnovaStep,
+    PairedComparisonStep,
     FactorialAnovaStep,
     BinaryLogisticRegressionStep,
     ReliabilityStep,
@@ -135,7 +142,9 @@ class PipelineOperations:
         analysis_step = self._analysis_step(step_id, step_type, params)
         snapshot = self._snapshot_pipeline_state()
         preserved_steps = [
-            step for step in self.steps() if self._step_type(step) not in self._managed_step_types()
+            step
+            for step in self.steps()
+            if self._step_type(step) not in self._managed_step_types()
         ]
         try:
             self._replace_steps_preserving_cached_imports(preserved_steps)
@@ -145,6 +154,61 @@ class PipelineOperations:
         except Exception:
             self._restore_pipeline_state(snapshot)
             raise
+
+    def replace_research_os_analysis_step(
+        self,
+        preparation: PassportBoundPreparation,
+        *,
+        commit_pipeline_change: Callable[[PassportBoundPreparation], int],
+    ) -> tuple[str, int]:
+        """Replace analyses with one exact sealed step without executing it."""
+
+        if self._pipeline is None or not hasattr(self._pipeline, "add"):
+            raise RuntimeError("Pipeline does not support Research OS confirmation")
+        if not isinstance(preparation, PassportBoundPreparation):
+            raise RuntimeError("Research OS confirmation requires a preparation")
+        validate_passport_bound_preparation(preparation)
+        if preparation.preflight_disposition is not PreflightDisposition.PREPARE_READY:
+            raise RuntimeError("Research OS preparation is not ready")
+        try:
+            params = json.loads(preparation.canonical_step_params.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise RuntimeError("Research OS preparation params are invalid") from exc
+        if not isinstance(params, dict):
+            raise RuntimeError("Research OS preparation params must be an object")
+        step_ids = {
+            "stats.descriptives_table1": "descriptives_table1",
+            "stats.frequency_crosstab": "frequency_crosstab",
+            "stats.correlation": "correlation",
+            "stats.compare_groups": "comparison",
+            "stats.paired_comparison": "paired_comparison",
+        }
+        step_id = step_ids.get(preparation.step_type)
+        if step_id is None:
+            raise RuntimeError("Research OS preparation step type is unsupported")
+        analysis_step = self._analysis_step(
+            step_id,
+            preparation.step_type,
+            params,
+        )
+        snapshot = self._snapshot_pipeline_state()
+        preserved_steps = [
+            step
+            for step in self.steps()
+            if not bool(getattr(step, "produces_analysis", False))
+        ]
+        try:
+            self._replace_steps_preserving_cached_imports(preserved_steps)
+            self._pipeline.add(analysis_step)
+            committed_version = commit_pipeline_change(preparation)
+            if type(committed_version) is not int or committed_version < 0:
+                raise RuntimeError(
+                    "Research OS host commit returned an invalid pipeline version"
+                )
+        except Exception:
+            self._restore_pipeline_state(snapshot)
+            raise
+        return step_id, committed_version
 
     def insert_metadata_step(self, variable_key: str, step: object) -> None:
         after_step_id = self.metadata_insert_after_step_id(variable_key)
@@ -194,7 +258,9 @@ class PipelineOperations:
 
     def metadata_insert_after_step_id(self, variable_key: str) -> str | None:
         variables = self.variables()
-        variable = variables.get(variable_key) if isinstance(variables, Mapping) else None
+        variable = (
+            variables.get(variable_key) if isinstance(variables, Mapping) else None
+        )
         candidate = getattr(variable, "origin_step_id", None)
         if candidate is not None and self.has_step(str(candidate)):
             return str(candidate)
@@ -329,6 +395,7 @@ class PipelineOperations:
             "stats.descriptives_table1",
             "stats.reliability",
             "stats.compare_groups",
+            "stats.paired_comparison",
             "stats.regression_ols",
             "stats.logistic_regression",
             "stats.frequency_crosstab",
@@ -366,17 +433,28 @@ class PipelineOperations:
             return set()
         return {str(key) for key in writes()}
 
-    def _replace_steps_preserving_cached_imports(self, preserved_steps: list[object]) -> None:
+    def _replace_steps_preserving_cached_imports(
+        self, preserved_steps: list[object]
+    ) -> None:
         preserved_ids = {self._step_id(step) for step in preserved_steps}
         self._pipeline.steps = preserved_steps
         self._pipeline.analysis_objects = {}
-        for attr in ("_result_cache", "_writes_cache", "_dirty_keys_cache", "step_results"):
+        for attr in (
+            "_result_cache",
+            "_writes_cache",
+            "_dirty_keys_cache",
+            "step_results",
+        ):
             cache = getattr(self._pipeline, attr, None)
             if isinstance(cache, dict):
                 setattr(
                     self._pipeline,
                     attr,
-                    {key: value for key, value in cache.items() if key in preserved_ids},
+                    {
+                        key: value
+                        for key, value in cache.items()
+                        if key in preserved_ids
+                    },
                 )
 
     def _recompute_preserved_steps(self) -> None:
@@ -495,7 +573,15 @@ class PipelineOperations:
         if step_type == "stats.reliability":
             return ReliabilityStep(id=step_id, title="Reliability", params=dict(params))
         if step_type == "stats.compare_groups":
-            return CompareGroupsStep(id=step_id, title="Compare groups", params=dict(params))
+            return CompareGroupsStep(
+                id=step_id, title="Compare groups", params=dict(params)
+            )
+        if step_type == "stats.paired_comparison":
+            return PairedComparisonStep(
+                id=step_id,
+                title="Compare paired scores",
+                params=dict(params),
+            )
         if step_type == "stats.regression_ols":
             return MultipleRegressionStep(
                 id=step_id,
@@ -556,7 +642,9 @@ class PipelineOperations:
             )
         raise RuntimeError(f"Unsupported analysis step type: {step_type}")
 
-    def _report_step_for_analysis(self, analysis_step: object, params: dict[str, Any]) -> ReportStep:
+    def _report_step_for_analysis(
+        self, analysis_step: object, params: dict[str, Any]
+    ) -> ReportStep:
         return ReportStep(
             id="report",
             title="APA report",
@@ -569,7 +657,9 @@ class PipelineOperations:
             input_step_ids=[self._step_id(analysis_step)],
         )
 
-    def _analysis_result_key(self, analysis_step: object, params: dict[str, Any]) -> str:
+    def _analysis_result_key(
+        self, analysis_step: object, params: dict[str, Any]
+    ) -> str:
         step_type = self._step_type(analysis_step)
         if step_type == "stats.descriptives_table1":
             return self._step_id(analysis_step)
@@ -577,6 +667,8 @@ class PipelineOperations:
             return f"reliability:{params.get('scale_name', 'scale')}"
         if step_type == "stats.compare_groups":
             return f"comparison:{params['dv']}:{params['group']}"
+        if step_type == "stats.paired_comparison":
+            return f"comparison:{params['before']}:{params['after']}:paired"
         if step_type in {"stats.regression_ols", "stats.logistic_regression"}:
             return self._step_id(analysis_step)
         if step_type in {
@@ -600,7 +692,8 @@ class PipelineOperations:
             (
                 step
                 for step in self.steps()
-                if self._step_type(step) == "import.table" or self._step_id(step) == "import"
+                if self._step_type(step) == "import.table"
+                or self._step_id(step) == "import"
             ),
             None,
         )
@@ -628,7 +721,8 @@ class PipelineOperations:
             (
                 step
                 for step in self.steps()
-                if self._step_type(step) == "report.apa" or self._step_id(step) == "report"
+                if self._step_type(step) == "report.apa"
+                or self._step_id(step) == "report"
             ),
             None,
         )
@@ -663,7 +757,9 @@ class PipelineOperations:
         return [
             key
             for key in self.analysis_objects()
-            if key != "report" and not key.startswith("analysis:") and not key.startswith("report:")
+            if key != "report"
+            and not key.startswith("analysis:")
+            and not key.startswith("report:")
         ]
 
     @staticmethod

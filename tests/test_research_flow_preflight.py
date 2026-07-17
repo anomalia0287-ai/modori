@@ -224,6 +224,7 @@ def test_all_six_exact_mappings_seal_ready_preparations_without_mutation(
     assert preparation.dataset_fingerprint == mapping.dataset_fingerprint
     assert preparation.step_type == mapping.step_type
     assert preparation.canonical_step_params == mapping.canonical_step_params
+    assert preparation.mapping_digest == mapping.mapping_digest
     assert preparation.experimental is True
     assert preparation.requires_explicit_configure_confirm_run is True
     assert preparation.preparation_digest == PassportBoundPreparation.compute_digest(
@@ -233,6 +234,7 @@ def test_all_six_exact_mappings_seal_ready_preparations_without_mutation(
         dataset_fingerprint=mapping.dataset_fingerprint,
         step_type=mapping.step_type,
         canonical_step_params=mapping.canonical_step_params,
+        mapping_digest=mapping.mapping_digest,
         preflight_disposition=PreflightDisposition.PREPARE_READY,
         experimental=True,
         requires_explicit_configure_confirm_run=True,

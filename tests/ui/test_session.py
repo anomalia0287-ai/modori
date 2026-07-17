@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from modori.ui.session import UiSessionState
 from modori.ui.settings import UiSettingsStore
 
@@ -79,3 +81,33 @@ def test_selection_provenance_is_session_only_and_defaults_to_manual(tmp_path) -
 
     assert session.selection_provenance == "manual"
     assert session.selection_confirmation_required is False
+
+
+def test_research_os_provenance_is_distinct_session_only_and_drift_sensitive(
+    tmp_path,
+) -> None:
+    settings_path = tmp_path / "settings.json"
+    session = UiSessionState(UiSettingsStore(settings_path))
+    digest = "a" * 64
+
+    session.mark_research_os_assisted(digest)
+
+    assert session.selection_provenance == "research_os_assisted"
+    assert session.research_os_preparation_digest == digest
+    assert session.selection_confirmation_required is False
+    reloaded = UiSessionState(UiSettingsStore(settings_path))
+    assert reloaded.selection_provenance == "manual"
+    assert reloaded.research_os_preparation_digest is None
+
+    session.invalidate_selection_confirmation()
+    assert session.selection_provenance == "research_os_assisted"
+    assert session.research_os_preparation_digest == digest
+    assert session.selection_confirmation_required is True
+
+    session.clear_selection_provenance()
+    assert session.selection_provenance == "manual"
+    assert session.research_os_preparation_digest is None
+    assert session.selection_confirmation_required is False
+
+    with pytest.raises(ValueError, match="digest"):
+        session.mark_research_os_assisted("not-a-digest")
