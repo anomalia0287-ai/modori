@@ -10,14 +10,32 @@ from modori.research_flow.contracts import (
     ResearchFlowState,
     StaticBoundary,
 )
+from modori.research_flow.fingerprint import (
+    FINGERPRINT_CANCELLATION_INTERVAL_CELLS,
+    FINGERPRINT_DEFAULT_MAX_CELLS,
+    FINGERPRINT_WORKER_DEADLINE_SECONDS,
+    FingerprintCancelled,
+    FingerprintContractError,
+    FingerprintLimitError,
+    SourceSchemaDescriptor,
+    fingerprint_dataset,
+)
 
 __all__ = [
     "FINGERPRINT_CONTRACT_ID",
+    "FINGERPRINT_CANCELLATION_INTERVAL_CELLS",
+    "FINGERPRINT_DEFAULT_MAX_CELLS",
+    "FINGERPRINT_WORKER_DEADLINE_SECONDS",
     "P1_REACHABLE_STATES",
     "DatasetIdentity",
     "FlowErrorKind",
+    "FingerprintCancelled",
+    "FingerprintContractError",
+    "FingerprintLimitError",
     "PreflightDisposition",
     "ResearchFlowContractError",
     "ResearchFlowState",
+    "SourceSchemaDescriptor",
     "StaticBoundary",
+    "fingerprint_dataset",
 ]
