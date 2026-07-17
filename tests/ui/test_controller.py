@@ -306,10 +306,12 @@ def test_open_data_file_populates_recommendation_without_running_worker(tmp_path
     result = controller.openDataFile(tmp_path / "survey.csv", ImportOptions(confirm_new_session=True))
 
     assert result.ok is True
-    assert controller.recommendationTitle == "기술통계 표 1"
-    assert controller.recommendationLevel == "강한 추천"
-    assert "기술통계 표" in controller.recommendationReason
-    assert controller.recommendationAlternativesText
+    assert controller.recommendationTitle == ""
+    assert controller.recommendationReason == ""
+    assert controller.recommendationCount > 0
+    assert controller.recommendationCandidateTitleAt(0)
+    assert not hasattr(controller, "recommendationLevel")
+    assert not hasattr(controller, "recommendationAlternativesText")
     assert worker.calls == []
 
 
@@ -339,7 +341,7 @@ def test_default_open_data_file_imports_fixture_for_recommendations_without_work
     assert controller.pipeline.current_dataset.df.shape[0] > 0
     assert controller.pipeline.current_dataset.df.shape[1] > 0
     assert controller.recommendationCount > 0
-    assert controller.recommendationTitle
+    assert controller.recommendationTitle == ""
     assert worker.calls == []
 
 
@@ -490,6 +492,32 @@ def test_context_change_blocks_assisted_report_recompute(tmp_path) -> None:
     assert result.error_code == "experimental_confirmation_required"
     assert exported == []
     assert output_path.exists() is False
+def test_export_report_injects_local_selection_origin(tmp_path) -> None:
+    from docx import Document
+
+    from modori.ui.contracts import ReportExportOptions
+    from modori.ui.controller import UiController
+
+    seen: list[ReportExportOptions] = []
+    output_path = tmp_path / "report.docx"
+
+    def exporter(pipeline, options):
+        del pipeline
+        seen.append(options)
+        Document().save(output_path)
+        return output_path
+
+    controller = UiController(
+        pipeline=ImportablePipeline(["import", "report"]),
+        report_exporter=exporter,
+    )
+    assert controller.markCurrentSelectionExperimental(True)
+
+    result = controller.exportReport(ReportExportOptions(language="ko"))
+
+    assert result.ok is True
+    assert len(seen) == 1
+    assert seen[0].selection_origin == "experimental_candidate_assisted"
 
 
 def test_select_recommendation_updates_prepared_fields_without_running(tmp_path) -> None:
@@ -534,9 +562,18 @@ def test_select_recommendation_updates_prepared_fields_without_running(tmp_path)
     before_version = controller.pipeline_version
 
     assert controller.selectRecommendationAt(1) is True
+    assert controller.prepareSelectedRecommendationNow() is True
 
     assert controller.recommendationTitle.startswith("신뢰도 분석")
-    assert controller.preparedReliabilityItems in {"A1, A2, A3", "C1, C2, C3"}
+    assert ", ".join(controller.preparedRecommendationField("item_keys")) in {
+        "A1, A2, A3",
+        "C1, C2, C3",
+    }
+    assert controller.selectedRecommendationFieldText("item_keys") in {
+        "A1, A2, A3",
+        "C1, C2, C3",
+    }
+    assert controller.selectedRecommendationFieldText("missing") == ""
     assert controller.pipeline_version == before_version
     assert controller.status == "ready"
 
@@ -624,10 +661,11 @@ def test_confirmed_candidate_fields_use_manual_configuration_before_worker_submi
         if candidate.kind == "reliability"
     )
     assert controller.selectRecommendationAt(reliability_index) is True
-
-    configured = controller.configureReliabilitySelection(
-        controller.preparedReliabilityItems
-    )
+    assert controller.prepareSelectedRecommendationNow() is True
+    items = ", ".join(controller.preparedRecommendationField("item_keys"))
+    assert items == controller.preparedReliabilityItems
+    configured = controller.configureReliabilitySelection(items)
+    assert configured.ok is True
     controller.markExperimentalCandidateAssisted()
     result = controller.rerun()
 
@@ -635,6 +673,10 @@ def test_confirmed_candidate_fields_use_manual_configuration_before_worker_submi
     assert result.ok is True
     assert controller.pipeline.steps[0].params["items"] == ["A1", "A2", "A3"]
     assert len(worker.calls) == 1
+
+
+def test_confirmed_manual_configuration_applies_before_worker_submit(tmp_path) -> None:
+    test_confirmed_candidate_fields_use_manual_configuration_before_worker_submit(tmp_path)
 
 
 def test_advanced_candidates_require_explicit_manual_configuration() -> None:
@@ -733,27 +775,28 @@ def test_advanced_candidates_require_explicit_manual_configuration() -> None:
 
         assert controller.selectRecommendationAt(index) is True
         assert pipeline.edits == []
+        assert controller.prepareSelectedRecommendationNow() is True
         if kind == "repeated_measures_anova":
             result = controller.configureRepeatedMeasuresAnovaSelection(
-                ", ".join(expected_params["measures"])
+                ", ".join(controller.preparedRecommendationField("variable_keys"))
             )
         elif kind == "friedman":
             result = controller.configureFriedmanSelection(
-                ", ".join(expected_params["measures"])
+                ", ".join(controller.preparedRecommendationField("variable_keys"))
             )
         elif kind == "mediation":
             result = controller.configureMediationSelection(
-                expected_params["x"],
-                expected_params["mediator"],
-                expected_params["y"],
+                controller.preparedRecommendationField("x_key"),
+                controller.preparedRecommendationField("mediator_key"),
+                controller.preparedRecommendationField("y_key"),
             )
         else:
             result = controller.configureModeratedMediationSelection(
-                str(expected_params["model"]),
-                expected_params["x"],
-                expected_params["mediator"],
-                expected_params["moderator"],
-                expected_params["y"],
+                controller.preparedRecommendationField("model"),
+                controller.preparedRecommendationField("x_key"),
+                controller.preparedRecommendationField("mediator_key"),
+                controller.preparedRecommendationField("moderator_key"),
+                controller.preparedRecommendationField("y_key"),
             )
 
         assert result.ok is True
@@ -763,6 +806,10 @@ def test_advanced_candidates_require_explicit_manual_configuration() -> None:
         assert edited_step_id == expected_step_id
         for key, value in expected_params.items():
             assert params[key] == value
+
+
+def test_advanced_recommendation_candidates_apply_to_pipeline_steps() -> None:
+    test_advanced_candidates_require_explicit_manual_configuration()
 
 
 def test_explicit_configuration_builds_real_dataset_pipeline_without_reference_steps() -> (
@@ -806,6 +853,13 @@ def test_explicit_configuration_builds_real_dataset_pipeline_without_reference_s
     )
     assert opened.ok is True
 
+    descriptives_index = next(
+        index
+        for index, candidate in enumerate(controller._recommendation_state.candidates)
+        if candidate.kind == "descriptives"
+    )
+    assert controller.selectRecommendationAt(descriptives_index) is True
+    assert controller.prepareSelectedRecommendationNow() is True
     assert controller.recommendationKind == "descriptives"
     configured = controller.configureDescriptivesSelection(
         controller.preparedVariableKeys,
@@ -817,6 +871,37 @@ def test_explicit_configuration_builds_real_dataset_pipeline_without_reference_s
     assert configured.ok is True
     assert result.ok is True
     assert len(worker.calls) == 1
+
+
+def test_unselected_recommendation_cannot_prepare_or_submit_work() -> None:
+    from pathlib import Path
+
+    from modori.ui.contracts import ImportOptions
+    from modori.ui.controller import UiController
+
+    class InspectingWorker:
+        def __init__(self) -> None:
+            self.calls = []
+
+        def submit(self, *, run_id, pipeline_version, job):
+            self.calls.append((run_id, pipeline_version, job))
+            raise AssertionError("an unselected candidate must not submit work")
+
+    controller = UiController()
+    worker = InspectingWorker()
+    controller._worker = worker
+    opened = controller.openDataFile(
+        Path("tests/fixtures/psych_bfi.csv"),
+        ImportOptions(confirm_new_session=True),
+    )
+    assert opened.ok is True
+    before_step_ids = [step.id for step in controller.pipeline.steps]
+
+    prepared = controller.prepareSelectedRecommendationNow()
+
+    assert prepared is False
+    assert [step.id for step in controller.pipeline.steps] == before_step_ids
+    assert worker.calls == []
 
 
 def test_rerun_blocks_unknown_columns_before_worker_submit() -> None:

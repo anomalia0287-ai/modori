@@ -1,0 +1,87 @@
+$ErrorActionPreference = 'Stop'
+$KitRoot = [System.IO.Path]::GetFullPath($PSScriptRoot)
+$Results = Join-Path $KitRoot 'results'
+$ExpectedManifestDigest = '__MANIFEST_SHA256__'
+
+function Get-ModoriSha256([string]$LiteralPath) {
+    $stream = [System.IO.File]::OpenRead($LiteralPath)
+    try {
+        $algorithm = [System.Security.Cryptography.SHA256]::Create()
+        try {
+            return ([System.BitConverter]::ToString($algorithm.ComputeHash($stream))).Replace('-', '').ToLowerInvariant()
+        } finally {
+            $algorithm.Dispose()
+        }
+    } finally {
+        $stream.Dispose()
+    }
+}
+
+function Stop-ModoriKit([string]$Code) {
+    Write-Host ("오류 코드: " + $Code)
+    try {
+        if (Test-Path -LiteralPath $Results -PathType Container) {
+            $stamp = [DateTime]::UtcNow.ToString('yyyyMMddTHHmmssZ')
+            $diagnostic = Join-Path $Results ("bootstrap-error-" + $stamp + ".txt")
+            [System.IO.File]::WriteAllText(
+                $diagnostic,
+                ("Modori portable benchmark bootstrap error`r`ncode=" + $Code + "`r`n"),
+                [System.Text.UTF8Encoding]::new($false)
+            )
+        }
+    } catch {
+    }
+    exit 1
+}
+
+try {
+    $rootItem = Get-Item -LiteralPath $KitRoot -Force
+    if (($rootItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+        Stop-ModoriKit 'kit_root_is_reparse_point'
+    }
+    $manifestPath = Join-Path $KitRoot 'MANIFEST.json'
+    if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
+        Stop-ModoriKit 'manifest_missing'
+    }
+    $manifestDigest = Get-ModoriSha256 $manifestPath
+    if ($manifestDigest -ne $ExpectedManifestDigest) {
+        Stop-ModoriKit 'manifest_digest_mismatch'
+    }
+    $manifest = Get-Content -Raw -LiteralPath $manifestPath -Encoding UTF8 | ConvertFrom-Json
+    foreach ($entry in $manifest.entries) {
+        $relative = [string]$entry.path
+        if ([string]::IsNullOrWhiteSpace($relative) -or $relative.Contains('\') -or $relative.Contains('..')) {
+            Stop-ModoriKit 'manifest_path_invalid'
+        }
+        $candidate = [System.IO.Path]::GetFullPath((Join-Path $KitRoot $relative))
+        if (-not $candidate.StartsWith($KitRoot + [System.IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
+            Stop-ModoriKit 'manifest_path_escape'
+        }
+        $item = Get-Item -LiteralPath $candidate -Force
+        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $item.PSIsContainer) {
+            Stop-ModoriKit 'manifest_member_invalid'
+        }
+        if ([int64]$item.Length -ne [int64]$entry.size_bytes) {
+            Stop-ModoriKit 'manifest_size_mismatch'
+        }
+        $digest = Get-ModoriSha256 $candidate
+        if ($digest -ne [string]$entry.sha256) {
+            Stop-ModoriKit 'manifest_file_digest_mismatch'
+        }
+    }
+    $python = Join-Path $KitRoot 'runtime\python.exe'
+    $runner = Join-Path $KitRoot 'payload\scripts\run_office_research_memory_benchmark.py'
+    & $python -B -I $runner
+    $runnerExit = $LASTEXITCODE
+    switch ($runnerExit) {
+        10 { Stop-ModoriKit 'ac_power_required' }
+        11 { Stop-ModoriKit 'fixed_internal_volume_required' }
+        12 { Stop-ModoriKit 'free_space_required' }
+    }
+    if ($runnerExit -ne 0) {
+        Stop-ModoriKit ("runner_exit_" + $runnerExit)
+    }
+    exit 0
+} catch {
+    Stop-ModoriKit 'bootstrap_unhandled_error'
+}

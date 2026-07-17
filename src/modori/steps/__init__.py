@@ -12,8 +12,10 @@ from modori.steps.descriptives_table1 import DescriptivesTableStep
 from modori.steps.frequency_crosstab import FrequencyCrosstabStep
 from modori.steps.correlation import CorrelationStep
 from modori.steps.anova_oneway import OneWayAnovaStep
+from modori.steps.anova_factorial import FactorialAnovaStep
 from modori.steps.friedman import FriedmanStep
 from modori.steps.kruskal_wallis import KruskalWallisStep
+from modori.steps.logistic_regression import BinaryLogisticRegressionStep
 from modori.steps.mediation import MediationStep
 from modori.steps.moderated_mediation import ModeratedMediationStep
 from modori.steps.repeated_measures_anova import RepeatedMeasuresAnovaStep
@@ -36,8 +38,10 @@ __all__ = [
     "FrequencyCrosstabStep",
     "FriedmanStep",
     "FactorPcaStep",
+    "FactorialAnovaStep",
     "ImportStep",
     "KruskalWallisStep",
+    "BinaryLogisticRegressionStep",
     "MapValuesStep",
     "MediationStep",
     "ModeratedMediationStep",

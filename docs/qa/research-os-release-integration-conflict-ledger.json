@@ -1,0 +1,1223 @@
+{
+  "branch_only_adjustments": [
+    {
+      "focused_tests": [
+        "tests/test_verify_release_integration_script.py",
+        "tests/ui/test_release_research_os_integration_boundary.py"
+      ],
+    "integrated_blob_oid": "1d7474ca87e08064f0a319791cbfec340c649229",
+      "path": "docs/superpowers/plans/2026-07-16-research-os-release-integration.md",
+      "rationale": "record the removal of confidence-shaped legacy APIs and the bounded ledger-v2 adjustment protocol discovered during integration",
+      "required_absences": [
+        "unbounded branch preference",
+        "post-merge verifier evasion"
+      ],
+      "required_presences": [
+      "exact ten-path adjustment set and fail-closed acceptance rules"
+      ],
+      "source_blob_oid": "3edcb3ed0bc89c3f6d31258eba2a05cca327d8e9",
+      "source_side": "research",
+      "status": "verified"
+    },
+    {
+      "focused_tests": [
+        "tests/test_verify_release_integration_script.py"
+      ],
+    "integrated_blob_oid": "dc09565c494e3b81272cb7251ebb99a143177568",
+      "path": "docs/superpowers/specs/2026-07-16-research-os-release-integration-design.md",
+      "rationale": "correct the disproven assumption that every parent-only blob can remain byte-identical after semantic integration",
+      "required_absences": [
+        "silent parent-only mutation",
+        "test-identifier deletion"
+      ],
+      "required_presences": [
+        "source and integrated blob binding for every allowed parent-only adjustment"
+      ],
+      "source_blob_oid": "88697cc7dd84b861110b3125a3d30c60a9a34aaf",
+      "source_side": "research",
+      "status": "verified"
+    },
+    {
+      "focused_tests": [
+        "tests/test_package_launch_smoke_script.py",
+        "scripts/package_launch_smoke.py"
+      ],
+      "integrated_blob_oid": "87a432457e193be0f36cb7c9e15dba9c0fadc153",
+      "path": "scripts/package_launch_smoke.py",
+      "rationale": "reject a packaged application that omits or cannot load the explanation knowledge library discovered by the human-operated EXE flow",
+      "required_absences": [
+        "successful package smoke with a missing library",
+        "workspace fallback masquerading as packaged content"
+      ],
+      "required_presences": [
+        "packaged library directory, load probe, and explanation probe"
+      ],
+      "source_blob_oid": "171cee078bfa84d67efd7113aea34194bec4ab91",
+      "source_side": "release",
+      "status": "verified"
+    },
+    {
+      "focused_tests": [
+        "tests/test_verify_release_integration_script.py"
+      ],
+      "integrated_blob_oid": "a6359911832c73af68091d23fbe76d6405b4b9ea",
+      "path": "scripts/verify_release_integration.py",
+      "rationale": "verify bounded parent-only adaptations without allowing unrecorded or forged blob changes",
+      "required_absences": [
+        "wildcard adjustment permission",
+        "unverified or unnecessary adjustment"
+      ],
+      "required_presences": [
+        "ledger-v2 validation of path, side, source blob, integrated blob, rationale, evidence, and status"
+      ],
+      "source_blob_oid": "ce032513868a1c0f67e99acb750b7b4c46fe99ea",
+      "source_side": "research",
+      "status": "verified"
+    },
+    {
+      "focused_tests": [
+        "tests/test_knowledge_library.py"
+      ],
+      "integrated_blob_oid": "b61d3011fd38c7c701b887d6e5ab628c433314e0",
+      "path": "tests/test_knowledge_library.py",
+      "rationale": "cover packaged knowledge path precedence and source-tree fallback for the repaired loader",
+      "required_absences": [
+        "implicit workspace-only path assumption"
+      ],
+      "required_presences": [
+        "separate packaged and source path regression tests"
+      ],
+      "source_blob_oid": "95f0f5c1e545ed69bc45153628e9ebf98d5f0994",
+      "source_side": "research",
+      "status": "verified"
+    },
+    {
+      "focused_tests": [
+        "tests/test_package_launch_smoke_script.py"
+      ],
+      "integrated_blob_oid": "d764995c82b0ebb3a8f34c306add3cd6493c302c",
+      "path": "tests/test_package_launch_smoke_script.py",
+      "rationale": "prove the packaged launch smoke rejects missing library entries before QML launch",
+      "required_absences": [
+        "test fixture that passes without packaged knowledge entries"
+      ],
+      "required_presences": [
+        "negative missing-library test and updated successful fixtures"
+      ],
+      "source_blob_oid": "7bdaf55dad3ebf919f7ab016283e5e640230a625",
+      "source_side": "release",
+      "status": "verified"
+    },
+    {
+      "focused_tests": [
+        "tests/test_verify_release_integration_script.py"
+      ],
+      "integrated_blob_oid": "be648c30b56f5fe79f9bc50dda2779a5a6eb37b6",
+      "path": "tests/test_verify_release_integration_script.py",
+      "rationale": "exercise real Git objects for accepted, unrecorded, forged, and unnecessary parent-only adjustments",
+      "required_absences": [
+        "mocked Git acceptance proof",
+        "adjustment that passes without a real blob mismatch"
+      ],
+      "required_presences": [
+        "red-green tests for ledger-v2 branch-only adjustment enforcement"
+      ],
+      "source_blob_oid": "24eb202fea2f201e3239215de84591a025778480",
+      "source_side": "research",
+      "status": "verified"
+    },
+    {
+      "focused_tests": [
+        "tests/ui/test_experimental_guidance_boundary.py"
+      ],
+      "integrated_blob_oid": "56a4fcff58f101eccee36c6c61897b0eb771a93a",
+      "path": "tests/ui/test_experimental_guidance_boundary.py",
+      "rationale": "retain the release boundary tests while honoring the integrated rule that no candidate is implicitly selected",
+      "required_absences": [
+        "implicit candidate selection",
+        "automatic pipeline execution"
+      ],
+      "required_presences": [
+        "explicit candidate selection before preparation in the existing test identities"
+      ],
+      "source_blob_oid": "5a2195f7c14718a56db12bdce109c215f3756dcf",
+      "source_side": "release",
+      "status": "verified"
+    },
+    {
+      "focused_tests": [
+        "tests/ui/test_experimental_recommendation_flow.py",
+        "tests/ui/test_qml_runtime_load.py"
+      ],
+      "integrated_blob_oid": "e160c13143a12277f458d0ca34dbf6509a9484aa",
+      "path": "tests/ui/test_experimental_recommendation_flow.py",
+      "rationale": "bind the integrated review copy, direct selected-candidate projection, and bounded explanation fallback without granting execution authority",
+      "required_absences": [
+        "prepared QVariant projection as the packaged prefill source",
+        "combined recommendation execution API"
+      ],
+      "required_presences": [
+        "explicit review selection copy and QML fail-closed explanation contract"
+      ],
+      "source_blob_oid": "d4a799d4a182d2a9939cfa2d2eff40815a40751b",
+      "source_side": "research",
+      "status": "verified"
+    },
+    {
+      "focused_tests": [
+        "tests/ui/test_qml_string_catalog.py"
+      ],
+      "integrated_blob_oid": "35f93cbfacdf1bab85694677a8a51eb9693c535c",
+      "path": "tests/ui/test_qml_string_catalog.py",
+      "rationale": "preserve the frozen release lane's CASUAL MODE labels while retaining the Research OS catalog assertion as an exact, non-weakened test",
+      "required_absences": [
+        "superseded Research OS mode labels",
+        "removed or weakened copy assertion"
+      ],
+      "required_presences": [
+        "exact CASUAL MODE assertions for both guided entry and work surfaces"
+      ],
+      "source_blob_oid": "98040e60952335e9fbb524eb9285c053ff1aaf70",
+      "source_side": "research",
+      "status": "verified"
+    }
+  ],
+  "entries": [
+    {
+      "conflict_kind": "changed_in_both",
+      "focused_tests": [
+        "tests/test_file_operation_audit.py"
+      ],
+      "path": "docs/security/file-operations-audit-2026-06-29.md",
+      "release_behaviors": [
+        "installer snapshot/publication and lifecycle cleanup boundaries remain identity-bound and reject links, junctions, and reparse points",
+        "release report, cache, settings, package, and installer file operations remain explicitly audited"
+      ],
+      "required_absences": [
+        "unaudited direct file operation",
+        "claim that Research OS or installer cleanup may delete arbitrary user data",
+        "conflict markers"
+      ],
+      "required_presences": [
+        "exact union of release and Research OS audited file-operation paths",
+        "bounded user-data and recursive-cleanup claims without duplicate inflation"
+      ],
+      "research_behaviors": [
+        "Decision Ledger, recommendation benchmark, sealed office kit, and integration-verifier file operations remain explicitly bounded",
+        "developer-only research cleanup remains prefix-checked and outside product runtime"
+      ],
+      "resolution": "semantic_union",
+      "status": "verified",
+      "supersession_reason": ""
+    },
+    {
+      "conflict_kind": "added_in_both",
+      "focused_tests": [
+        "tests/test_experimental_recommendation_boundary.py",
+        "tests/test_product_recommendation_wording.py"
+      ],
+      "path": "docs/superpowers/specs/2026-07-11-experimental-recommendation-boundary-design.md",
+      "release_behaviors": [
+        "calculation execution status remains independent from recommendation evidence status",
+        "experimental selection requires explicit entry, confirmation, and no automatic execution"
+      ],
+      "required_absences": [
+        "network, cloud-model, telemetry, or remote-tool product path",
+        "automatic candidate selection or execution",
+        "model output labeled as human gold",
+        "legacy heuristic reason relabeled as AnalysisPassport evidence",
+        "conflict markers"
+      ],
+      "required_presences": [
+        "local-only offline product boundary and no actual-user-data transmission",
+        "no-human-gold rule, calculation-versus-validity separation, and no legacy provenance elevation"
+      ],
+      "research_behaviors": [
+        "canonical benchmark source prerequisite and hashes are pinned",
+        "live guidance opens with no selected candidate, exhaustive manual-form reachability, product wording scan, and historical baseline isolation"
+      ],
+      "resolution": "research_supersedes",
+      "status": "verified",
+      "supersession_reason": "The Research parent is the reviewed successor: it retains the release boundary and adds source pins, null initial selection, exhaustive manual-form reachability, wording scans, and explicit external-review disposition."
+    },
+    {
+      "conflict_kind": "changed_in_both",
+      "focused_tests": [
+        "tests/test_package_windows_script.py",
+        "tests/test_quality_gate_script.py"
+      ],
+      "path": "pyproject.toml",
+      "release_behaviors": [
+        "Aurora QML font and icon assets remain packaged",
+        "release dependency bounds, scripts, markers, and Ruff exclusions remain unchanged"
+      ],
+      "required_absences": [
+        "new dependency absent from both parents",
+        "widened dependency bound without evidence",
+        "dropped QML asset package data",
+        "conflict markers"
+      ],
+      "required_presences": [
+        "exact dependency and package-data set union of both source pins",
+        "unchanged compatible version bounds"
+      ],
+      "research_behaviors": [
+        "defusedxml runtime dependency and mpmath development dependency remain declared",
+        "Research OS package discovery continues through the existing src layout"
+      ],
+      "resolution": "semantic_union",
+      "status": "verified",
+      "supersession_reason": ""
+    },
+    {
+      "conflict_kind": "changed_in_both",
+      "focused_tests": [
+        "tests/test_package_engine_smoke_script.py"
+      ],
+      "path": "scripts/package_engine_smoke.py",
+      "release_behaviors": [
+        "explicit evidence/state directories are identity-bound, link-safe, and keep sidecars out of durable evidence",
+        "cache evidence must match MODORI_CACHE_DIR and be a real non-linked directory"
+      ],
+      "required_absences": [
+        "missing logistic or factorial evidence accepted",
+        "stale result accepted",
+        "linked or mismatched cache accepted",
+        "conflict markers"
+      ],
+      "required_presences": [
+        "fresh-result rejection plus release cache contract and Research statistical evidence contract"
+      ],
+      "research_behaviors": [
+        "packaged payload must prove open, rerun, wait, ready status, logistic regression, and factorial ANOVA evidence"
+      ],
+      "resolution": "semantic_union",
+      "status": "verified",
+      "supersession_reason": ""
+    },
+    {
+      "conflict_kind": "added_in_both",
+      "focused_tests": [
+        "tests/test_package_engine_smoke_script.py",
+        "tests/test_package_public_data_smoke_script.py",
+        "tests/test_package_windows_script.py"
+      ],
+      "path": "scripts/package_environment.py",
+      "release_behaviors": [
+        "absolute lexical state roots and frozen directory identities reject symlink, junction, reparse, replacement, and escape attacks",
+        "explicit lifecycle state roots do not precreate runtime children"
+      ],
+      "required_absences": [
+        "workspace R runtime leakage",
+        "relative namespace or unsafe state-root acceptance",
+        "conflict markers"
+      ],
+      "required_presences": [
+        "release explicit-directory boundary plus Research reference-runtime decontamination"
+      ],
+      "research_behaviors": [
+        "workspace R runtime variables and mixed R library paths are removed from packaged subprocess environments",
+        "standalone package runs receive isolated cache, settings, Matplotlib, and offscreen paths"
+      ],
+      "resolution": "semantic_union",
+      "status": "verified",
+      "supersession_reason": ""
+    },
+    {
+      "conflict_kind": "changed_in_both",
+      "focused_tests": [
+        "tests/test_package_public_data_smoke_script.py"
+      ],
+      "path": "scripts/package_public_data_smoke.py",
+      "release_behaviors": [
+        "explicit evidence directories must be empty, identity-bound, and receive a fresh contained regular result",
+        "public-data smoke uses caller-selected committed fixture directory and isolated runtime state"
+      ],
+      "required_absences": [
+        "stale output accepted",
+        "missing hardened public-data case accepted",
+        "network or uncommitted user-data fixture access",
+        "conflict markers"
+      ],
+      "required_presences": [
+        "release evidence quarantine and complete hardened public-data contract"
+      ],
+      "research_behaviors": [
+        "hardened KOSIS, row-drop, CP949, and notice-only rejection evidence remains mandatory"
+      ],
+      "resolution": "semantic_union",
+      "status": "verified",
+      "supersession_reason": ""
+    },
+    {
+      "conflict_kind": "changed_in_both",
+      "focused_tests": [
+        "tests/test_package_windows_script.py"
+      ],
+      "path": "scripts/package_windows.py",
+      "release_behaviors": [
+        "workspace source is explicitly pinned in the build environment and Aurora QML/resources remain collected",
+        "packaging remains local and uses isolated build cache paths"
+      ],
+      "required_absences": [
+        "dropped package content",
+        "network fetch",
+        "workspace reference R DLL contamination",
+        "conflict markers"
+      ],
+      "required_presences": [
+        "union of release UI/resources and Research runtime module packaging",
+        "the verified knowledge-library entries required by packaged explanations"
+      ],
+      "research_behaviors": [
+        "Research statistical and Research OS modules imported by the packaged application remain discoverable",
+        "workspace reference R runtime contamination remains removed"
+      ],
+      "resolution": "semantic_union",
+      "status": "verified",
+      "supersession_reason": ""
+    },
+    {
+      "conflict_kind": "changed_in_both",
+      "focused_tests": [
+        "tests/test_quality_gate_script.py"
+      ],
+      "path": "scripts/quality_gate.py",
+      "release_behaviors": [
+        "workspace source is pinned for gate commands and package/installer checks remain explicit opt-ins",
+        "default gate runs compile, Ruff, Bandit, launch smoke, full pytest, and pip check"
+      ],
+      "required_absences": [
+        "network-by-default",
+        "skipped security scan",
+        "implicit package rebuild",
+        "reference R runtime leakage into ordinary commands",
+        "conflict markers"
+      ],
+      "required_presences": [
+        "offline default command order with full static, launch, test, and dependency gates"
+      ],
+      "research_behaviors": [
+        "reference R runtime is scoped only to pytest and slow-statistics commands",
+        "slow statistics and advisory scan remain explicit opt-ins"
+      ],
+      "resolution": "semantic_union",
+      "status": "verified",
+      "supersession_reason": ""
+    },
+    {
+      "conflict_kind": "changed_in_both",
+      "focused_tests": [
+        "tests/test_app_engine_smoke.py"
+      ],
+      "path": "src/modori/app.py",
+      "release_behaviors": [
+        "bootstrap properties, local settings, clipboard, and CLI entry behavior remain available",
+        "engine smoke opens a dataset, explicitly configures the selected analysis, reruns, waits, and reaches ready status"
+      ],
+      "required_absences": [
+        "implicit recommendation selection or automatic execution",
+        "live Research OS UI coordinator wiring in P0",
+        "conflict markers"
+      ],
+      "required_presences": [
+        "release application bootstrap and deterministic explicit analysis configuration",
+        "existing statistics smoke plus logistic-regression and factorial-ANOVA evidence payloads"
+      ],
+      "research_behaviors": [
+        "V1 smoke payload exposes LogisticRegressionResult evidence",
+        "V1 smoke payload exposes FactorialAnovaResult and pinned interaction evidence"
+      ],
+      "resolution": "semantic_union",
+      "status": "verified",
+      "supersession_reason": ""
+    },
+    {
+      "conflict_kind": "changed_in_both",
+      "focused_tests": [
+        "tests/test_report_step.py",
+        "tests/test_factorial_anova_reporting.py",
+        "tests/test_factorial_anova_results.py",
+        "tests/test_logistic_regression_reporting.py",
+        "tests/test_logistic_regression_metrics.py"
+      ],
+      "path": "src/modori/steps/reporting.py",
+      "release_behaviors": [
+        "reliability, comparison, regression, and existing analysis prose and tables remain dispatched explicitly",
+        "safe report paths, chart rendering, and export behavior remain unchanged"
+      ],
+      "required_absences": [
+        "unknown result type silently rendered as generic prose",
+        "dropped release report section or Research chart sequence",
+        "conflict markers"
+      ],
+      "required_presences": [
+        "explicit union dispatcher for every verified release and Research result type",
+        "selection-origin disclosure without changing numerical tables"
+      ],
+      "research_behaviors": [
+        "factorial interaction prose and charts remain available",
+        "logistic odds-ratio forest, ROC, calibration, metrics, and chart ordering remain available"
+      ],
+      "resolution": "semantic_union",
+      "status": "verified",
+      "supersession_reason": ""
+    },
+    {
+      "conflict_kind": "changed_in_both",
+      "focused_tests": [
+        "tests/ui/test_controller.py",
+        "tests/ui/test_pipeline_ops.py",
+        "tests/ui/test_release_research_os_integration_boundary.py"
+      ],
+      "path": "src/modori/ui/contracts.py",
+      "release_behaviors": [
+        "ReportExportOptions remains constructible through selection_provenance",
+        "release report-export and controller call sites retain their typed options contract"
+      ],
+      "required_absences": [
+        "divergent provenance and origin values",
+        "new authority level inferred from compatibility fields",
+        "conflict markers"
+      ],
+      "required_presences": [
+        "one synchronized value exposed through both selection_provenance and selection_origin",
+        "frozen report options remain compatible with dataclasses.replace"
+      ],
+      "research_behaviors": [
+        "SelectionOrigin remains the canonical two-value selection-source type",
+        "selection_origin remains available to pipeline report parameters"
+      ],
+      "resolution": "semantic_union",
+      "status": "verified",
+      "supersession_reason": ""
+    },
+    {
+      "conflict_kind": "changed_in_both",
+      "focused_tests": [
+        "tests/ui/test_architecture_guards.py",
+        "tests/ui/test_controller.py",
+        "tests/ui/test_end_to_end_ui_flow.py",
+        "tests/ui/test_human_operated_qml_flow.py",
+        "tests/ui/test_variable_metadata_editing.py",
+        "tests/ui/test_release_research_os_integration_boundary.py"
+      ],
+      "path": "src/modori/ui/controller.py",
+      "release_behaviors": [
+        "canRerun, selectionConfirmationRequired, and stepChainDisplayText remain QML-visible",
+        "metadata or data context changes invalidate assisted confirmation while manual reconfiguration clears provenance"
+      ],
+      "required_absences": [
+        "duplicate analysis-selection-origin state",
+        "automatic execution after recommendation or metadata edits",
+        "conflict markers"
+      ],
+      "required_presences": [
+        "UiSessionState is the single authority for selection provenance and reconfirmation",
+        "rerun and report export fail closed while assisted confirmation is stale",
+        "stateless QML report-export adapters are delegated without changing the frozen 560/60/45 facade limits"
+      ],
+      "research_behaviors": [
+        "analysisSelectionOrigin and markCurrentSelectionExperimental remain available",
+        "report export injects the local selection origin into both compatibility fields"
+      ],
+      "resolution": "semantic_union",
+      "status": "verified",
+      "supersession_reason": ""
+    },
+    {
+      "conflict_kind": "changed_in_both",
+      "focused_tests": [
+        "tests/ui/test_data_grid_qml.py",
+        "tests/ui/test_qml_runtime_load.py",
+        "tests/ui/test_release_research_os_integration_boundary.py::test_qml_does_not_alias_legacy_reason_as_passport_rationale"
+      ],
+      "path": "src/modori/ui/qml/components/DataGridView.qml",
+      "release_behaviors": [
+        "Aurora header/body geometry, synchronized scrolling, external scrollbars, keyboard focus, editing, hover, and accessibility remain intact",
+        "cell tooltips remain local to the hovered truncated value and never expose stale delegate text"
+      ],
+      "required_absences": [
+        "overlapping internal scrollbars or unbounded overscroll",
+        "stale or non-truncated cell tooltip",
+        "conflict markers"
+      ],
+      "required_presences": [
+        "release visual-token tree with StopAtBounds movement and synchronized header/body positions",
+        "runtime scrolling, editing, focus, hover, and truncation-specific tooltip evidence"
+      ],
+      "research_behaviors": [
+        "Research data-model compatibility hooks survive without introducing recommendation authority into the grid",
+        "grid interaction remains deterministic and independent of candidate selection or execution"
+      ],
+      "resolution": "semantic_union",
+      "status": "verified",
+      "supersession_reason": ""
+    },
+    {
+      "conflict_kind": "changed_in_both",
+      "focused_tests": [
+        "tests/ui/test_mode_action_surfaces.py",
+        "tests/ui/test_qml_runtime_load.py",
+        "tests/ui/test_smoke_qml.py",
+        "tests/ui/test_release_research_os_integration_boundary.py::test_qml_does_not_alias_legacy_reason_as_passport_rationale"
+      ],
+      "path": "src/modori/ui/qml/components/GuideRail.qml",
+      "release_behaviors": [
+        "PearlSurface composition, persistent non-scrolling experimental header, Aurora candidate card, glass choice rows, wrapped review confirmation, and manual configuration remain",
+        "candidate-assisted provenance and stale-confirmation fail-closed behavior remain visible at the run boundary"
+      ],
+      "required_absences": [
+        "candidate click that mutates the pipeline or starts calculation",
+        "legacy recommendationReason relabeled as AnalysisPassport or question-rationale evidence",
+        "confidence-shaped recommendation level API, duplicate state machine, or conflict markers"
+      ],
+      "required_presences": [
+        "explicit candidate selection, separate preparation, visible confirmation, configuration commit, and manual rerun sequence",
+        "reachable deterministic manual forms for logistic regression, factorial ANOVA, repeated measures, Friedman, mediation, and moderated mediation",
+        "closed selected-candidate text projection and bounded unavailable-explanation copy before confirmation"
+      ],
+      "research_behaviors": [
+        "no candidate is implicitly selected or executed and advanced candidate preparation does not change pipeline version",
+        "logistic event/reference choices and factorial role/level constraints are runtime-validated in the visible CASUAL MODE surface"
+      ],
+      "resolution": "semantic_union",
+      "status": "verified",
+      "supersession_reason": ""
+    },
+    {
+      "conflict_kind": "changed_in_both",
+      "focused_tests": [
+        "tests/ui/test_guided_standard_pipeline_rail.py",
+        "tests/ui/test_qml_runtime_load.py",
+        "tests/ui/test_mode_action_surfaces.py",
+        "tests/ui/test_release_research_os_integration_boundary.py::test_qml_does_not_alias_legacy_reason_as_passport_rationale"
+      ],
+      "path": "src/modori/ui/qml/components/PipelineRail.qml",
+      "release_behaviors": [
+        "AuroraGlassSurface layout, compact glass footer, direct-analysis selector, rerun affordance, scroll behavior, and accessibility remain",
+        "stepChainDisplayText and selectionConfirmationRequired remain visible without changing the frozen visual hierarchy"
+      ],
+      "required_absences": [
+        "automatic rerun after configuration or candidate selection",
+        "live AnalysisPassport or question-rationale state on the legacy pipeline surface",
+        "duplicate controls, conflict markers, or lost release footer styling"
+      ],
+      "required_presences": [
+        "direct PRO MODE configuration routes for the verified release analysis union",
+        "explicit logistic-regression and factorial-ANOVA role selectors with validation before pipeline mutation"
+      ],
+      "research_behaviors": [
+        "logistic outcome/event/reference and factorial outcome/factor/level constraints remain runtime-tested",
+        "experimental selection-origin disclosure and reconfirmation boundary remain separate from calculation execution"
+      ],
+      "resolution": "semantic_union",
+      "status": "verified",
+      "supersession_reason": ""
+    },
+    {
+      "conflict_kind": "changed_in_both",
+      "focused_tests": [
+        "tests/ui/test_recommendations.py",
+        "tests/ui/test_controller.py",
+        "tests/ui/test_release_research_os_integration_boundary.py"
+      ],
+      "path": "src/modori/ui/recommendation_controller.py",
+      "release_behaviors": [
+        "recommendation kind and prepared reliability, descriptive, outcome, group, predictor, and covariate fields remain available",
+        "candidate selection remains QML-callable without running the pipeline"
+      ],
+      "required_absences": [
+        "recommendationLevel, recommendationAlternativesText, or recommendationCandidateLevelAt",
+        "question-rationale or AnalysisPassport authority import",
+        "conflict markers"
+      ],
+      "required_presences": [
+        "explicit candidate selection followed by preparation and manual configuration",
+        "legacy recommendation controller remains isolated from passport rationale",
+        "deterministic string projection from the explicitly selected candidate for packaged QML prefill"
+      ],
+      "research_behaviors": [
+        "explicit prepare, confirm, clear, generic field, and review-requirement state remain available",
+        "no candidate is selected before an explicit user choice"
+      ],
+      "resolution": "semantic_union",
+      "status": "verified",
+      "supersession_reason": ""
+    },
+    {
+      "conflict_kind": "changed_in_both",
+      "focused_tests": [
+        "tests/ui/test_end_to_end_ui_flow.py",
+        "tests/ui/test_pipeline_ops.py"
+      ],
+      "path": "src/modori/ui/run_validation.py",
+      "release_behaviors": [
+        "all existing analysis-step validators and Korean failure messages remain",
+        "validation remains dataset-aware and blocks worker submission on invalid roles"
+      ],
+      "required_absences": [
+        "unknown analysis accepted through a generic fallback",
+        "invalid variable role submitted to the worker",
+        "conflict markers"
+      ],
+      "required_presences": [
+        "explicit validator dispatch for the complete verified analysis union"
+      ],
+      "research_behaviors": [
+        "logistic-regression event/reference and predictor checks remain",
+        "factorial-ANOVA outcome, factor, and level checks remain"
+      ],
+      "resolution": "semantic_union",
+      "status": "verified",
+      "supersession_reason": ""
+    },
+    {
+      "conflict_kind": "changed_in_both",
+      "focused_tests": [
+        "tests/ui/test_security_privacy.py",
+        "tests/ui/test_human_operated_qml_flow.py",
+        "tests/ui/test_guided_standard_variable_selection_flow.py"
+      ],
+      "path": "src/modori/ui/strings.py",
+      "release_behaviors": [
+        "Aurora CASUAL MODE and PRO MODE labels and entry descriptions remain",
+        "release review, direct-selection, and settings copy remains closed-catalog text"
+      ],
+      "required_absences": [
+        "heuristic recommendation relabelled as passport or research decision",
+        "confidence or accuracy claim in candidate copy",
+        "duplicate dictionary keys or conflict markers"
+      ],
+      "required_presences": [
+        "one closed Korean catalog supporting both Aurora surfaces and explicit experimental review",
+        "bounded unavailable-explanation copy that leaks no local path or exception text"
+      ],
+      "research_behaviors": [
+        "logistic, factorial, repeated-measures, mediation, review-requirement, and order-disclaimer strings remain",
+        "experimental status states that candidates do not auto-run"
+      ],
+      "resolution": "semantic_union",
+      "status": "verified",
+      "supersession_reason": ""
+    },
+    {
+      "conflict_kind": "changed_in_both",
+      "focused_tests": [
+        "tests/test_app_engine_smoke.py"
+      ],
+      "path": "tests/test_app_engine_smoke.py",
+      "release_behaviors": [
+        "dataset open, explicit configuration, rerun, wait, and ready-state assertions remain",
+        "existing release statistics smoke and cache-path evidence remain asserted"
+      ],
+      "required_absences": [
+        "automatic recommendation execution",
+        "missing parent smoke assertion",
+        "conflict markers"
+      ],
+      "required_presences": [
+        "one executable smoke union covering release lifecycle and both new statistical result types"
+      ],
+      "research_behaviors": [
+        "logistic evidence names LogisticRegressionResult",
+        "factorial evidence names FactorialAnovaResult and includes the pinned interaction value"
+      ],
+      "resolution": "semantic_union",
+      "status": "verified",
+      "supersession_reason": ""
+    },
+    {
+      "conflict_kind": "changed_in_both",
+      "focused_tests": [
+        "tests/test_file_operation_audit.py"
+      ],
+      "path": "tests/test_file_operation_audit.py",
+      "release_behaviors": [
+        "release installer, report export, package evidence, lstat, copy, and scandir operations remain enumerated",
+        "installer and package audit rows retain detailed containment assertions"
+      ],
+      "required_absences": [
+        "unclassified file-operation caller",
+        "weakened installer audit wording",
+        "conflict markers"
+      ],
+      "required_presences": [
+        "exact audited-path census and documentation coverage for both parents"
+      ],
+      "research_behaviors": [
+        "Decision Ledger, benchmark, office-kit, product-wording, and integration-verifier operations remain enumerated",
+        "shutil.rmtree is included only for bounded developer/test cleanup"
+      ],
+      "resolution": "semantic_union",
+      "status": "verified",
+      "supersession_reason": ""
+    },
+    {
+      "conflict_kind": "changed_in_both",
+      "focused_tests": [
+        "tests/test_package_engine_smoke_script.py"
+      ],
+      "path": "tests/test_package_engine_smoke_script.py",
+      "release_behaviors": [
+        "state/evidence routing, cache identity, symlink rejection, stale output, and workspace R isolation tests remain",
+        "explicit lifecycle evidence retains only reference.xlsx and result.json"
+      ],
+      "required_absences": [
+        "missing factorial/logistic smoke accepted",
+        "invalid cache evidence accepted",
+        "conflict markers"
+      ],
+      "required_presences": [
+        "all distinct parent test functions and combined success payload"
+      ],
+      "research_behaviors": [
+        "open/rerun/wait/ready, logistic-regression, and factorial-ANOVA evidence tests remain"
+      ],
+      "resolution": "semantic_union",
+      "status": "verified",
+      "supersession_reason": ""
+    },
+    {
+      "conflict_kind": "changed_in_both",
+      "focused_tests": [
+        "tests/test_package_public_data_smoke_script.py"
+      ],
+      "path": "tests/test_package_public_data_smoke_script.py",
+      "release_behaviors": [
+        "explicit state/evidence isolation, stale output, linked evidence, and replacement-attack tests remain",
+        "workspace R runtime isolation assertions remain"
+      ],
+      "required_absences": [
+        "missing hardened case accepted",
+        "stale or linked evidence accepted",
+        "conflict markers"
+      ],
+      "required_presences": [
+        "all distinct parent public-data smoke and adversarial tests"
+      ],
+      "research_behaviors": [
+        "expanded hardened public-data case and warning/content evidence tests remain"
+      ],
+      "resolution": "semantic_union",
+      "status": "verified",
+      "supersession_reason": ""
+    },
+    {
+      "conflict_kind": "changed_in_both",
+      "focused_tests": [
+        "tests/test_package_windows_script.py"
+      ],
+      "path": "tests/test_package_windows_script.py",
+      "release_behaviors": [
+        "QML, assets, installer resources, workspace source pin, and bare-Rscript behavior tests remain",
+        "release packaging environment isolation remains asserted"
+      ],
+      "required_absences": [
+        "dropped package content",
+        "workspace R runtime contamination",
+        "conflict markers"
+      ],
+      "required_presences": [
+        "exact union of runtime-hidden imports, resources, environment assertions, and knowledge-library data"
+      ],
+      "research_behaviors": [
+        "Research modules/scripts, mixed R library cleanup, namespace rejection, and entrypoint helper tests remain"
+      ],
+      "resolution": "semantic_union",
+      "status": "verified",
+      "supersession_reason": ""
+    },
+    {
+      "conflict_kind": "changed_in_both",
+      "focused_tests": [
+        "tests/test_quality_gate_script.py"
+      ],
+      "path": "tests/test_quality_gate_script.py",
+      "release_behaviors": [
+        "source pin, offline default order, installer/package opt-ins, and checklist tests remain",
+        "Bandit, full pytest, launch smoke, and pip check remain mandatory"
+      ],
+      "required_absences": [
+        "implicit network advisory scan",
+        "skipped security scan",
+        "removed full pytest",
+        "conflict markers"
+      ],
+      "required_presences": [
+        "all distinct parent quality-gate tests and command-order assertions"
+      ],
+      "research_behaviors": [
+        "R scoping, slow-statistics opt-in, advisory opt-in, and environment-copy isolation tests remain"
+      ],
+      "resolution": "semantic_union",
+      "status": "verified",
+      "supersession_reason": ""
+    },
+    {
+      "conflict_kind": "changed_in_both",
+      "focused_tests": [
+        "tests/ui/test_controller.py",
+        "tests/ui/test_release_research_os_integration_boundary.py"
+      ],
+      "path": "tests/ui/test_controller.py",
+      "release_behaviors": [
+        "rerun, reconfirmation, report disclosure, prepared-field, and real-pipeline regressions remain",
+        "context changes block assisted rerun and report recomputation"
+      ],
+      "required_absences": [
+        "implicit default candidate execution",
+        "invalid fake report accepted for assisted disclosure",
+        "lost parent test identifier or conflict marker"
+      ],
+      "required_presences": [
+        "release and Research controller state transitions tested together",
+        "selected-candidate text projection tested without pipeline or worker mutation"
+      ],
+      "research_behaviors": [
+        "selection-origin injection, explicit preparation, unselected-candidate no-submit, and advanced-candidate configuration regressions remain",
+        "all parent test identifiers remain present"
+      ],
+      "resolution": "semantic_union",
+      "status": "verified",
+      "supersession_reason": ""
+    },
+    {
+      "conflict_kind": "changed_in_both",
+      "focused_tests": [
+        "tests/ui/test_data_grid_qml.py"
+      ],
+      "path": "tests/ui/test_data_grid_qml.py",
+      "release_behaviors": [
+        "all release grid geometry, scrollbar, focus, hover, editing, accessibility, and tooltip regressions remain",
+        "delegate fixture coverage retains integer and tuple/custom-row model variants"
+      ],
+      "required_absences": [
+        "lost parent test identifier",
+        "tooltip assertion that accepts a non-truncated or stale cell",
+        "conflict markers"
+      ],
+      "required_presences": [
+        "static and runtime evidence for synchronized bounded scrolling and current-cell tooltip ownership"
+      ],
+      "research_behaviors": [
+        "Research model-shape compatibility assertions remain alongside the frozen Aurora interaction contract"
+      ],
+      "resolution": "semantic_union",
+      "status": "verified",
+      "supersession_reason": ""
+    },
+    {
+      "conflict_kind": "changed_in_both",
+      "focused_tests": [
+        "tests/ui/test_end_to_end_ui_flow.py"
+      ],
+      "path": "tests/ui/test_end_to_end_ui_flow.py",
+      "release_behaviors": [
+        "reference descriptives-to-report and regression lifecycle regressions remain executable",
+        "application launcher and commercial QA document checks remain"
+      ],
+      "required_absences": [
+        "default candidate or caution label treated as authority",
+        "automatic analysis execution",
+        "lost parent test identifier or conflict marker"
+      ],
+      "required_presences": [
+        "open, explicit configure, rerun, wait, result, and report lifecycle coverage"
+      ],
+      "research_behaviors": [
+        "both flows require explicit selection, preparation, confirmation where required, and manual configuration",
+        "heightened-review routing is asserted without a trust label"
+      ],
+      "resolution": "semantic_union",
+      "status": "verified",
+      "supersession_reason": ""
+    },
+    {
+      "conflict_kind": "changed_in_both",
+      "focused_tests": [
+        "tests/ui/test_guided_standard_pipeline_rail.py"
+      ],
+      "path": "tests/ui/test_guided_standard_pipeline_rail.py",
+      "release_behaviors": [
+        "CASUAL and PRO rail visibility, Aurora footer treatment, rerun, scroll, and direct-analysis structure assertions remain",
+        "stepChainDisplayText compatibility and reconfirmation disclosure remain covered"
+      ],
+      "required_absences": [
+        "automatic run from a selector or configuration button",
+        "lost parent test identifier or conflict marker"
+      ],
+      "required_presences": [
+        "combined release visual assertions and Research logistic/factorial configuration assertions"
+      ],
+      "research_behaviors": [
+        "explicit apply-only logistic and factorial routes and stepChainText evidence remain asserted"
+      ],
+      "resolution": "semantic_union",
+      "status": "verified",
+      "supersession_reason": ""
+    },
+    {
+      "conflict_kind": "changed_in_both",
+      "focused_tests": [
+        "tests/ui/test_guided_standard_variable_selection_flow.py",
+        "tests/ui/test_release_research_os_integration_boundary.py"
+      ],
+      "path": "tests/ui/test_guided_standard_variable_selection_flow.py",
+      "release_behaviors": [
+        "guided and standard prepared-variable selection surfaces remain covered",
+        "manual override and candidate-kind fields remain covered"
+      ],
+      "required_absences": [
+        "recommendation confidence level API",
+        "candidate auto-application",
+        "lost parent test identifier or conflict marker"
+      ],
+      "required_presences": [
+        "QML-facing selection workflow coverage for both entry modes"
+      ],
+      "research_behaviors": [
+        "explicit prepare and confirmation APIs remain covered",
+        "removed confidence-shaped APIs are asserted absent"
+      ],
+      "resolution": "semantic_union",
+      "status": "verified",
+      "supersession_reason": ""
+    },
+    {
+      "conflict_kind": "changed_in_both",
+      "focused_tests": [
+        "tests/ui/test_human_operated_qml_flow.py"
+      ],
+      "path": "tests/ui/test_human_operated_qml_flow.py",
+      "release_behaviors": [
+        "human-operated standard and manual analysis paths remain covered",
+        "Aurora data-window and action-surface contracts remain covered"
+      ],
+      "required_absences": [
+        "candidate guidance as the only path to analysis",
+        "unreachable manual form",
+        "lost parent test identifier or conflict marker"
+      ],
+      "required_presences": [
+        "human-controlled configuration route for every supported analysis family"
+      ],
+      "research_behaviors": [
+        "logistic and factorial manual configuration remains reachable",
+        "experimental candidate flow remains separate from direct analysis"
+      ],
+      "resolution": "semantic_union",
+      "status": "verified",
+      "supersession_reason": ""
+    },
+    {
+      "conflict_kind": "changed_in_both",
+      "focused_tests": [
+        "tests/ui/test_mode_action_surfaces.py",
+        "tests/ui/test_qml_string_catalog.py"
+      ],
+      "path": "tests/ui/test_mode_action_surfaces.py",
+      "release_behaviors": [
+        "CASUAL MODE and PRO MODE entry copy, Aurora glass rows, one-edge selection, footer styling, and report localization assertions remain",
+        "candidate-assisted visible review confirmation and fail-closed provenance reset assertions remain"
+      ],
+      "required_absences": [
+        "work-screen preference checkboxes, trust-level wording, combined candidate-and-run call, lost parent test identifier, or conflict marker"
+      ],
+      "required_presences": [
+        "one persistent experimental status outside the scrolling form and reachable manual configuration surface"
+      ],
+      "research_behaviors": [
+        "candidate-list, prepare, confirm, no-auto-run, unsupported-form, and no-false-rationale boundaries remain asserted",
+        "the brittle source-position slice was replaced by an exact glassStrong presence check without weakening the visual contract"
+      ],
+      "resolution": "semantic_union",
+      "status": "verified",
+      "supersession_reason": ""
+    },
+    {
+      "conflict_kind": "changed_in_both",
+      "focused_tests": [
+        "tests/ui/test_pipeline_ops.py"
+      ],
+      "path": "tests/ui/test_pipeline_ops.py",
+      "release_behaviors": [
+        "all release step-edit and report-export pipeline operations remain covered",
+        "selection_provenance compatibility input remains accepted"
+      ],
+      "required_absences": [
+        "selection_provenance persisted as an engine parameter",
+        "implicit pipeline mutation from candidate selection",
+        "lost parent test identifier or conflict marker"
+      ],
+      "required_presences": [
+        "deterministic pipeline edits for the complete verified analysis union"
+      ],
+      "research_behaviors": [
+        "logistic and factorial step operations remain covered",
+        "only canonical selection_origin is written into report step parameters"
+      ],
+      "resolution": "semantic_union",
+      "status": "verified",
+      "supersession_reason": ""
+    },
+    {
+      "conflict_kind": "changed_in_both",
+      "focused_tests": [
+        "tests/ui/test_qml_runtime_load.py"
+      ],
+      "path": "tests/ui/test_qml_runtime_load.py",
+      "release_behaviors": [
+        "real Qt component loading, data-grid interaction, dialogs, focus, Aurora geometry, and significant-warning rejection remain",
+        "tests wait for the splash timer to leave splash before forcing work, preventing hidden-screen false passes"
+      ],
+      "required_absences": [
+        "QML binding loop, ReferenceError, hidden-surface geometry accepted as evidence, automatic run, lost parent test identifier, or conflict marker"
+      ],
+      "required_presences": [
+        "visible-mode runtime evidence for candidate selection, preparation, explicit confirmation, layout non-overlap, and no pre-run pipeline mutation",
+        "reliability prefill survives both normal and unavailable explanation-library states"
+      ],
+      "research_behaviors": [
+        "logistic event/reference and factorial role/level selectors remain exercised through actual QML objects",
+        "PRO pipeline and CASUAL guide checks explicitly switch modes so effective enabled and geometry assertions are non-vacuous"
+      ],
+      "resolution": "semantic_union",
+      "status": "verified",
+      "supersession_reason": ""
+    },
+    {
+      "conflict_kind": "changed_in_both",
+      "focused_tests": [
+        "tests/ui/test_recommendations.py",
+        "tests/ui/test_release_research_os_integration_boundary.py"
+      ],
+      "path": "tests/ui/test_recommendations.py",
+      "release_behaviors": [
+        "candidate discovery, missing-value masking, group filtering, and factor/repeated/mediation coverage remain",
+        "release regression identifiers remain as compatibility regressions"
+      ],
+      "required_absences": [
+        "default_candidate field",
+        "accuracy or safety level presented as model confidence",
+        "lost parent test identifier or conflict marker"
+      ],
+      "required_presences": [
+        "deterministic candidate ordering and explicit no-preselection assertions"
+      ],
+      "research_behaviors": [
+        "routing tiers replace confidence-shaped levels",
+        "no candidate is preselected and named advanced roles remain explicit"
+      ],
+      "resolution": "semantic_union",
+      "status": "verified",
+      "supersession_reason": ""
+    },
+    {
+      "conflict_kind": "changed_in_both",
+      "focused_tests": [
+        "tests/ui/test_result_surface_qml.py"
+      ],
+      "path": "tests/ui/test_result_surface_qml.py",
+      "release_behaviors": [
+        "Aurora results-panel hierarchy, empty/running/ready/error states, disclosure layout, and report actions remain covered",
+        "stale assisted-selection confirmation remains visible and blocks report actions"
+      ],
+      "required_absences": [
+        "result surface that silently hides experimental origin or stale confirmation",
+        "lost parent test identifier or conflict marker"
+      ],
+      "required_presences": [
+        "release visual-state assertions and Research selection-origin/reconfirmation assertions in one module"
+      ],
+      "research_behaviors": [
+        "experimental candidate-assisted disclosure remains distinct from calculation-result validity"
+      ],
+      "resolution": "semantic_union",
+      "status": "verified",
+      "supersession_reason": ""
+    },
+    {
+      "conflict_kind": "changed_in_both",
+      "focused_tests": [
+        "tests/ui/test_security_privacy.py"
+      ],
+      "path": "tests/ui/test_security_privacy.py",
+      "release_behaviors": [
+        "network-import guard, remote-QML guard, Aurora string catalog, accessibility, and Settings toggle remain covered",
+        "reduce-effects persistence remains local"
+      ],
+      "required_absences": [
+        "runtime network client or remote asset",
+        "work-screen duplicate of the Settings control",
+        "lost parent test identifier or conflict marker"
+      ],
+      "required_presences": [
+        "no-network and no-remote-asset tests plus local settings control coverage"
+      ],
+      "research_behaviors": [
+        "Research reduce-effects regression identifier remains preserved after the control moved to Settings",
+        "local-only UI boundary remains covered"
+      ],
+      "resolution": "semantic_union",
+      "status": "verified",
+      "supersession_reason": ""
+    },
+    {
+      "conflict_kind": "changed_in_both",
+      "focused_tests": [
+        "tests/ui/test_smoke_qml.py"
+      ],
+      "path": "tests/ui/test_smoke_qml.py",
+      "release_behaviors": [
+        "application shell, import preview, file-dialog, manual rerun, and worker-queue smoke assertions remain",
+        "candidate selection handler is parsed as an isolated QML block"
+      ],
+      "required_absences": [
+        "rerunNow, runPreparedRecommendationNow, or applySelectedRecommendation inside import or candidate selection handlers",
+        "lost parent test identifier or conflict marker"
+      ],
+      "required_presences": [
+        "exactly selectRecommendationAt in the candidate-selection controller call set and rerunNow only in the explicit manual-run block"
+      ],
+      "research_behaviors": [
+        "explicit candidate preparation and confirmation remain separate from the smoke-tested manual calculation trigger"
+      ],
+      "resolution": "semantic_union",
+      "status": "verified",
+      "supersession_reason": ""
+    },
+    {
+      "conflict_kind": "changed_in_both",
+      "focused_tests": [
+        "tests/ui/test_variable_metadata_editing.py",
+        "tests/ui/test_controller.py"
+      ],
+      "path": "tests/ui/test_variable_metadata_editing.py",
+      "release_behaviors": [
+        "metadata labels, measure levels, missing codes, and display refresh remain covered",
+        "assisted confirmation becomes stale after metadata context changes"
+      ],
+      "required_absences": [
+        "worker submission or report export caused by metadata edit",
+        "silent retention of valid assisted confirmation",
+        "lost parent test identifier or conflict marker"
+      ],
+      "required_presences": [
+        "separate regressions for view refresh, confirmation invalidation, and no auto-execution"
+      ],
+      "research_behaviors": [
+        "metadata editing does not execute analysis or generate a report",
+        "recommendations refresh without gaining execution authority"
+      ],
+      "resolution": "semantic_union",
+      "status": "verified",
+      "supersession_reason": ""
+    }
+  ],
+  "merge_base": "4e1170c58af35edc20e172f616b51d3464a5a2ef",
+  "release_sha": "ca40471297da5f69e90c4519a28ecf0864fd1c08",
+  "research_sha": "247f8f5d80c8045080510cdffa12fe88f1271cbb",
+  "schema_id": "modori.release-integration-conflict-ledger",
+  "schema_version": 2
+}

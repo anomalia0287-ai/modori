@@ -8,10 +8,13 @@ import pytest
 
 from modori.analysis_catalog import (
     AnalysisStatus,
-    RecommendationPolicy,
     get_module_spec,
 )
 from modori.core import Dataset, Measure, PipelineContext, Variable
+from modori.recommendation_policy import (
+    RecommendationEvidenceStatus,
+    RecommendationRoutingPolicy,
+)
 
 
 def _step_cls() -> type:
@@ -85,7 +88,11 @@ def test_module_spec_registers_executable_strong_contract() -> None:
         spec.result_type
         == "modori.descriptives_table1_results.DescriptivesTableResult"
     )
-    assert spec.recommendation_policy is RecommendationPolicy.STRONG
+    assert spec.recommendation_policy is RecommendationRoutingPolicy.PRIMARY_REVIEW
+    assert (
+        spec.recommendation_evidence_status
+        is RecommendationEvidenceStatus.EXPERIMENTAL
+    )
     assert "tests/test_descriptives_table1_step.py" in spec.contract_tests
 
 

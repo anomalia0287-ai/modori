@@ -1,7 +1,11 @@
 from __future__ import annotations
 
+import pytest
+
 from modori.ui.contracts import DisplayColumn, DisplayNote, DisplayResult, DisplayTable
 from modori.ui.result_binding import ResultBindingPresenter
+from modori.ui.result_validation import ResultPayloadValidator
+from modori.ui.results import display_result_from_engine_result
 
 
 def test_result_binding_formats_summary_tables_notes_and_chart_paths() -> None:
@@ -32,3 +36,35 @@ def test_result_binding_formats_summary_tables_notes_and_chart_paths() -> None:
     assert binding.notes_text == "그림: 그림 파일을 찾을 수 없습니다"
     assert binding.chart_paths_text == "C:/tmp/chart.png"
 
+
+def test_factorial_result_kind_has_bilingual_product_titles(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("modori.ui.results.prose_for", lambda _result, language: language)
+    monkeypatch.setattr("modori.ui.results.table_for", lambda _result: [])
+
+    display = display_result_from_engine_result(
+        object(),
+        result_id="anova_factorial",
+        kind="anova_factorial",  # type: ignore[arg-type]
+    )
+
+    assert display.kind == "anova_factorial"
+    assert display.title_ko == "이원 Type III 분산분석"
+    assert display.title_en == "Two-factor Type III ANOVA"
+
+
+@pytest.mark.parametrize("kind", ["logistic_regression", "anova_factorial"])
+def test_result_payload_validator_accepts_all_registered_model_kinds(kind: str) -> None:
+    payload = [
+        DisplayResult(
+            result_id=kind,
+            kind=kind,  # type: ignore[arg-type]
+            title_ko="결과",
+            title_en="Result",
+            prose_ko="요약",
+            prose_en="Summary",
+        )
+    ]
+
+    assert ResultPayloadValidator().validate(payload).ok is True

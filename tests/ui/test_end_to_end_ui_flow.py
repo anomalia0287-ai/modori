@@ -1,5 +1,7 @@
 from pathlib import Path
 
+from modori.recommendation_policy import RecommendationRoutingTier
+
 
 def write_reference_csv(path: Path) -> None:
     group1_scores = [
@@ -36,7 +38,7 @@ def write_reference_csv(path: Path) -> None:
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-def test_default_controller_reference_flow_runs_to_report(tmp_path) -> None:
+def test_explicitly_selected_controller_reference_flow_runs_to_report(tmp_path) -> None:
     from modori.ui.contracts import ImportOptions, ReportExportOptions
     from modori.ui.controller import UiController
 
@@ -46,7 +48,10 @@ def test_default_controller_reference_flow_runs_to_report(tmp_path) -> None:
 
     opened = controller.openDataFile(data_path, ImportOptions(confirm_new_session=True))
     assert opened.ok is True
-
+    assert controller.recommendationTitle == ""
+    assert controller.selectRecommendationAt(0) is True
+    assert controller.prepareSelectedRecommendationNow() is True
+    assert controller.setExperimentalRecommendationConfirmed(True) is True
     assert controller.recommendationKind == "descriptives"
     configured = controller.configureDescriptivesSelection(
         controller.preparedVariableKeys,
@@ -67,7 +72,7 @@ def test_default_controller_reference_flow_runs_to_report(tmp_path) -> None:
     assert Path(exported.result_ids[0]).exists()
 
 
-def test_safe_caution_regression_recommendation_runs(tmp_path) -> None:
+def test_explicitly_confirmed_heightened_review_regression_runs(tmp_path) -> None:
     import pandas as pd
 
     from modori.ui.contracts import ImportOptions
@@ -88,10 +93,12 @@ def test_safe_caution_regression_recommendation_runs(tmp_path) -> None:
     caution_index = next(
         index
         for index, candidate in enumerate(controller._recommendation_state.candidates)
-        if candidate.level == "주의 필요"
+        if candidate.routing_tier is RecommendationRoutingTier.HEIGHTENED_REVIEW
     )
     assert controller.selectRecommendationAt(caution_index) is True
-
+    assert controller.prepareSelectedRecommendationNow() is True
+    assert controller.preparedRecommendationReviewRequirement == "heightened_review"
+    assert controller.setExperimentalRecommendationConfirmed(True) is True
     configured = controller.configureRegressionSelection(
         controller.preparedOutcomeKey,
         controller.preparedPredictorKeys,
@@ -104,6 +111,16 @@ def test_safe_caution_regression_recommendation_runs(tmp_path) -> None:
     assert controller.status == "ready"
     assert controller.lastError == ""
     assert [result.result_id for result in controller.resultsModel] == ["regression"]
+
+
+def test_default_controller_reference_flow_runs_to_report(tmp_path) -> None:
+    """Retain the release regression ID under the explicit-selection boundary."""
+    test_explicitly_selected_controller_reference_flow_runs_to_report(tmp_path)
+
+
+def test_safe_caution_regression_recommendation_runs(tmp_path) -> None:
+    """Retain the release regression ID without restoring implicit trust labels."""
+    test_explicitly_confirmed_heightened_review_regression_runs(tmp_path)
 
 
 def test_app_launcher_exposes_ui_controller_context() -> None:

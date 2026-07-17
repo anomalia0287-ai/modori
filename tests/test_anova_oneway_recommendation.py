@@ -4,6 +4,7 @@ import pandas as pd
 
 from modori.anova_oneway_recommendation import eligibility_provider
 from modori.core import Dataset, Measure, Variable
+from modori.recommendation_policy import RecommendationRoutingTier
 from modori.recommendations import RecommendationService
 
 
@@ -49,7 +50,7 @@ def test_provider_recommends_one_way_anova_for_scale_dv_and_three_groups() -> No
     candidate = eligibility_provider().candidates(dataset)[0]
 
     assert candidate.kind == "anova_oneway"
-    assert candidate.level == "가능한 후보"
+    assert candidate.routing_tier is RecommendationRoutingTier.SECONDARY
     assert candidate.outcome_key == "score"
     assert candidate.group_key == "group"
     assert "영향" not in candidate.reason_ko
@@ -74,5 +75,6 @@ def test_recommendation_service_exposes_anova_candidate_without_stealing_default
     state = RecommendationService().recommend(dataset)
 
     assert any(candidate.kind == "anova_oneway" for candidate in state.candidates)
-    assert state.default_candidate is not None
-    assert state.default_candidate.kind == "descriptives"
+    assert state.candidates[0].kind == "descriptives"
+    assert state.selected_candidate is None
+    assert not hasattr(state, "default_candidate")

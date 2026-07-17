@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
@@ -22,6 +22,8 @@ from modori.steps import (
     ModeratedMediationStep,
     MultipleRegressionStep,
     OneWayAnovaStep,
+    FactorialAnovaStep,
+    BinaryLogisticRegressionStep,
     ReliabilityStep,
     ReportStep,
 )
@@ -150,10 +152,19 @@ class PipelineOperations:
             raise RuntimeError("Pipeline does not support metadata step insertion")
         if not hasattr(self._pipeline, "insert_after_and_recompute"):
             raise RuntimeError("Pipeline does not support metadata step insertion")
-        self._pipeline.insert_after_and_recompute(
-            after_step_id,
-            step,
-            dirty_from=str(getattr(step, "id")),
+        self._mutate_data_prep_without_analysis(
+            lambda: self._pipeline.insert_after_and_recompute(
+                after_step_id,
+                step,
+                dirty_from=str(getattr(step, "id")),
+            )
+        )
+
+    def edit_metadata_params(self, step_id: str, params: dict[str, Any]) -> None:
+        if not self.can_edit_steps():
+            raise RuntimeError("Pipeline does not support metadata step editing")
+        self._mutate_data_prep_without_analysis(
+            lambda: self._pipeline.edit_params(step_id, params)
         )
 
     def insert_or_replace_transform_step(self, step: object) -> None:
@@ -161,17 +172,24 @@ class PipelineOperations:
             raise RuntimeError("Pipeline does not support transform insertion")
         step_id = str(getattr(step, "id"))
         if self.has_step(step_id):
-            self.edit_params(step_id, dict(getattr(step, "params")))
+            self._mutate_data_prep_without_analysis(
+                lambda: self._pipeline.edit_params(
+                    step_id,
+                    dict(getattr(step, "params")),
+                )
+            )
             return
         after_step_id = self._last_data_prep_step_id()
         if after_step_id is None:
             raise RuntimeError("Pipeline does not support transform insertion")
         if not hasattr(self._pipeline, "insert_after_and_recompute"):
             raise RuntimeError("Pipeline does not support transform insertion")
-        self._pipeline.insert_after_and_recompute(
-            after_step_id,
-            step,
-            dirty_from=step_id,
+        self._mutate_data_prep_without_analysis(
+            lambda: self._pipeline.insert_after_and_recompute(
+                after_step_id,
+                step,
+                dirty_from=step_id,
+            )
         )
 
     def metadata_insert_after_step_id(self, variable_key: str) -> str | None:
@@ -224,20 +242,28 @@ class PipelineOperations:
         result_id: str,
         result: object,
     ) -> DisplayResult:
-        chart_spec = getattr(result, "chart_spec", None)
-        if chart_spec is None:
+        chart_specs = getattr(result, "chart_specs", ())
+        if isinstance(chart_specs, (list, tuple)) and chart_specs:
+            render_jobs = [
+                (f"{result_id}:{index}", chart_spec)
+                for index, chart_spec in enumerate(chart_specs, start=1)
+            ]
+        else:
+            chart_spec = getattr(result, "chart_spec", None)
+            render_jobs = [] if chart_spec is None else [(result_id, chart_spec)]
+        if not render_jobs:
             return display
-        assets = self.chart_renderer.render_for_display(
-            result_id=result_id,
-            chart_spec=chart_spec,
-        )
-        paths = list(getattr(assets, "paths", []))
-        error = getattr(assets, "error", None)
-        if not paths and not error:
-            return display
+        paths: list[str] = []
         notes = list(display.notes)
-        if error:
-            notes.append(DisplayNote(title="그림", body=str(error)))
+        for chart_result_id, chart_spec in render_jobs:
+            assets = self.chart_renderer.render_for_display(
+                result_id=chart_result_id,
+                chart_spec=chart_spec,
+            )
+            paths.extend(getattr(assets, "paths", []))
+            error = getattr(assets, "error", None)
+            if error:
+                notes.append(DisplayNote(title="그림", body=str(error)))
         return replace(
             display,
             chart_paths=[*display.chart_paths, *paths],
@@ -269,12 +295,16 @@ class PipelineOperations:
             return "comparison"
         if result_id.startswith("regression"):
             return "regression"
+        if result_id.startswith("logistic_regression"):
+            return "logistic_regression"
         if result_id.startswith("frequency_crosstab"):
             return "frequency_crosstab"
         if result_id.startswith("correlation"):
             return "correlation"
         if result_id.startswith("anova_oneway"):
             return "anova_oneway"
+        if result_id.startswith("anova_factorial"):
+            return "anova_factorial"
         if result_id.startswith("kruskal_wallis"):
             return "kruskal_wallis"
         if result_id.startswith("ancova"):
@@ -300,9 +330,11 @@ class PipelineOperations:
             "stats.reliability",
             "stats.compare_groups",
             "stats.regression_ols",
+            "stats.logistic_regression",
             "stats.frequency_crosstab",
             "stats.correlation",
             "stats.anova_oneway",
+            "stats.anova_factorial",
             "stats.kruskal_wallis",
             "stats.ancova",
             "stats.factor_pca",
@@ -357,6 +389,55 @@ class PipelineOperations:
             self._pipeline.analysis_objects = {}
             return
         raise RuntimeError("Pipeline does not support preserved step recompute")
+
+    def _mutate_data_prep_without_analysis(self, mutation: Callable[[], None]) -> None:
+        if self._pipeline is None:
+            raise RuntimeError("Pipeline does not support data preparation")
+        snapshot = self._snapshot_pipeline_state()
+        original_steps = self.steps()
+        deferred = self._deferred_analysis_placements(original_steps)
+        data_prep_steps = [
+            step
+            for step in original_steps
+            if not bool(getattr(step, "produces_analysis", False))
+        ]
+        try:
+            self._replace_steps_preserving_cached_imports(data_prep_steps)
+            mutation()
+            self._restore_deferred_analysis_steps(deferred)
+        except Exception:
+            self._restore_pipeline_state(snapshot)
+            raise
+
+    def _restore_deferred_analysis_steps(
+        self,
+        deferred: list[tuple[str | None, object]],
+    ) -> None:
+        by_next_data_step: dict[str | None, list[object]] = {}
+        for next_data_step_id, step in deferred:
+            by_next_data_step.setdefault(next_data_step_id, []).append(step)
+
+        restored: list[object] = []
+        for step in self.steps():
+            restored.extend(by_next_data_step.pop(self._step_id(step), []))
+            restored.append(step)
+        restored.extend(by_next_data_step.pop(None, []))
+        if by_next_data_step:
+            raise RuntimeError("Data preparation mutation removed an existing step")
+        self._pipeline.steps = restored
+
+    def _deferred_analysis_placements(
+        self,
+        steps: list[object],
+    ) -> list[tuple[str | None, object]]:
+        next_data_step_id: str | None = None
+        reversed_placements: list[tuple[str | None, object]] = []
+        for step in reversed(steps):
+            if bool(getattr(step, "produces_analysis", False)):
+                reversed_placements.append((next_data_step_id, step))
+            else:
+                next_data_step_id = self._step_id(step)
+        return list(reversed(reversed_placements))
 
     def _snapshot_pipeline_state(self) -> tuple[str, object]:
         snapshot_state = getattr(self._pipeline, "_snapshot_state", None)
@@ -421,6 +502,12 @@ class PipelineOperations:
                 title="Multiple linear regression",
                 params=dict(params),
             )
+        if step_type == "stats.logistic_regression":
+            return BinaryLogisticRegressionStep(
+                id=step_id,
+                title="Binary logistic regression",
+                params=dict(params),
+            )
         if step_type == "stats.frequency_crosstab":
             return FrequencyCrosstabStep(
                 id=step_id,
@@ -433,6 +520,12 @@ class PipelineOperations:
             return OneWayAnovaStep(
                 id=step_id,
                 title="One-way ANOVA",
+                params=dict(params),
+            )
+        if step_type == "stats.anova_factorial":
+            return FactorialAnovaStep(
+                id=step_id,
+                title="Two-factor Type III ANOVA",
                 params=dict(params),
             )
         if step_type == "stats.kruskal_wallis":
@@ -484,12 +577,13 @@ class PipelineOperations:
             return f"reliability:{params.get('scale_name', 'scale')}"
         if step_type == "stats.compare_groups":
             return f"comparison:{params['dv']}:{params['group']}"
-        if step_type == "stats.regression_ols":
+        if step_type in {"stats.regression_ols", "stats.logistic_regression"}:
             return self._step_id(analysis_step)
         if step_type in {
             "stats.frequency_crosstab",
             "stats.correlation",
             "stats.anova_oneway",
+            "stats.anova_factorial",
             "stats.kruskal_wallis",
             "stats.ancova",
             "stats.factor_pca",
@@ -547,6 +641,7 @@ class PipelineOperations:
         params = self._step_params(report_step)
         params["language"] = options.language
         params["include_figures"] = bool(options.include_figures)
+        params["selection_origin"] = options.selection_origin
         include = self._filtered_report_include(params.get("include"), options)
         if include is not None:
             params["include"] = include
@@ -593,6 +688,7 @@ class PipelineOperations:
             return bool(options.include_association)
         if (
             key.startswith("anova_oneway")
+            or key.startswith("anova_factorial")
             or key.startswith("kruskal_wallis")
             or key.startswith("ancova")
             or key.startswith("repeated_measures_anova")
@@ -603,6 +699,7 @@ class PipelineOperations:
             return bool(options.include_dimension_reduction)
         if (
             key.startswith("regression")
+            or key.startswith("logistic_regression")
             or key.startswith("mediation")
             or key.startswith("moderated_mediation")
         ):

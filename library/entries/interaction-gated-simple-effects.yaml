@@ -1,0 +1,25 @@
+slug: interaction-gated-simple-effects
+kind: concept
+title_ko: "상호작용 게이트 단순효과"
+title_en: "Interaction-gated simple effects"
+summary_ko: "상호작용 p값이 .05 미만일 때만 모든 방향의 옴니버스 단순효과를 생성하고, 그 전체를 하나의 Holm 가족으로 보정하는 제품 정책입니다."
+summary_en: "A product policy that generates all directional omnibus simple effects only when the interaction p-value is below .05 and adjusts them as one Holm family."
+interpretation_ko: "상호작용이 유의하면 각 상대 요인 수준 안에서 한 요인의 전체 수준 차이를 검정하며, 의사결정은 원 p값이 아니라 Holm 보정 p값을 사용합니다."
+interpretation_en: "After a significant interaction, it tests the overall level difference for one factor within each level of the other and bases decisions on Holm-adjusted rather than raw p-values."
+when_to_use_ko: null
+when_to_use_en: null
+how_to_report_ko: "게이트 조건, 모든 방향을 묶은 단일 Holm 가족, 원 p값, 보정 p값과 기각 여부를 함께 보고합니다."
+how_to_report_en: "Report the gate condition, the single Holm family spanning both directions, raw and adjusted p-values, and the decision."
+pitfalls_ko: "두 방향을 하나의 Holm 가족으로 묶으면 방향별 두 가족보다 보수적이어서 검정력이 낮아질 수 있습니다. 또한 상호작용 게이트와 후속 검정 전체의 가족오류율을 Holm 보정만으로 통제한다고 주장할 수 없습니다. 게이트는 과학적으로 중요한 단순효과를 숨길 수도 있습니다."
+pitfalls_en: "Using one Holm family across both directions is more conservative and can reduce power relative to two direction-specific families. Holm adjustment alone does not establish familywise-error control across the interaction gate and every follow-up, and the gate can suppress a scientifically relevant simple effect."
+assumptions: []
+alternatives: []
+related:
+  - anova-factorial
+  - type-iii-equal-cell-weight
+  - p-value
+references:
+  - citation: "Holm, S. (1979). A Simple Sequentially Rejective Multiple Test Procedure. Scandinavian Journal of Statistics, 6(2), 65-70."
+    locator: "6(2), 65-70"
+    verified: true
+verification_status: needs_review

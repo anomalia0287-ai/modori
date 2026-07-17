@@ -6,6 +6,7 @@ import pandas as pd
 import pytest
 
 from modori.core import Dataset, Measure, Variable
+from modori.recommendation_policy import RecommendationRoutingTier
 
 
 def _provider():
@@ -60,7 +61,7 @@ def test_provider_suggests_candidate_for_three_numeric_scale_or_ordinal_items() 
     candidate = _provider().candidates(dataset)[0]
 
     assert candidate.kind == "factor_pca"
-    assert candidate.level == "가능한 후보"
+    assert candidate.routing_tier is RecommendationRoutingTier.SECONDARY
     assert candidate.variable_keys == ["q1", "q2", "q3"]
     assert "3개" in candidate.reason_ko
     assert "확정" not in candidate.reason_ko

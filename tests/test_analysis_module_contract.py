@@ -1,13 +1,15 @@
 from dataclasses import dataclass
 import importlib
+from pathlib import Path
 
 import pytest
 
 import modori.steps  # noqa: F401  # Registers built-in Step types for specs.
-from modori.analysis_catalog import AnalysisStatus, RecommendationPolicy, module_specs
+from modori.analysis_catalog import AnalysisStatus, module_specs
 from modori.core import PipelineContext, Step, StepResult
 from modori.core import model as core_model
 from modori.knowledge import load_library, resolve_help_key
+from modori.recommendation_policy import RecommendationRoutingPolicy
 
 
 @dataclass
@@ -59,6 +61,7 @@ def test_executable_module_specs_have_required_contract_fields(spec):
     assert spec.unsupported_cases
     assert spec.reference_sources
     assert spec.contract_tests
+    assert all(Path(path).is_file() for path in spec.contract_tests)
     assert spec.help_keys
     assert spec.step_type in core_model.registered_step_types()
 
@@ -92,8 +95,8 @@ def test_result_type_module_is_importable(spec):
 @pytest.mark.parametrize("spec", module_specs(), ids=lambda spec: spec.key)
 def test_recommended_modules_have_eligibility_provider(spec):
     if spec.recommendation_policy in {
-        RecommendationPolicy.NEVER,
-        RecommendationPolicy.MANUAL_ONLY,
+        RecommendationRoutingPolicy.NEVER,
+        RecommendationRoutingPolicy.MANUAL_ONLY,
     }:
         pytest.skip(f"{spec.key} does not require recommendation eligibility")
 

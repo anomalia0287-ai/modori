@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 import pandas as pd
 
+from modori.recommendation_policy import RecommendationRoutingTier
 from modori.recommendations import RecommendationCandidate
 
 
@@ -66,7 +67,7 @@ class DescriptivesTable1EligibilityProvider:
                 candidate_id="descriptives_table1.default",
                 kind="descriptives",
                 title_ko="기술통계 표 1",
-                level="강한 추천",
+                routing_tier=RecommendationRoutingTier.PRIMARY,
                 reason_ko=(
                     "가져온 데이터셋에 요약 가능한 변수가 있어 "
                     "기술통계 표를 먼저 생성할 수 있습니다."

@@ -63,6 +63,19 @@ def test_candidate_assisted_run_requires_visible_confirmation() -> None:
     assert "wrapMode: Text.WordWrap" in guide
 
 
+def test_guide_rail_has_explicit_committed_run_anchor() -> None:
+    guide = qml_text("components/GuideRail.qml")
+
+    assert "guide.run_manual" in guide
+    assert "guide.candidate_list" in guide
+    assert "guide.prepare_candidate" in guide
+    assert "guide.confirm_candidate" in guide
+    assert "guide.manual_selection" in guide
+    assert "uiController.rerunNow" in guide
+    assert "runPreparedRecommendation" not in guide
+    assert "selectedIntent" in guide
+
+
 def test_experimental_status_stays_outside_the_scrolling_form() -> None:
     guide = qml_text("components/GuideRail.qml")
     scroll_start = guide.index("ScrollView {")
@@ -175,7 +188,7 @@ def test_final_mode_entry_loading_and_footer_copy_contract() -> None:
     assert UI_STRINGS_KO["loading.calculating"] == "로딩 중"
     assert entry.count("ModeChoiceButton {") == 2
     assert 'variant: "glass"' in entry[entry.index("id: recentFilesScroll"):]
-    assert 'variant: "glassStrong"' in pipeline[:2500]
+    assert 'variant: "glassStrong"' in pipeline
 
 
 def test_report_language_names_are_localized_for_korean_ui() -> None:

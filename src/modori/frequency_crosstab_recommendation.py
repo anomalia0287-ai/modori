@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 import pandas as pd
 
+from modori.recommendation_policy import RecommendationRoutingTier
 from modori.recommendations import RecommendationCandidate
 
 
@@ -37,7 +38,7 @@ class FrequencyCrosstabEligibilityProvider:
                 candidate_id="frequency_crosstab.frequency",
                 kind="frequency_crosstab",
                 title_ko="빈도분석 후보",
-                level="가능한 후보",
+                routing_tier=RecommendationRoutingTier.SECONDARY,
                 reason_ko=(
                     f"명목·서열 변수 {len(selected)}개를 범주별 빈도와 비율로 요약할 수 있습니다."
                 ),

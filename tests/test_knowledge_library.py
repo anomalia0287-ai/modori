@@ -18,6 +18,7 @@ from modori.knowledge import (
     validate_slug_integrity,
 )
 from modori.knowledge.registry import USER_FACING_EXCLUDED_KEYS, normalize_help_key
+from modori.knowledge.loader import _default_entries_dir
 from modori.results import (
     ChartSpec,
     CoefficientRow,
@@ -35,6 +36,24 @@ def _reference(verified: bool = True) -> Reference:
         locator=None,
         verified=verified,
     )
+
+
+def test_default_entries_dir_prefers_packaged_internal_library(tmp_path: Path) -> None:
+    module_file = tmp_path / "_internal" / "modori" / "knowledge" / "loader.py"
+    packaged_entries = tmp_path / "_internal" / "library" / "entries"
+    source_entries = tmp_path / "library" / "entries"
+    packaged_entries.mkdir(parents=True)
+    source_entries.mkdir(parents=True)
+
+    assert _default_entries_dir(module_file) == packaged_entries
+
+
+def test_default_entries_dir_falls_back_to_source_library(tmp_path: Path) -> None:
+    module_file = tmp_path / "src" / "modori" / "knowledge" / "loader.py"
+    source_entries = tmp_path / "library" / "entries"
+    source_entries.mkdir(parents=True)
+
+    assert _default_entries_dir(module_file) == source_entries
 
 
 def _entry(
@@ -585,3 +604,184 @@ def test_engine_vocabulary_fully_covered() -> None:
     library = load_library()
 
     assert validate_coverage(ENGINE_VOCABULARY, HELP_KEYS, library).ok
+
+
+def test_logistic_help_entries_state_meaning_direction_and_limits() -> None:
+    library = load_library()
+
+    assert library.resolve_help_key("odds_ratio") == "odds-ratio"
+    assert (
+        library.resolve_help_key("model_likelihood_ratio")
+        == "model-likelihood-ratio"
+    )
+    assert library.resolve_help_key("brier_score") == "brier-score"
+
+    odds_ratio = library.get("odds-ratio")
+    odds_ko = " ".join(
+        text
+        for text in (
+            odds_ratio.summary_ko,
+            odds_ratio.interpretation_ko,
+            odds_ratio.pitfalls_ko,
+        )
+        if text
+    )
+    odds_en = " ".join(
+        text
+        for text in (
+            odds_ratio.summary_en,
+            odds_ratio.interpretation_en,
+            odds_ratio.pitfalls_en,
+        )
+        if text
+    )
+    assert "사건" in odds_ko
+    assert "기준범주" in odds_ko
+    assert "인과" in odds_ko
+    assert "event" in odds_en.lower()
+    assert "reference" in odds_en.lower()
+    assert "caus" in odds_en.lower()
+
+    likelihood_ratio = library.get("model-likelihood-ratio")
+    likelihood_ko = " ".join(
+        text
+        for text in (
+            likelihood_ratio.summary_ko,
+            likelihood_ratio.interpretation_ko,
+            likelihood_ratio.pitfalls_ko,
+        )
+        if text
+    )
+    likelihood_en = " ".join(
+        text
+        for text in (
+            likelihood_ratio.summary_en,
+            likelihood_ratio.interpretation_en,
+            likelihood_ratio.pitfalls_en,
+        )
+        if text
+    )
+    assert "절편만" in likelihood_ko
+    assert "적합" in likelihood_ko
+    assert "intercept-only" in likelihood_en.lower()
+    assert "fit" in likelihood_en.lower()
+
+    brier = library.get("brier-score")
+    brier_ko = " ".join(
+        text
+        for text in (
+            brier.summary_ko,
+            brier.interpretation_ko,
+            brier.pitfalls_ko,
+        )
+        if text
+    )
+    brier_en = " ".join(
+        text
+        for text in (
+            brier.summary_en,
+            brier.interpretation_en,
+            brier.pitfalls_en,
+        )
+        if text
+    )
+    assert "0" in brier_ko
+    assert "보정" in brier_ko
+    assert "동일 자료" in brier_ko
+    assert "calibration" in brier_en.lower()
+    assert "in-sample" in brier_en.lower()
+
+
+def test_factorial_help_entries_freeze_estimand_and_claim_limits() -> None:
+    library = load_library()
+
+    assert library.resolve_help_key("analysis.anova_factorial") == "anova-factorial"
+    assert (
+        library.resolve_help_key("type_iii_equal_cell_weight")
+        == "type-iii-equal-cell-weight"
+    )
+    assert (
+        library.resolve_help_key("interaction_gated_simple_effects")
+        == "interaction-gated-simple-effects"
+    )
+
+    method = library.get("anova-factorial")
+    method_ko = " ".join(
+        text
+        for text in (
+            method.summary_ko,
+            method.when_to_use_ko,
+            method.how_to_report_ko,
+            method.pitfalls_ko,
+        )
+        if text
+    )
+    method_en = " ".join(
+        text
+        for text in (
+            method.summary_en,
+            method.when_to_use_en,
+            method.how_to_report_en,
+            method.pitfalls_en,
+        )
+        if text
+    )
+    assert "완전 셀" in method_ko
+    assert "동일 가중" in method_ko
+    assert "빈 셀" in method_ko
+    assert "complete-cell" in method_en.lower()
+    assert "equal weight" in method_en.lower()
+    assert "empty cell" in method_en.lower()
+
+    estimand = library.get("type-iii-equal-cell-weight")
+    estimand_ko = " ".join(
+        text
+        for text in (
+            estimand.summary_ko,
+            estimand.interpretation_ko,
+            estimand.pitfalls_ko,
+        )
+        if text
+    )
+    estimand_en = " ".join(
+        text
+        for text in (
+            estimand.summary_en,
+            estimand.interpretation_en,
+            estimand.pitfalls_en,
+        )
+        if text
+    )
+    assert "가산" in estimand_ko
+    assert "오메가" in estimand_ko
+    assert "점별" in estimand_ko
+    assert "additive" in estimand_en.lower()
+    assert "omega" in estimand_en.lower()
+    assert "pointwise" in estimand_en.lower()
+    assert "simultaneous" in estimand_en.lower()
+
+    followups = library.get("interaction-gated-simple-effects")
+    followups_ko = " ".join(
+        text
+        for text in (
+            followups.summary_ko,
+            followups.interpretation_ko,
+            followups.pitfalls_ko,
+        )
+        if text
+    )
+    followups_en = " ".join(
+        text
+        for text in (
+            followups.summary_en,
+            followups.interpretation_en,
+            followups.pitfalls_en,
+        )
+        if text
+    )
+    assert "하나의 Holm 가족" in followups_ko
+    assert "검정력" in followups_ko
+    assert "전체" in followups_ko and "가족오류율" in followups_ko
+    assert "one Holm family" in followups_en
+    assert "power" in followups_en.lower()
+    assert "familywise" in followups_en.lower()

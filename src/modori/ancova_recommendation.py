@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 import pandas as pd
 
+from modori.recommendation_policy import RecommendationRoutingTier
 from modori.recommendations import RecommendationCandidate
 
 
@@ -52,7 +53,7 @@ class AncovaEligibilityProvider:
                 candidate_id=f"ancova:{dv_key}:{group_key}:{':'.join(covariates)}",
                 kind="ancova",
                 title_ko=f"ANCOVA 후보: {dv_key} by {group_key}",
-                level="주의 필요",
+                routing_tier=RecommendationRoutingTier.HEIGHTENED_REVIEW,
                 reason_ko=(
                     f"{dv_key}와 공변량 {', '.join(covariates)}가 척도형이고 "
                     f"{group_key}는 집단 변수입니다. 연구 설계와 회귀기울기 동질성 확인이 필요합니다."

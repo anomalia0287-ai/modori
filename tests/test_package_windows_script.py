@@ -1,11 +1,18 @@
 from __future__ import annotations
 
 import os
+import subprocess
+import sys
 import tomllib
 from pathlib import Path
 
+import pytest
+
 from scripts import package_windows
-from scripts.package_environment import without_workspace_reference_runtime
+from scripts.package_environment import (
+    packaged_subprocess_environment,
+    without_workspace_reference_runtime,
+)
 from scripts.package_windows import build_package_environment, build_pyinstaller_command
 
 
@@ -40,6 +47,7 @@ def test_pyinstaller_command_collects_qml_and_pyside6() -> None:
         assert module in command
     assert "--add-data" in command
     assert "src/modori/ui/qml;modori/ui/qml" in command
+    assert "library/entries;library/entries" in command
     assert "src/modori/app.py" in command
 
 
@@ -105,3 +113,45 @@ def test_runtime_cleanup_does_not_infer_a_root_from_bare_rscript_name() -> None:
 
     assert "MODORI_RSCRIPT" not in env
     assert env["PATH"] == original_path
+
+
+def test_package_environment_removes_mixed_workspace_r_library_values(tmp_path) -> None:
+    r_library = tmp_path / ".tools" / "r-env" / "Library"
+    source = {
+        "PATH": "C:\\Windows",
+        "R_LIBS": os.pathsep.join([str(r_library), "C:\\R-libs"]),
+    }
+
+    env = without_workspace_reference_runtime(source)
+
+    assert "R_LIBS" not in env
+
+
+@pytest.mark.parametrize("namespace", [".", "..", "nested/name", "C:\\absolute"])
+def test_packaged_subprocess_environment_rejects_escaping_namespaces(
+    namespace: str,
+) -> None:
+    with pytest.raises(ValueError, match="one safe path segment"):
+        packaged_subprocess_environment(namespace)
+
+
+@pytest.mark.parametrize(
+    "script",
+    [
+        "scripts/package_windows.py",
+        "scripts/package_engine_smoke.py",
+        "scripts/package_public_data_smoke.py",
+        "scripts/quality_gate.py",
+    ],
+)
+def test_package_script_entrypoints_resolve_local_environment_helper(
+    script: str,
+) -> None:
+    completed = subprocess.run(
+        [sys.executable, script, "--help"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 0, completed.stderr

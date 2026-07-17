@@ -137,6 +137,8 @@ def test_guided_and_standard_apply_buttons_require_complete_fields() -> None:
     assert "if (!root.canEditSelection)" in guide
     assert 'root.selectedIntent === "reliability"' in guide
     assert "root.isVariableListIntent(root.selectedIntent)" in guide
+    assert 'root.selectedIntent === "mediation"' in guide
+    assert 'root.selectedIntent === "moderated_mediation"' in guide
     assert "root.hasText(reliabilityItemsField.text)" in guide
     assert "root.hasText(outcomeKeyField.text)" in guide
     assert "root.hasText(groupKeyField.text)" in guide
@@ -157,19 +159,24 @@ def test_guide_rail_shows_recommendations_without_auto_running() -> None:
     guide = Path("src/modori/ui/qml/components/GuideRail.qml").read_text(encoding="utf-8")
 
     assert "ScrollView" in guide
+    assert 'appBootstrap.text("guide.experimental_status")' in guide
+    assert 'appBootstrap.text("guide.order_disclaimer")' in guide
     assert "uiController.recommendationTitle" in guide
     assert "uiController.recommendationReason" in guide
     assert "uiController.recommendationAlternativesText" not in guide
     assert "uiController.recommendationCount" in guide
     assert "uiController.recommendationCandidateTitleAt(index)" in guide
     assert "uiController.selectRecommendationAt" in guide
-    assert 'appBootstrap.text("guide.other_recommendations")' in guide
+    assert 'appBootstrap.text("guide.candidate_list")' in guide
     assert 'appBootstrap.text("guide.manual_selection")' in guide
     assert "uiController.runPreparedRecommendationNow()" not in guide
     assert "uiController.runPreparedRecommendation()" not in guide
     assert "uiController.applySelectedRecommendation" not in guide
     assert "uiController.recommendationLevel" not in guide
     assert "uiController.recommendationCandidateLevelAt(index)" not in guide
+    assert "uiController.prepareSelectedRecommendationNow()" in guide
+    assert "uiController.experimentalRecommendationConfirmed" in guide
+    assert "runPreparedRecommendation" not in guide
 
     selection_call = guide.index("uiController.selectRecommendationAt")
     selection_handler_start = guide.rfind("onClicked: {", 0, selection_call)
@@ -178,5 +185,4 @@ def test_guide_rail_shows_recommendations_without_auto_running() -> None:
 
     assert "uiController.selectRecommendationAt(index)" in selection_block
     assert "uiController.rerunNow()" not in selection_block
-    assert "uiController.runPreparedRecommendationNow()" not in selection_block
-    assert "uiController.runPreparedRecommendation()" not in selection_block
+    assert "uiController.prepareSelectedRecommendationNow()" not in selection_block

@@ -5,6 +5,7 @@ import pytest
 
 from modori.core import Dataset, Measure, Variable
 from modori.descriptives_table1_recommendation import eligibility_provider
+from modori.recommendation_policy import RecommendationRoutingTier
 from modori.recommendations import RecommendationService
 
 
@@ -48,7 +49,7 @@ def test_provider_recommends_descriptives_for_imported_dataset_with_usable_varia
     assert candidate.kind == "descriptives"
     assert candidate.variable_keys == ["age"]
     assert candidate.group_key == ""
-    assert candidate.level == "강한 추천"
+    assert candidate.routing_tier is RecommendationRoutingTier.PRIMARY
 
 
 def test_provider_returns_no_candidate_when_active_analysis_is_present():

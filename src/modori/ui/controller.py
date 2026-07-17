@@ -25,6 +25,7 @@ from modori.ui.recommendation_controller import (
     empty_recommendation_state,
 )
 from modori.ui.result_state import UiResultState
+from modori.ui.report_export_controller import ReportExportControllerMixin
 from modori.ui.run_tracker import UiRunTracker
 from modori.ui.selection_provenance_controller import SelectionProvenanceControllerMixin
 from modori.ui.session import UiSessionState
@@ -84,6 +85,7 @@ class UiController(
     AnalysisSelectionControllerMixin,
     DataTransformControllerMixin,
     ImportLayoutControllerMixin,
+    ReportExportControllerMixin,
     SelectionProvenanceControllerMixin,
 ):
     stateChanged = Signal()
@@ -109,9 +111,8 @@ class UiController(
             library=library,
         )
         self._report_exporter = report_exporter
-        self._settings_store = settings_store or UiSettingsStore()
         self._session = UiSessionState(
-            self._settings_store,
+            settings_store or UiSettingsStore(),
             reduce_effects_override=reduce_effects,
         )
         self._mode = "standard"
@@ -128,6 +129,8 @@ class UiController(
         self._variable_model = None
         self._data_view_notice = ""
         self._recommendation_state = empty_recommendation_state()
+        self._recommendation_preparation = None
+        self._experimental_recommendation_confirmed = False
         self.resultsModel: list[Any] = self._result_state.results_model
         self._run_tracker = UiRunTracker()
         self._worker = worker or SerializedEngineWorker()
@@ -152,6 +155,10 @@ class UiController(
     @Property(str, notify=stateChanged)
     def status(self) -> str:
         return self._pipeline_state.status
+
+    @Property(str, notify=stateChanged)
+    def analysisSelectionOrigin(self) -> str:
+        return self._session.selection_provenance
 
     @Property(bool, notify=stateChanged)
     def canRerun(self) -> bool:
@@ -263,7 +270,10 @@ class UiController(
     def setMode(self, mode: str) -> CommandResult:
         if mode not in {"guided", "standard"}:
             return self._command_error("지원하지 않는 모드입니다.", "invalid_mode")
+        changed = mode != self._mode
         self._mode = mode
+        if changed:
+            self._refresh_recommendations()
         self._last_error = ""
         self._last_message = "모드가 변경되었습니다."
         self.stateChanged.emit()
@@ -457,9 +467,11 @@ class UiController(
         if self._session.selection_confirmation_required:
             return self._command_error(_RECONFIRMATION_REPORT_MESSAGE, _RECONFIRMATION_ERROR_CODE)
         exporter = self._report_exporter or export_report_from_pipeline
+        selection_origin = self._session.selection_provenance
         effective_options = replace(
             options,
-            selection_provenance=self._session.selection_provenance,
+            selection_provenance=selection_origin,
+            selection_origin=selection_origin,
         )
         result = self._services.report_export_service.export(
             pipeline=self.pipeline,
@@ -479,51 +491,14 @@ class UiController(
         self.stateChanged.emit()
         return result
 
-    @Slot(result=bool)
-    def exportReportNow(self) -> bool:
-        return self.exportReport(ReportExportOptions(language="ko")).ok
-
-    @Slot(str, bool, result=bool)
-    def exportReportWithOptions(self, language: str, include_figures: bool) -> bool:
-        return self.exportReportWithSelections(
-            language,
-            True,
-            True,
-            True,
-            True,
-            True,
-            True,
-            True,
-            include_figures,
-        )
-
-    @Slot(str, bool, bool, bool, bool, bool, bool, bool, bool, result=bool)
-    def exportReportWithSelections(
-        self,
-        language: str,
-        include_descriptives: bool,
-        include_reliability: bool,
-        include_comparison: bool,
-        include_association: bool,
-        include_group_models: bool,
-        include_dimension_reduction: bool,
-        include_regression: bool,
-        include_figures: bool,
-    ) -> bool:
-        selected_language = "en" if language == "en" else "ko"
-        return self.exportReport(
-            ReportExportOptions(
-                language=selected_language,
-                include_descriptives=bool(include_descriptives),
-                include_reliability=bool(include_reliability),
-                include_comparison=bool(include_comparison),
-                include_association=bool(include_association),
-                include_group_models=bool(include_group_models),
-                include_dimension_reduction=bool(include_dimension_reduction),
-                include_regression=bool(include_regression),
-                include_figures=bool(include_figures),
-            )
-        ).ok
+    @Slot(bool, result=bool)
+    def markCurrentSelectionExperimental(self, assisted: bool) -> bool:
+        if assisted:
+            self._session.mark_experimental_candidate_assisted()
+        else:
+            self._session.clear_selection_provenance()
+        self.stateChanged.emit()
+        return True
 
     def explain(self, entity_key: str, language: str) -> ExplainResult:
         return self._services.explanation_service.explain(entity_key, language)

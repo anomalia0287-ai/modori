@@ -113,7 +113,15 @@ def test_no_hidden_rerun_calls_in_import_or_recommendation_selection() -> None:
     assert "confirmPendingImport" in controller_method_calls(import_dialog_block)
     assert "previewDataFilePath" in controller_method_calls(file_dialog_accepted_block)
     assert controller_method_calls(recommendation_selection_block) == [
-        "selectRecommendationAt"
+        "selectRecommendationAt",
     ]
     assert "runPreparedRecommendationNow" not in guide
     assert "applySelectedRecommendation" not in guide
+    manual_run_calls = controller_method_calls(
+        qml_object_block(
+            guide,
+            'text: appBootstrap.text("guide.run_manual")',
+        )
+    )
+    assert "rerunNow" in manual_run_calls
+    assert "runPreparedRecommendationNow" not in manual_run_calls

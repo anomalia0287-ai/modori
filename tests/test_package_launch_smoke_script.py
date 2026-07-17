@@ -46,7 +46,9 @@ def test_package_launch_smoke_passes_when_packaged_qml_root_loads(
 ) -> None:
     exe = tmp_path / "Modori" / "Modori.exe"
     qml_root = exe.parent / "_internal" / "modori" / "ui" / "qml" / "Main.qml"
+    library_root = exe.parent / "_internal" / "library" / "entries"
     qml_root.parent.mkdir(parents=True)
+    library_root.mkdir(parents=True)
     exe.write_text("", encoding="utf-8")
     qml_root.write_text("import QtQuick\nItem {}\n", encoding="utf-8")
     calls = []
@@ -82,13 +84,32 @@ def test_package_launch_smoke_fails_when_packaged_qml_root_is_missing(
     assert "Packaged QML root does not exist" in captured.err
 
 
+def test_package_launch_smoke_fails_when_library_entries_are_missing(
+    tmp_path,
+    capsys,
+) -> None:
+    exe = tmp_path / "Modori" / "Modori.exe"
+    qml_root = exe.parent / "_internal" / "modori" / "ui" / "qml" / "Main.qml"
+    qml_root.parent.mkdir(parents=True)
+    exe.write_text("", encoding="utf-8")
+    qml_root.write_text("import QtQuick\nItem {}\n", encoding="utf-8")
+
+    result = package_launch_smoke.run_launch_smoke(exe, timeout_seconds=0.01)
+
+    captured = capsys.readouterr()
+    assert result == 1
+    assert "Packaged library entries do not exist" in captured.err
+
+
 def test_package_launch_smoke_cli_routes_explicit_state_root(
     monkeypatch,
     tmp_path: Path,
 ) -> None:
     exe = tmp_path / "Modori" / "Modori.exe"
     qml_root = exe.parent / "_internal" / "modori" / "ui" / "qml" / "Main.qml"
+    library_root = exe.parent / "_internal" / "library" / "entries"
     qml_root.parent.mkdir(parents=True)
+    library_root.mkdir(parents=True)
     exe.write_text("", encoding="utf-8")
     qml_root.write_text("import QtQuick\nItem {}\n", encoding="utf-8")
     state_root = tmp_path / "state"

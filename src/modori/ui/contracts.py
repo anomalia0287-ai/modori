@@ -6,9 +6,10 @@ from typing import Any, Literal
 
 
 Language = Literal["ko", "en"]
+SelectionOrigin = Literal["manual", "experimental_candidate_assisted"]
 ControllerModeValue = Literal["guided", "standard"]
 RunStatusValue = Literal["empty", "ready", "running", "error"]
-SelectionProvenance = Literal["manual", "experimental_candidate_assisted"]
+SelectionProvenance = SelectionOrigin
 
 
 class ControllerMode(str, Enum):
@@ -66,6 +67,17 @@ class ReportExportOptions:
     include_regression: bool = True
     include_figures: bool = True
     selection_provenance: SelectionProvenance = "manual"
+    selection_origin: SelectionOrigin = "manual"
+
+    def __post_init__(self) -> None:
+        origin: SelectionOrigin = (
+            "experimental_candidate_assisted"
+            if "experimental_candidate_assisted"
+            in {self.selection_provenance, self.selection_origin}
+            else "manual"
+        )
+        object.__setattr__(self, "selection_provenance", origin)
+        object.__setattr__(self, "selection_origin", origin)
 
 
 @dataclass(frozen=True)
@@ -98,9 +110,11 @@ class DisplayResult:
         "reliability",
         "comparison",
         "regression",
+        "logistic_regression",
         "frequency_crosstab",
         "correlation",
         "anova_oneway",
+        "anova_factorial",
         "kruskal_wallis",
         "ancova",
         "factor_pca",

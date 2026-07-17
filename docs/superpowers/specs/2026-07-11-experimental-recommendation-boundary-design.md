@@ -1,6 +1,7 @@
 # Experimental Recommendation Boundary Design
 
-**Status:** Owner-approved direction; written-spec review pending before implementation
+**Status:** Owner-approved; implemented on the Research OS source lane; P0 release
+integration under verification
 
 **Date:** 2026-07-11
 
@@ -15,7 +16,50 @@ This design does not delete recommendation code, add the future semantic-profile
 architecture, or weaken the calculation engine. It separates product claims that are
 currently coupled in one `level` field.
 
-## 2. Verified Current-State Problem
+This document is the product-exposure authority for recommendation vocabulary. The
+future semantic design in
+`docs/superpowers/specs/2026-07-10-semantic-profiling-recommendation-memory-design.md`
+must use this document's `evidence_status` and routing-tier split for live product
+behavior. Historical benchmark terms remain versioned evidence vocabulary only.
+
+The following V1 product boundaries are fixed across every recommendation surface:
+
+- product runtime is local-only and offline by default; recommendation code has no
+  network, cloud-model, telemetry, or remote-tool path;
+- actual user data is never transmitted to a teacher model or external service;
+- model output, model agreement, self-scoring, and teacher fidelity are not human gold;
+- numerical calculation correctness and recommendation validity are independent
+  claims, and evidence for one cannot promote the other; and
+- legacy heuristic reasons and historical benchmark labels cannot be relabeled as
+  AnalysisPassport, clarification-rationale, or imported-authority evidence.
+
+## 2. Source-Lane Prerequisite
+
+The canonical benchmark artifacts are not present on the current
+`release/readiness-1-9` tip (`4e1170c58af35edc20e172f616b51d3464a5a2ef`). They are
+owned by `codex/recommendation-benchmark-pilot`, which descends from that release tip.
+
+Implementation therefore continues on this worktree or another descendant containing
+both:
+
+- baseline artifact commit `145a4485d4dd29f68573b318ce1f4f301c464bde`;
+- benchmark hardening commit `ec092d55046d3348000bb6e05dfed744963e85cb`.
+
+The canonical baseline path and identities are:
+
+```text
+tests/fixtures/recommendation_benchmark/public/pilot/baseline-a-predictions.jsonl
+SHA-256 FC5D3E9032D086225B0C7C62F4E3145217BA44F8FDDF73CB10E4F5EADD485650
+scorer fingerprint sha256:1d232ac88bc705b8c31735aa6e997d253a388a478c9337d146f6798d50f33aac
+scorer implementation digest sha256:127d7cd7c1f313a592ed6d491307e891fee138f59212ecbbe8e1da8a78765679
+```
+
+The full recommendation-benchmark branch is integrated into the release lane before
+or together with this implementation. Cherry-picking UI commits onto a release tip
+that lacks the canonical pack is forbidden because artifact-preservation tests would
+have no reference object.
+
+## 3. Verified Current-State Problem
 
 The current implementation couples four different concepts:
 
@@ -37,13 +81,14 @@ and immediately calls `rerun()`.
 
 These behaviors conflict with the approved V1 product boundary.
 
-## 3. Goals
+## 4. Goals
 
 - Keep every validated calculation module `EXECUTABLE` within its recorded scope.
 - Make all currently generated recommendation candidates explicitly experimental.
 - Remove `strong`, accuracy, expert-equivalence, or validated-selection wording from
   production UI and product documentation.
 - Require an explicit user choice to enter the experimental guidance surface.
+- Present no automatically selected candidate when experimental guidance opens.
 - Ensure selecting a candidate never mutates the pipeline or starts calculation.
 - Require the user to inspect and confirm variable roles and design settings before an
   experimental candidate can influence an analysis configuration.
@@ -54,7 +99,7 @@ These behaviors conflict with the approved V1 product boundary.
 - Ensure recommendation failure cannot block data access, manual configuration,
   calculation, report export, or application shutdown.
 
-## 4. Non-Goals
+## 5. Non-Goals
 
 - Claiming or estimating recommendation accuracy.
 - Creating human gold labels or replacing qualified human reviewers with model output.
@@ -67,9 +112,9 @@ These behaviors conflict with the approved V1 product boundary.
 - Treating `requires_configuration` as a validated clarification-planning system.
 - Publishing the locked benchmark corpus.
 
-## 5. State Model
+## 6. State Model
 
-### 5.1 Calculation status
+### 6.1 Calculation status
 
 `AnalysisStatus.EXECUTABLE` continues to mean that the calculation module can run
 inside its documented scope. This status says nothing about whether Modori can choose
@@ -78,7 +123,7 @@ that module from a research question.
 No calculation module is demoted merely because the recommendation layer is
 experimental.
 
-### 5.2 Recommendation evidence status
+### 6.2 Recommendation evidence status
 
 Add a recommendation evidence status independent of calculation status:
 
@@ -98,7 +143,7 @@ For V1 after this change:
 human benchmark and release decision. It cannot be inferred from unit tests, reference
 parity, an external code review, or elapsed time.
 
-### 5.3 Heuristic routing tier
+### 6.3 Heuristic routing tier
 
 Replace product-confidence vocabulary in the live recommendation DTO with internal
 routing vocabulary:
@@ -109,9 +154,10 @@ SECONDARY
 HEIGHTENED_REVIEW
 ```
 
-The routing tier only controls deterministic ordering and whether an initial candidate
-may be selected for inspection. It is not a probability, confidence score, accuracy
-claim, or evidence level.
+The routing tier only controls deterministic ordering and historical-baseline adapter
+behavior. It is not a probability, confidence score, accuracy claim, evidence level,
+or validated priority. Live product state starts with no selected candidate; the user
+must choose one from the list.
 
 The current ordering behavior remains stable:
 
@@ -122,7 +168,11 @@ The current ordering behavior remains stable:
 The production UI must not render these enum names as trust claims. It may render
 workflow requirements such as `설정 확인 필요` or `주의 깊은 검토 필요`.
 
-### 5.4 Frozen benchmark level
+The experimental surface displays this caption beside the list:
+
+`후보 순서는 검증된 정확도나 우선순위가 아니라 현재의 결정론적 정렬 규칙입니다.`
+
+### 6.4 Frozen benchmark level
 
 The recommendation benchmark retains its versioned
 `strong`/`candidate`/`caution`/`none` vocabulary because it measures the historical A
@@ -133,12 +183,12 @@ The committed pilot predictions, scorer fingerprint, implementation digest, and
 prediction SHA-256 must remain unchanged. Benchmark vocabulary is research evidence;
 it must not leak into product UI.
 
-### 5.5 Recommendation state and preparation DTO
+### 6.5 Recommendation state and preparation DTO
 
-Rename the live-state concept `default_candidate` to `initial_review_candidate`. The
-initial candidate may be selected for inspection, but it is not a product default or a
-claim that the analysis is appropriate. The versioned benchmark adapter may continue
-to call the corresponding historical concept a default when reconstructing baseline A.
+Remove `default_candidate` from live product state. `RecommendationState` contains the
+ordered candidates, an initially null `selected_candidate`, and a status message. The
+versioned benchmark adapter owns a separate `historical_baseline_default()` function
+that reproduces baseline A without changing live product selection behavior.
 
 Introduce a pure `RecommendationPreparation` DTO containing only:
 
@@ -155,13 +205,13 @@ cache, submit a worker job, or calculate a result. The existing manual editor co
 user-confirmed fields after preparation. The current `applySelectedRecommendation()`
 pipeline-mutating shortcut is removed from the experimental path rather than renamed.
 
-## 6. Catalog Contract
+## 7. Catalog Contract
 
 Replace confidence-shaped catalog routing names with behavior-shaped names:
 
 ```text
-DEFAULT_ELIGIBLE
-CANDIDATE_ONLY
+PRIMARY_REVIEW
+SECONDARY_REVIEW
 HEIGHTENED_REVIEW
 MANUAL_ONLY
 NEVER
@@ -173,40 +223,49 @@ tests reject a candidate-emitting module with missing or unknown evidence status
 The catalog must be able to answer two independent questions:
 
 1. Can the calculation module execute?
-2. What evidence permits the product to expose automatic candidate selection?
+2. What evidence permits the product to expose a candidate for user review?
 
 No caller may infer the second answer from the first.
 
-## 7. Product Experience
+## 8. Product Experience
 
-### 7.1 Entry and mode boundary
+The exact surface wording in Sections 8.1 and 8.2 is amended by
+`docs/superpowers/specs/2026-07-11-data-grid-interaction-hardening-design.md`.
+The experimental evidence boundary remains persistent, but repeated experimental
+labels are consolidated into one compact panel-level status.
+
+### 8.1 Entry and mode boundary
 
 - The controller default mode becomes `standard`.
 - Opening data directly or from recent files stays in standard mode.
-- `안내 모드` becomes `실험적 후보 안내` in Korean production text.
-- Entering that mode is an explicit user action; it is never restored implicitly from
-  a stale or malformed setting.
+- `안내 모드` becomes `분석 후보 안내` in Korean production text.
+- Every process starts in standard mode. Mode is not persisted in V1. Entering
+  experimental guidance is an explicit action once per running application session;
+  no valid, stale, or malformed prior setting can restore it on the next launch.
 - The experimental surface displays a persistent, compact status label:
-  `검증 중인 분석 후보 · 자동 실행 안 함`.
+  `실험적 · 자동 실행 안 함`.
 - Stable manual analysis remains available regardless of recommendation state.
 
 No modal warning is required merely to inspect the experimental surface. Repeated
 modal warnings would train users to dismiss them. Confirmation is placed at the point
 where a candidate can affect configuration.
 
-### 7.2 Candidate presentation
+### 8.2 Candidate presentation
 
-- `기본 추천` becomes `현재 검토 후보`.
-- `다른 추천 보기` becomes `다른 실험적 후보 보기`.
-- Every candidate displays `실험적 후보`; no candidate displays `강한 추천`.
+- No candidate is selected when the surface opens.
+- The ordered experimental candidate list is visible without a hidden default card.
+- A user selection creates `현재 검토 후보`; before selection that surface is empty.
+- `다른 추천 보기` becomes `분석 후보 목록`.
+- Candidate labels use `분석 후보`; no candidate displays `강한 추천`.
 - `수준` becomes `검토 상태`.
 - The reason remains visible and must describe observed deterministic facts, not the
   candidate as statistically correct.
 - Configuration-required and heightened-review candidates retain visible warnings.
 - No percentage, star rating, probability, model confidence, or expert-equivalence
   language is displayed.
+- The candidate-order caption from Section 6.3 is always visible with the list.
 
-### 7.3 Selection, preparation, confirmation, and execution
+### 8.3 Selection, preparation, confirmation, and execution
 
 Candidate interaction is split into explicit phases:
 
@@ -230,7 +289,15 @@ Advanced candidates such as binary logistic regression and factorial ANOVA conti
 require explicit event/reference or factor-role configuration. The experimental layer
 may pre-fill known fields but cannot invent missing values.
 
-### 7.4 Selection provenance
+The shortcut removal must not make an existing candidate family unreachable. Before
+the shortcut is deleted, all emitted candidate kinds must have an explicit manual-form
+path. Repeated-measures ANOVA and Friedman use a reviewed measures list; mediation and
+moderated mediation use separately named X, mediator, moderator, Y, model, and
+covariate fields. Mediation roles must never be inferred later from positional list
+indexes. An exhaustive contract test locks the candidate-kind-to-form mapping so a new
+provider cannot silently create an unreviewable candidate.
+
+### 8.4 Selection provenance
 
 The UI session records one of:
 
@@ -248,12 +315,12 @@ evidence. A fully manual configuration has no experimental note.
 Switching to direct manual selection clears pending experimental confirmation and
 provenance unless an experimental prefill remains in use.
 
-## 8. Failure and Recovery Rules
+## 9. Failure and Recovery Rules
 
 - Missing, corrupt, or failing recommendation providers yield an unavailable
   experimental surface and leave manual analysis operational.
 - Unknown recommendation evidence status fails closed as unavailable; it never falls
-  back to validated or default-eligible.
+  back to validated or primary-review routing.
 - Dataset replacement, metadata edits, data transforms, or candidate changes invalidate
   pending confirmation.
 - A candidate that no longer matches observed variables cannot be applied.
@@ -266,7 +333,7 @@ provenance unless an experimental prefill remains in use.
   closed rather than emitting a report that silently omits experimental selection
   provenance.
 
-## 9. Compatibility and Migration
+## 10. Compatibility and Migration
 
 - Existing calculation step schemas do not change.
 - Existing analysis result DTOs do not change.
@@ -274,33 +341,36 @@ provenance unless an experimental prefill remains in use.
 - Existing user settings without an experimental mode field load into standard mode.
 - No previous setting may silently opt a user into experimental guidance.
 - The current committed A-baseline prediction file remains byte-for-byte identical.
-- `default_candidate` callers migrate to `initial_review_candidate`; the frozen
-  baseline adapter owns any historical-default compatibility.
+- `default_candidate` is removed from live product callers; only the frozen baseline
+  adapter owns historical-default compatibility.
 - Public API callers of the old recommendation `level` field receive an explicit
   migration failure or a versioned compatibility adapter; silent semantic reuse is
   forbidden.
 
-## 10. Testing Contract
+## 11. Testing Contract
 
-### 10.1 Unit and catalog tests
+### 11.1 Unit and catalog tests
 
 - Calculation status and recommendation evidence status are independent.
 - Every candidate-emitting module is experimental.
 - No current module is validated.
-- Routing tiers preserve the frozen candidate order and default-selection behavior.
+- Routing tiers preserve frozen candidate order while live product state starts with no
+  selection.
+- The historical baseline adapter alone preserves old default-selection behavior.
 - Unknown evidence and routing values fail closed.
 
-### 10.2 Benchmark preservation tests
+### 11.2 Benchmark preservation tests
 
 - Rebuild the current A baseline into a fresh temporary output.
 - Assert byte equality and SHA-256 equality with the committed prediction file.
 - Assert the scorer fingerprint and implementation digest are unchanged.
 - Run the complete recommendation benchmark and workbook contract suite.
 
-### 10.3 Controller and pipeline tests
+### 11.3 Controller and pipeline tests
 
 - Selecting a candidate does not alter steps, pipeline version, cache, results, or
   worker submissions.
+- Opening experimental mode does not select a candidate.
 - Preparing a candidate only changes UI preparation state.
 - Applying without current confirmation fails.
 - Confirmation resets on dataset, candidate, mode, transform, metadata, or role-field
@@ -312,39 +382,48 @@ provenance unless an experimental prefill remains in use.
 - No combined recommendation-apply-and-rerun controller method remains callable from
   production QML.
 
-### 10.4 UI and wording tests
+### 11.4 UI and product-wording tests
 
 - Standard mode is the default for direct and recent-file opens.
 - Experimental mode has a persistent status label and explicit entry action.
-- Production UI contains no `강한 추천`, `기본 추천`, `추천 분석 실행`, accuracy
-  percentage, or expert-equivalence claim.
+- Production UI, QML-accessible names, report templates, Word export text,
+  knowledge/help library entries, and product-facing documentation contain no
+  `강한 추천`, `기본 추천`, `추천 분석 실행`, accuracy percentage, or
+  expert-equivalence claim.
+- Frozen benchmark fixtures, scorer diagnostics, historical evidence ledgers, and
+  migration tests may retain versioned historical terms only through an explicit
+  path allowlist.
+- Product-wording tests fail if a new production-text path is added without being
+  classified as scanned or historical-evidence-only.
+- The unvalidated deterministic-order caption is visible and accessible.
 - Candidate buttons are stable in width and do not overflow at the supported minimum
   window size.
 - Keyboard and screen-reader names disclose experimental status and confirmation.
 - QML runtime tests cover select, prepare, confirm, apply, run, cancel, and switch-to-
   manual paths.
 
-### 10.5 Regression and package gates
+### 11.5 Regression and package gates
 
 - All focused recommendation, UI, benchmark, report, and analysis-contract tests pass.
 - The full quality gate and slow statistical gate pass with no new unexplained skips.
 - A fresh Windows package passes launch, engine, and public-data smokes.
 - The 22 V1 calculation smoke checks remain unchanged.
 
-## 11. VM Acceptance Scope
+## 12. VM Acceptance Scope
 
 After automated gates and a fresh payload rebuild, the owner performs a bounded visual
 walkthrough in `Modori-CleanWin-QA-Direct`:
 
 1. direct data open stays in standard mode;
 2. experimental guidance requires an explicit mode choice;
-3. a regular candidate is visibly experimental and does not auto-run;
-4. a configuration-required candidate opens fields without inventing missing choices;
-5. a no-candidate dataset preserves manual analysis;
-6. confirmation is required before the candidate-assisted configuration runs;
-7. the same analysis can run manually and produces the same result;
-8. report export discloses experimental selection provenance only when applicable;
-9. normal application and Windows shutdown succeed.
+3. no candidate is preselected and the ordering disclaimer is visible;
+4. a regular candidate is visibly experimental and does not auto-run;
+5. a configuration-required candidate opens fields without inventing missing choices;
+6. a no-candidate dataset preserves manual analysis;
+7. confirmation is required before the candidate-assisted configuration runs;
+8. the same analysis can run manually and produces the same result;
+9. report export discloses experimental selection provenance only when applicable;
+10. normal application and Windows shutdown succeed.
 
 This walkthrough proves interaction and disclosure behavior. It does not prove
 recommendation accuracy.
@@ -353,7 +432,7 @@ The future semantic question planner is not present in this scope, so this VM pa
 not claim a true clarification-question flow. `설정 확인 필요` is tested only as a
 configuration boundary.
 
-## 12. Promotion Rule
+## 13. Promotion Rule
 
 Recommendation families are promoted individually, never as a package. A future
 promotion from `EXPERIMENTAL` to `VALIDATED` requires all of the following:
@@ -368,14 +447,34 @@ promotion from `EXPERIMENTAL` to `VALIDATED` requires all of the following:
 Calculation parity, open-source popularity, downloads, contributor count, or a model
 upgrade cannot substitute for this rule.
 
-## 13. Implementation Order
+## 14. Implementation Order
 
-1. Add state separation and benchmark-preserving adapters.
-2. Migrate providers and catalog routing vocabulary.
-3. Lock benchmark artifact identity before UI changes.
-4. Remove combined apply-and-run recommendation commands.
-5. Make standard mode the default and add experimental product wording.
-6. Add select/prepare/confirm/manual-run flow and provenance.
-7. Add report disclosure without changing numerical step schemas.
-8. Run focused, full, slow, package, and payload gates.
-9. Run the owner-operated VM acceptance walkthrough.
+1. Verify that the implementation worktree contains the canonical benchmark commits
+   and artifact hashes from Section 2.
+2. Add state separation and benchmark-preserving adapters.
+3. Migrate providers and catalog routing vocabulary.
+4. Lock benchmark artifact identity before UI changes.
+5. Remove live default selection and combined apply-and-run recommendation commands.
+6. Make standard mode the per-process default and add experimental product wording.
+7. Add select/prepare/confirm/manual-run flow and provenance.
+8. Add report disclosure without changing numerical step schemas.
+9. Run focused, full, slow, package, and payload gates.
+10. Run the owner-operated VM acceptance walkthrough.
+
+## 15. External Review Disposition
+
+1. **Benchmark source lane:** accepted. Section 2 pins the prerequisite commits,
+   artifact path, file hash, scorer fingerprint, and integration order.
+2. **Mode persistence:** accepted. V1 starts every process in standard mode and never
+   persists experimental-mode entry.
+3. **Default-shaped routing name:** accepted. Routing uses `PRIMARY_REVIEW` and
+   `SECONDARY_REVIEW`; no `DEFAULT_ELIGIBLE` name remains.
+4. **Ordering anchor:** strengthened beyond the requested disclosure. Live product
+   state has no preselected candidate, and the still-deterministic order is publicly
+   described as unvalidated.
+5. **Forbidden wording scan:** accepted. The scan covers UI, accessibility, help,
+   reports, Word export, and product documents with an explicit historical-evidence
+   allowlist.
+6. **Semantic-spec vocabulary:** accepted. Both specifications cross-reference the
+   evidence-status and routing-tier model; frozen benchmark terminology remains
+   isolated as historical evaluation vocabulary.

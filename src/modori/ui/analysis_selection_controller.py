@@ -1,11 +1,69 @@
 from __future__ import annotations
 
+import re
+
 from PySide6.QtCore import Slot
 
+from modori.factorial_anova_selection import (
+    factorial_level_options,
+    factorial_variable_options,
+)
 from modori.ui.contracts import CommandResult
+from modori.ui.value_tokens import (
+    categorical_reference_options,
+    observed_value_options,
+)
 
 
 class AnalysisSelectionControllerMixin:
+    @Slot(str, result="QVariantList")
+    def factorialVariableOptions(self, role: str) -> list[dict[str, str]]:
+        try:
+            return factorial_variable_options(
+                self._services.pipeline_ops.current_dataset(),
+                role,
+            )
+        except ValueError:
+            return []
+
+    @Slot(str, result="QVariantList")
+    def factorialLevelOptions(self, variable_key: str) -> list[dict[str, str]]:
+        try:
+            return factorial_level_options(
+                self._services.pipeline_ops.current_dataset(),
+                variable_key,
+            )
+        except ValueError:
+            return []
+
+    @Slot(str, result="QVariantList")
+    def logisticOutcomeOptions(self, outcome_key: str) -> list[dict[str, str]]:
+        try:
+            return observed_value_options(
+                self._services.pipeline_ops.current_dataset(),
+                outcome_key,
+            )
+        except ValueError:
+            return []
+
+    @Slot(str, result="QVariantList")
+    def logisticCategoricalReferenceOptions(
+        self,
+        predictor_keys_text: str,
+    ) -> list[dict[str, object]]:
+        predictor_keys = [
+            part
+            for part in re.split(r"[\s,;]+", str(predictor_keys_text).strip())
+            if part
+        ]
+        try:
+            return categorical_reference_options(
+                self._services.pipeline_ops.current_dataset(),
+                predictor_keys,
+            )
+        except ValueError:
+            return []
+
     def configureReliabilitySelection(self, item_keys_text: str) -> CommandResult:
         result = self._services.analysis_editor.reliability(
             item_keys_text,
@@ -69,6 +127,37 @@ class AnalysisSelectionControllerMixin:
     def configureRegressionFromText(self, outcome_key: str, predictor_keys_text: str) -> bool:
         return self.configureRegressionSelection(outcome_key, predictor_keys_text).ok
 
+    def configureLogisticRegression(
+        self,
+        outcome_key: str,
+        event_token: str,
+        predictor_keys_text: str,
+        categorical_reference_tokens: dict[str, str] | None = None,
+    ) -> CommandResult:
+        result = self._services.analysis_editor.logistic_regression(
+            outcome_key,
+            event_token,
+            predictor_keys_text,
+            categorical_reference_tokens,
+            pipeline_version=self._pipeline_state.pipeline_version,
+        )
+        return self._apply_step_edit_result(result)
+
+    @Slot(str, str, str, "QVariantMap", result=bool)
+    def configureLogisticRegressionFromTokens(
+        self,
+        outcome_key: str,
+        event_token: str,
+        predictor_keys_text: str,
+        categorical_reference_tokens: dict[str, str],
+    ) -> bool:
+        return self.configureLogisticRegression(
+            outcome_key,
+            event_token,
+            predictor_keys_text,
+            categorical_reference_tokens,
+        ).ok
+
     def configureFrequencyCrosstabSelection(self, variable_keys_text: str) -> CommandResult:
         result = self._services.analysis_editor.frequency_crosstab(
             variable_keys_text,
@@ -106,6 +195,33 @@ class AnalysisSelectionControllerMixin:
     @Slot(str, str, result=bool)
     def configureAnovaOneWayFromText(self, outcome_key: str, group_key: str) -> bool:
         return self.configureAnovaOneWaySelection(outcome_key, group_key).ok
+
+    def configureFactorialAnovaSelection(
+        self,
+        outcome_key: str,
+        factor_a_key: str,
+        factor_b_key: str,
+    ) -> CommandResult:
+        result = self._services.analysis_editor.factorial_anova(
+            outcome_key,
+            factor_a_key,
+            factor_b_key,
+            pipeline_version=self._pipeline_state.pipeline_version,
+        )
+        return self._apply_step_edit_result(result)
+
+    @Slot(str, str, str, result=bool)
+    def configureFactorialAnovaFromKeys(
+        self,
+        outcome_key: str,
+        factor_a_key: str,
+        factor_b_key: str,
+    ) -> bool:
+        return self.configureFactorialAnovaSelection(
+            outcome_key,
+            factor_a_key,
+            factor_b_key,
+        ).ok
 
     def configureKruskalWallisSelection(
         self,

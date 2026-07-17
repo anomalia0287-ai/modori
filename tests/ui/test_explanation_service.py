@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from modori.knowledge import LibraryLoadError
 from modori.ui.explanation_service import ExplanationService
 
 
@@ -61,3 +62,19 @@ def test_explanation_service_reports_missing_entry_after_resolution() -> None:
     assert result.ok is False
     assert result.slug == "cronbach-alpha"
     assert result.error_code == "library_missing"
+
+
+def test_explanation_service_bounds_unavailable_library_failure() -> None:
+    def unavailable_library():
+        raise LibraryLoadError("private path must not reach product copy")
+
+    result = ExplanationService(library_factory=unavailable_library).explain(
+        "ui.result.cronbach_alpha",
+        "ko",
+    )
+
+    assert result.ok is False
+    assert result.slug is None
+    assert result.error_code == "library_unavailable"
+    assert result.message_ko == "설명 근거를 불러올 수 없습니다."
+    assert "private path" not in result.message_ko

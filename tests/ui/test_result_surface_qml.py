@@ -20,6 +20,11 @@ def test_controller_exposes_result_table_and_chart_after_run(tmp_path) -> None:
         if candidate.kind == "reliability"
     )
     assert controller.selectRecommendationAt(reliability_index) is True
+    assert controller.prepareSelectedRecommendationNow() is True
+    assert controller.setExperimentalRecommendationConfirmed(True) is True
+    assert controller.preparedReliabilityItems == ", ".join(
+        controller.preparedRecommendationField("item_keys")
+    )
     assert controller.configureReliabilityFromText(
         controller.preparedReliabilityItems
     ) is True
@@ -143,9 +148,14 @@ def test_guide_rail_exposes_all_v1_manual_analysis_paths() -> None:
         "uiController.configureFrequencyCrosstabFromText",
         "uiController.configureCorrelationFromText",
         "uiController.configureAnovaOneWayFromText",
+        "uiController.configureFactorialAnovaFromKeys",
         "uiController.configureKruskalWallisFromText",
         "uiController.configureAncovaFromText",
         "uiController.configureFactorPcaFromText",
+        "uiController.configureRepeatedMeasuresAnovaFromText",
+        "uiController.configureFriedmanFromText",
+        "uiController.configureMediationFromText",
+        "uiController.configureModeratedMediationFromText",
     ]
 
     for call in expected_calls:
@@ -160,6 +170,7 @@ def test_pipeline_rail_exposes_common_v1_analysis_shortcuts() -> None:
         "uiController.configureFrequencyCrosstabFromText",
         "uiController.configureCorrelationFromText",
         "uiController.configureAnovaOneWayFromText",
+        "uiController.configureFactorialAnovaFromKeys",
         "uiController.configureKruskalWallisFromText",
         "uiController.configureAncovaFromText",
         "uiController.configureFactorPcaFromText",

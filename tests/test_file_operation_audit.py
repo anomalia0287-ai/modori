@@ -8,18 +8,30 @@ AUDITED_FILE_OPERATION_FILES = {
     "scripts/build_installer.py",
     "scripts/installer_contract.py",
     "scripts/installer_smoke.py",
+    "scripts/benchmark_counterfactual_clarification.py",
+    "scripts/benchmark_research_memory.py",
+    "scripts/build_office_research_memory_kit.py",
+    "scripts/build_recommendation_pilot.py",
+    "scripts/check_product_wording.py",
     "scripts/quality_gate.py",
     "scripts/package_engine_smoke.py",
     "scripts/package_environment.py",
     "scripts/package_launch_smoke.py",
     "scripts/package_public_data_smoke.py",
     "scripts/package_windows.py",
+    "scripts/recommendation_benchmark.py",
+    "scripts/run_office_research_memory_benchmark.py",
     "scripts/stress_matrix.py",
+    "scripts/verify_office_research_memory_kit.py",
+    "scripts/verify_release_integration.py",
     "src/modori/app.py",
     "src/modori/cache.py",
     "src/modori/knowledge/loader.py",
     "src/modori/path_policy.py",
     "src/modori/public_data_smoke.py",
+    "src/modori/recommendation_baseline.py",
+    "src/modori/recommendation_benchmark_io.py",
+    "src/modori/research_memory/ledger_store.py",
     "src/modori/ui/chart_assets.py",
     "src/modori/steps/reporting.py",
     "src/modori/ui/worker.py",
@@ -32,7 +44,7 @@ AUDITED_FILE_OPERATION_FILES = {
 
 FILE_OPERATION_PATTERN = re.compile(
     r"(?:\.(?:write_text|write_bytes|mkdir|unlink|replace|rmdir|resolve|lstat)"
-    r"|shutil\.(?:copyfile|copytree)|os\.scandir)\s*\("
+    r"|shutil\.(?:copyfile|copytree|rmtree)|os\.scandir)\s*\("
 )
 AUDIT_DOCUMENT = Path("docs/security/file-operations-audit-2026-06-29.md")
 

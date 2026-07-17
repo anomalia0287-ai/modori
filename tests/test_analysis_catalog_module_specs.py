@@ -1,4 +1,8 @@
 from modori import analysis_catalog
+from modori.recommendation_policy import (
+    RecommendationEvidenceStatus,
+    RecommendationRoutingPolicy,
+)
 
 
 def test_existing_capabilities_still_return_lightweight_rows():
@@ -15,8 +19,9 @@ def test_module_specs_iterable_is_available_before_pilot_registration():
 
 def test_experimental_status_and_recommendation_policy_are_stable_strings():
     assert analysis_catalog.AnalysisStatus.EXPERIMENTAL.value == "experimental"
-    assert analysis_catalog.RecommendationPolicy.STRONG.value == "strong"
-    assert analysis_catalog.RecommendationPolicy.NEVER.value == "never"
+    assert RecommendationRoutingPolicy.PRIMARY_REVIEW.value == "primary_review"
+    assert RecommendationRoutingPolicy.NEVER.value == "never"
+    assert RecommendationEvidenceStatus.EXPERIMENTAL.value == "experimental"
 
 
 def test_new_style_specs_can_be_exposed_as_lightweight_capabilities(monkeypatch):

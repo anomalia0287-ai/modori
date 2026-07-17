@@ -138,6 +138,8 @@ Item {
                 HorizontalHeaderView {
                     id: horizontalHeader
                     syncView: body
+                    boundsBehavior: Flickable.StopAtBounds
+                    boundsMovement: Flickable.StopAtBounds
                     Layout.fillWidth: true
                     Layout.preferredHeight: theme.gridHeaderHeight
                     clip: true
@@ -184,6 +186,8 @@ Item {
                 VerticalHeaderView {
                     id: verticalHeader
                     syncView: body
+                    boundsBehavior: Flickable.StopAtBounds
+                    boundsMovement: Flickable.StopAtBounds
                     Layout.preferredWidth: theme.gridRowLabelWidth
                     Layout.fillHeight: true
                     clip: true
@@ -292,11 +296,13 @@ Item {
                     }
 
                     delegate: Rectangle {
+                        id: cellDelegate
                         required property int row
                         required property int column
+                        property alias cellHover: cellPointer
                         property string variableKey: model.variableKey ?? ""
                         property string measureValue: model.measureValue ?? ""
-                        property string cellText: model.display ?? ""
+                        property string cellText: String(model.display ?? "")
                         property bool isCurrentCell: root.currentRow === row && root.currentColumn === column
                         property bool selectedVariable: root.selectedKey.length > 0
                             && root.selectedKey === variableKey
@@ -323,12 +329,20 @@ Item {
                         }
 
                         Text {
+                            id: cellLabel
                             anchors.centerIn: parent
                             width: parent.width - theme.spaceSm
-                            text: cellText
+                            text: cellDelegate.cellText
                             color: theme.textTable
                             elide: Text.ElideRight
                             horizontalAlignment: Text.AlignHCenter
+                        }
+
+                        ToolTip {
+                            id: cellToolTip
+                            objectName: "gridCellTooltip"
+                            visible: cellHover.containsMouse && cellLabel.truncated
+                            text: cellDelegate.cellText
                         }
                     }
                 }

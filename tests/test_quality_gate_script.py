@@ -73,7 +73,9 @@ def test_quality_gate_can_opt_into_slow_statistics_gate() -> None:
 
 
 def test_quality_gate_can_opt_into_package_build_and_launch() -> None:
-    commands = quality_commands(include_package_build=True, include_packaged_launch=True)
+    commands = quality_commands(
+        include_package_build=True, include_packaged_launch=True
+    )
 
     assert ["scripts/package_windows.py"] in commands
     assert ["scripts/package_launch_smoke.py"] in commands
@@ -94,7 +96,9 @@ def test_quality_gate_auto_detects_workspace_r_runtime(tmp_path, monkeypatch) ->
     assert str(tmp_path / ".tools" / "r-env" / "Library" / "bin") in env["PATH"]
 
 
-def test_quality_gate_normalizes_relative_rscript_override(tmp_path, monkeypatch) -> None:
+def test_quality_gate_normalizes_relative_rscript_override(
+    tmp_path, monkeypatch
+) -> None:
     local_rscript = tmp_path / ".tools" / "r-env" / "Scripts" / "Rscript.exe"
     local_rscript.parent.mkdir(parents=True)
     local_rscript.write_text("", encoding="utf-8")

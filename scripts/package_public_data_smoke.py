@@ -105,8 +105,6 @@ def run_public_data_smoke(
         evidence_boundary.require_regular_child(output_path)
     print("package-public-data-smoke-ok")
     return 0
-
-
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Smoke-test packaged Modori against public-data import contracts."

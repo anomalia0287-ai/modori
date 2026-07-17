@@ -54,6 +54,8 @@ function Get-NewestSourceWriteTimeUtc {
 }
 
 Assert-Administrator
+$WorkspaceRoot = (Resolve-Path -LiteralPath $WorkspaceRoot).Path
+Write-Host "Workspace root: $WorkspaceRoot"
 
 Write-Section "Payload VHDX file"
 if (Test-Path -LiteralPath $PayloadVhdPath) {
@@ -66,6 +68,7 @@ if (Test-Path -LiteralPath $PayloadVhdPath) {
 
 Write-Section "Payload freshness"
 $sourceApp = Join-Path $WorkspaceRoot "dist\Modori"
+$sourceExe = Join-Path $sourceApp "Modori.exe"
 if (-not (Test-Path -LiteralPath $PayloadVhdPath)) {
     Write-Host "STATUS: Payload V2 is missing; rebuild with attach_modori_payload_disk.ps1 -RebuildPayload"
 } elseif (-not (Test-Path -LiteralPath $sourceApp)) {
@@ -73,6 +76,12 @@ if (-not (Test-Path -LiteralPath $PayloadVhdPath)) {
 } else {
     $payloadVhd = Get-Item -LiteralPath $PayloadVhdPath
     $newestSourceWriteTimeUtc = Get-NewestSourceWriteTimeUtc -Paths @($sourceApp)
+    if (Test-Path -LiteralPath $sourceExe) {
+        $sourceExeHash = (
+            Get-FileHash -LiteralPath $sourceExe -Algorithm SHA256
+        ).Hash.ToUpperInvariant()
+        Write-Host "Packaged executable SHA-256: $sourceExeHash"
+    }
     Write-Host "Packaged app newest write time UTC: $newestSourceWriteTimeUtc"
     Write-Host "Payload V2 write time UTC: $($payloadVhd.LastWriteTimeUtc)"
     if ($newestSourceWriteTimeUtc -gt $payloadVhd.LastWriteTimeUtc.AddSeconds(1)) {

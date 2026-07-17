@@ -1,12 +1,24 @@
 from __future__ import annotations
 
+import hashlib
 from pathlib import Path
+
+from modori.core import Dataset
+from modori.recommendations import RecommendationService
+from modori.steps.data_prep import metadata_variables
+from modori.table_io import read_full
 
 
 PAYLOAD_SCRIPT = Path("scripts/attach_modori_payload_disk.ps1")
 ATTACH_WRAPPER = Path("RUN_ATTACH_PAYLOAD_AS_ADMIN.cmd")
 CHECK_WRAPPER = Path("RUN_CHECK_PAYLOAD_V2_AS_ADMIN.cmd")
 CHECK_SCRIPT = Path("scripts/check_modori_payload_v2.ps1")
+EXPERIMENTAL_FIXTURES = Path(".visual-qa/clean-win-vm-payload")
+EXPERIMENTAL_FIXTURE_HASHES = {
+    "experimental-candidate.csv": "7C8930F6CF05428F4C80EF99E54278664D4CEE303361C5A4B819407DF1975CF3",
+    "experimental-configuration.csv": "DA555DA9FB6379AC0192EC174477885DB0812AB806B7734CB155206CC56D8DCD",
+    "experimental-no-candidate.csv": "8E2B0BFF6B601D1D54626990A48F2436F0AD7C2021C19AE636B3A34C1CADA4AC",
+}
 
 
 def _payload_script_text() -> str:
@@ -73,6 +85,7 @@ def test_attach_wrapper_requires_explicit_admin_instead_of_hidden_self_elevation
     assert "Expected success evidence" in text
     assert "Validate new payload contents" in text
     assert "Attach payload disk to VM" in text
+    assert '-WorkspaceRoot "%~dp0."' in text
 
 
 def test_payload_v2_check_wrapper_is_read_only_and_requires_admin() -> None:
@@ -85,6 +98,7 @@ def test_payload_v2_check_wrapper_is_read_only_and_requires_admin() -> None:
     assert "No VM changes were made." in text
     assert "Expected current-payload evidence" in text
     assert "Payload V2 is current for the packaged app" in text
+    assert '-WorkspaceRoot "%~dp0."' in text
 
 
 def test_payload_v2_check_reports_stale_payload_against_packaged_app() -> None:
@@ -108,6 +122,21 @@ def test_existing_payload_vhdx_is_validated_before_attach() -> None:
     assert "Samples\\public_data_formats\\kosis-two-row.csv" in text
     assert "Samples\\public_data_formats\\cp949-public.csv" in text
     assert "Samples\\public_data_formats\\notice-only.xlsx" in text
+
+
+def test_payload_identity_contract_prevents_source_lane_ambiguity() -> None:
+    text = _payload_script_text()
+
+    assert '$PayloadContract = "experimental-recommendation-boundary-v1"' in text
+    assert text.count("PAYLOAD_IDENTITY.txt") >= 3
+    assert '"Contract=$PayloadContract"' in text
+    assert '"ModoriExeSHA256=$sourceExeHash"' in text
+    assert "Get-FileHash -LiteralPath $sourceExe -Algorithm SHA256" in text
+    assert 'Get-FileHash -LiteralPath $payloadExecutable -Algorithm SHA256' in text
+    assert 'Get-FileHash -LiteralPath $payloadSample -Algorithm SHA256' in text
+    assert 'throw "Payload identity contract is invalid' in text
+    assert 'throw "Payload executable hash does not match identity' in text
+    assert 'throw "Payload sample hash does not match identity' in text
 
 
 def test_payload_attach_requires_vm_off_to_avoid_hot_add_detection_drift() -> None:
@@ -181,3 +210,58 @@ def test_visible_grid_overflow_fixture_is_not_used_for_engine_smoke() -> None:
 
     assert "engine-smoke-reference.xlsx" in engine_block
     assert "visible-grid-overflow.csv" not in engine_block
+
+
+def test_experimental_recommendation_fixtures_are_pinned() -> None:
+    actual = {
+        name: hashlib.sha256((EXPERIMENTAL_FIXTURES / name).read_bytes())
+        .hexdigest()
+        .upper()
+        for name in EXPERIMENTAL_FIXTURE_HASHES
+    }
+
+    assert actual == EXPERIMENTAL_FIXTURE_HASHES
+
+
+def test_payload_requires_and_copies_experimental_recommendation_fixtures() -> None:
+    text = _payload_script_text()
+
+    for name in EXPERIMENTAL_FIXTURE_HASHES:
+        assert name in text
+        assert f"Samples\\experimental_recommendation\\{name}" in text
+    assert "experimental_recommendation" in text
+
+
+def _recommendation_kinds_for_fixture(name: str) -> tuple[tuple[str, bool], ...]:
+    result = read_full(EXPERIMENTAL_FIXTURES / name, "csv")
+    dataset = Dataset(
+        df=result.frame,
+        variables=metadata_variables(
+            result.frame,
+            origin_step_id="payload-fixture",
+            metadata=result.metadata,
+        ),
+    )
+    state = RecommendationService().recommend(dataset)
+    return tuple(
+        (candidate.kind, candidate.requires_configuration)
+        for candidate in state.candidates
+    )
+
+
+def test_experimental_recommendation_fixtures_produce_bounded_product_states() -> None:
+    ordinary = _recommendation_kinds_for_fixture("experimental-candidate.csv")
+    configuration = _recommendation_kinds_for_fixture(
+        "experimental-configuration.csv"
+    )
+    no_candidate = _recommendation_kinds_for_fixture(
+        "experimental-no-candidate.csv"
+    )
+
+    assert ordinary
+    assert any(kind == "descriptives" for kind, _required in ordinary)
+    assert any(
+        kind == "anova_factorial" and required
+        for kind, required in configuration
+    )
+    assert no_candidate == ()

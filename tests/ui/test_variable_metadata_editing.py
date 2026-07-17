@@ -8,6 +8,7 @@ from PySide6.QtTest import QSignalSpy
 
 from modori.core import Dataset, Measure, Pipeline, Step, StepResult, Variable
 from modori.steps import ImportStep, VariableMetadataPatchStep
+from modori.ui.contracts import ImportOptions
 from modori.ui.controller import UiController
 
 
@@ -26,9 +27,8 @@ class MeasureEchoStep(Step):
         return {str(self.params["result_key"])}
 
 
-class FailingMetadataDependentStep(Step):
-    step_type = "test.failing_metadata_dependent"
-    produces_analysis = True
+class FailingMetadataDependentDataPrepStep(Step):
+    step_type = "test.failing_metadata_dependent_data_prep"
 
     def compute(self, ctx):
         raise RuntimeError("metadata-dependent recompute failed")
@@ -162,6 +162,26 @@ def test_metadata_edit_refreshes_candidates_and_invalidates_assisted_confirmatio
     assert controller.selectionConfirmationRequired is True
 
 
+def test_controller_metadata_update_does_not_execute_analysis_or_report(
+    tmp_path: Path,
+) -> None:
+    data_path = tmp_path / "psych_bfi.csv"
+    data_path.write_bytes(Path("tests/fixtures/psych_bfi.csv").read_bytes())
+    output_dir = tmp_path / "modori-output"
+    controller = UiController()
+    assert controller.openDataFile(
+        data_path,
+        ImportOptions(confirm_new_session=True),
+    ).ok
+    assert controller.configureReliabilitySelection("E1, E2, E3").ok
+
+    result = controller.updateVariableMetadata("E1", {"label": "Extraversion 1"})
+
+    assert result.ok is True
+    assert controller.pipeline.analysis_objects == {}
+    assert output_dir.exists() is False
+
+
 def test_controller_maps_missing_codes_to_engine_missing_values(tmp_path) -> None:
     data_path = tmp_path / "survey.csv"
     _write_csv(data_path)
@@ -182,6 +202,40 @@ def test_controller_maps_missing_codes_to_engine_missing_values(tmp_path) -> Non
     assert pipeline.current_dataset.variables["group"].missing_values == [2.0]
     compute_frame = pipeline.current_dataset.frame_for_compute(["group"])
     assert compute_frame["group"].isna().tolist() == [False, True]
+
+
+def test_metadata_edit_invalidates_experimental_recommendation_preparation(
+    tmp_path,
+) -> None:
+    data_path = tmp_path / "survey.csv"
+    pd.DataFrame(
+        {
+            "group": [1, 1, 1, 2, 2, 2],
+            "score": [3.5, 4.5, 5.0, 6.0, 7.5, 8.0],
+        }
+    ).to_csv(data_path, index=False)
+    pipeline = Pipeline(Dataset.empty())
+    pipeline.add(
+        ImportStep(
+            id="import",
+            title="Import CSV",
+            params={"path": str(data_path), "file_type": "csv"},
+        )
+    )
+    pipeline.recompute(dirty_from=None)
+    controller = UiController(pipeline=pipeline)
+    controller._refresh_recommendations()
+    assert controller.recommendationCount > 0
+    assert controller.selectRecommendationAt(0)
+    assert controller.prepareSelectedRecommendationNow()
+    assert controller.setExperimentalRecommendationConfirmed(True)
+
+    result = controller.updateVariableMetadata("score", {"label": "Outcome score"})
+
+    assert result.ok is True
+    assert controller.recommendationPreparationPending is False
+    assert controller.experimentalRecommendationConfirmed is False
+    assert controller.recommendationTitle == ""
 
 
 def test_controller_rejects_ambiguous_missing_code_aliases(tmp_path) -> None:
@@ -268,9 +322,9 @@ def test_controller_rolls_back_inserted_metadata_step_when_recompute_fails(tmp_p
     )
     pipeline.recompute(dirty_from=None)
     pipeline.add(
-        FailingMetadataDependentStep(
-            id="analysis:failing",
-            title="Failing metadata-dependent analysis",
+        FailingMetadataDependentDataPrepStep(
+            id="data:failing",
+            title="Failing metadata-dependent data preparation",
             params={"variable_key": "group", "result_key": "failing_result"},
         )
     )
@@ -284,7 +338,7 @@ def test_controller_rolls_back_inserted_metadata_step_when_recompute_fails(tmp_p
     assert result.ok is False
     assert result.error_code == "engine_error"
     assert pipeline.steps == before_steps
-    assert [step.id for step in pipeline.steps] == ["import", "analysis:failing"]
+    assert [step.id for step in pipeline.steps] == ["import", "data:failing"]
     assert pipeline.current_dataset is before_dataset
     assert pipeline.current_dataset.variables["group"].measure is not Measure.NOMINAL
     assert controller.pipeline_version == before_version

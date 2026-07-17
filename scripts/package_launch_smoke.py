@@ -57,6 +57,13 @@ def run_launch_smoke(
     if not qml_root.is_file():
         print(f"Packaged QML root does not exist: {qml_root}", file=sys.stderr)
         return 1
+    library_root = _packaged_library_entries_root(exe_path)
+    if not library_root.is_dir():
+        print(
+            f"Packaged library entries do not exist: {library_root}",
+            file=sys.stderr,
+        )
+        return 1
     if state_root is None:
         return _load_packaged_qml_root(qml_root)
     return _load_packaged_qml_root(qml_root, state_root=state_root)
@@ -64,6 +71,10 @@ def run_launch_smoke(
 
 def _packaged_qml_root(exe_path: Path) -> Path:
     return exe_path.parent / "_internal" / "modori" / "ui" / "qml" / "Main.qml"
+
+
+def _packaged_library_entries_root(exe_path: Path) -> Path:
+    return exe_path.parent / "_internal" / "library" / "entries"
 
 
 def _load_packaged_qml_root(
@@ -77,12 +88,27 @@ def _load_packaged_qml_root(
         if key not in env:
             os.environ.pop(key, None)
     from modori.app import AppBootstrap
+    from modori.knowledge import LibraryLoadError, load_library
     from modori.ui.controller import UiController
+
+    library_entries = qml_root.parents[3] / "library" / "entries"
+    try:
+        library = load_library(library_entries)
+    except (LibraryLoadError, OSError, UnicodeError):
+        print("Packaged library entries failed to load.", file=sys.stderr)
+        return 1
 
     _app = QGuiApplication.instance() or QGuiApplication(["packaged-launch-smoke"])
     engine = QQmlApplicationEngine()
     bootstrap = AppBootstrap()
-    controller = UiController(reduce_effects=True if bootstrap.reduceEffects else None)
+    controller = UiController(
+        reduce_effects=True if bootstrap.reduceEffects else None,
+        library=library,
+    )
+    explanation = controller.explain("ui.result.cronbach_alpha", "ko")
+    if not explanation.ok:
+        print("Packaged explanation probe failed.", file=sys.stderr)
+        return 1
     engine.rootContext().setContextProperty("appBootstrap", bootstrap)
     engine.rootContext().setContextProperty("uiController", controller)
     engine.load(QUrl.fromLocalFile(str(qml_root)))

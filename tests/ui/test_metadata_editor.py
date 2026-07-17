@@ -20,7 +20,7 @@ class FakePipelineOps:
     def has_step(self, step_id: str) -> bool:
         return step_id in self.steps
 
-    def edit_params(self, step_id: str, params: dict[str, object]) -> None:
+    def edit_metadata_params(self, step_id: str, params: dict[str, object]) -> None:
         self.edits.append((step_id, params))
 
     def insert_metadata_step(self, variable_key: str, step: object) -> None:

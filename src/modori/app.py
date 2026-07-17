@@ -90,6 +90,8 @@ def _run_engine_smoke(data_path: Path, output_path: Path) -> int:
         payload = {
             "ok": bool(
                 opened.ok
+                and rerun is not None
+                and rerun.ok
                 and waited
                 and controller.status == "ready"
                 and v1_smoke.get("ok") is True

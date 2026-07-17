@@ -12,6 +12,7 @@ USER_VISIBLE_PROPERTY = re.compile(
 )
 STRING_LITERAL = re.compile(r'"(?P<value>[^"]*[A-Za-z가-힣][^"]*)"')
 CATALOG_CALL = re.compile(r'appBootstrap\.text\("(?P<key>[^"]+)"\)')
+CATALOG_MODEL_KEY = re.compile(r'"label"\s*:\s*"(?P<key>guide\.[^"]+)"')
 COMPARISON_LITERAL = re.compile(r'(===|!==|==|!=)\s*"[^"]*"')
 QSTR_LITERAL = re.compile(r'qsTr\("(?P<value>[^"]*[A-Za-z가-힣][^"]*)"\)')
 
@@ -19,7 +20,9 @@ QSTR_LITERAL = re.compile(r'qsTr\("(?P<value>[^"]*[A-Za-z가-힣][^"]*)"\)')
 def _catalog_keys_used_by_qml() -> set[str]:
     keys: set[str] = set()
     for path in sorted(QML_ROOT.rglob("*.qml")):
-        keys.update(CATALOG_CALL.findall(path.read_text(encoding="utf-8")))
+        text = path.read_text(encoding="utf-8")
+        keys.update(CATALOG_CALL.findall(text))
+        keys.update(CATALOG_MODEL_KEY.findall(text))
     return keys
 
 
@@ -54,3 +57,16 @@ def test_qml_string_catalog_is_complete_and_used() -> None:
 
     assert missing_keys == []
     assert unused_keys == []
+
+
+def test_recommendation_surface_uses_one_persistent_experimental_status() -> None:
+    assert UI_STRINGS_KO["entry.guided"] == "CASUAL MODE"
+    assert UI_STRINGS_KO["work.guided"] == "CASUAL MODE"
+    assert UI_STRINGS_KO["guide.title"] == "분석 후보 안내"
+    assert UI_STRINGS_KO["guide.experimental_status"] == "실험적 · 자동 실행 안 함"
+    assert UI_STRINGS_KO["guide.candidate_list"] == "분석 후보 목록"
+    assert UI_STRINGS_KO["guide.candidate_label"] == "분석 후보"
+    assert UI_STRINGS_KO["guide.no_recommendation"] == (
+        "현재 규칙으로 표시할 분석 후보가 없습니다. 수동 분석을 사용할 수 있습니다."
+    )
+    assert "분석 자동 추천" not in UI_STRINGS_KO.values()

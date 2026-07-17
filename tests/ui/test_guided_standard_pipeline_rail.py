@@ -67,6 +67,8 @@ def test_guide_rail_lists_supported_v1_intents() -> None:
     assert "guide.reliability" in guide
     assert "guide.comparison" in guide
     assert "guide.regression" in guide
+    assert "guide.anova_factorial" in guide
+    assert "uiController.configureFactorialAnovaFromKeys" in guide
     assert "uiController.explainPlainText" in guide
 
 
@@ -75,4 +77,6 @@ def test_pipeline_rail_uses_controller_step_chain() -> None:
 
     assert "uiController.stepChainDisplayText" in rail
     assert "enabled: uiController.canRerun" in rail
+    assert "uiController.stepChainText" in rail
+    assert "uiController.configureFactorialAnovaFromKeys" in rail
     assert "pipeline.chain" not in rail

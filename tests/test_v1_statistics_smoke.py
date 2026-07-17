@@ -20,6 +20,7 @@ def test_v1_statistics_smoke_executes_every_v1_engine_path() -> None:
         "paired_t",
         "wilcoxon",
         "anova_oneway",
+        "anova_factorial",
         "kruskal_wallis",
         "ancova",
         "repeated_measures_anova",
@@ -29,6 +30,30 @@ def test_v1_statistics_smoke_executes_every_v1_engine_path() -> None:
         "factor_pca_pca",
         "factor_pca_efa",
         "regression_categorical_interaction",
+        "logistic_regression",
     }
     assert all(check["ok"] is True for check in payload["checks"])
     assert all(check["analysis_type"] for check in payload["checks"])
+    logistic = next(
+        check for check in payload["checks"] if check["key"] == "logistic_regression"
+    )
+    assert logistic["analysis_type"] == "LogisticRegressionResult"
+    factorial = next(
+        check for check in payload["checks"] if check["key"] == "anova_factorial"
+    )
+    assert factorial == {
+        "analysis_type": "FactorialAnovaResult",
+        "evidence": {
+            "analysis_key": "anova_factorial",
+            "cell_count": 6,
+            "chart_type": "factorial_interaction",
+            "effect_count": 3,
+            "finite_effect_statistics": True,
+            "level_counts": [2, 3],
+            "marginal_count": 5,
+            "method": "type_iii_equal_cell_weight",
+            "simple_effect_count": 5,
+        },
+        "key": "anova_factorial",
+        "ok": True,
+    }

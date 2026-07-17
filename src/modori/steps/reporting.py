@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import math
 import os
 import re
 import uuid
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -66,6 +67,16 @@ from modori.factor_pca_reporting import (
     prose_for_factor_pca,
 )
 from modori.factor_pca_results import FactorPcaResult
+from modori.factorial_anova_reporting import (
+    prose_for_factorial_anova,
+    table_for_factorial_anova,
+)
+from modori.factorial_anova_results import FactorialAnovaResult
+from modori.logistic_regression_reporting import (
+    prose_for_logistic,
+    table_for_logistic,
+)
+from modori.logistic_regression_results import LogisticRegressionResult
 from modori.results import (
     ChartSpec,
     CoefficientRow,
@@ -494,6 +505,10 @@ def prose_for(result: object, language: str = "ko") -> str:
         return prose_for_ancova(result, language=language)
     if isinstance(result, FactorPcaResult):
         return prose_for_factor_pca(result, language=language)
+    if isinstance(result, FactorialAnovaResult):
+        return prose_for_factorial_anova(result, language=language)
+    if isinstance(result, LogisticRegressionResult):
+        return prose_for_logistic(result, language=language)
     if isinstance(result, RegressionResult):
         return _regression_prose(result, language=language)
     if isinstance(result, ReliabilityResult):
@@ -539,6 +554,12 @@ def table_for(result: object) -> list[dict[str, str]]:
             *component_table_for_factor_pca(result),
             *loading_table_for_factor_pca(result),
         ]
+
+    if isinstance(result, FactorialAnovaResult):
+        return table_for_factorial_anova(result)
+
+    if isinstance(result, LogisticRegressionResult):
+        return table_for_logistic(result)
 
     if isinstance(result, RegressionResult):
         return [
@@ -819,6 +840,232 @@ def _render_paired_line_chart(spec: ChartSpec, output_path: str | Path) -> None:
     plt.close(fig)
 
 
+def _factorial_chart_sequence(value: object, label: str) -> list[object]:
+    if not isinstance(value, Iterable) or isinstance(value, (str, bytes, Mapping)):
+        raise ValueError(f"factorial_interaction {label} must be a sequence")
+    return list(value)
+
+
+def _factorial_chart_values(value: object, label: str) -> list[float]:
+    raw = _factorial_chart_sequence(value, label)
+    values: list[float] = []
+    for item in raw:
+        if isinstance(item, bool):
+            raise ValueError(f"factorial_interaction {label} must be finite numeric data")
+        try:
+            numeric = float(item)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                f"factorial_interaction {label} must be finite numeric data"
+            ) from exc
+        if not math.isfinite(numeric):
+            raise ValueError(f"factorial_interaction {label} must be finite numeric data")
+        values.append(numeric)
+    return values
+
+
+def _render_factorial_interaction(spec: ChartSpec, output_path: str | Path) -> None:
+    _configure_fonts()
+    if not isinstance(spec.data, Mapping):
+        raise ValueError("factorial_interaction data must be a mapping")
+    factor_a = _factorial_chart_sequence(spec.data.get("factor_a"), "factor_a")
+    series = _factorial_chart_sequence(spec.data.get("series"), "series")
+    factor_b_label = str(spec.data.get("factor_b_label", "")).strip()
+    if not factor_b_label:
+        raise ValueError("factorial_interaction requires a factor B label")
+    if not 2 <= len(factor_a) <= 6 or not 2 <= len(series) <= 6:
+        raise ValueError(
+            "factorial_interaction requires 2 through 6 levels for both factors"
+        )
+
+    x_labels: list[str] = []
+    x_tokens: list[str] = []
+    for level in factor_a:
+        if not isinstance(level, Mapping):
+            raise ValueError("factorial_interaction factor_a levels must be mappings")
+        token = str(level.get("token", "")).strip()
+        label = str(level.get("label", "")).strip()
+        if not token or not label:
+            raise ValueError(
+                "factorial_interaction factor_a levels require token and label"
+            )
+        x_tokens.append(token)
+        x_labels.append(label)
+    if len(set(x_tokens)) != len(x_tokens) or len(set(x_labels)) != len(x_labels):
+        raise ValueError("factorial_interaction factor_a levels must be unique")
+
+    validated: list[tuple[str, list[float], list[float], list[float]]] = []
+    series_tokens: list[str] = []
+    series_labels: list[str] = []
+    expected_length = len(factor_a)
+    for item in series:
+        if not isinstance(item, Mapping):
+            raise ValueError("factorial_interaction series entries must be mappings")
+        token = str(item.get("factor_b_token", "")).strip()
+        label = str(item.get("factor_b_label", "")).strip()
+        if not token or not label:
+            raise ValueError(
+                "factorial_interaction series require factor B token and label"
+            )
+        means = _factorial_chart_values(item.get("means"), "means")
+        lower = _factorial_chart_values(item.get("ci_low"), "ci_low")
+        upper = _factorial_chart_values(item.get("ci_high"), "ci_high")
+        if not (
+            len(means) == len(lower) == len(upper) == expected_length
+        ):
+            raise ValueError(
+                "factorial_interaction means and intervals must be aligned with factor A"
+            )
+        for index in range(expected_length):
+            if not lower[index] <= means[index] <= upper[index]:
+                raise ValueError(
+                    "factorial_interaction interval must contain its cell mean"
+                )
+        series_tokens.append(token)
+        series_labels.append(label)
+        validated.append((label, means, lower, upper))
+    if len(set(series_tokens)) != len(series_tokens) or len(set(series_labels)) != len(
+        series_labels
+    ):
+        raise ValueError("factorial_interaction factor B series must be unique")
+
+    fig, ax = plt.subplots(figsize=(7.2, 4.8), constrained_layout=True)
+    x_positions = list(range(expected_length))
+    for label, means, lower, upper in validated:
+        lower_error = [means[index] - lower[index] for index in x_positions]
+        upper_error = [upper[index] - means[index] for index in x_positions]
+        ax.errorbar(
+            x_positions,
+            means,
+            yerr=[lower_error, upper_error],
+            marker="o",
+            linewidth=2,
+            capsize=4,
+            label=label,
+        )
+    ax.set_xticks(x_positions)
+    ax.set_xticklabels(x_labels)
+    ax.set_xlim(-0.2, expected_length - 0.8)
+    ax.set_xlabel(spec.x_label)
+    ax.set_ylabel(spec.y_label)
+    ax.set_title(spec.title)
+    ax.legend(title=factor_b_label, frameon=False)
+    fig.savefig(output_path, dpi=300)
+    plt.close(fig)
+
+
+def _odds_ratio_ticks(lower: float, upper: float) -> tuple[list[float], list[str]]:
+    if not 0.0 < lower < upper:
+        raise ValueError("Odds-ratio tick bounds must be positive and ordered")
+    minimum_exponent = math.floor(math.log10(lower))
+    maximum_exponent = math.ceil(math.log10(upper))
+    ticks = [
+        multiplier * (10.0**exponent)
+        for exponent in range(minimum_exponent, maximum_exponent + 1)
+        for multiplier in (1.0, 2.0, 5.0)
+        if lower <= multiplier * (10.0**exponent) <= upper
+    ]
+    if len(ticks) < 2:
+        ticks = [lower, upper]
+
+    def label(value: float) -> str:
+        if 0.001 <= value < 10000.0:
+            return f"{value:.6g}"
+        return f"{value:.1e}"
+
+    return ticks, [label(value) for value in ticks]
+
+
+def _render_odds_ratio_forest(spec: ChartSpec, output_path: str | Path) -> None:
+    _configure_fonts()
+    rows = list(spec.data.get("rows", []))
+    if not rows:
+        raise ValueError("odds_ratio_forest chart requires coefficient rows")
+    labels = [str(row.get("name", "")) for row in rows]
+    estimates = [float(row["odds_ratio"]) for row in rows]
+    intervals = [row["ci"] for row in rows]
+    lower = [float(interval[0]) for interval in intervals]
+    upper = [float(interval[1]) for interval in intervals]
+    if any(value <= 0.0 for value in [*estimates, *lower, *upper]):
+        raise ValueError("odds_ratio_forest values must be positive")
+
+    fig_height = max(3.5, 0.55 * len(rows) + 1.4)
+    fig, ax = plt.subplots(figsize=(7.2, fig_height), constrained_layout=True)
+    positions = list(range(len(rows)))
+    ax.errorbar(
+        estimates,
+        positions,
+        xerr=[
+            [estimate - bound for estimate, bound in zip(estimates, lower)],
+            [bound - estimate for estimate, bound in zip(estimates, upper)],
+        ],
+        fmt="o",
+        color="#1f77b4",
+        ecolor="#555555",
+        capsize=4,
+    )
+    ax.axvline(1.0, color="#999999", linestyle="--", linewidth=1)
+    ax.set_xscale("log")
+    lower_limit = min(lower) * 0.9
+    upper_limit = max(upper) * 1.1
+    ax.set_xlim(lower_limit, upper_limit)
+    ticks, tick_labels = _odds_ratio_ticks(lower_limit, upper_limit)
+    ax.set_xticks(ticks, labels=tick_labels)
+    ax.tick_params(axis="x", which="minor", labelbottom=False)
+    ax.set_yticks(positions)
+    ax.set_yticklabels(labels)
+    ax.invert_yaxis()
+    ax.set_xlabel(spec.x_label)
+    ax.set_ylabel(spec.y_label)
+    ax.set_title(spec.title)
+    fig.savefig(output_path, dpi=300)
+    plt.close(fig)
+
+
+def _render_roc_curve(spec: ChartSpec, output_path: str | Path) -> None:
+    _configure_fonts()
+    rows = list(spec.data.get("rows", []))
+    if len(rows) < 2:
+        raise ValueError("roc_curve chart requires at least two points")
+    false_positive = [float(row["false_positive_rate"]) for row in rows]
+    true_positive = [float(row["true_positive_rate"]) for row in rows]
+
+    fig, ax = plt.subplots(figsize=(6.2, 5.4), constrained_layout=True)
+    ax.plot(false_positive, true_positive, color="#1f77b4", linewidth=2)
+    ax.plot([0, 1], [0, 1], color="#999999", linestyle="--", linewidth=1)
+    ax.set_xlim(0.0, 1.0)
+    ax.set_ylim(0.0, 1.0)
+    ax.set_aspect("equal", adjustable="box")
+    ax.set_xlabel(spec.x_label)
+    ax.set_ylabel(spec.y_label)
+    ax.set_title(spec.title)
+    fig.savefig(output_path, dpi=300)
+    plt.close(fig)
+
+
+def _render_calibration_plot(spec: ChartSpec, output_path: str | Path) -> None:
+    _configure_fonts()
+    rows = list(spec.data.get("rows", []))
+    if len(rows) < 3:
+        raise ValueError("calibration_plot chart requires at least three bins")
+    predicted = [float(row["mean_predicted"]) for row in rows]
+    observed = [float(row["observed_rate"]) for row in rows]
+    sizes = [max(28.0, 8.0 * float(row["count"])) for row in rows]
+
+    fig, ax = plt.subplots(figsize=(6.2, 5.4), constrained_layout=True)
+    ax.plot([0, 1], [0, 1], color="#999999", linestyle="--", linewidth=1)
+    ax.plot(predicted, observed, color="#1f77b4", linewidth=1.5)
+    ax.scatter(predicted, observed, s=sizes, color="#1f77b4", alpha=0.75)
+    ax.set_xlim(0.0, 1.0)
+    ax.set_ylim(0.0, 1.0)
+    ax.set_aspect("equal", adjustable="box")
+    ax.set_xlabel(spec.x_label)
+    ax.set_ylabel(spec.y_label)
+    ax.set_title(spec.title)
+    fig.savefig(output_path, dpi=300)
+    plt.close(fig)
+
+
 def _render_single_or_bundle(
     spec: ChartSpec,
     output_path: str | Path,
@@ -858,6 +1105,20 @@ def render_chart(
     if spec.type == "paired_line":
         return _render_single_or_bundle(
             spec, output_path, key, _render_paired_line_chart
+        )
+    if spec.type == "odds_ratio_forest":
+        return _render_single_or_bundle(
+            spec, output_path, key, _render_odds_ratio_forest
+        )
+    if spec.type == "roc_curve":
+        return _render_single_or_bundle(spec, output_path, key, _render_roc_curve)
+    if spec.type == "calibration_plot":
+        return _render_single_or_bundle(
+            spec, output_path, key, _render_calibration_plot
+        )
+    if spec.type == "factorial_interaction":
+        return _render_single_or_bundle(
+            spec, output_path, key, _render_factorial_interaction
         )
     raise ValueError(f"Unsupported chart type: {spec.type}")
 
@@ -1035,6 +1296,36 @@ def _safe_report_paths(params: dict[str, object]) -> tuple[Path, Path, Path, boo
     return output_dir, docx_path, chart_dir, not output_dir_existed
 
 
+def _report_chart_specs(result: object) -> tuple[ChartSpec, ...]:
+    specs: list[ChartSpec] = []
+    single = getattr(result, "chart_spec", None)
+    if single is not None:
+        if not isinstance(single, ChartSpec):
+            raise ValueError("Report chart_spec must be a ChartSpec")
+        specs.append(single)
+    multiple = getattr(result, "chart_specs", ())
+    if multiple:
+        if not isinstance(multiple, (tuple, list)) or not all(
+            isinstance(spec, ChartSpec) for spec in multiple
+        ):
+            raise ValueError("Report chart_specs must contain ChartSpec values")
+        specs.extend(multiple)
+    return tuple(specs)
+
+
+SELECTION_DISCLOSURE = {
+    "ko": (
+        "분석 방법 선택에 실험적 후보 안내가 사용되었습니다. "
+        "계산 모듈의 수치 검증 범위와 추천 타당성은 별개입니다."
+    ),
+    "en": (
+        "An experimental analysis-candidate aid was used to select this method. "
+        "Numerical validation of the calculation module and validity of the "
+        "recommendation are separate."
+    ),
+}
+
+
 @dataclass
 class ReportStep(Step):
     step_type = "report.apa"
@@ -1047,6 +1338,12 @@ class ReportStep(Step):
         if language_base not in {"ko", "en"}:
             raise ValueError("Unsupported report language")
         language = "en" if language_base == "en" else "ko"
+        selection_origin = str(self.params.get("selection_origin", "manual"))
+        if selection_origin not in {
+            "manual",
+            "experimental_candidate_assisted",
+        }:
+            raise ValueError("Unsupported selection origin")
 
         include = _normalise_include(self.params)
         include_figures = bool(self.params.get("include_figures", True))
@@ -1057,20 +1354,30 @@ class ReportStep(Step):
 
         created_paths: list[Path] = []
         prose: list[str] = []
+        if selection_origin == "experimental_candidate_assisted":
+            prose.append(SELECTION_DISCLOSURE[language])
         tables: dict[str, list[dict[str, str]]] = {}
         figure_paths: dict[str, list[str]] = {}
         try:
             for public_key, result in included_results:
                 prose.append(prose_for(result, language=language))
                 tables[public_key] = table_for(result)
-                chart_spec = getattr(result, "chart_spec", None)
-                if include_figures and chart_spec is not None:
-                    rendered = render_chart(chart_spec, chart_dir, public_key)
-                    paths = [rendered] if isinstance(rendered, str) else list(rendered)
-                    figure_paths[public_key] = paths
-                    created_paths.extend(Path(path) for path in paths)
-                else:
-                    figure_paths[public_key] = []
+                chart_specs = _report_chart_specs(result)
+                paths: list[str] = []
+                if include_figures:
+                    for index, chart_spec in enumerate(chart_specs, start=1):
+                        chart_key = (
+                            public_key
+                            if len(chart_specs) == 1
+                            else f"{public_key}-{index}-{chart_spec.type}"
+                        )
+                        rendered = render_chart(chart_spec, chart_dir, chart_key)
+                        rendered_paths = (
+                            [rendered] if isinstance(rendered, str) else list(rendered)
+                        )
+                        paths.extend(rendered_paths)
+                        created_paths.extend(Path(path) for path in rendered_paths)
+                figure_paths[public_key] = paths
 
             write_docx(prose, tables, figure_paths, docx_path)
             created_paths.append(docx_path)

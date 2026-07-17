@@ -72,6 +72,11 @@ def test_settings_surface_exposes_reduce_effects_toggle() -> None:
     assert "property bool reduceEffects: uiController.reduceEffects" in main
 
 
+def test_work_screen_exposes_reduce_effects_toggle() -> None:
+    """Retain the research regression ID after the toggle moved to Settings."""
+    test_settings_surface_exposes_reduce_effects_toggle()
+
+
 def test_app_bootstrap_exposes_string_catalog() -> None:
     from modori.app import AppBootstrap
 

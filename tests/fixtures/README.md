@@ -1,5 +1,19 @@
 # Test fixtures
 
+## `recommendation_benchmark/`
+
+Deterministic synthetic recommendation benchmark economics pilot.
+
+Use in Modori:
+
+- Exactly 20 study-card cases and 19 CSV files, including a same-data/different-question pair.
+- Blank independent reviewer workbooks and a separate adjudication workbook.
+- Current A predictions are captured with case, prediction, and source fingerprints.
+- The pilot measures labeling time and agreement; it is not accuracy evidence.
+- No checked-in case contains real PII or an expert gold label.
+- Human procedure: `docs/qa/recommendation-benchmark-pilot-runbook.md`.
+- Controlled vocabulary: `docs/qa/recommendation-benchmark-annotation-guide.md`.
+
 ## `psych_bfi.csv`
 
 Source: Rdatasets mirror of the R `psych` package `bfi` dataset.
@@ -31,6 +45,48 @@ Use in Modori:
 - Expected values are locked by `tests/test_jamovi_validation_fixtures.py`.
 - Evidence from these files supports "jamovi GUI representative fixture
   agreement" only, not SPSS/JASP-equivalent breadth.
+
+## `logistic_regression/*.csv`
+
+Deterministic, synthetic, overlapping binary-logistic fixtures.
+
+Use in Modori:
+
+- `continuous.csv` has two ordinary-scale numeric predictors and repeated
+  predictor patterns containing both outcomes; the test derives a fixed
+  five-row complete-case-missingness variant from it.
+- `categorical.csv` has one numeric predictor and three category levels in a
+  deliberately nonalphabetic source order; R and Modori both pin `control` as
+  the reference and use the declared order `control`, `treat`, `placebo`.
+- Both fixtures have at least 20 observations in each outcome class and are
+  anchored to R base `glm`; the continuous fixture is also checked with an
+  independent 80-decimal-digit `mpmath` Newton oracle.
+- `reference-metadata.json` pins fixture/reference-script hashes, runtime
+  versions, achieved maximum differences, and the enforced tolerance ceilings.
+- Large-offset behavior is tested separately through shift invariance and the
+  scaled operational path. Direct large-offset R fitting is not treated as an
+  accuracy oracle because its original-scale design is cancellation-sensitive.
+
+## `factorial_anova/*.csv`
+
+Deterministic synthetic complete-cell 2-by-3 factorial ANOVA fixtures.
+
+Use in Modori:
+
+- `balanced-2x3.csv` has six rows per cell and is checked against independent
+  corrected two-way sums, base R, and statsmodels Sum-contrast Type III.
+- `unbalanced-2x3.csv` fixes A-major/B-fast cell counts at
+  `(5, 11, 7, 13, 4, 9)` and anchors the equal-cell-weight estimand.
+- `moderate-offset-2x3.csv` is the same unbalanced data plus `100`; its
+  location-to-pooled-SD ratio remains at or below the frozen comparator limit.
+- Every outcome and residual is a multiple of `0.125`, so adding `1e12` does
+  not change the float-delivered within-cell distinctions. The derived extreme
+  fixture is compared only with an explicit-rational 80-digit mpmath oracle.
+- R uses base `lm`, `contr.sum`, and coefficient-block Wald forms. It does not
+  call a Type III convenience package.
+- `reference-metadata.json` pins source hashes, runtime versions, achieved
+  differences, tolerance ceilings, and the boundary that R/statsmodels are
+  implementation comparators rather than extreme-offset truth sources.
 
 ## `nist/*.csv`
 

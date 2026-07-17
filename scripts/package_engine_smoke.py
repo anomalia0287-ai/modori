@@ -166,14 +166,63 @@ def run_engine_smoke(
         return 1
 
     payload = json.loads(subprocess_output_path.read_text(encoding="utf-8"))
+    payload_dict = payload if isinstance(payload, dict) else {}
+    v1_statistics_smoke = payload_dict.get("v1_statistics_smoke")
+    checks = (
+        v1_statistics_smoke.get("checks")
+        if isinstance(v1_statistics_smoke, dict)
+        else None
+    )
+    logistic_ok = isinstance(checks, list) and any(
+        isinstance(check, dict)
+        and check.get("key") == "logistic_regression"
+        and check.get("ok") is True
+        and check.get("analysis_type") == "LogisticRegressionResult"
+        for check in checks
+    )
+    factorial_evidence = {
+        "analysis_key": "anova_factorial",
+        "cell_count": 6,
+        "chart_type": "factorial_interaction",
+        "effect_count": 3,
+        "finite_effect_statistics": True,
+        "level_counts": [2, 3],
+        "marginal_count": 5,
+        "method": "type_iii_equal_cell_weight",
+        "simple_effect_count": 5,
+    }
+    factorial_ok = isinstance(checks, list) and any(
+        isinstance(check, dict)
+        and check.get("key") == "anova_factorial"
+        and check.get("ok") is True
+        and check.get("analysis_type") == "FactorialAnovaResult"
+        and check.get("evidence") == factorial_evidence
+        for check in checks
+    )
     if (
         not engine_payload_has_contract(
             payload,
             expected_cache_dir=expected_cache_dir,
         )
+        or payload_dict.get("opened") is not True
+        or payload_dict.get("rerun") is not True
+        or payload_dict.get("waited") is not True
+        or payload_dict.get("status") != "ready"
+        or not logistic_ok
+        or not factorial_ok
         or is_link_or_junction(expected_cache_path)
         or not expected_cache_path.is_dir()
     ):
+        if not logistic_ok:
+            print(
+                "Missing or failed logistic_regression packaged smoke evidence",
+                file=sys.stderr,
+            )
+        if not factorial_ok:
+            print(
+                "Missing or failed anova_factorial packaged smoke evidence",
+                file=sys.stderr,
+            )
         print(json.dumps(payload, ensure_ascii=False, sort_keys=True), file=sys.stderr)
         return 1
     if evidence_boundary is not None:

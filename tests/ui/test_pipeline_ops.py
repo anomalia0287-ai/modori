@@ -3,9 +3,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pandas as pd
 import pytest
 
+from modori.core import Dataset, Measure, Pipeline, Step, StepResult, Variable
 from modori.results import ChartSpec, ReliabilityResult
+from modori.steps import MapValuesStep, VariableMetadataPatchStep
+from modori.steps.anova_factorial import FactorialAnovaStep
 from modori.ui.chart_assets import ChartAssetResult
 from modori.ui.contracts import DisplayResult, ReportExportOptions
 from modori.ui.pipeline_ops import PipelineOperations
@@ -61,6 +65,170 @@ class FakePipeline:
         self.recomputed = True
 
 
+class PassThroughStep(Step):
+    step_type = "import.table"
+
+    def compute(self, ctx):
+        return StepResult()
+
+    def reads(self) -> set[str]:
+        return set()
+
+    def writes(self) -> set[str]:
+        return set()
+
+
+class MarkerAnalysisStep(Step):
+    step_type = "test.marker_analysis"
+    produces_analysis = True
+
+    def compute(self, ctx):
+        marker = Path(str(self.params["marker_path"]))
+        marker.write_text(self.id, encoding="utf-8")
+        return StepResult(analysis=self.id)
+
+    def reads(self) -> set[str]:
+        return {str(value) for value in self.params.get("reads", [])}
+
+    def writes(self) -> set[str]:
+        return {str(self.params["result_key"])}
+
+
+def _pipeline_with_deferred_analysis(
+    tmp_path: Path,
+    *,
+    metadata_step: VariableMetadataPatchStep | None = None,
+    transform_step: MapValuesStep | None = None,
+) -> tuple[Pipeline, Path, Path]:
+    frame = pd.DataFrame({"score": [1, 2, 3], "group": ["a", "b", "a"]})
+    pipeline = Pipeline(
+        Dataset(
+            df=frame,
+            variables={
+                "score": Variable(
+                    name="score",
+                    label="Score",
+                    measure=Measure.SCALE,
+                    value_labels={},
+                    missing_values=[],
+                    dtype=str(frame["score"].dtype),
+                    origin_step_id="origin",
+                ),
+                "group": Variable(
+                    name="group",
+                    label="Group",
+                    measure=Measure.NOMINAL,
+                    value_labels={},
+                    missing_values=[],
+                    dtype=str(frame["group"].dtype),
+                    origin_step_id="origin",
+                ),
+            },
+        )
+    )
+    pipeline.add(PassThroughStep(id="origin", title="Origin", params={}))
+    if metadata_step is not None:
+        pipeline.add(metadata_step)
+    if transform_step is not None:
+        pipeline.add(transform_step)
+    analysis_marker = tmp_path / "analysis-ran.txt"
+    report_marker = tmp_path / "report-ran.txt"
+    pipeline.add(
+        MarkerAnalysisStep(
+            id="analysis",
+            title="Analysis",
+            params={
+                "marker_path": str(analysis_marker),
+                "reads": ["score", "group_수정"],
+                "result_key": "analysis_result",
+            },
+        )
+    )
+    pipeline.add(
+        MarkerAnalysisStep(
+            id="report",
+            title="Report",
+            params={
+                "marker_path": str(report_marker),
+                "reads": ["analysis_result"],
+                "result_key": "report_result",
+            },
+        )
+    )
+    pipeline.recompute(dirty_from=None)
+    analysis_marker.unlink()
+    report_marker.unlink()
+    return pipeline, analysis_marker, report_marker
+
+
+def _factorial_dataset() -> Dataset:
+    rows: list[dict[str, object]] = []
+    for (condition, site), mean in (
+        (("control", 1), 1.0),
+        (("control", 2), 2.0),
+        (("active", 1), 3.0),
+        (("active", 2), 8.0),
+    ):
+        for offset in (-0.3, -0.1, 0.1, 0.3):
+            rows.append(
+                {
+                    "score": mean + offset,
+                    "condition": condition,
+                    "site": site,
+                }
+            )
+    frame = pd.DataFrame(rows)
+    return Dataset(
+        df=frame,
+        variables={
+            "score": Variable(
+                name="score",
+                label="Score",
+                measure=Measure.SCALE,
+                value_labels={},
+                missing_values=[],
+                dtype=str(frame["score"].dtype),
+                origin_step_id="fixture",
+            ),
+            "condition": Variable(
+                name="condition",
+                label="Condition",
+                measure=Measure.NOMINAL,
+                value_labels={},
+                missing_values=[],
+                dtype=str(frame["condition"].dtype),
+                origin_step_id="fixture",
+            ),
+            "site": Variable(
+                name="site",
+                label="Site",
+                measure=Measure.ORDINAL,
+                value_labels={1.0: "North", 2.0: "South"},
+                missing_values=[],
+                dtype=str(frame["site"].dtype),
+                origin_step_id="fixture",
+            ),
+        },
+    )
+
+
+def _factorial_params() -> dict[str, object]:
+    return {
+        "schema_version": 1,
+        "dv": "score",
+        "factor_a": "condition",
+        "factor_b": "site",
+        "factor_a_levels": ["control", "active"],
+        "factor_b_levels": [1, 2],
+        "factorial_policy": {
+            "sum_of_squares": "type_iii_equal_cell_weight",
+            "simple_effects": "interaction_gated_holm",
+            "alpha": 0.05,
+        },
+        "language": "ko",
+    }
+
+
 def _write_reference_slice_csv(path: Path) -> None:
     lines = ["q1,q2,q3,q4,q5,q6,q7,q8,group"]
     rows = [
@@ -99,6 +267,54 @@ def test_pipeline_operations_inserts_metadata_step_after_origin() -> None:
     assert pipeline.insertions == [("import", step, "metadata:score")]
 
 
+def test_metadata_insert_recomputes_data_prep_without_running_analysis_or_report(
+    tmp_path: Path,
+) -> None:
+    pipeline, analysis_marker, report_marker = _pipeline_with_deferred_analysis(tmp_path)
+    step = VariableMetadataPatchStep(
+        id="metadata:score",
+        title="Edit score metadata",
+        params={"variable_key": "score", "measure": "ordinal"},
+    )
+
+    PipelineOperations(pipeline).insert_metadata_step("score", step)
+
+    assert pipeline.current_dataset.variables["score"].measure is Measure.ORDINAL
+    assert [item.id for item in pipeline.steps] == [
+        "origin",
+        "metadata:score",
+        "analysis",
+        "report",
+    ]
+    assert pipeline.analysis_objects == {}
+    assert analysis_marker.exists() is False
+    assert report_marker.exists() is False
+
+
+def test_metadata_edit_recomputes_data_prep_without_running_analysis_or_report(
+    tmp_path: Path,
+) -> None:
+    metadata_step = VariableMetadataPatchStep(
+        id="metadata:score",
+        title="Edit score metadata",
+        params={"variable_key": "score", "measure": "nominal"},
+    )
+    pipeline, analysis_marker, report_marker = _pipeline_with_deferred_analysis(
+        tmp_path,
+        metadata_step=metadata_step,
+    )
+
+    PipelineOperations(pipeline).edit_metadata_params(
+        "metadata:score",
+        {"variable_key": "score", "measure": "ordinal"},
+    )
+
+    assert pipeline.current_dataset.variables["score"].measure is Measure.ORDINAL
+    assert pipeline.analysis_objects == {}
+    assert analysis_marker.exists() is False
+    assert report_marker.exists() is False
+
+
 def test_pipeline_operations_inserts_transform_after_existing_recode_steps() -> None:
     pipeline = FakePipeline()
     pipeline.steps = [
@@ -112,6 +328,75 @@ def test_pipeline_operations_inserts_transform_after_existing_recode_steps() -> 
     PipelineOperations(pipeline).insert_or_replace_transform_step(step)
 
     assert pipeline.insertions == [("transform:map:region", step, "transform:map:gender")]
+
+
+def test_transform_insert_recomputes_data_prep_without_running_analysis_or_report(
+    tmp_path: Path,
+) -> None:
+    pipeline, analysis_marker, report_marker = _pipeline_with_deferred_analysis(tmp_path)
+    step = MapValuesStep(
+        id="transform:map:group",
+        title="Map group values",
+        params={
+            "column": "group",
+            "mapping": {"a": "A"},
+            "to_missing": [],
+            "suffix": "_수정",
+        },
+    )
+
+    PipelineOperations(pipeline).insert_or_replace_transform_step(step)
+
+    assert pipeline.current_dataset.df["group_수정"].tolist() == ["A", "b", "A"]
+    assert [item.id for item in pipeline.steps] == [
+        "origin",
+        "transform:map:group",
+        "analysis",
+        "report",
+    ]
+    assert pipeline.analysis_objects == {}
+    assert analysis_marker.exists() is False
+    assert report_marker.exists() is False
+
+
+def test_transform_edit_recomputes_data_prep_without_running_analysis_or_report(
+    tmp_path: Path,
+) -> None:
+    transform_step = MapValuesStep(
+        id="transform:map:group",
+        title="Map group values",
+        params={
+            "column": "group",
+            "mapping": {"a": "A"},
+            "to_missing": [],
+            "suffix": "_수정",
+        },
+    )
+    pipeline, analysis_marker, report_marker = _pipeline_with_deferred_analysis(
+        tmp_path,
+        transform_step=transform_step,
+    )
+    replacement = MapValuesStep(
+        id="transform:map:group",
+        title="Map group values",
+        params={
+            "column": "group",
+            "mapping": {"a": "Changed"},
+            "to_missing": [],
+            "suffix": "_수정",
+        },
+    )
+
+    PipelineOperations(pipeline).insert_or_replace_transform_step(replacement)
+
+    assert pipeline.current_dataset.df["group_수정"].tolist() == [
+        "Changed",
+        "b",
+        "Changed",
+    ]
+    assert pipeline.analysis_objects == {}
+    assert analysis_marker.exists() is False
+    assert report_marker.exists() is False
 
 
 def test_replace_managed_analysis_steps_refreshes_dataset_before_worker_recompute(
@@ -154,6 +439,7 @@ def test_pipeline_operations_returns_display_results_by_known_analysis_kind(monk
     pipeline = FakePipeline()
     pipeline.analysis_objects = {
         "reliability:scale": object(),
+        "anova_factorial": object(),
         "anova_oneway": object(),
         "kruskal_wallis": object(),
         "ancova": object(),
@@ -184,11 +470,12 @@ def test_pipeline_operations_returns_display_results_by_known_analysis_kind(monk
 
     displays = PipelineOperations(pipeline).display_results()
 
-    assert len(displays) == 9
+    assert len(displays) == 10
     assert isinstance(displays[0], DisplayResult)
     assert displays[0].kind == "reliability"
     assert calls == [
         ("reliability:scale", "reliability"),
+        ("anova_factorial", "anova_factorial"),
         ("anova_oneway", "anova_oneway"),
         ("kruskal_wallis", "kruskal_wallis"),
         ("ancova", "ancova"),
@@ -282,6 +569,132 @@ def test_pipeline_operations_preserves_results_when_chart_rendering_fails() -> N
     ]
 
 
+def test_pipeline_operations_renders_all_logistic_chart_specs_for_display() -> None:
+    specs = tuple(
+        ChartSpec(
+            type=chart_type,
+            title=chart_type,
+            data={},
+            x_label="x",
+            y_label="y",
+        )
+        for chart_type in ("odds_ratio_forest", "roc_curve", "calibration_plot")
+    )
+
+    class LogisticResult:
+        chart_specs = specs
+
+    class FakeChartRenderer:
+        def __init__(self) -> None:
+            self.calls: list[tuple[str, ChartSpec]] = []
+
+        def render_for_display(
+            self,
+            *,
+            result_id: str,
+            chart_spec: ChartSpec,
+        ) -> ChartAssetResult:
+            self.calls.append((result_id, chart_spec))
+            return ChartAssetResult(paths=[f"{result_id}.png"])
+
+    renderer = FakeChartRenderer()
+    display = DisplayResult(
+        result_id="logistic_regression",
+        kind="logistic_regression",
+        title_ko="이항 로지스틱 회귀",
+        title_en="Binary logistic regression",
+        prose_ko="",
+        prose_en="",
+    )
+
+    updated = PipelineOperations(
+        FakePipeline(),
+        chart_renderer=renderer,
+    )._with_display_chart(display, "logistic_regression", LogisticResult())
+
+    assert [call[0] for call in renderer.calls] == [
+        "logistic_regression:1",
+        "logistic_regression:2",
+        "logistic_regression:3",
+    ]
+    assert updated.chart_paths == [
+        "logistic_regression:1.png",
+        "logistic_regression:2.png",
+        "logistic_regression:3.png",
+    ]
+    assert PipelineOperations._kind_for_result("logistic_regression") == (
+        "logistic_regression"
+    )
+
+
+def test_pipeline_operations_create_serialize_and_restore_factorial_analysis() -> None:
+    pipeline = Pipeline(_factorial_dataset())
+    ops = PipelineOperations(pipeline)
+
+    ops.replace_managed_analysis_steps(
+        step_id="anova_factorial",
+        step_type="stats.anova_factorial",
+        params=_factorial_params(),
+    )
+
+    assert [step.step_type for step in pipeline.steps] == [
+        "stats.anova_factorial",
+        "report.apa",
+    ]
+    assert isinstance(pipeline.steps[0], FactorialAnovaStep)
+    assert pipeline.steps[1].params["include"] == ["anova_factorial"]
+    restored = Pipeline.from_json(pipeline.to_json(), trust_project_file=True)
+    assert isinstance(restored.steps[0], FactorialAnovaStep)
+    assert restored.steps[0].params == _factorial_params()
+
+
+def test_pipeline_operations_factorial_result_key_is_public_step_id() -> None:
+    pipeline = Pipeline(_factorial_dataset())
+    pipeline.add(
+        FactorialAnovaStep(
+            id="anova_factorial",
+            title="Factorial ANOVA",
+            params=_factorial_params(),
+        )
+    )
+
+    pipeline.recompute(dirty_from=None)
+
+    assert pipeline.analysis_objects["anova_factorial"].analysis_key == (
+        "anova_factorial"
+    )
+    assert pipeline.analysis_objects["analysis:anova_factorial"] is (
+        pipeline.analysis_objects["anova_factorial"]
+    )
+
+
+def test_pipeline_operations_rolls_back_factorial_replacement_when_report_add_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pipeline = Pipeline(_factorial_dataset())
+    before_json = pipeline.to_json()
+    before_dataset = pipeline.current_dataset
+    original_add = pipeline.add
+
+    def fail_report_add(step: object) -> None:
+        if getattr(step, "step_type", "") == "report.apa":
+            raise RuntimeError("report add failed")
+        original_add(step)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(pipeline, "add", fail_report_add)
+
+    with pytest.raises(RuntimeError, match="report add failed"):
+        PipelineOperations(pipeline).replace_managed_analysis_steps(
+            step_id="anova_factorial",
+            step_type="stats.anova_factorial",
+            params=_factorial_params(),
+        )
+
+    assert pipeline.to_json() == before_json
+    assert pipeline.current_dataset is before_dataset
+    assert pipeline.analysis_objects == {}
+
+
 def test_pipeline_operations_export_report_requires_docx_path(tmp_path) -> None:
     pipeline = FakePipeline()
     pipeline.analysis_objects = {"report": object()}
@@ -352,6 +765,7 @@ def test_pipeline_operations_export_report_applies_dialog_options_to_report_step
             include_regression=True,
             include_figures=False,
             selection_provenance="experimental_candidate_assisted",
+            selection_origin="experimental_candidate_assisted",
         )
     )
 
@@ -364,6 +778,7 @@ def test_pipeline_operations_export_report_applies_dialog_options_to_report_step
             "filename": "report.docx",
             "language": "en",
             "include_figures": False,
+            "selection_origin": "experimental_candidate_assisted",
         },
     )
     assert "selection_provenance" not in pipeline.edits[-1][1]
@@ -383,6 +798,7 @@ def test_pipeline_operations_export_report_filters_all_analysis_families(tmp_pat
         "frequency_crosstab",
         "correlation",
         "anova_oneway",
+        "anova_factorial",
         "kruskal_wallis",
         "ancova",
         "factor_pca",
@@ -423,11 +839,23 @@ def test_pipeline_operations_export_report_filters_all_analysis_families(tmp_pat
     assert pipeline.edits[-1][1]["include"] == [
         "reliability:scale",
         "anova_oneway",
+        "anova_factorial",
         "kruskal_wallis",
         "ancova",
         "repeated_measures_anova",
         "friedman",
     ]
+
+
+def test_factorial_report_inclusion_follows_group_model_toggle() -> None:
+    assert PipelineOperations._include_key_enabled(
+        "anova_factorial",
+        ReportExportOptions(include_group_models=True),
+    )
+    assert not PipelineOperations._include_key_enabled(
+        "anova_factorial",
+        ReportExportOptions(include_group_models=False),
+    )
 
 
 def test_pipeline_operations_report_export_options_can_be_toggled_back_on(tmp_path) -> None:

@@ -58,6 +58,8 @@ def test_manual_selection_clears_candidate_prefill_but_retains_applied_provenanc
     ).ok
     app, view, root, bootstrap = _guide(controller)
     try:
+        assert controller.selectRecommendationAt(0) is True
+        app.processEvents()
         _prepare(root, app)
         controller.markExperimentalCandidateAssisted()
         assert root.property("candidateAssistedReview") is True
@@ -89,6 +91,8 @@ def test_mode_exit_and_recommendation_change_clear_pending_candidate_fields() ->
     ).ok
     app, view, root, bootstrap = _guide(controller)
     try:
+        assert controller.selectRecommendationAt(0) is True
+        app.processEvents()
         _prepare(root, app)
         root.setProperty("visible", False)
         app.processEvents()
@@ -158,6 +162,8 @@ def test_metadata_change_invalidates_confirmed_runtime_review_state(tmp_path) ->
     ).ok
     app, view, root, bootstrap = _guide(controller)
     try:
+        assert controller.selectRecommendationAt(0) is True
+        app.processEvents()
         _prepare(root, app)
         root.setProperty("reviewConfirmed", True)
         controller.markExperimentalCandidateAssisted()

@@ -19,9 +19,11 @@ class RunConfigurationValidator:
         "stats.compare_groups",
         "stats.paired_comparison",
         "stats.regression_ols",
+        "stats.logistic_regression",
         "stats.frequency_crosstab",
         "stats.correlation",
         "stats.anova_oneway",
+        "stats.anova_factorial",
         "stats.kruskal_wallis",
         "stats.ancova",
         "stats.factor_pca",
@@ -51,12 +53,24 @@ class RunConfigurationValidator:
                 result = self._validate_paired_comparison(params, variable_keys)
             elif step_type == "stats.regression_ols":
                 result = self._validate_regression(params, variable_keys)
+            elif step_type == "stats.logistic_regression":
+                result = self._validate_logistic_regression(
+                    params,
+                    variable_keys,
+                    self._current_dataset(pipeline_ops),
+                )
             elif step_type == "stats.frequency_crosstab":
                 result = self._validate_frequency_crosstab(params, variable_keys)
             elif step_type == "stats.correlation":
                 result = self._validate_correlation(params, variable_keys)
             elif step_type == "stats.anova_oneway":
                 result = self._validate_anova_oneway(params, variable_keys)
+            elif step_type == "stats.anova_factorial":
+                result = self._validate_anova_factorial(
+                    params,
+                    variable_keys,
+                    self._current_dataset(pipeline_ops),
+                )
             elif step_type == "stats.kruskal_wallis":
                 result = self._validate_kruskal_wallis(params, variable_keys)
             elif step_type == "stats.ancova":
@@ -162,6 +176,37 @@ class RunConfigurationValidator:
             return self._invalid("종속 변수는 예측 변수에 포함될 수 없습니다.")
         return self._require_known_variables([outcome, *predictors], variable_keys)
 
+    def _validate_logistic_regression(
+        self,
+        params: Mapping[str, Any],
+        variable_keys: set[str] | None,
+        dataset: object | None,
+    ) -> RunValidationResult:
+        from modori.steps.logistic_regression import BinaryLogisticRegressionStep
+        from modori.ui.value_tokens import canonical_value_token, observed_value_options
+
+        try:
+            clean = BinaryLogisticRegressionStep.validate_params(
+                BinaryLogisticRegressionStep.migrate_params(dict(params))
+            )
+        except (TypeError, ValueError):
+            return self._invalid("이항 로지스틱 회귀 설정이 올바르지 않습니다.")
+        outcome = str(clean["outcome"])
+        predictors = [str(value) for value in clean["predictors"]]
+        known = self._require_known_variables([outcome, *predictors], variable_keys)
+        if not known.ok:
+            return known
+        if dataset is None:
+            return self._invalid("현재 데이터에서 이항 결과값을 확인할 수 없습니다.")
+        try:
+            options = observed_value_options(dataset, outcome)
+            event_token = canonical_value_token(clean["event_value"])
+        except ValueError:
+            return self._invalid("현재 데이터의 이항 결과값을 안전하게 확인할 수 없습니다.")
+        if len(options) != 2 or event_token not in {row["token"] for row in options}:
+            return self._invalid("선택한 사건값이 현재 데이터의 두 결과값과 일치하지 않습니다.")
+        return RunValidationResult(ok=True)
+
     def _validate_frequency_crosstab(
         self,
         params: Mapping[str, Any],
@@ -219,6 +264,85 @@ class RunConfigurationValidator:
         if outcome == group:
             return self._invalid("종속 변수와 집단 변수는 달라야 합니다.")
         return self._require_known_variables([outcome, group], variable_keys)
+
+    def _validate_anova_factorial(
+        self,
+        params: Mapping[str, Any],
+        variable_keys: set[str] | None,
+        dataset: object | None,
+    ) -> RunValidationResult:
+        from modori.steps.anova_factorial import FactorialAnovaStep
+        from modori.value_tokens import (
+            complete_case_level_identities,
+            normalized_value_key,
+        )
+
+        try:
+            clean = FactorialAnovaStep.validate_params(
+                FactorialAnovaStep.migrate_params(dict(params))
+            )
+        except (TypeError, ValueError):
+            return self._invalid("이원 Type III 분산분석 설정이 올바르지 않습니다.")
+        dv = str(clean["dv"])
+        factor_a = str(clean["factor_a"])
+        factor_b = str(clean["factor_b"])
+        known = self._require_known_variables(
+            [dv, factor_a, factor_b],
+            variable_keys,
+        )
+        if not known.ok:
+            return known
+        if dataset is None:
+            return self._invalid("현재 데이터에서 두 요인의 수준을 확인할 수 없습니다.")
+        variables = getattr(dataset, "variables", None)
+        if not isinstance(variables, Mapping):
+            return self._invalid("현재 데이터의 변수 척도를 확인할 수 없습니다.")
+        try:
+            dv_variable = variables[dv]
+            factor_variables = (variables[factor_a], variables[factor_b])
+            dv_measure = str(
+                getattr(dv_variable.measure, "value", dv_variable.measure)
+            )
+            factor_measures = {
+                str(getattr(variable.measure, "value", variable.measure))
+                for variable in factor_variables
+            }
+        except (AttributeError, KeyError):
+            return self._invalid("현재 데이터의 변수 척도를 확인할 수 없습니다.")
+        if dv_measure != "scale" or not factor_measures <= {"nominal", "ordinal"}:
+            return self._invalid(
+                "결과 변수는 척도형이고 두 요인은 명목형 또는 서열형이어야 합니다."
+            )
+
+        try:
+            observed_levels = complete_case_level_identities(
+                dataset,
+                required_keys=(dv, factor_a, factor_b),
+                factor_keys=(factor_a, factor_b),
+            )
+        except (KeyError, TypeError, ValueError):
+            return self._invalid(
+                "현재 데이터의 요인 수준을 안전하게 확인할 수 없습니다."
+            )
+
+        for factor_key, level_key in (
+            (factor_a, "factor_a_levels"),
+            (factor_b, "factor_b_levels"),
+        ):
+            try:
+                observed = observed_levels[factor_key]
+                declared = {
+                    normalized_value_key(value) for value in clean[level_key]
+                }
+            except (KeyError, TypeError, ValueError):
+                return self._invalid(
+                    "현재 데이터의 요인 수준을 안전하게 확인할 수 없습니다."
+                )
+            if observed != declared:
+                return self._invalid(
+                    "저장된 요인 수준이 현재 데이터의 수준과 일치하지 않습니다."
+                )
+        return RunValidationResult(ok=True)
 
     def _validate_kruskal_wallis(
         self,
@@ -379,6 +503,11 @@ class RunConfigurationValidator:
         if steps is None:
             return []
         return list(steps)
+
+    @staticmethod
+    def _current_dataset(pipeline_ops: object) -> object | None:
+        current_dataset = getattr(pipeline_ops, "current_dataset", None)
+        return current_dataset() if callable(current_dataset) else current_dataset
 
     @staticmethod
     def _step_type(step: object) -> str:

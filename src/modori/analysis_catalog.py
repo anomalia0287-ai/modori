@@ -4,19 +4,16 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import Enum
 
+from modori.recommendation_policy import (
+    RecommendationEvidenceStatus,
+    RecommendationRoutingPolicy,
+)
+
 
 class AnalysisStatus(Enum):
     EXECUTABLE = "executable"
     DEFERRED = "deferred"
     EXPERIMENTAL = "experimental"
-
-
-class RecommendationPolicy(str, Enum):
-    STRONG = "strong"
-    CANDIDATE = "candidate"
-    CAUTION_ONLY = "caution_only"
-    MANUAL_ONLY = "manual_only"
-    NEVER = "never"
 
 
 @dataclass(frozen=True)
@@ -41,7 +38,12 @@ class AnalysisModuleSpec:
     required_preprocessing: tuple[str, ...] = ()
     unsupported_cases: tuple[str, ...] = ()
     reference_sources: tuple[str, ...] = ()
-    recommendation_policy: RecommendationPolicy = RecommendationPolicy.NEVER
+    recommendation_policy: RecommendationRoutingPolicy = (
+        RecommendationRoutingPolicy.NEVER
+    )
+    recommendation_evidence_status: RecommendationEvidenceStatus = (
+        RecommendationEvidenceStatus.NOT_APPLICABLE
+    )
     release_evidence_required: bool = False
     contract_tests: tuple[str, ...] = ()
     help_keys: tuple[str, ...] = ()
@@ -119,7 +121,8 @@ _MODULE_SPECS["reliability"] = AnalysisModuleSpec(
         "sklearn FactorAnalysis omega cross-check",
         "R psych omega optional reference",
     ),
-    recommendation_policy=RecommendationPolicy.STRONG,
+    recommendation_policy=RecommendationRoutingPolicy.PRIMARY_REVIEW,
+    recommendation_evidence_status=RecommendationEvidenceStatus.EXPERIMENTAL,
     release_evidence_required=False,
     contract_tests=(
         "tests/test_analysis_module_contract.py",
@@ -156,7 +159,8 @@ _MODULE_SPECS["compare_groups"] = AnalysisModuleSpec(
         "pingouin ttest mixed_anova packaged dataset",
         "pingouin mwu reference checks",
     ),
-    recommendation_policy=RecommendationPolicy.STRONG,
+    recommendation_policy=RecommendationRoutingPolicy.PRIMARY_REVIEW,
+    recommendation_evidence_status=RecommendationEvidenceStatus.EXPERIMENTAL,
     release_evidence_required=False,
     contract_tests=(
         "tests/test_analysis_module_contract.py",
@@ -194,7 +198,7 @@ _MODULE_SPECS["paired_comparison"] = AnalysisModuleSpec(
         "duplicate_labels",
     ),
     reference_sources=("pingouin paired t-test and wilcoxon reference checks",),
-    recommendation_policy=RecommendationPolicy.MANUAL_ONLY,
+    recommendation_policy=RecommendationRoutingPolicy.MANUAL_ONLY,
     release_evidence_required=False,
     contract_tests=(
         "tests/test_analysis_module_contract.py",
@@ -232,7 +236,8 @@ _MODULE_SPECS["regression_ols"] = AnalysisModuleSpec(
         "independent numpy OLS reference",
         "committed optional R lm reference",
     ),
-    recommendation_policy=RecommendationPolicy.CAUTION_ONLY,
+    recommendation_policy=RecommendationRoutingPolicy.HEIGHTENED_REVIEW,
+    recommendation_evidence_status=RecommendationEvidenceStatus.EXPERIMENTAL,
     release_evidence_required=False,
     contract_tests=(
         "tests/test_analysis_module_contract.py",
@@ -251,6 +256,68 @@ _MODULE_SPECS["regression_ols"] = AnalysisModuleSpec(
         "durbin_watson",
         "vif",
         "cooks_distance",
+    ),
+)
+
+_MODULE_SPECS["logistic_regression"] = AnalysisModuleSpec(
+    key="logistic_regression",
+    label="Binary logistic regression",
+    status=AnalysisStatus.EXECUTABLE,
+    reason=(
+        "Supported by BinaryLogisticRegressionStep for explicit-event, "
+        "unweighted independent-row main-effects models."
+    ),
+    step_type="stats.logistic_regression",
+    result_type="modori.logistic_regression_results.LogisticRegressionResult",
+    variable_roles=("outcome", "predictors"),
+    supported_measures={
+        "outcome": ("nominal", "ordinal", "scale"),
+        "predictors": ("nominal", "ordinal", "scale"),
+    },
+    required_preprocessing=(
+        "explicit_event_value",
+        "explicit_categorical_levels_and_references",
+        "listwise_deletion",
+    ),
+    unsupported_cases=(
+        "nonbinary_outcome",
+        "interactions_or_nonlinear_terms",
+        "weights",
+        "clusters_or_repeated_observations",
+        "survey_designs",
+        "multiple_imputation",
+        "complete_or_quasi_complete_separation",
+        "rank_deficient_or_ill_conditioned_information",
+        "penalized_firth_exact_bayesian_or_mixed_models",
+        "causal_or_validated_prediction_claims",
+    ),
+    reference_sources=(
+        "statsmodels GLM formula reconstruction",
+        "R base glm anchored fixtures",
+        "80-digit mpmath Newton and Fisher oracle",
+        "linear-programming separation theorem fixtures",
+    ),
+    recommendation_policy=RecommendationRoutingPolicy.HEIGHTENED_REVIEW,
+    recommendation_evidence_status=RecommendationEvidenceStatus.EXPERIMENTAL,
+    release_evidence_required=True,
+    contract_tests=(
+        "tests/test_analysis_module_contract.py",
+        "tests/test_logistic_numerics.py",
+        "tests/test_logistic_regression_step.py",
+        "tests/test_logistic_regression_metrics.py",
+        "tests/test_logistic_regression_hard_conditions.py",
+        "tests/test_logistic_regression_references.py",
+        "tests/test_logistic_regression_reporting.py",
+        "tests/test_logistic_regression_recommendation.py",
+        "tests/test_knowledge_library.py",
+        "tests/ui/test_recommendations.py",
+    ),
+    help_keys=(
+        "odds_ratio",
+        "model_likelihood_ratio",
+        "brier_score",
+        "p_value",
+        "confidence_interval",
     ),
 )
 
@@ -276,7 +343,8 @@ _MODULE_SPECS["descriptives_table1"] = AnalysisModuleSpec(
         "causal_or_treatment_language",
     ),
     reference_sources=("pandas describe/crosstab parity tests",),
-    recommendation_policy=RecommendationPolicy.STRONG,
+    recommendation_policy=RecommendationRoutingPolicy.PRIMARY_REVIEW,
+    recommendation_evidence_status=RecommendationEvidenceStatus.EXPERIMENTAL,
     release_evidence_required=True,
     contract_tests=(
         "tests/test_analysis_module_contract.py",
@@ -313,7 +381,8 @@ _MODULE_SPECS["frequency_crosstab"] = AnalysisModuleSpec(
         "scipy chi2_contingency parity tests",
         "scipy fisher_exact parity tests",
     ),
-    recommendation_policy=RecommendationPolicy.CANDIDATE,
+    recommendation_policy=RecommendationRoutingPolicy.SECONDARY_REVIEW,
+    recommendation_evidence_status=RecommendationEvidenceStatus.EXPERIMENTAL,
     release_evidence_required=False,
     contract_tests=(
         "tests/test_analysis_module_contract.py",
@@ -352,7 +421,8 @@ _MODULE_SPECS["correlation"] = AnalysisModuleSpec(
         "canonical_chart_rendering",
     ),
     reference_sources=("scipy pearsonr and spearmanr parity tests",),
-    recommendation_policy=RecommendationPolicy.CANDIDATE,
+    recommendation_policy=RecommendationRoutingPolicy.SECONDARY_REVIEW,
+    recommendation_evidence_status=RecommendationEvidenceStatus.EXPERIMENTAL,
     release_evidence_required=False,
     contract_tests=(
         "tests/test_analysis_module_contract.py",
@@ -392,7 +462,8 @@ _MODULE_SPECS["anova_oneway"] = AnalysisModuleSpec(
         "statsmodels Tukey HSD parity tests",
         "pingouin Games-Howell parity tests when dependency is available",
     ),
-    recommendation_policy=RecommendationPolicy.CANDIDATE,
+    recommendation_policy=RecommendationRoutingPolicy.SECONDARY_REVIEW,
+    recommendation_evidence_status=RecommendationEvidenceStatus.EXPERIMENTAL,
     release_evidence_required=False,
     contract_tests=(
         "tests/test_analysis_module_contract.py",
@@ -412,6 +483,70 @@ _MODULE_SPECS["anova_oneway"] = AnalysisModuleSpec(
         "eta_squared",
         "omega_squared",
         "p_value",
+    ),
+)
+
+_MODULE_SPECS["anova_factorial"] = AnalysisModuleSpec(
+    key="anova_factorial",
+    label="Complete-cell two-factor Type III ANOVA",
+    status=AnalysisStatus.EXECUTABLE,
+    reason=(
+        "Supported by FactorialAnovaStep for two fixed between-subject factors "
+        "with complete cells and direct equal-cell-weight Type III hypotheses."
+    ),
+    step_type="stats.anova_factorial",
+    result_type="modori.factorial_anova_results.FactorialAnovaResult",
+    variable_roles=("dv", "factor_a", "factor_b"),
+    supported_measures={
+        "dv": ("scale",),
+        "factor_a": ("nominal", "ordinal"),
+        "factor_b": ("nominal", "ordinal"),
+    },
+    required_preprocessing=(
+        "explicit_outcome_and_factor_confirmation",
+        "listwise_deletion",
+        "complete_cell_check",
+    ),
+    unsupported_cases=(
+        "empty_cells",
+        "fewer_than_three_complete_rows_per_cell",
+        "more_than_six_levels_per_factor",
+        "weights",
+        "clusters_or_repeated_observations",
+        "covariates",
+        "random_or_mixed_effects",
+        "robust_covariance",
+        "non_scale_or_nonfinite_outcome",
+        "user_contrasts_or_alternative_sums_of_squares",
+        "pairwise_posthoc",
+    ),
+    reference_sources=(
+        "balanced corrected-sum formula oracle",
+        "base R lm contr.sum coefficient-block Wald anchors",
+        "statsmodels Sum-contrast Type III comparators",
+        "80-digit mpmath extreme-offset oracle",
+    ),
+    recommendation_policy=RecommendationRoutingPolicy.SECONDARY_REVIEW,
+    recommendation_evidence_status=RecommendationEvidenceStatus.EXPERIMENTAL,
+    release_evidence_required=True,
+    contract_tests=(
+        "tests/test_analysis_module_contract.py",
+        "tests/test_factorial_anova_numerics.py",
+        "tests/test_factorial_anova_results.py",
+        "tests/test_factorial_anova_step.py",
+        "tests/test_factorial_anova_references.py",
+        "tests/test_factorial_anova_reporting.py",
+        "tests/test_factorial_anova_recommendation.py",
+        "tests/test_knowledge_library.py",
+        "tests/ui/test_pipeline_ops.py",
+        "tests/ui/test_run_validation.py",
+        "tests/ui/test_result_binding.py",
+        "tests/ui/test_factorial_anova_flow.py",
+    ),
+    help_keys=(
+        "analysis.anova_factorial",
+        "type_iii_equal_cell_weight",
+        "interaction_gated_simple_effects",
     ),
 )
 
@@ -436,7 +571,8 @@ _MODULE_SPECS["kruskal_wallis"] = AnalysisModuleSpec(
         "canonical_chart_rendering",
     ),
     reference_sources=("scipy kruskal parity tests",),
-    recommendation_policy=RecommendationPolicy.CANDIDATE,
+    recommendation_policy=RecommendationRoutingPolicy.SECONDARY_REVIEW,
+    recommendation_evidence_status=RecommendationEvidenceStatus.EXPERIMENTAL,
     release_evidence_required=False,
     contract_tests=(
         "tests/test_analysis_module_contract.py",
@@ -478,7 +614,8 @@ _MODULE_SPECS["ancova"] = AnalysisModuleSpec(
         "canonical_chart_rendering",
     ),
     reference_sources=("statsmodels OLS nested-model parity tests",),
-    recommendation_policy=RecommendationPolicy.CAUTION_ONLY,
+    recommendation_policy=RecommendationRoutingPolicy.HEIGHTENED_REVIEW,
+    recommendation_evidence_status=RecommendationEvidenceStatus.EXPERIMENTAL,
     release_evidence_required=False,
     contract_tests=(
         "tests/test_analysis_module_contract.py",
@@ -525,7 +662,8 @@ _MODULE_SPECS["factor_pca"] = AnalysisModuleSpec(
         "factor_analyzer EFA/KMO/Bartlett parity tests",
         "deterministic parallel-analysis tests",
     ),
-    recommendation_policy=RecommendationPolicy.CANDIDATE,
+    recommendation_policy=RecommendationRoutingPolicy.SECONDARY_REVIEW,
+    recommendation_evidence_status=RecommendationEvidenceStatus.EXPERIMENTAL,
     release_evidence_required=False,
     contract_tests=(
         "tests/test_analysis_module_contract.py",
@@ -572,7 +710,8 @@ _MODULE_SPECS["repeated_measures_anova"] = AnalysisModuleSpec(
         "pingouin rm_anova/sphericity/epsilon parity tests",
         "R afex/ez optional reference",
     ),
-    recommendation_policy=RecommendationPolicy.CANDIDATE,
+    recommendation_policy=RecommendationRoutingPolicy.SECONDARY_REVIEW,
+    recommendation_evidence_status=RecommendationEvidenceStatus.EXPERIMENTAL,
     release_evidence_required=False,
     contract_tests=(
         "tests/test_analysis_module_contract.py",
@@ -612,7 +751,8 @@ _MODULE_SPECS["friedman"] = AnalysisModuleSpec(
         "pingouin friedman Kendall W parity tests",
         "R friedman.test optional reference",
     ),
-    recommendation_policy=RecommendationPolicy.CANDIDATE,
+    recommendation_policy=RecommendationRoutingPolicy.SECONDARY_REVIEW,
+    recommendation_evidence_status=RecommendationEvidenceStatus.EXPERIMENTAL,
     release_evidence_required=False,
     contract_tests=(
         "tests/test_analysis_module_contract.py",
@@ -653,7 +793,8 @@ _MODULE_SPECS["mediation"] = AnalysisModuleSpec(
         "deterministic bootstrap percentile CI tests",
         "R mediation/lavaan optional reference",
     ),
-    recommendation_policy=RecommendationPolicy.CAUTION_ONLY,
+    recommendation_policy=RecommendationRoutingPolicy.HEIGHTENED_REVIEW,
+    recommendation_evidence_status=RecommendationEvidenceStatus.EXPERIMENTAL,
     release_evidence_required=False,
     contract_tests=(
         "tests/test_analysis_module_contract.py",
@@ -695,7 +836,8 @@ _MODULE_SPECS["moderated_mediation"] = AnalysisModuleSpec(
         "deterministic conditional indirect-effect bootstrap tests",
         "R manymome/lavaan optional reference",
     ),
-    recommendation_policy=RecommendationPolicy.CAUTION_ONLY,
+    recommendation_policy=RecommendationRoutingPolicy.HEIGHTENED_REVIEW,
+    recommendation_evidence_status=RecommendationEvidenceStatus.EXPERIMENTAL,
     release_evidence_required=False,
     contract_tests=(
         "tests/test_analysis_module_contract.py",

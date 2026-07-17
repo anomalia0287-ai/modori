@@ -6,7 +6,17 @@ import re
 from typing import Any, Protocol
 
 from modori.statistics_numerics import DEFAULT_BOOTSTRAP_ITERATIONS
+from modori.factorial_anova_selection import (
+    factorial_level_options,
+    factorial_variable_options,
+)
+from modori.regression_design import categorical_level_label
 from modori.ui.patches import PatchValidationError
+from modori.ui.value_tokens import (
+    categorical_reference_options,
+    decode_value_token,
+    observed_value_options,
+)
 
 
 @dataclass(frozen=True)
@@ -33,9 +43,11 @@ class AnalysisSelectionCommandBuilder:
         *,
         pipeline: StepCollectionLike | None,
         variable_keys: set[str] | None,
+        dataset: object | None = None,
     ) -> None:
         self._pipeline = pipeline
         self._variable_keys = variable_keys
+        self._dataset = dataset
 
     def reliability(self, item_keys_text: str) -> PipelineStepCommand:
         item_keys = self._parse_variable_key_text(item_keys_text)
@@ -155,6 +167,137 @@ class AnalysisSelectionCommandBuilder:
             message_ko="회귀분석 변수가 변경되었습니다.",
         )
 
+    def logistic_regression(
+        self,
+        outcome_key: str,
+        event_token: str,
+        predictor_keys_text: str,
+        categorical_reference_tokens: Mapping[str, str] | None = None,
+    ) -> PipelineStepCommand:
+        outcome_key = str(outcome_key).strip()
+        predictor_keys = self._parse_variable_key_text(predictor_keys_text)
+        if not outcome_key or not predictor_keys:
+            raise PatchValidationError(
+                "이항 로지스틱 회귀에는 결과 변수와 예측 변수가 모두 필요합니다.",
+                error_code="invalid_selection",
+            )
+        if self._has_duplicates(predictor_keys) or outcome_key in predictor_keys:
+            raise PatchValidationError(
+                "결과 변수와 예측 변수는 서로 다르고 중복이 없어야 합니다.",
+                error_code="invalid_selection",
+            )
+        self._require_known_variables([outcome_key, *predictor_keys])
+        if self._dataset is None:
+            raise PatchValidationError(
+                "현재 데이터에서 사건값을 확인할 수 없습니다.",
+                error_code="invalid_selection",
+            )
+
+        try:
+            outcome_options = observed_value_options(self._dataset, outcome_key)
+        except ValueError as exc:
+            raise PatchValidationError(
+                "결과 변수에 지원하지 않는 값이 있어 사건값을 확인할 수 없습니다.",
+                error_code="invalid_selection",
+            ) from exc
+        if len(outcome_options) != 2:
+            raise PatchValidationError(
+                "결과 변수에는 결측이 아닌 값이 정확히 두 개 있어야 합니다.",
+                error_code="invalid_selection",
+            )
+        event_option = next(
+            (row for row in outcome_options if row["token"] == event_token),
+            None,
+        )
+        if event_option is None:
+            raise PatchValidationError(
+                "선택한 사건값이 현재 데이터의 두 결과값과 일치하지 않습니다.",
+                error_code="invalid_selection",
+            )
+        event_value = decode_value_token(event_option["token"])
+
+        try:
+            categorical_rows = categorical_reference_options(
+                self._dataset,
+                predictor_keys,
+            )
+        except ValueError as exc:
+            raise PatchValidationError(
+                "범주형 예측변수의 수준을 안전하게 확인할 수 없습니다.",
+                error_code="invalid_selection",
+            ) from exc
+        expected_categorical = {str(row["variable"]) for row in categorical_rows}
+        if categorical_reference_tokens is not None and not isinstance(
+            categorical_reference_tokens,
+            Mapping,
+        ):
+            raise PatchValidationError(
+                "범주형 기준범주 선택값은 변수별 매핑이어야 합니다.",
+                error_code="invalid_selection",
+            )
+        provided_references = dict(categorical_reference_tokens or {})
+        if set(provided_references) != expected_categorical:
+            raise PatchValidationError(
+                "모든 범주형 예측변수의 기준범주를 하나씩 선택해야 합니다.",
+                error_code="invalid_selection",
+            )
+
+        categorical_policy: dict[str, dict[str, object]] = {}
+        for row in categorical_rows:
+            variable = str(row["variable"])
+            levels = row.get("levels")
+            if not isinstance(levels, list) or len(levels) < 2:
+                raise PatchValidationError(
+                    f"{variable}에는 두 개 이상의 범주 수준이 필요합니다.",
+                    error_code="invalid_selection",
+                )
+            selected_token = provided_references[variable]
+            level_tokens = [
+                option.get("token")
+                for option in levels
+                if isinstance(option, Mapping)
+            ]
+            if selected_token not in level_tokens:
+                raise PatchValidationError(
+                    f"{variable}의 기준범주가 현재 데이터와 일치하지 않습니다.",
+                    error_code="invalid_selection",
+                )
+            raw_levels = [decode_value_token(str(token)) for token in level_tokens]
+            encoded_levels = [categorical_level_label(value) for value in raw_levels]
+            if len(set(encoded_levels)) != len(encoded_levels):
+                raise PatchValidationError(
+                    f"{variable}의 범주 수준을 고유하게 인코딩할 수 없습니다.",
+                    error_code="invalid_selection",
+                )
+            categorical_policy[variable] = {
+                "reference": categorical_level_label(
+                    decode_value_token(selected_token)
+                ),
+                "levels": encoded_levels,
+            }
+
+        step_type = "stats.logistic_regression"
+        step = self._step_by_type(step_type)
+        params = {
+            "schema_version": 1,
+            "outcome": outcome_key,
+            "event_value": event_value,
+            "predictors": predictor_keys,
+            "logistic_policy": {
+                "preset": "conservative",
+                "classification_threshold": 0.5,
+                "calibration_bins": 10,
+                "categorical_predictors": categorical_policy,
+            },
+            "language": "ko",
+        }
+        return PipelineStepCommand(
+            step_id="logistic_regression" if step is None else str(step.id),
+            step_type=step_type,
+            params=params,
+            message_ko="이항 로지스틱 회귀 설정이 변경되었습니다.",
+        )
+
     def frequency_crosstab(self, variable_keys_text: str) -> PipelineStepCommand:
         variable_keys = self._parse_variable_key_text(variable_keys_text)
         if not variable_keys:
@@ -248,6 +391,98 @@ class AnalysisSelectionCommandBuilder:
             step_type=step_type,
             params=params,
             message_ko="일원분산분석 변수가 변경되었습니다.",
+        )
+
+    def factorial_anova(
+        self,
+        outcome_key: str,
+        factor_a_key: str,
+        factor_b_key: str,
+    ) -> PipelineStepCommand:
+        outcome = str(outcome_key).strip()
+        factor_a = str(factor_a_key).strip()
+        factor_b = str(factor_b_key).strip()
+        requested = [outcome, factor_a, factor_b]
+        if any(not key for key in requested) or self._has_duplicates(requested):
+            raise PatchValidationError(
+                "결과 변수와 두 요인은 모두 선택되어야 하며 서로 달라야 합니다.",
+                error_code="invalid_selection",
+            )
+        self._require_known_variables(requested)
+        if self._dataset is None:
+            raise PatchValidationError(
+                "현재 데이터에서 이원 분산분석 변수를 확인할 수 없습니다.",
+                error_code="invalid_selection",
+            )
+
+        try:
+            outcome_keys = {
+                row["key"]
+                for row in factorial_variable_options(self._dataset, "outcome")
+            }
+            factor_keys = {
+                row["key"]
+                for row in factorial_variable_options(self._dataset, "factor")
+            }
+        except ValueError as exc:
+            raise PatchValidationError(
+                "현재 데이터의 변수 역할을 안전하게 확인할 수 없습니다.",
+                error_code="invalid_selection",
+            ) from exc
+        if outcome not in outcome_keys or not {factor_a, factor_b} <= factor_keys:
+            raise PatchValidationError(
+                "결과 변수는 수치형 척도이고 두 요인은 안전한 명목형 또는 서열형이어야 합니다.",
+                error_code="invalid_selection",
+            )
+
+        complete_case_keys = (outcome, factor_a, factor_b)
+        try:
+            levels_a = factorial_level_options(
+                self._dataset,
+                factor_a,
+                complete_case_keys=complete_case_keys,
+            )
+            levels_b = factorial_level_options(
+                self._dataset,
+                factor_b,
+                complete_case_keys=complete_case_keys,
+            )
+        except (KeyError, TypeError, ValueError) as exc:
+            raise PatchValidationError(
+                "완전사례의 요인 수준을 안전하게 확인할 수 없습니다.",
+                error_code="invalid_selection",
+            ) from exc
+        if not levels_a or not levels_b:
+            raise PatchValidationError(
+                "완전사례에서 각 요인은 구별 가능한 2~6개 수준을 가져야 합니다.",
+                error_code="invalid_selection",
+            )
+
+        params = {
+            "schema_version": 1,
+            "dv": outcome,
+            "factor_a": factor_a,
+            "factor_b": factor_b,
+            "factor_a_levels": [
+                decode_value_token(row["token"]) for row in levels_a
+            ],
+            "factor_b_levels": [
+                decode_value_token(row["token"]) for row in levels_b
+            ],
+            "factorial_policy": {
+                "sum_of_squares": "type_iii_equal_cell_weight",
+                "simple_effects": "interaction_gated_holm",
+                "alpha": 0.05,
+            },
+            "language": "ko",
+        }
+        step_type = "stats.anova_factorial"
+        step = self._step_by_type(step_type)
+        return PipelineStepCommand(
+            step_id="anova_factorial" if step is None else str(step.id),
+            step_type=step_type,
+            params=params,
+            message_ko="이원 Type III 분산분석 설정이 변경되었습니다.",
         )
 
     def kruskal_wallis(self, dependent_key: str, group_key: str) -> PipelineStepCommand:

@@ -5,7 +5,8 @@ import re
 
 import pandas as pd
 
-from modori.recommendations import RecommendationCandidate, RecommendationLevel
+from modori.recommendation_policy import RecommendationRoutingTier
+from modori.recommendations import RecommendationCandidate
 
 
 @dataclass(frozen=True)
@@ -88,13 +89,17 @@ class ReliabilityEligibilityProvider:
     ) -> list[RecommendationCandidate]:
         candidates: list[RecommendationCandidate] = []
         for prefix, item_keys in item_groups:
-            level: RecommendationLevel = "강한 추천" if len(item_keys) >= 5 else "가능한 후보"
+            routing_tier = (
+                RecommendationRoutingTier.PRIMARY
+                if len(item_keys) >= 5
+                else RecommendationRoutingTier.SECONDARY
+            )
             candidates.append(
                 RecommendationCandidate(
                     candidate_id=f"reliability:{prefix}",
                     kind="reliability",
                     title_ko=f"신뢰도 분석: {item_keys[0]}-{item_keys[-1]}",
-                    level=level,
+                    routing_tier=routing_tier,
                     reason_ko=f"같은 접두사 {prefix}로 묶인 {len(item_keys)}개 설문 문항입니다.",
                     item_keys=item_keys,
                 )

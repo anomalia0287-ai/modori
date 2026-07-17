@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 import pandas as pd
 
+from modori.recommendation_policy import RecommendationRoutingTier
 from modori.recommendations import RecommendationCandidate
 
 
@@ -46,7 +47,7 @@ class KruskalWallisEligibilityProvider:
                         candidate_id=f"kruskal_wallis:{dependent_key}:{group_key}",
                         kind="kruskal_wallis",
                         title_ko=f"Kruskal-Wallis 후보: {dependent_key} by {group_key}",
-                        level="가능한 후보",
+                        routing_tier=RecommendationRoutingTier.SECONDARY,
                         reason_ko=(
                             f"{group_key}가 3개 이상 집단이고 {dependent_key}는 "
                             "척도·서열 변수라 순위 기반 집단 차이를 검토할 수 있습니다."

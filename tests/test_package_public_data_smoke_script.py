@@ -100,7 +100,14 @@ def test_package_public_data_smoke_passes_when_payload_is_ok(
     fixture_dir = tmp_path / "fixtures"
     fixture_dir.mkdir()
 
+    r_root = tmp_path / ".tools" / "r-env"
+    r_bin = r_root / "Library" / "bin"
+    monkeypatch.setenv("MODORI_RSCRIPT", str(r_root / "Scripts" / "Rscript.exe"))
+    monkeypatch.setenv("PATH", os.pathsep.join([str(r_bin), "C:\\Windows"]))
+    captured_environment = {}
+
     def fake_run(command, check, timeout, env):
+        captured_environment.update(env)
         output_path = command[3]
         with open(output_path, "w", encoding="utf-8") as handle:
             cases = hardened_cases()
@@ -123,6 +130,11 @@ def test_package_public_data_smoke_passes_when_payload_is_ok(
     )
 
     assert result == 0
+    assert "MODORI_RSCRIPT" not in captured_environment
+    assert str(r_root).casefold() not in captured_environment["PATH"].casefold()
+    assert captured_environment["MPLCONFIGDIR"]
+    assert captured_environment["MODORI_CACHE_DIR"]
+    assert captured_environment["MODORI_SETTINGS_PATH"]
 
 
 def test_package_public_data_smoke_isolates_workspace_reference_runtime(

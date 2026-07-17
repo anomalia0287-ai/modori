@@ -88,9 +88,13 @@ def reference_environment() -> dict[str, str]:
             prefix / "lib" / "R" / "bin",
             prefix / "lib" / "R" / "bin" / "x64",
         ]
-        env["PATH"] = os.pathsep.join(str(path) for path in r_paths) + os.pathsep + env.get(
-            "PATH",
-            "",
+        env["PATH"] = (
+            os.pathsep.join(str(path) for path in r_paths)
+            + os.pathsep
+            + env.get(
+                "PATH",
+                "",
+            )
         )
     return env
 

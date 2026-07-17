@@ -57,6 +57,25 @@ class AnalysisSelectionEditor:
             pipeline_version=pipeline_version,
         )
 
+    def logistic_regression(
+        self,
+        outcome_key: str,
+        event_token: str,
+        predictor_keys_text: str,
+        categorical_reference_tokens: dict[str, str] | None = None,
+        *,
+        pipeline_version: int,
+    ) -> CommandResult:
+        return self._apply(
+            lambda builder: builder.logistic_regression(
+                outcome_key,
+                event_token,
+                predictor_keys_text,
+                categorical_reference_tokens,
+            ),
+            pipeline_version=pipeline_version,
+        )
+
     def frequency_crosstab(
         self,
         variable_keys_text: str,
@@ -88,6 +107,23 @@ class AnalysisSelectionEditor:
     ) -> CommandResult:
         return self._apply(
             lambda builder: builder.anova_oneway(outcome_key, group_key),
+            pipeline_version=pipeline_version,
+        )
+
+    def factorial_anova(
+        self,
+        outcome_key: str,
+        factor_a_key: str,
+        factor_b_key: str,
+        *,
+        pipeline_version: int,
+    ) -> CommandResult:
+        return self._apply(
+            lambda builder: builder.factorial_anova(
+                outcome_key,
+                factor_a_key,
+                factor_b_key,
+            ),
             pipeline_version=pipeline_version,
         )
 
@@ -236,7 +272,9 @@ class AnalysisSelectionEditor:
         )
 
     def _builder(self) -> AnalysisSelectionCommandBuilder:
+        current_dataset = getattr(self._pipeline_ops, "current_dataset", None)
         return AnalysisSelectionCommandBuilder(
             pipeline=self._pipeline_ops.step_collection(),
             variable_keys=self._pipeline_ops.known_variable_keys(),
+            dataset=current_dataset() if callable(current_dataset) else None,
         )

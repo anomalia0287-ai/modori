@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 
 from modori.core import Measure
+from modori.recommendation_policy import RecommendationRoutingTier
 from modori.recommendations import RecommendationCandidate
 
 
@@ -64,7 +65,7 @@ class RegressionOlsEligibilityProvider:
                     candidate_id=f"regression-caution:{predictor_key}",
                     kind="regression",
                     title_ko=f"회귀 후보: {predictor_key} -> {outcome_key}",
-                    level="주의 필요",
+                    routing_tier=RecommendationRoutingTier.HEIGHTENED_REVIEW,
                     reason_ko=f"{predictor_key}는 예측 변수로 가능하지만 연구 의도 확인이 필요합니다.",
                     outcome_key=outcome_key,
                     predictor_keys=[predictor_key],

@@ -30,9 +30,7 @@ def build_pyinstaller_command() -> list[str]:
         "PySide6.QtQuickControls2",
     ]
     hidden_import_args = [
-        item
-        for module in hidden_imports
-        for item in ("--hidden-import", module)
+        item for module in hidden_imports for item in ("--hidden-import", module)
     ]
     return [
         sys.executable,
@@ -46,6 +44,8 @@ def build_pyinstaller_command() -> list[str]:
         *hidden_import_args,
         "--add-data",
         "src/modori/ui/qml;modori/ui/qml",
+        "--add-data",
+        "library/entries;library/entries",
         "src/modori/app.py",
     ]
 
@@ -67,7 +67,9 @@ def build_package_environment() -> dict[str, str]:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Build the Windows Modori desktop package.")
+    parser = argparse.ArgumentParser(
+        description="Build the Windows Modori desktop package."
+    )
     parser.add_argument(
         "--check",
         action="store_true",
@@ -93,7 +95,9 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     exe_path = Path("dist") / "Modori" / "Modori.exe"
     if not exe_path.is_file():
-        print(f"Expected packaged executable was not created: {exe_path}", file=sys.stderr)
+        print(
+            f"Expected packaged executable was not created: {exe_path}", file=sys.stderr
+        )
         return 1
     print(exe_path)
     return 0
