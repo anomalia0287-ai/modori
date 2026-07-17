@@ -19,8 +19,14 @@ os.environ["MPLCONFIGDIR"] = str(_matplotlib_cache)
 import pingouin as pg
 from factor_analyzer import FactorAnalyzer
 
-from modori.core import Measure, PipelineContext, Step, StepResult
+from modori.core import PipelineContext, Step, StepResult
 from modori.results import ChartSpec, ComparisonResult, GroupDesc, ReliabilityResult
+from modori.steps.input_validation import (
+    group_labels,
+    ordered_group_values,
+    raise_for_step_input_issues,
+    validate_step_input,
+)
 
 
 STATISTICS_ENGINE_VOCABULARY = frozenset(
@@ -96,7 +102,9 @@ def _string_list_param(
         or not value
         or not all(isinstance(item, str) and item for item in value)
     ):
-        raise ValueError(f"{module_key} param {key} must be a non-empty list of strings")
+        raise ValueError(
+            f"{module_key} param {key} must be a non-empty list of strings"
+        )
     return list(value)
 
 
@@ -151,7 +159,9 @@ class ReliabilityStep(Step):
             module_key="reliability",
         )
         if params.get("schema_version") != cls.CURRENT_SCHEMA_VERSION:
-            raise ValueError("reliability params were not migrated to the current schema")
+            raise ValueError(
+                "reliability params were not migrated to the current schema"
+            )
         items = _string_list_param(params, "items", "reliability")
         scale_name = params.get("scale_name", "scale")
         if not isinstance(scale_name, str) or not scale_name:
@@ -283,8 +293,10 @@ class ReliabilityStep(Step):
                 "McDonald's omega produced non-finite factor estimates; "
                 "inference is undefined."
             )
-        if np.any(np.abs(loadings) > 1.0) or np.any(uniquenesses <= 0.0) or np.any(
-            uniquenesses > 1.0
+        if (
+            np.any(np.abs(loadings) > 1.0)
+            or np.any(uniquenesses <= 0.0)
+            or np.any(uniquenesses > 1.0)
         ):
             raise ValueError(
                 "McDonald's omega produced invalid Heywood-like factor estimates; "
@@ -367,7 +379,9 @@ class CompareGroupsStep(Step):
             module_key="compare_groups",
         )
         if params.get("schema_version") != cls.CURRENT_SCHEMA_VERSION:
-            raise ValueError("compare_groups params were not migrated to the current schema")
+            raise ValueError(
+                "compare_groups params were not migrated to the current schema"
+            )
         return {
             "schema_version": cls.CURRENT_SCHEMA_VERSION,
             "dv": _string_param(params, "dv", "compare_groups"),
@@ -382,33 +396,21 @@ class CompareGroupsStep(Step):
 
     def compute(self, ctx: PipelineContext) -> StepResult:
         params = self.validate_params(self.migrate_params(dict(self.params)))
+        issues = validate_step_input(ctx.dataset, self.step_type, params)
+        raise_for_step_input_issues(self.step_type, issues)
         dv = str(params["dv"])
         group_var = str(params["group"])
-        if dv == group_var:
-            raise ValueError(
-                "CompareGroupsStep dependent variable and group variable must differ."
-            )
         source_frame = ctx.dataset.frame_for_compute([dv, group_var])
         n_total = len(source_frame)
         frame = source_frame.dropna(axis=0, how="any")
         n_obs = len(frame)
         n_dropped = n_total - n_obs
-        if not pd.api.types.is_numeric_dtype(frame[dv]):
-            raise ValueError("CompareGroupsStep dependent variable must be numeric.")
-        group_values = sorted(
-            list(pd.unique(frame[group_var])),
-            key=self._group_sort_key,
-        )
-        if len(group_values) != 2:
-            raise ValueError("CompareGroupsStep requires exactly two groups.")
+        group_values = ordered_group_values(frame, group_var)
 
         first_value, second_value = group_values
         first = frame.loc[frame[group_var] == first_value, dv]
         second = frame.loc[frame[group_var] == second_value, dv]
-        self._validate_group_sizes(first, second)
-        labels = self._group_labels(ctx, group_var, group_values)
-        if labels[0] == labels[1]:
-            raise ValueError("CompareGroupsStep group labels must be unique.")
+        labels = group_labels(ctx.dataset, group_var, group_values)
         dv_label = ctx.dataset.variables[dv].label or dv
         group_label = ctx.dataset.variables[group_var].label or group_var
         assumptions = self._assumptions(first, second)
@@ -470,7 +472,9 @@ class CompareGroupsStep(Step):
         policy: dict[str, Any] | None = None,
     ) -> tuple[str, str]:
         policy = dict(
-            self.validate_params(self.migrate_params(dict(self.params)))["routing_policy"]
+            self.validate_params(self.migrate_params(dict(self.params)))[
+                "routing_policy"
+            ]
             if policy is None
             else policy
         )
@@ -526,17 +530,6 @@ class CompareGroupsStep(Step):
             "shapiro_g2_p": float(stats.shapiro(second).pvalue),
             "levene_p": float(homoscedasticity.loc["levene", "pval"]),
         }
-
-    @staticmethod
-    def _validate_group_sizes(first: pd.Series, second: pd.Series) -> None:
-        if len(first) < 3 or len(second) < 3:
-            raise ValueError(
-                "CompareGroupsStep requires at least three valid cases per group."
-            )
-        if first.nunique(dropna=True) < 2 or second.nunique(dropna=True) < 2:
-            raise ValueError(
-                "CompareGroupsStep requires non-zero variance in each group."
-            )
 
     def _t_result(
         self,
@@ -643,7 +636,9 @@ class CompareGroupsStep(Step):
         )
 
     @staticmethod
-    def _mann_whitney_method_details(first: pd.Series, second: pd.Series) -> dict[str, object]:
+    def _mann_whitney_method_details(
+        first: pd.Series, second: pd.Series
+    ) -> dict[str, object]:
         first_values = first.to_numpy(dtype=float)
         second_values = second.to_numpy(dtype=float)
         combined = np.concatenate([first_values, second_values])
@@ -651,7 +646,8 @@ class CompareGroupsStep(Step):
         method = (
             "asymptotic"
             if ties_present
-            or min(len(first_values), len(second_values)) > _MANN_WHITNEY_EXACT_MAX_MIN_N
+            or min(len(first_values), len(second_values))
+            > _MANN_WHITNEY_EXACT_MAX_MIN_N
             else "exact"
         )
         return {
@@ -704,32 +700,6 @@ class CompareGroupsStep(Step):
                 payload["ci95"] = (mean - margin, mean + margin)
             groups.append(payload)
         return {"groups": groups}
-
-    @staticmethod
-    def _group_labels(
-        ctx: PipelineContext,
-        group_var: str,
-        group_values: list[object],
-    ) -> tuple[str, str]:
-        value_labels = ctx.dataset.variables[group_var].value_labels
-        labels = []
-        missing_label = object()
-        for value in group_values:
-            label = value_labels.get(value, missing_label)
-            if label is missing_label:
-                try:
-                    label = value_labels.get(float(value), missing_label)
-                except (TypeError, ValueError):
-                    label = missing_label
-            labels.append(str(value) if label is missing_label else str(label))
-        return labels[0], labels[1]
-
-    @staticmethod
-    def _group_sort_key(value: object) -> tuple[int, float | str]:
-        try:
-            return (0, float(value))
-        except (TypeError, ValueError):
-            return (1, str(value))
 
     @staticmethod
     def _signed_cohen_d(magnitude: float, first: pd.Series, second: pd.Series) -> float:
@@ -813,39 +783,21 @@ class PairedComparisonStep(Step):
 
     def compute(self, ctx: PipelineContext) -> StepResult:
         params = self.validate_params(self.migrate_params(dict(self.params)))
+        issues = validate_step_input(ctx.dataset, self.step_type, params)
+        raise_for_step_input_issues(self.step_type, issues)
         before = str(params["before"])
         after = str(params["after"])
-        if before == after:
-            raise ValueError(
-                "PairedComparisonStep before and after variables must differ."
-            )
-        self._validate_variables(ctx, before, after)
 
         source_frame = ctx.dataset.frame_for_compute([before, after])
         n_total = len(source_frame)
-        if not (
-            pd.api.types.is_numeric_dtype(source_frame[before])
-            and pd.api.types.is_numeric_dtype(source_frame[after])
-        ):
-            raise ValueError(
-                "PairedComparisonStep before and after variables must be numeric."
-            )
 
         frame = source_frame.dropna(axis=0, how="any")
         n_obs = len(frame)
         n_dropped = n_total - n_obs
-        if n_obs < 3:
-            raise ValueError(
-                "PairedComparisonStep requires at least three complete pairs."
-            )
 
         before_scores = frame[before]
         after_scores = frame[after]
         differences = after_scores - before_scores
-        if differences.nunique(dropna=True) < 2:
-            raise ValueError(
-                "PairedComparisonStep requires non-zero variance in paired differences."
-            )
 
         assumptions = {
             "shapiro_diff_p": float(stats.shapiro(differences).pvalue),
@@ -857,8 +809,6 @@ class PairedComparisonStep(Step):
         )
         before_label = ctx.dataset.variables[before].label or before
         after_label = ctx.dataset.variables[after].label or after
-        if before_label == after_label:
-            raise ValueError("PairedComparisonStep labels must be unique.")
 
         if route == "wilcoxon":
             analysis = self._wilcoxon_result(
@@ -898,25 +848,6 @@ class PairedComparisonStep(Step):
             notes=[f"Selected {note_test_name} because {analysis.route_reason}."],
         )
 
-    @staticmethod
-    def _validate_variables(
-        ctx: PipelineContext,
-        before: str,
-        after: str,
-    ) -> None:
-        missing = [
-            column for column in (before, after) if column not in ctx.dataset.variables
-        ]
-        if missing:
-            raise KeyError(f"Unknown columns requested: {sorted(missing)}")
-        if (
-            ctx.dataset.variables[before].measure is not Measure.SCALE
-            or ctx.dataset.variables[after].measure is not Measure.SCALE
-        ):
-            raise ValueError(
-                "PairedComparisonStep before and after variables must be SCALE."
-            )
-
     def _route(
         self,
         n_obs: int,
@@ -924,7 +855,9 @@ class PairedComparisonStep(Step):
         policy: dict[str, Any] | None = None,
     ) -> tuple[str, str]:
         policy = dict(
-            self.validate_params(self.migrate_params(dict(self.params)))["routing_policy"]
+            self.validate_params(self.migrate_params(dict(self.params)))[
+                "routing_policy"
+            ]
             if policy is None
             else policy
         )
@@ -1069,7 +1002,9 @@ class PairedComparisonStep(Step):
         before_scores: pd.Series,
         after_scores: pd.Series,
     ) -> dict[str, object]:
-        differences = after_scores.to_numpy(dtype=float) - before_scores.to_numpy(dtype=float)
+        differences = after_scores.to_numpy(dtype=float) - before_scores.to_numpy(
+            dtype=float
+        )
         zeros_present = bool(np.any(differences == 0.0))
         nonzero_abs = np.abs(differences[differences != 0.0])
         ties_present = len(np.unique(nonzero_abs)) < len(nonzero_abs)

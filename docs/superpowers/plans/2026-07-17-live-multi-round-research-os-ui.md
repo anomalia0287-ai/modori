@@ -1154,7 +1154,7 @@ def preflight_mapped_step(
 ) -> PreflightResult: ...
 ```
 
-- [ ] **Step 1: Freeze existing Run-boundary behaviour**
+- [x] **Step 1: Freeze existing Run-boundary behaviour**
 
 Add characterization fixtures for the six exact mappings and their current structural
 rejections: missing/duplicate variables, role collisions, storage/measure mismatch,
@@ -1163,7 +1163,7 @@ wrong group cardinality, too-small groups, paired label collision, and zero pair
 difference variance. Record closed reason codes in tests while preserving the current
 public step errors and valid numerical outputs.
 
-- [ ] **Step 2: Write preflight/Run parity failure tests**
+- [x] **Step 2: Write preflight/Run parity failure tests**
 
 For each accepted and rejected fixture, call the shared validator through preflight and
 through the explicit step Run boundary. Assert identical structural disposition/reason
@@ -1171,7 +1171,7 @@ code. Add the P1-only semantic condition that Pearson requires SCALE variables w
 Spearman accepts the current SCALE/ORDINAL engine set; blocking Pearson must never
 produce Spearman.
 
-- [ ] **Step 3: Prove preflight cannot perform inference or mutate the pipeline**
+- [x] **Step 3: Prove preflight cannot perform inference or mutate the pipeline**
 
 Poison scipy/statistical routines, report/chart construction, effect and interval
 functions, and pipeline append/replace methods. Preflight may inspect bounded counts,
@@ -1185,7 +1185,7 @@ flags, and `preparation_digest` over all normative fields. `stale` and `failure`
 no preparation. Only a ready preparation may enter Task 12 review; a blocked one exists
 only as inspectable evidence for the closed blocked projection.
 
-- [ ] **Step 4: Run the tests and confirm failure**
+- [x] **Step 4: Run the tests and confirm failure**
 
 Run:
 
@@ -1195,7 +1195,7 @@ Run:
 
 Expected: FAIL because the shared validator and preflight adapter are absent.
 
-- [ ] **Step 5: Extract validators before inference**
+- [x] **Step 5: Extract validators before inference**
 
 Move only structural checks into `input_validation.py`. Make each affected step invoke
 the same function before inference; do not fork a second approximation for preflight.
@@ -1203,7 +1203,7 @@ Translate typed issues back into the step's existing error surface so unrelated 
 do not change. Keep P1's stricter Pearson measure gate in the preparation preflight,
 explicitly layered over the shared engine contract.
 
-- [ ] **Step 6: Re-run parity and calculation regression tests**
+- [x] **Step 6: Re-run parity and calculation regression tests**
 
 Run:
 
@@ -1214,7 +1214,19 @@ Run:
 Expected: all pass; established valid calculation outputs remain byte/number equivalent
 within their existing assertions.
 
-- [ ] **Step 7: Commit**
+Pre-commit evidence on 2026-07-17: the exact shared-validation/preflight plus five-step
+calculation gate passed 198 tests. The adjacent flow, coordinator, concurrency,
+passport, P1 catalog/intake, pipeline, architecture, and Research Memory gate passed
+643 tests with 1 declared skip. Ruff check and format check passed for all nine changed
+Python files. Every structural rejection fixture has shared-validator, preflight, and
+explicit-Run reason-code parity. Fail-first tests additionally exposed and closed a
+seal-time pipeline-version race, multi-variable error-message truncation, boolean and
+datetime values crossing continuous-variable storage gates, and legacy non-NFC/blank
+column IDs losing the existing direct-Run error surface. A fresh base
+`modori.research_flow` import was also proved not to load the statistical inference
+stack.
+
+- [x] **Step 7: Commit**
 
 ```powershell
 git add -- src/modori/steps/input_validation.py src/modori/steps/descriptives_table1.py src/modori/steps/frequency_crosstab.py src/modori/steps/correlation.py src/modori/steps/statistics.py src/modori/research_flow/contracts.py src/modori/research_flow/preflight.py src/modori/research_flow/__init__.py tests/test_step_input_validation.py tests/test_research_flow_preflight.py tests/test_descriptives_table1_step.py tests/test_frequency_crosstab_step.py tests/test_correlation_step.py tests/test_compare_groups_step.py tests/test_paired_comparison_step.py

@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
-from modori.core import Dataset, Measure, PipelineContext, Step, StepResult, Variable
+from modori.core import Dataset, PipelineContext, Step, StepResult, Variable
 from modori.frequency_crosstab_results import (
     AssociationTestResult,
     CrosstabCell,
@@ -17,9 +17,10 @@ from modori.frequency_crosstab_results import (
     FrequencyCrosstabResult,
     FrequencyVariableTable,
 )
-
-
-_SUPPORTED_MEASURES = {Measure.NOMINAL, Measure.ORDINAL}
+from modori.steps.input_validation import (
+    raise_for_step_input_issues,
+    validate_step_input,
+)
 
 
 @dataclass
@@ -168,23 +169,12 @@ class FrequencyCrosstabStep(Step):
 
     @staticmethod
     def _validate_dataset(dataset: Dataset, params: dict[str, object]) -> None:
-        if dataset.df.empty:
-            raise ValueError("데이터셋이 비어 있어 빈도분석을 수행할 수 없습니다.")
-        variables = [str(variable) for variable in params["variables"]]
-        if len(set(variables)) != len(variables):
-            raise ValueError("빈도 및 교차분석 변수는 서로 다른 변수여야 합니다.")
-        missing = [key for key in variables if key not in dataset.variables]
-        if missing:
-            names = ", ".join(missing)
-            raise ValueError(f"데이터셋에 없는 변수: {names}")
-        unsupported = [
-            key
-            for key in variables
-            if dataset.variables[key].measure not in _SUPPORTED_MEASURES
-        ]
-        if unsupported:
-            names = ", ".join(unsupported)
-            raise ValueError(f"명목 또는 서열 척도 변수만 지원합니다: {names}")
+        issues = validate_step_input(
+            dataset,
+            FrequencyCrosstabStep.step_type,
+            params,
+        )
+        raise_for_step_input_issues(FrequencyCrosstabStep.step_type, issues)
 
     def _frequency_table(
         self,
@@ -313,9 +303,9 @@ class FrequencyCrosstabStep(Step):
         )
 
     @staticmethod
-    def _association_test(counts: np.ndarray) -> tuple[AssociationTestResult, list[str]]:
-        if counts.size == 0 or counts.shape[0] < 2 or counts.shape[1] < 2:
-            raise ValueError("교차분석에는 각 변수에 최소 2개 이상의 관측 범주가 필요합니다.")
+    def _association_test(
+        counts: np.ndarray,
+    ) -> tuple[AssociationTestResult, list[str]]:
         try:
             chi2, p_value, df, expected = stats.chi2_contingency(
                 counts,
@@ -329,8 +319,8 @@ class FrequencyCrosstabStep(Step):
         low_count = int(low_expected.sum())
         low_percent = float((low_count / expected_array.size) * 100.0)
         min_expected = float(expected_array.min()) if expected_array.size else None
-        expected_warning = (
-            min_expected is not None and (min_expected < 1.0 or low_percent > 20.0)
+        expected_warning = min_expected is not None and (
+            min_expected < 1.0 or low_percent > 20.0
         )
         n_obs = int(counts.sum())
         min_dimension = min(counts.shape)
@@ -379,7 +369,9 @@ class FrequencyCrosstabStep(Step):
         )
         return test, warnings
 
-    def _ordered_values(self, series: pd.Series, variable: Variable) -> tuple[object, ...]:
+    def _ordered_values(
+        self, series: pd.Series, variable: Variable
+    ) -> tuple[object, ...]:
         observed_values = list(pd.unique(series.dropna()))
         return tuple(
             sorted(

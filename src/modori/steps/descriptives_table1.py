@@ -5,7 +5,6 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation, localcontext
 
-import numpy as np
 import pandas as pd
 
 from modori.core import Dataset, Measure, PipelineContext, Step, StepResult, Variable
@@ -15,10 +14,10 @@ from modori.descriptives_table1_results import (
     DescriptiveVariableSummary,
     DescriptivesTableResult,
 )
-
-
-_SUPPORTED_GROUP_MEASURES = {Measure.NOMINAL, Measure.ORDINAL}
-_SUPPORTED_VARIABLE_MEASURES = {Measure.SCALE, Measure.NOMINAL, Measure.ORDINAL}
+from modori.steps.input_validation import (
+    raise_for_step_input_issues,
+    validate_step_input,
+)
 
 
 @dataclass
@@ -155,34 +154,12 @@ class DescriptivesTableStep(Step):
 
     @staticmethod
     def _validate_dataset(dataset: Dataset, params: dict[str, object]) -> None:
-        if dataset.df.empty:
-            raise ValueError("데이터셋이 비어 있어 기술통계 표를 생성할 수 없습니다.")
-
-        variables = [str(variable) for variable in params["variables"]]
-        if len(set(variables)) != len(variables):
-            raise ValueError("기술통계 변수는 중복될 수 없습니다.")
-
-        group = None if params["group"] is None else str(params["group"])
-        requested = [*variables, *([group] if group else [])]
-        missing = [key for key in requested if key not in dataset.variables]
-        if missing:
-            names = ", ".join(missing)
-            raise ValueError(f"데이터셋에 없는 변수: {names}")
-
-        unsupported = [
-            key
-            for key in variables
-            if dataset.variables[key].measure not in _SUPPORTED_VARIABLE_MEASURES
-        ]
-        if unsupported:
-            names = ", ".join(unsupported)
-            raise ValueError(f"지원하지 않는 기술통계 변수: {names}")
-
-        if group is None:
-            return
-        group_measure = dataset.variables[group].measure
-        if group_measure not in _SUPPORTED_GROUP_MEASURES:
-            raise ValueError("그룹 변수는 명목 또는 서열 척도여야 합니다.")
+        issues = validate_step_input(
+            dataset,
+            DescriptivesTableStep.step_type,
+            params,
+        )
+        raise_for_step_input_issues(DescriptivesTableStep.step_type, issues)
 
     def _grouped_summaries(
         self,
@@ -240,13 +217,7 @@ class DescriptivesTableStep(Step):
         n_missing: int,
     ) -> DescriptiveVariableSummary:
         non_missing = series.dropna()
-        _reject_boolean_values(non_missing, key)
-        try:
-            values = pd.to_numeric(non_missing, errors="raise").astype(float)
-        except (TypeError, ValueError) as exc:
-            raise ValueError(f"척도형 변수는 숫자여야 합니다: {key}") from exc
-        if len(values) and not np.all(np.isfinite(values.to_numpy(dtype=float))):
-            raise ValueError(f"척도형 변수는 유한한 숫자여야 합니다: {key}")
+        values = pd.to_numeric(non_missing, errors="raise").astype(float)
         decimal_values = _decimal_values(non_missing, key)
         if n_obs == 0:
             mean = median = minimum = maximum = None
@@ -301,7 +272,9 @@ class DescriptivesTableStep(Step):
             categories=tuple(categories),
         )
 
-    def _ordered_values(self, series: pd.Series, variable: Variable) -> tuple[object, ...]:
+    def _ordered_values(
+        self, series: pd.Series, variable: Variable
+    ) -> tuple[object, ...]:
         observed_values = list(pd.unique(series.dropna()))
         return tuple(
             sorted(
@@ -368,11 +341,6 @@ def _decimal_values(values: pd.Series, key: str) -> list[Decimal]:
         except InvalidOperation as exc:
             raise ValueError(f"척도형 변수는 숫자여야 합니다: {key}") from exc
     return decimals
-
-
-def _reject_boolean_values(values: pd.Series, key: str) -> None:
-    if any(isinstance(value, (bool, np.bool_)) for value in values):
-        raise ValueError(f"척도형 변수는 boolean 값을 허용하지 않습니다: {key}")
 
 
 def _decimal_mean(decimals: list[Decimal]) -> float:

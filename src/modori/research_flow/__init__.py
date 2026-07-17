@@ -69,6 +69,7 @@ __all__ = [
     "PassportBoundPreparation",
     "PassportHandoffError",
     "PassportStepMapping",
+    "PreflightResult",
     "PreflightDisposition",
     "ResearchFlowContractError",
     "ResearchFlowState",
@@ -76,10 +77,30 @@ __all__ = [
     "ResearchTaskSessionStore",
     "SourceSchemaDescriptor",
     "StaticBoundary",
+    "StepInputIssue",
     "TaskSessionConflictError",
     "TaskSessionError",
     "TaskSessionIntegrityError",
     "TaskSessionUnavailableError",
     "fingerprint_dataset",
     "map_passport_to_step",
+    "preflight_mapped_step",
 ]
+
+
+def __getattr__(name: str):
+    if name in {"PreflightResult", "StepInputIssue", "preflight_mapped_step"}:
+        from modori.research_flow.preflight import (
+            PreflightResult,
+            preflight_mapped_step,
+        )
+        from modori.steps.input_validation import StepInputIssue
+
+        lazy_exports = {
+            "PreflightResult": PreflightResult,
+            "StepInputIssue": StepInputIssue,
+            "preflight_mapped_step": preflight_mapped_step,
+        }
+        globals().update(lazy_exports)
+        return lazy_exports[name]
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

@@ -10,9 +10,12 @@ from scipy import stats
 
 from modori.core import Dataset, Measure, PipelineContext, Step, StepResult
 from modori.correlation_results import CorrelationPairResult, CorrelationResult
+from modori.steps.input_validation import (
+    raise_for_step_input_issues,
+    validate_step_input,
+)
 
 
-_SUPPORTED_MEASURES = {Measure.SCALE, Measure.ORDINAL}
 _SUPPORTED_METHODS = {"auto", "pearson", "spearman"}
 _SUPPORTED_MISSING_POLICIES = {"pairwise", "listwise"}
 _SUPPORTED_P_ADJUST = {"none"}
@@ -67,12 +70,16 @@ class CorrelationStep(Step):
             names = ", ".join(sorted(unknown))
             raise ValueError(f"unknown correlation params: {names}")
         if params.get("schema_version") != cls.CURRENT_SCHEMA_VERSION:
-            raise ValueError("correlation params were not migrated to the current schema")
+            raise ValueError(
+                "correlation params were not migrated to the current schema"
+            )
 
         has_variables = "variables" in params
         has_pairs = "pairs" in params
         if has_variables == has_pairs:
-            raise ValueError("correlation params require exactly one of variables or pairs")
+            raise ValueError(
+                "correlation params require exactly one of variables or pairs"
+            )
 
         method = str(params.get("method", "auto"))
         if method not in _SUPPORTED_METHODS:
@@ -113,7 +120,9 @@ class CorrelationStep(Step):
                 pairs.append([x, y])
             if len({tuple(pair) for pair in pairs}) != len(pairs):
                 raise ValueError("correlation pairs must be unique")
-            variables = list(dict.fromkeys(variable for pair in pairs for variable in pair))
+            variables = list(
+                dict.fromkeys(variable for pair in pairs for variable in pair)
+            )
 
         return {
             "schema_version": cls.CURRENT_SCHEMA_VERSION,
@@ -149,7 +158,7 @@ class CorrelationStep(Step):
         dataset = ctx.dataset
         variables = [str(variable) for variable in params["variables"]]
         pairs = [tuple(str(variable) for variable in pair) for pair in params["pairs"]]
-        self._validate_dataset(dataset, variables)
+        self._validate_dataset(dataset, params)
 
         frame = dataset.frame_for_compute(variables)
         pair_results = tuple(
@@ -185,23 +194,9 @@ class CorrelationStep(Step):
         )
 
     @staticmethod
-    def _validate_dataset(dataset: Dataset, variables: list[str]) -> None:
-        if dataset.df.empty:
-            raise ValueError("데이터셋이 비어 있어 상관분석을 실행할 수 없습니다.")
-
-        missing = [key for key in variables if key not in dataset.variables]
-        if missing:
-            names = ", ".join(missing)
-            raise ValueError(f"데이터셋에 없는 변수: {names}")
-
-        unsupported = [
-            key
-            for key in variables
-            if dataset.variables[key].measure not in _SUPPORTED_MEASURES
-        ]
-        if unsupported:
-            names = ", ".join(unsupported)
-            raise ValueError(f"상관분석 변수는 척도 또는 서열이어야 합니다: {names}")
+    def _validate_dataset(dataset: Dataset, params: dict[str, object]) -> None:
+        issues = validate_step_input(dataset, CorrelationStep.step_type, params)
+        raise_for_step_input_issues(CorrelationStep.step_type, issues)
 
     def _compute_pair(
         self,
@@ -216,13 +211,9 @@ class CorrelationStep(Step):
         pair_frame = self._pair_frame(frame, [x, y], missing_policy)
         n = int(len(pair_frame))
         excluded_n = int(len(frame) - n)
-        if n < 3:
-            raise ValueError("상관분석은 변수쌍마다 최소 3개의 완전한 관측치가 필요합니다.")
 
         x_values = self._numeric_series(pair_frame[x], x)
         y_values = self._numeric_series(pair_frame[y], y)
-        self._validate_nonzero_variance(x_values, x)
-        self._validate_nonzero_variance(y_values, y)
 
         method = self._method_for_pair(dataset, x, y, method_policy)
         if method == "pearson":
@@ -243,9 +234,13 @@ class CorrelationStep(Step):
                 "p_value_method": "scipy_asymptotic",
             }
             warnings_ko = (
-                "Spearman 상관은 동점 rank를 SciPy spearmanr 정책으로 처리했다. "
-                "동점이 많은 자료의 p-value는 소프트웨어별로 달라질 수 있다.",
-            ) if x_ties or y_ties else ()
+                (
+                    "Spearman 상관은 동점 rank를 SciPy spearmanr 정책으로 처리했다. "
+                    "동점이 많은 자료의 p-value는 소프트웨어별로 달라질 수 있다.",
+                )
+                if x_ties or y_ties
+                else ()
+            )
 
         coefficient = _as_finite_float(statistic.statistic, f"{method} coefficient")
         p_value = _as_finite_float(statistic.pvalue, f"{method} p-value")
@@ -278,18 +273,8 @@ class CorrelationStep(Step):
 
     @staticmethod
     def _numeric_series(series: pd.Series, key: str) -> pd.Series:
-        try:
-            values = pd.to_numeric(series, errors="raise").astype(float)
-        except (TypeError, ValueError) as exc:
-            raise ValueError(f"상관분석 변수는 숫자여야 합니다: {key}") from exc
-        if len(values) and not np.all(np.isfinite(values.to_numpy(dtype=float))):
-            raise ValueError(f"상관분석 변수는 유한한 숫자여야 합니다: {key}")
-        return values
-
-    @staticmethod
-    def _validate_nonzero_variance(values: pd.Series, key: str) -> None:
-        if values.nunique(dropna=True) < 2:
-            raise ValueError(f"상관분석 변수는 0이 아닌 분산이 필요합니다: {key}")
+        del key
+        return pd.to_numeric(series, errors="raise").astype(float)
 
     @staticmethod
     def _method_for_pair(
@@ -299,11 +284,6 @@ class CorrelationStep(Step):
         method_policy: str,
     ) -> str:
         if method_policy == "pearson":
-            if (
-                dataset.variables[x].measure is not Measure.SCALE
-                or dataset.variables[y].measure is not Measure.SCALE
-            ):
-                raise ValueError("Pearson correlation requires two scale variables.")
             return "pearson"
         if method_policy == "spearman":
             return method_policy
@@ -326,7 +306,9 @@ class CorrelationStep(Step):
 def _as_finite_float(value: Any, label: str) -> float:
     scalar = float(np.asarray(value).squeeze())
     if not np.isfinite(scalar):
-        raise ValueError(f"Correlation produced non-finite {label}; inference is undefined.")
+        raise ValueError(
+            f"Correlation produced non-finite {label}; inference is undefined."
+        )
     return scalar
 
 
