@@ -2,7 +2,8 @@
 
 **Date:** 2026-07-17
 
-**Status:** architecture approved; written specification draft for owner review
+**Status:** architecture and written specification approved; implementation planning
+authorized, with the post-approval review amendments in Section 4
 
 **Implementation baseline:** `codex/research-os-release-integration` at
 `fc00d82a1fc7e53b32808d2a895239ee42782eb4`
@@ -121,6 +122,10 @@ reputation.
 | Make the capability-to-step mapping executable | Accepted | Section 12 is the sole mapping oracle and is mutation-tested |
 | Keep experimental wording on the legacy collapsed area | Accepted | Visual separation does not waive the existing experimental boundary |
 | Clarify whether 30 seconds includes fingerprinting | Accepted | Initial fingerprint, initial decision, and later decision waits are separately measured and each has the same 30-second p95 ceiling |
+| Avoid allocating a causal-abstention ledger before the user chooses to keep that record | Accepted | A static scope notice precedes persistence; only the explicit record action enters the commit-before-display path |
+| Define deletion and retention for accumulated research-task ledgers | Accepted as an explicit deferred lifecycle decision, not an improvised P1 delete API | The current store intentionally exposes no delete authority; Section 6 records the missing separately confirmed whole-task destruction protocol and forbids a lifecycle-completeness claim |
+| Prove `RouteReady` is unreachable while the verified route inventory is zero | Accepted | The state remains reserved for schema completeness, but P1 has no incoming transition and tests must reject every attempted route-ready projection |
+| Explain why `created_at_utc` may be null | Accepted | It is optional display metadata only; ledger sequence and task ordinal, never wall-clock time, determine order or authority |
 
 ## 5. Architecture and authority boundaries
 
@@ -184,6 +189,13 @@ allocated transactionally as the next integer within the exact fingerprint contr
 and dataset fingerprint. Concurrent allocation cannot produce two active tasks with
 the same ordinal.
 
+`created_at_utc` is non-authoritative display metadata. The adapter may populate it
+only from its injected UTC clock; it remains `null` when that clock is unavailable or
+deliberately excluded in deterministic recovery tests. It never participates in task
+identity, ordering, conflict resolution, evidence, or authority, and the product must
+not substitute local time. Ledger sequence and `task_ordinal` are the only normative
+ordering fields.
+
 The index is a separate STRICT SQLite database at
 `%LOCALAPPDATA%\Modori\research-task-index.sqlite3`. It uses the same local-path,
 symlink/junction, remote-drive, defensive-connection, WAL, `synchronous=FULL`, schema
@@ -205,6 +217,24 @@ Each task ledger continues to use the hardened application-owned path derived by
 `default_ledger_path(task_project_id)`. Starting a corrected task or replanning after
 data drift creates a new task ledger. The earlier ledger becomes read-only and is never
 overwritten, merged, or relabelled as current.
+
+### 6.1 Retention and destruction boundary
+
+P1 does not invent a task-delete method inside `DecisionLedgerStore` or silently delete
+rows from the non-authoritative index. The existing Decision Ledger design requires a
+separately confirmed operation that destroys a whole per-project ledger and makes no
+forensic secure-erasure claim, but the current product has not implemented that
+operation. A correct implementation must coordinate the index row, the database and
+its WAL/SHM files, closed handles, application-owned path proof, concurrent readers,
+and crash recovery; it is not an ordinary event retraction.
+
+Whole-task deletion versus delete-all retention controls are therefore an explicitly
+deferred product-lifecycle decision requiring their own approved design and tests. P1
+may be implemented and measured, but release evidence must state that task-history
+destruction is unavailable until that slice lands. The UI and documentation must not
+claim that a task can be deleted or securely erased. This deferral does not weaken the
+existing whole-ledger destruction requirement or authorize indefinite silent
+retention; it records the remaining obligation instead of faking a partial delete.
 
 ## 7. Dataset and schema fingerprint contract
 
@@ -257,12 +287,17 @@ The first question uses the existing neutral causal-intent meaning:
 `관찰된 차이나 관계를 원인에 따른 효과로 해석하려 합니까?`
 
 - `No` records `question.causal_intent=noncausal` and continues.
-- `Yes` creates a minimal valid request with the confirmed causal fact, commits it,
-  obtains a passport-backed `unsupported_causal_target` abstention, and displays no
-  local candidate.
+- `Yes` first shows the static closed notice `P1은 인과효과 해석을 지원하지
+  않습니다.` No task ID, index row, ledger, request, event, or passport is allocated at
+  that point. `돌아가기` returns to the question without a write. Only the explicit
+  action `이 제한을 기록하고 계속` creates a minimal valid request with the confirmed
+  causal fact, commits it, obtains a passport-backed `unsupported_causal_target`
+  abstention, and displays no local candidate. “Continue” means continue to the
+  recorded abstention, not continue to a supported analysis profile.
 - `Not sure` keeps causal intent typed `unknown` and shows a bounded intake block:
   `인과효과로 해석할지 먼저 확인해야 이 범위의 후보를 검토할 수 있습니다.` It
-  creates no candidate or route and does not misuse resource-unavailable vocabulary.
+  creates no task, ledger, candidate, or route and does not misuse
+  resource-unavailable vocabulary.
 
 P1 has zero verified external routes. The causal abstention may say that an external
 causal workflow is required, but it must not fabricate a provider, link, procedure, or
@@ -308,7 +343,9 @@ stateDiagram-v2
     Fingerprinting --> IntakeCausal: exact fingerprint ready
     Fingerprinting --> MemoryUnavailable: cancel / timeout / secure storage unavailable
     IntakeCausal --> IntakeProfile: explicit noncausal answer
-    IntakeCausal --> CommitInitial: causal answer
+    IntakeCausal --> CausalScopeNotice: causal answer
+    CausalScopeNotice --> IntakeCausal: return without recording
+    CausalScopeNotice --> CommitInitial: explicit record action
     IntakeCausal --> IntakeBlocked: not sure
     IntakeProfile --> IntakeRoles: supported profile
     IntakeProfile --> ScopeBoundary: none of these
@@ -320,7 +357,6 @@ stateDiagram-v2
     HandoffPreflight --> CandidateReady: exact mapping and preflight ready
     HandoffPreflight --> PreparationBlocked: deterministic feasibility block
     CommitPassport --> AbstainReady: durable abstain passport receipt
-    CommitPassport --> RouteReady: durable verified-route passport receipt
     ClarifyReady --> CommitAnswer: answer or not-sure
     CommitAnswer --> Resolve: durable transition receipt
     ClarifyReady --> ReplanRequired: dataset or binding drift
@@ -329,6 +365,13 @@ stateDiagram-v2
     Confirmed --> ManualRun: separate Run command
     ReplanRequired --> Fingerprinting: one-click fresh replan
 ```
+
+`RouteReady` remains a reserved presentation/state identity so a later verified-route
+slice can evolve the schema explicitly. It is deliberately unreachable in P1: the
+route inventory is empty, the state machine has no incoming route transition, and QML
+exposes no route action. Tests must assert that no P1 service result can produce this
+state. Making it reachable is a catalog and contract change, not a data-dependent
+fallback.
 
 The order is normative:
 
@@ -606,8 +649,11 @@ the verification matrix must include:
 - prove each profile mapping sets only its declared facts;
 - prove a safe fully answered path reaches exactly the intended capability within the
   remaining three-question budget;
+- prove the causal static notice performs no filesystem or index write and that only
+  the explicit record action can enter the passport-backed abstention path;
 - prove `Not sure`, nonempty weight, nonempty cluster, causal intent, and out-of-scope
-  paths abstain or block without substitution; and
+  paths abstain or block without substitution;
+- prove `RouteReady` is unreachable for the frozen zero-route P1 catalog; and
 - mutation-test profile fact mappings, method-space identity, registry identity, and
   question budget.
 
@@ -624,7 +670,9 @@ the verification matrix must include:
   verify, and recover the last committed state;
 - prove at most one active clarify passport under racing callers;
 - reject duplicate event IDs, replayed answers, consumed passports, stale bindings,
-  modified artifacts, external database changes, and forged task-index rows; and
+  modified artifacts, external database changes, and forged task-index rows;
+- prove `created_at_utc=null` neither changes identity nor ordering and that local-time
+  fallback is forbidden; and
 - prove passport retraction preserves the request snapshot, while correction of a
   consumed answer starts a fresh task and never overwrites either ledger.
 
@@ -686,6 +734,10 @@ focused, evidence-backed repair attempt:
 - the main thread blocks materially; or
 - security, privacy, accessibility, packaging, or full-suite gates regress.
 
+Task-history destruction remains a separately locked lifecycle obligation under
+Section 6.1. Until it is implemented, release evidence must report the limitation and
+must not claim retention-control or deletion completeness.
+
 Fallback is not a looser Research OS. The live passport-backed flow remains disabled;
 direct analysis and the separately labelled legacy experimental quick-candidate flow
 remain. The deterministic Research OS core, ledger, and benchmark evidence stay
@@ -732,6 +784,11 @@ approval of this written specification, a separate implementation plan will sequ
 failing tests, contracts, worker/persistence adapters, handoff/preflight, QML, visual
 finish, target-HP measurement, and final gates. Implementation does not begin before
 that review.
+
+The implementation plan must also preserve one explicit deferred-decision entry:
+whole-task versus delete-all retention controls, including index/ledger/WAL/SHM
+coordination and crash recovery. That lifecycle slice requires its own design approval;
+it is not hidden inside P1 and is not satisfied by `decision_retracted`.
 
 ## 21. Design self-review record
 
