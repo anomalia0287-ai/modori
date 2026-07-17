@@ -14,7 +14,6 @@ import sqlite3
 import sys
 from typing import TYPE_CHECKING, Any
 
-from modori.path_policy import resolve_secure_file_path
 from modori.research_memory.canonical import (
     CANONICALIZATION_ID,
     HASH_ALGORITHM,
@@ -36,6 +35,13 @@ from modori.research_memory.ledger_contracts import (
 from modori.research_memory.passport_state import (
     PassportHistory,
     PassportStateError,
+)
+from modori.research_memory.sqlite_policy import (
+    ManagedSQLitePathError,
+    ManagedSQLiteRuntimeError,
+    configure_managed_connection,
+    configure_managed_durability,
+    validate_managed_sqlite_path,
 )
 from modori.research_os import ResearchRequest
 
@@ -239,23 +245,6 @@ def _require_project_id(project_id: object) -> str:
     return project_id
 
 
-def _is_unc(path: Path) -> bool:
-    return str(path).startswith(("\\\\", "//"))
-
-
-def _is_remote_drive(path: Path) -> bool:
-    if os.name != "nt":
-        return False
-    import ctypes
-
-    drive = path.drive
-    if not drive:
-        return False
-    root = f"{drive}\\"
-    drive_remote = 4
-    return ctypes.windll.kernel32.GetDriveTypeW(root) == drive_remote
-
-
 def _validated_path(
     candidate: str | Path,
     *,
@@ -264,17 +253,15 @@ def _validated_path(
     raw = Path(candidate).expanduser()
     if not raw.is_absolute():
         raise LedgerPathError("ledger path must be absolute")
-    if _is_unc(raw):
-        raise LedgerPathError("ledger path must be on a local drive")
-    if raw.suffix.lower() != ".sqlite3":
-        raise LedgerPathError("ledger path must end in .sqlite3")
-    resolved = resolve_secure_file_path(raw, suffix=".sqlite3")
-    if resolved is None:
-        raise LedgerPathError(
-            "ledger path must not cross a symlink, junction, or invalid target"
+    try:
+        resolved = validate_managed_sqlite_path(
+            raw,
+            expected_parent=raw.parent,
+            expected_filename=None,
+            required_suffix=".sqlite3",
         )
-    if _is_remote_drive(resolved):
-        raise LedgerPathError("ledger path must be on a local drive")
+    except ManagedSQLitePathError as exc:
+        raise LedgerPathError(str(exc).replace("managed SQLite", "ledger")) from exc
     if must_exist and not resolved.is_file():
         raise LedgerPathError("ledger path does not exist")
     if not must_exist and resolved.exists():
@@ -297,16 +284,22 @@ def default_ledger_path(project_id: str) -> Path:
         / project_directory
         / "decision-ledger.sqlite3"
     )
-    if not candidate.is_absolute() or _is_unc(candidate) or _is_remote_drive(candidate):
-        raise LedgerPathError("default ledger root is not a secure local path")
-    return candidate
+    try:
+        return validate_managed_sqlite_path(
+            candidate,
+            expected_parent=candidate.parent,
+            expected_filename="decision-ledger.sqlite3",
+            required_suffix=".sqlite3",
+        )
+    except ManagedSQLitePathError as exc:
+        raise LedgerPathError("default ledger root is not a secure local path") from exc
 
 
 def _configure_durability(connection: sqlite3.Connection) -> None:
-    connection.execute("PRAGMA synchronous=FULL")
-    mode = connection.execute("PRAGMA journal_mode=WAL").fetchone()[0]
-    if str(mode).lower() != "wal":
-        raise LedgerRuntimeError("SQLite WAL journal mode is unavailable")
+    try:
+        configure_managed_durability(connection)
+    except ManagedSQLiteRuntimeError as exc:
+        raise LedgerRuntimeError(str(exc)) from exc
 
 
 def _configure_connection(
@@ -315,35 +308,14 @@ def _configure_connection(
     durability: bool = True,
 ) -> None:
     try:
-        settings = (
-            (sqlite3.SQLITE_DBCONFIG_DEFENSIVE, True),
-            (sqlite3.SQLITE_DBCONFIG_DQS_DDL, False),
-            (sqlite3.SQLITE_DBCONFIG_DQS_DML, False),
-            (sqlite3.SQLITE_DBCONFIG_ENABLE_FKEY, True),
-            (sqlite3.SQLITE_DBCONFIG_ENABLE_LOAD_EXTENSION, False),
-            (sqlite3.SQLITE_DBCONFIG_ENABLE_TRIGGER, False),
-            (sqlite3.SQLITE_DBCONFIG_ENABLE_VIEW, False),
-            (sqlite3.SQLITE_DBCONFIG_TRUSTED_SCHEMA, False),
-            (sqlite3.SQLITE_DBCONFIG_WRITABLE_SCHEMA, False),
+        configure_managed_connection(
+            connection,
+            query_only=False,
+            authorizer=None,
         )
-        for setting, enabled in settings:
-            connection.setconfig(setting, enabled)
-        if hasattr(sqlite3, "SQLITE_DBCONFIG_ENABLE_QPSG"):
-            connection.setconfig(sqlite3.SQLITE_DBCONFIG_ENABLE_QPSG, True)
-        connection.enable_load_extension(False)
-        connection.setlimit(sqlite3.SQLITE_LIMIT_ATTACHED, 0)
-        connection.setlimit(sqlite3.SQLITE_LIMIT_LENGTH, 20 * 1024 * 1024)
-        connection.setlimit(sqlite3.SQLITE_LIMIT_SQL_LENGTH, 1024 * 1024)
-        connection.execute("PRAGMA busy_timeout=5000")
-        connection.execute("PRAGMA foreign_keys=ON")
-        connection.execute("PRAGMA trusted_schema=OFF")
-        connection.execute("PRAGMA cell_size_check=ON")
-        connection.execute("PRAGMA mmap_size=0")
         if durability:
             _configure_durability(connection)
-    except (AttributeError, sqlite3.DatabaseError) as exc:
-        if isinstance(exc, LedgerRuntimeError):
-            raise
+    except ManagedSQLiteRuntimeError as exc:
         raise LedgerRuntimeError(
             "SQLite rejected required Decision Ledger hardening controls"
         ) from exc
