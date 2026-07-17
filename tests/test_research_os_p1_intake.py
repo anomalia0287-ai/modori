@@ -480,6 +480,45 @@ EXPECTED_TERMINALS = {
 }
 
 
+P1_LIVE_TERMINAL_PATH_COUNTS = {
+    P1TaskProfile.NUMERIC_DISTRIBUTION: 15,
+    P1TaskProfile.CATEGORY_FREQUENCY: 15,
+    P1TaskProfile.INDEPENDENT_TWO_GROUP_MEAN: 7,
+    P1TaskProfile.PAIRED_TWO_TIME_MEAN_CHANGE: 7,
+    P1TaskProfile.LINEAR_CO_MOVEMENT: 15,
+    P1TaskProfile.RANK_CO_MOVEMENT: 15,
+}
+
+
+def _all_p1_live_branch_values(fact_address: str) -> tuple[AnswerValue, ...]:
+    not_sure = AnswerValue(kind=AnswerValueKind.NOT_SURE)
+    if fact_address in {"study.role.cluster", "study.role.weight"}:
+        selected_variable = (
+            "cluster" if fact_address == "study.role.cluster" else "weight"
+        )
+        return (
+            not_sure,
+            AnswerValue(kind=AnswerValueKind.VARIABLES, variable_ids=()),
+            AnswerValue(
+                kind=AnswerValueKind.VARIABLES,
+                variable_ids=(selected_variable,),
+            ),
+        )
+    if fact_address == "study.dependence_structure":
+        return (
+            not_sure,
+            AnswerValue(
+                kind=AnswerValueKind.CHOICE,
+                choice_value="independent",
+            ),
+            AnswerValue(
+                kind=AnswerValueKind.CHOICE,
+                choice_value="paired",
+            ),
+        )
+    raise AssertionError(f"unexpected P1 live clarification: {fact_address}")
+
+
 @pytest.mark.parametrize("profile", tuple(P1TaskProfile))
 def test_all_six_profiles_reach_only_the_intended_terminal_within_budget(
     profile: P1TaskProfile,
@@ -523,6 +562,61 @@ def test_all_six_profiles_reach_only_the_intended_terminal_within_budget(
         if expected_rounds == 3
         else ["study.role.cluster", "study.role.weight"]
     )
+
+
+@pytest.mark.parametrize("profile", tuple(P1TaskProfile))
+def test_every_p1_live_answer_branch_is_ready_without_estimand_acceptance(
+    profile: P1TaskProfile,
+) -> None:
+    service = ResearchOsService()
+    transition = ClarificationTransitionService()
+    stack = [(_request(profile), 1)]
+    terminal_count = 0
+
+    while stack:
+        request, next_sequence = stack.pop()
+        resolved = service.resolve_and_plan(
+            request,
+            _passport_envelope(request, next_sequence),
+        )
+        if resolved.decision.action is not PrimaryAction.CLARIFY:
+            assert resolved.decision.action in {
+                PrimaryAction.RECOMMEND_LOCAL,
+                PrimaryAction.ABSTAIN,
+            }
+            terminal_count += 1
+            continue
+
+        clarify = resolved.passport.clarify
+        assert clarify is not None
+        fact_address = clarify.clarification_ref.fact_address
+        for branch_number, value in enumerate(
+            _all_p1_live_branch_values(fact_address),
+            start=1,
+        ):
+            answer = _answer_selected(
+                request,
+                resolved.passport,
+                value,
+                sequence=next_sequence,
+            )
+            answer = replace(
+                answer,
+                event_id=(
+                    f"answer:{profile.value}:{next_sequence}:{branch_number}:"
+                    f"{terminal_count}:{len(stack)}"
+                ),
+            )
+            candidate = transition.propose(request, resolved.passport, answer)
+            assert candidate.requires_acceptance is False
+            stack.append(
+                (
+                    transition.commit_ready(request, candidate),
+                    next_sequence + 1,
+                )
+            )
+
+    assert terminal_count == P1_LIVE_TERMINAL_PATH_COUNTS[profile]
 
 
 def test_explicit_none_transition_is_not_the_same_as_an_omitted_study_role() -> None:

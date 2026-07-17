@@ -229,6 +229,15 @@ externally changed, or corrupt ledger is an integrity failure and is never recre
 This is a recoverable sequence of two local transactions, not a claim of cross-database
 atomicity.
 
+Live flow reads and writes additionally hold a zero-row-mutation active-record lease in
+the TaskIndex while one `DecisionLedgerStore` private-writer connection is open. The
+lease uses `BEGIN IMMEDIATE` only to serialize two windows or processes; it does not
+change the locator row, grant decision authority, or combine the two databases into one
+transaction. Process death releases the lease through SQLite while any completed ledger
+commit remains recoverable as pending, decision, or retraction. Lease `BUSY`/`LOCKED`
+is ordinary typed contention, not index corruption, ledger corruption, or audit
+failure.
+
 ### 6.1 Retention and destruction boundary
 
 P1 does not invent a task-delete method inside `DecisionLedgerStore` or silently delete
@@ -418,6 +427,17 @@ Both views bind the same passport digest.
 `Not sure` is an ordinary typed branch. It never becomes an inferred answer. After the
 third clarification, unresolved hard predicates produce abstention rather than a fourth
 question or a guessed fact.
+
+The P1 live coordinator accepts only ready clarification transitions; it never creates
+or implies a `RevisionAcceptanceCertificate`. This is justified by a frozen closure
+test, not by assuming that every clarification is harmless. Across all six structured
+profiles, all closed P1 answer-branch classes walk 108 reachable planning states and 74
+terminal paths within the three-question budget. The only selected live facts are
+cluster role, weight role, and dependence structure, and every resulting candidate has
+`requires_acceptance=false`. If a future catalog or planner exposes a question- or
+estimand-changing answer in this live slice, that closure test must fail and the product
+must add an explicit acceptance interaction before enabling the path. It must not
+silently call the ready transition or manufacture acceptance on the user's behalf.
 
 The existing `decision_retracted` contract retracts a passport-commit decision while
 preserving the current request snapshot; it does not reverse an already consumed

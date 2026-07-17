@@ -110,7 +110,7 @@ it has its own sequential plan:
 - Produces: `ResearchFlowState`, `P1_REACHABLE_STATES`, `StaticBoundary`, `DatasetIdentity`, `PreflightDisposition`, `FlowErrorKind`.
 - Produces later-extensible frozen contracts without importing UI, filesystem, SQLite, network, subprocess, or calculation code.
 
-- [ ] **Step 1: Write the failing closed-state and identity tests**
+- [x] **Step 1: Write the failing closed-state and identity tests**
 
 ```python
 def test_route_ready_is_reserved_but_not_p1_reachable() -> None:
@@ -135,7 +135,7 @@ def test_research_flow_package_has_no_ui_or_persistence_import() -> None:
     assert architecture_import_violations(Path("src/modori/research_flow/contracts.py"), forbidden) == []
 ```
 
-- [ ] **Step 2: Run the tests and confirm the missing package fails**
+- [x] **Step 2: Run the tests and confirm the missing package fails**
 
 Run:
 
@@ -145,7 +145,7 @@ Run:
 
 Expected: collection fails because `modori.research_flow` does not exist.
 
-- [ ] **Step 3: Implement the closed contracts**
+- [x] **Step 3: Implement the closed contracts**
 
 Use exactly these state values:
 
@@ -220,14 +220,14 @@ literal contract ID `modori.dataset-fingerprint.v1`. `FlowErrorKind` has exactly
 `StaticBoundary` has only `causal_scope_notice`, `causal_intent_unknown`, and
 `scope_boundary`; none is a durable decision or may carry a passport digest.
 
-- [ ] **Step 4: Add architecture assertions**
+- [x] **Step 4: Add architecture assertions**
 
 Keep `modori.research_os` independent of `research_memory` and `research_flow`.
 Permit `research_flow` to depend inward on `research_os` and `core`, but forbid it from
 importing `modori.ui`. Permit persistence imports only in the later
 `task_session.py` boundary; `contracts.py` and `fingerprint.py` stay persistence-free.
 
-- [ ] **Step 5: Run the focused gate**
+- [x] **Step 5: Run the focused gate**
 
 Run:
 
@@ -237,7 +237,7 @@ Run:
 
 Expected: all tests pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```powershell
 git add -- src/modori/research_flow/__init__.py src/modori/research_flow/contracts.py tests/test_research_flow_contracts.py tests/test_research_memory_architecture.py
@@ -260,7 +260,7 @@ git commit -m "feat: define live Research OS flow contracts"
 - Produces: `fingerprint_dataset(dataset: Dataset, source_schema: SourceSchemaDescriptor, *, pipeline_version: int, cancel_requested: Callable[[], bool], max_cells: int = 5_000_000) -> DatasetIdentity`.
 - Raises: `FingerprintCancelled`, `FingerprintLimitError`, or `FingerprintContractError`; never falls back to schema-only identity.
 
-- [ ] **Step 1: Write the typed-value and metamorphic failing tests**
+- [x] **Step 1: Write the typed-value and metamorphic failing tests**
 
 Build a fixture containing bool, integer, float, `-0.0`, missing, NFC/NFD text,
 naive date, UTC date, categorical metadata, labels, declared missing codes, and mixed
@@ -282,7 +282,7 @@ Also assert that a changed file type, sheet/layout selection, source-column orde
 included-column order changes only `source_schema_fingerprint` when the current
 Dataset remains identical.
 
-- [ ] **Step 2: Write cancellation and resource-limit tests**
+- [x] **Step 2: Write cancellation and resource-limit tests**
 
 ```python
 with pytest.raises(FingerprintCancelled):
@@ -296,7 +296,7 @@ Assert the cancellation callback is checked at least once per 8,192 cells and be
 final digest publication. Assert the worker deadline remains 10 seconds and a deadline
 failure returns typed unavailability without publishing or caching a partial digest.
 
-- [ ] **Step 3: Run the tests and confirm failure**
+- [x] **Step 3: Run the tests and confirm failure**
 
 Run:
 
@@ -306,7 +306,7 @@ Run:
 
 Expected: FAIL because `fingerprint_dataset` is absent.
 
-- [ ] **Step 4: Implement a length-framed streaming encoder**
+- [x] **Step 4: Implement a length-framed streaming encoder**
 
 The SHA-256 stream begins with the ASCII contract ID and uses one-byte type tags plus
 unsigned 64-bit big-endian lengths. Encode:
@@ -341,7 +341,7 @@ class SourceSchemaDescriptor:
 
 It contains no path or filename.
 
-- [ ] **Step 5: Run deterministic, mutation, and 5-million-cell bounded tests**
+- [x] **Step 5: Run deterministic, mutation, and 5-million-cell bounded tests**
 
 Run:
 
@@ -352,7 +352,7 @@ Run:
 Expected: all tests pass and peak auxiliary memory remains O(column metadata), not a
 second full canonical dataset.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```powershell
 git add -- src/modori/research_flow/__init__.py src/modori/research_flow/fingerprint.py tests/test_research_flow_fingerprint.py
@@ -377,7 +377,7 @@ git commit -m "feat: bind Research OS to full dataset identity"
 - Produces internal `configure_managed_connection(connection, *, query_only: bool, authorizer: Callable[..., int] | None) -> None`.
 - The ledger's public API, schema bytes, schema fingerprint, exceptions, PRAGMAs, and on-disk output remain unchanged.
 
-- [ ] **Step 1: Add characterization tests before moving code**
+- [x] **Step 1: Add characterization tests before moving code**
 
 Capture the current accept/reject matrix for local absolute paths, missing parents,
 UNC, remote drive, symlink, junction/reparse point, wrong suffix, file replacement,
@@ -386,7 +386,7 @@ UNC, remote drive, symlink, junction/reparse point, wrong suffix, file replaceme
 schema fingerprint and canonical exported bundle digest as golden values inside the
 test.
 
-- [ ] **Step 2: Run the characterization cohort**
+- [x] **Step 2: Run the characterization cohort**
 
 Run:
 
@@ -396,7 +396,7 @@ Run:
 
 Expected: only the new import fails; every pre-existing ledger test passes.
 
-- [ ] **Step 3: Move only common path/connection primitives**
+- [x] **Step 3: Move only common path/connection primitives**
 
 Move the bodies of current `_is_unc`, `_is_remote_drive`, `_validated_path`,
 `_configure_durability`, and the common portion of `_configure_connection` into
@@ -423,7 +423,7 @@ configure_managed_connection(
 `expected_parent` must already be an application-derived absolute local path. No
 public caller may supply an arbitrary root through a UI or imported payload.
 
-- [ ] **Step 4: Prove byte and failure equivalence**
+- [x] **Step 4: Prove byte and failure equivalence**
 
 Run the characterization cohort again, then run:
 
@@ -433,7 +433,7 @@ Run the characterization cohort again, then run:
 
 Expected: all pass; the golden schema/bundle digests are unchanged.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```powershell
 git add -- src/modori/research_memory/sqlite_policy.py src/modori/research_memory/ledger_store.py tests/test_research_memory_sqlite_policy.py tests/test_research_memory_architecture.py
@@ -462,7 +462,7 @@ git commit -m "refactor: share hardened SQLite policy"
 - Produces: `allocate(..., task_project_id: str, created_at_utc: str | None, replaces_task_project_id: str | None = None) -> ResearchTaskRecord`.
 - Produces: `mark_readonly(task_project_id: str) -> ResearchTaskRecord` and `verify(full_integrity: bool = False)`.
 
-- [ ] **Step 1: Write the exact schema-inventory test**
+- [x] **Step 1: Write the exact schema-inventory test**
 
 The database has one STRICT table and only its required auto/unique indexes:
 
@@ -483,7 +483,7 @@ Add a unique partial index over
 extra table, trigger, view, column, malformed SQL, wrong application ID/user version,
 or schema fingerprint.
 
-- [ ] **Step 2: Write allocation, clock, and concurrency failing tests**
+- [x] **Step 2: Write allocation, clock, and concurrency failing tests**
 
 Assert:
 
@@ -510,14 +510,14 @@ Use racing connections to prove one active row and one ordinal winner. Prove
 `created_at_utc=None` does not change identity/order, an injected UTC value is
 display-only, invalid UTC is rejected, and there is no local-time fallback.
 
-- [ ] **Step 3: Write integrity, path, resource, and import-denial tests**
+- [x] **Step 3: Write integrity, path, resource, and import-denial tests**
 
 Cover the 10,000-row limit; external database modification; WAL/SHM; quick/full
 integrity; row forgery; reparse/remote paths; query-only verification; unknown fields;
 and absence of any bundle/import/promote/delete API. Reaching 10,000 returns typed
 `resource_limit` unavailability and never evicts a row.
 
-- [ ] **Step 4: Run the tests and confirm failure**
+- [x] **Step 4: Run the tests and confirm failure**
 
 Run:
 
@@ -527,7 +527,7 @@ Run:
 
 Expected: FAIL because `task_index.py` is absent.
 
-- [ ] **Step 5: Implement the index with `BEGIN IMMEDIATE` allocation**
+- [x] **Step 5: Implement the index with `BEGIN IMMEDIATE` allocation**
 
 Use the shared SQLite policy, an application-specific ID distinct from the Decision
 Ledger, schema fingerprint verification, `PRAGMA data_version` checks, and a closed
@@ -535,7 +535,7 @@ authorizer. Allocation computes `MAX(task_ordinal)+1` inside the same immediate
 transaction that optionally changes the exact expected active task to readonly.
 An unexpected active task or changed data version fails; it is never overwritten.
 
-- [ ] **Step 6: Run focused persistence and adversarial tests**
+- [x] **Step 6: Run focused persistence and adversarial tests**
 
 Run:
 
@@ -545,7 +545,7 @@ Run:
 
 Expected: all pass.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```powershell
 git add -- src/modori/research_memory/task_index.py src/modori/research_memory/__init__.py tests/test_research_task_index.py tests/test_research_memory_architecture.py
@@ -612,7 +612,7 @@ import `DatasetIdentity`, SQLite, filesystem, UI, or calculation code.
 The task project ID and preallocated initial event ID bind every component envelope;
 the separate source-schema fingerprint is never fabricated from the dataset digest.
 
-- [ ] **Step 1: Write exact profile-mapping failure tests**
+- [x] **Step 1: Write exact profile-mapping failure tests**
 
 For every Section 8.2 row, assert the exact facts, their authority
 `user_confirmed`, role cardinality and order, the unchanged unknown fields, surface
@@ -630,7 +630,7 @@ For every Section 8.2 row, assert the exact facts, their authority
 - only `build_causal_abstention_request()` creates the minimal confirmed causal request
   that resolves to `unsupported_causal_target`.
 
-- [ ] **Step 2: Write closure and mutation tests**
+- [x] **Step 2: Write closure and mutation tests**
 
 Walk all six intake requests through the current resolver and
 `ClarificationTransitionService`. Safe `cluster -> dependence -> weight` answers must
@@ -642,7 +642,7 @@ never silently preserve the intended capability. `Not sure`, nonempty weight, an
 nonempty cluster branches must block or abstain without substituting an unweighted,
 independent, or otherwise nearby capability.
 
-- [ ] **Step 3: Run the tests and confirm failure**
+- [x] **Step 3: Run the tests and confirm failure**
 
 Run:
 
@@ -652,14 +652,14 @@ Run:
 
 Expected: FAIL because the closed intake module is absent.
 
-- [ ] **Step 4: Implement only the approved mappings**
+- [x] **Step 4: Implement only the approved mappings**
 
 Use one immutable mapping table corresponding exactly to design Section 8.2. Do not
 derive a profile from variable metadata, labels, distributions, or a nearby method.
 Keep profile construction separate from the causal-abstention constructor so the UI's
 static causal notice can remain a no-write state.
 
-- [ ] **Step 5: Re-run focused pure-layer tests**
+- [x] **Step 5: Re-run focused pure-layer tests**
 
 Run:
 
@@ -670,7 +670,7 @@ Run:
 Expected: all pass, with the six intended terminal capabilities reproduced within the
 fixed budget.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```powershell
 git add -- src/modori/research_os/p1_intake.py src/modori/research_os/__init__.py tests/test_research_os_p1_intake.py tests/test_research_os_architecture.py
@@ -790,7 +790,7 @@ Run:
 
 Expected: all pass, including every poison point and reopen.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```powershell
 git add -- src/modori/research_flow/task_session.py src/modori/research_memory/promotion.py src/modori/research_memory/__init__.py tests/test_research_flow_task_session.py tests/test_research_memory_promotion.py tests/test_research_memory_crash_recovery.py tests/test_research_memory_passport_state.py
@@ -802,11 +802,13 @@ git commit -m "feat: add recoverable research task sessions"
 **Files:**
 
 - Create: `src/modori/research_flow/coordinator.py`
-- Modify: `src/modori/research_flow/contracts.py`
+- Preserve unchanged: `src/modori/research_flow/contracts.py`
 - Modify: `src/modori/research_flow/__init__.py`
+- Modify: `src/modori/research_memory/task_index.py`
 - Create: `tests/test_research_flow_coordinator.py`
 - Create: `tests/test_research_flow_concurrency.py`
 - Modify: `tests/test_research_memory_crash_recovery.py`
+- Modify: `tests/test_research_task_index.py`
 
 **Interfaces:**
 
@@ -872,6 +874,13 @@ class LiveResearchFlowCoordinator:
     ) -> DurableDecision: ...
 ```
 
+The durable record types live in `coordinator.py`, not in the pure
+`research_flow/contracts.py` module. Their constructors must recompute the exact
+Decision Ledger passport artifact ID, so placing them in the pure module would either
+introduce a memory-layer dependency there or duplicate the ledger hash domain. Keeping
+the memory-bound receipt contracts beside the coordinator preserves the existing pure
+contract architecture without weakening constructor validation.
+
 `DurableDecision` contains only a verified current request, V2 passport, ledger receipt
 identity, and closed disposition. Its constructor rejects any action, digest, event, or
 request binding that disagrees with the passport/receipt; it is not yet a UI model.
@@ -881,7 +890,7 @@ A retracted current passport returns `DurableRetraction` and is never replanned 
 reissued automatically. Its view offers only a fresh-task/replan entry and direct
 analysis; answer, Prepare, and Resume are absent.
 
-- [ ] **Step 1: Write commit-before-publication contract tests**
+- [x] **Step 1: Write commit-before-publication contract tests**
 
 For initial commit, each answer, retraction, and recovery, poison:
 
@@ -902,23 +911,29 @@ Crash after a request or answer receipt but before passport receipt must recover
 must recover as `DurableRetraction`. An explicit pending-resume may append the missing
 passport once; retraction has no resume-to-same-passport path.
 
-- [ ] **Step 2: Write replay, race, and budget tests**
+- [x] **Step 2: Write replay, race, and budget tests**
 
 Race two initial calls, double clicks, two answer calls, and two windows. Exactly one
 unconsumed clarify passport may be current; a duplicate may return the exact same
 verified artifact but cannot create a second question or spend budget twice. Reject
 stale/replayed/consumed/foreign answers, wrong revision IDs, duplicate event IDs,
 modified artifacts, and a fourth question. `Not sure` stays typed and either advances
-to another committed decision or honest abstention.
+to another committed decision or honest abstention. Serialize the ledger's one-private-
+writer contract with an exact-active-record TaskIndex lease that changes no index row.
+SQLite `BUSY` or `LOCKED` is a typed conflict, never ledger or index corruption.
+Exhaustively walk every closed answer-branch class selected by all six P1 profiles.
+The frozen closure is 108 reachable states and 74 terminal paths; every live answer
+must remain a ready transition with `requires_acceptance=false`. Any future exposure of
+an estimand-changing answer fails this task rather than manufacturing user acceptance.
 
-- [ ] **Step 3: Write frozen-inventory and route-unreachability tests**
+- [x] **Step 3: Write frozen-inventory and route-unreachability tests**
 
-At construction and recovery, assert 6 capabilities, 67 rules, 15 active questions,
+At construction and every recovery, assert 6 capabilities, 67 rules, 15 active questions,
 and 0 routes. No service result may become `RouteReady`; attempted injection of a route
 disposition is a contract failure. This test is deliberately redundant with Task 1 so
 catalog drift cannot make a reserved state live accidentally.
 
-- [ ] **Step 4: Run the tests and confirm failure**
+- [x] **Step 4: Run the tests and confirm failure**
 
 Run:
 
@@ -928,14 +943,22 @@ Run:
 
 Expected: FAIL because the application coordinator is absent.
 
-- [ ] **Step 5: Implement the authority chain by composition**
+- [x] **Step 5: Implement the authority chain by composition**
 
 Compose the existing deterministic service, transition service, memory coordinator,
 passport auditor/state fold, and task session. Allocate the event ID before sealing the
 passport, append atomically inside the ledger, verify the receipt and current artifact,
 then return. Do not duplicate planner search or expose a raw store outside this layer.
+If opening succeeds but the mandatory post-open full verification fails, close the
+SQLite handle before classifying the failure; Windows race tests must prove no file
+handle survives teardown. Hold a zero-row-mutation `BEGIN IMMEDIATE` lease on the exact
+active TaskIndex record while one Decision Ledger private writer is open. The lease is
+only cross-process serialization: it grants no fact or decision authority, makes no
+cross-database atomicity claim, and is released automatically on process death. A
+ledger commit that survives process death still recovers through the same pending or
+complete-decision rules.
 
-- [ ] **Step 6: Run focused multi-round and memory tests**
+- [x] **Step 6: Run focused multi-round and memory tests**
 
 Run:
 
@@ -945,7 +968,11 @@ Run:
 
 Expected: all pass, including recovery from every injected boundary.
 
-- [ ] **Step 7: Commit**
+Pre-commit evidence on 2026-07-17: Ruff passed; the exact Task 7 gate plus the P1
+closure test passed 211 tests; the adjacent flow, intake, resolver, ledger, promotion,
+and crash-recovery gate passed 416 tests. Both pytest runs disabled the cache provider.
+
+- [x] **Step 7: Commit**
 
 ```powershell
 git add -- src/modori/research_flow/coordinator.py src/modori/research_flow/contracts.py src/modori/research_flow/__init__.py tests/test_research_flow_coordinator.py tests/test_research_flow_concurrency.py tests/test_research_memory_crash_recovery.py

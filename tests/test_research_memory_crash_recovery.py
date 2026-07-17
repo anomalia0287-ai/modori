@@ -16,7 +16,17 @@ from modori.research_memory.ledger_contracts import (
 from modori.research_memory.ledger_store import DecisionLedgerStore
 from modori.research_memory.passport_state import PassportHistory
 from modori.research_memory.promotion import ResearchMemoryCoordinator
-from modori.research_os import Fact
+from modori.research_os import (
+    AnswerValue,
+    AnswerValueKind,
+    ClarificationAnswerEvent,
+    Fact,
+    Language,
+    P1IntakeDraft,
+    P1RoleBindings,
+    P1TaskProfile,
+    build_p1_request,
+)
 from tests.test_research_memory_ledger_contracts import _request
 from tests.test_research_memory_ledger_store import _genesis_commit
 from tests.test_research_os_service import _paired_request
@@ -173,6 +183,117 @@ def _crashing_retraction_child(path: str, stage: str) -> None:
         event_id="event:retract:3",
         recorded_at_utc=None,
     )
+
+
+def _flow_identity():
+    from modori.research_flow import DatasetIdentity, FINGERPRINT_CONTRACT_ID
+
+    return DatasetIdentity(
+        fingerprint_contract_id=FINGERPRINT_CONTRACT_ID,
+        dataset_fingerprint="a" * 64,
+        source_schema_fingerprint="b" * 64,
+        variable_ids=("score",),
+        pipeline_version=1,
+    )
+
+
+def _flow_handle():
+    from modori.research_flow import ResearchTaskHandle
+    from modori.research_memory import ResearchTaskIndex, default_ledger_path
+
+    with ResearchTaskIndex.open_or_create() as index:
+        record = index.get("task:flow-crash:1")
+    assert record is not None
+    return ResearchTaskHandle(
+        record=record,
+        ledger_path=default_ledger_path(record.task_project_id),
+    )
+
+
+def _flow_request(handle):
+    identity = _flow_identity()
+    return build_p1_request(
+        P1IntakeDraft(
+            P1TaskProfile.NUMERIC_DISTRIBUTION,
+            P1RoleBindings(outcome=("score",)),
+        ),
+        task_project_id=handle.record.task_project_id,
+        initial_event_id="event:project:1",
+        dataset_fingerprint=identity.dataset_fingerprint,
+        source_schema_fingerprint=identity.source_schema_fingerprint,
+        available_variable_ids=identity.variable_ids,
+        language=Language.KO,
+    )
+
+
+def _flow_factory(*values: str):
+    iterator = iter(values)
+    return lambda: next(iterator)
+
+
+def _flow_coordinator(
+    stage: str,
+    *,
+    event_ids: tuple[str, ...],
+    passport_ids: tuple[str, ...],
+):
+    from modori.research_flow import LiveResearchFlowCoordinator
+
+    return LiveResearchFlowCoordinator(
+        event_id_factory=_flow_factory(*event_ids),
+        passport_object_id_factory=_flow_factory(*passport_ids),
+        utc_clock=lambda: None,
+        poison_hook=lambda observed: (
+            _block_after_signal(stage) if observed == stage else None
+        ),
+    )
+
+
+def _flow_answer(decision) -> ClarificationAnswerEvent:
+    clarify = decision.passport.clarify
+    assert clarify is not None
+    reference = clarify.clarification_ref
+    return ClarificationAnswerEvent(
+        event_id="event:answer:3",
+        project_id=decision.task_project_id,
+        event_sequence=3,
+        source_passport_digest=decision.passport_digest,
+        question_id=reference.question_id,
+        question_version=reference.question_version,
+        question_digest=reference.question_digest,
+        fact_address=reference.fact_address,
+        answer_value=AnswerValue(kind=AnswerValueKind.NOT_SURE),
+    )
+
+
+def _crashing_live_flow_child(mode: str, stage: str) -> None:
+    from modori.research_flow import LiveResearchFlowCoordinator
+
+    handle = _flow_handle()
+    if mode == "--flow-initial-child":
+        _flow_coordinator(
+            stage,
+            event_ids=("event:passport:2",),
+            passport_ids=("passport:decision:1",),
+        ).commit_initial(handle, _flow_request(handle))
+        return
+    recovery = LiveResearchFlowCoordinator(
+        event_id_factory=_flow_factory(),
+        passport_object_id_factory=_flow_factory(),
+        utc_clock=lambda: None,
+    ).recover_current(handle)
+    if mode == "--flow-answer-child":
+        _flow_coordinator(
+            stage,
+            event_ids=("event:passport:4",),
+            passport_ids=("passport:decision:2",),
+        ).commit_answer(handle, _flow_answer(recovery))
+    elif mode == "--flow-retraction-child":
+        _flow_coordinator(
+            stage,
+            event_ids=("event:retract:3",),
+            passport_ids=(),
+        ).retract_current(handle)
 
 
 @pytest.mark.parametrize("stage", _STAGES)
@@ -371,6 +492,158 @@ def test_forced_retraction_death_recovers_old_or_complete_closed_passport(
             assert history.records[0].outstanding is True
 
 
+def _prepare_live_flow(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    from modori.research_flow import ResearchTaskSessionStore
+
+    monkeypatch.setenv(
+        "LOCALAPPDATA",
+        str((tmp_path / "local-app-data").resolve()),
+    )
+    return ResearchTaskSessionStore(
+        task_id_factory=lambda: "task:flow-crash:1",
+        utc_clock=lambda: None,
+    ).open_or_allocate(_flow_identity(), expected_active_task_id=None)
+
+
+def _kill_live_child(mode: str, stage: str) -> None:
+    environment = os.environ.copy()
+    python_path = os.pathsep.join(
+        (str(Path("src").resolve()), str(Path.cwd()), environment.get("PYTHONPATH", ""))
+    )
+    environment["PYTHONPATH"] = python_path
+    process = subprocess.Popen(
+        [sys.executable, str(Path(__file__).resolve()), mode, "flow", stage],
+        cwd=Path.cwd(),
+        env=environment,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    assert process.stdout is not None
+    try:
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(process.stdout.readline)
+            try:
+                line = future.result(timeout=20).strip()
+            except FutureTimeoutError:
+                process.kill()
+                stderr = process.stderr.read() if process.stderr is not None else ""
+                raise AssertionError(
+                    f"live-flow child did not reach {stage}: {stderr}"
+                ) from None
+        assert line == stage
+    finally:
+        process.kill()
+        process.wait(timeout=20)
+
+
+@pytest.mark.parametrize(
+    ("stage", "expected_type", "expected_sequence"),
+    (
+        ("after_request_initialize", "pending", 1),
+        ("after_passport_append", "decision", 2),
+    ),
+)
+def test_forced_live_initial_death_recovers_pending_or_complete_decision(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    stage: str,
+    expected_type: str,
+    expected_sequence: int,
+) -> None:
+    from modori.research_flow import (
+        DurableDecision,
+        DurablePendingDecision,
+        LiveResearchFlowCoordinator,
+    )
+
+    handle = _prepare_live_flow(tmp_path, monkeypatch)
+    _kill_live_child("--flow-initial-child", stage)
+    recovered = LiveResearchFlowCoordinator(
+        event_id_factory=_flow_factory(),
+        passport_object_id_factory=_flow_factory(),
+        utc_clock=lambda: None,
+    ).recover_current(handle)
+    expected_class = (
+        DurablePendingDecision if expected_type == "pending" else DurableDecision
+    )
+    assert isinstance(recovered, expected_class)
+    assert recovered.committed_sequence == expected_sequence
+    with DecisionLedgerStore.open(handle.ledger_path, handle.record.task_project_id) as store:
+        assert store.verify(full_integrity=True).event_count == expected_sequence
+
+
+@pytest.mark.parametrize(
+    ("stage", "expected_type", "expected_sequence"),
+    (
+        ("after_answer_append", "pending", 3),
+        ("after_passport_append", "decision", 4),
+    ),
+)
+def test_forced_live_answer_death_recovers_pending_or_complete_successor(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    stage: str,
+    expected_type: str,
+    expected_sequence: int,
+) -> None:
+    from modori.research_flow import (
+        DurableDecision,
+        DurablePendingDecision,
+        LiveResearchFlowCoordinator,
+    )
+
+    handle = _prepare_live_flow(tmp_path, monkeypatch)
+    initial = LiveResearchFlowCoordinator(
+        event_id_factory=_flow_factory("event:passport:2"),
+        passport_object_id_factory=_flow_factory("passport:decision:1"),
+        utc_clock=lambda: None,
+    ).commit_initial(handle, _flow_request(handle))
+    assert isinstance(initial, DurableDecision)
+    _kill_live_child("--flow-answer-child", stage)
+    recovered = LiveResearchFlowCoordinator(
+        event_id_factory=_flow_factory(),
+        passport_object_id_factory=_flow_factory(),
+        utc_clock=lambda: None,
+    ).recover_current(handle)
+    expected_class = (
+        DurablePendingDecision if expected_type == "pending" else DurableDecision
+    )
+    assert isinstance(recovered, expected_class)
+    assert recovered.committed_sequence == expected_sequence
+    assert recovered.request.question_budget_remaining == 2
+
+
+def test_forced_live_retraction_death_recovers_terminal_retraction(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from modori.research_flow import (
+        DurableRetraction,
+        LiveResearchFlowCoordinator,
+    )
+
+    handle = _prepare_live_flow(tmp_path, monkeypatch)
+    LiveResearchFlowCoordinator(
+        event_id_factory=_flow_factory("event:passport:2"),
+        passport_object_id_factory=_flow_factory("passport:decision:1"),
+        utc_clock=lambda: None,
+    ).commit_initial(handle, _flow_request(handle))
+    _kill_live_child("--flow-retraction-child", "after_retraction_append")
+    recovered = LiveResearchFlowCoordinator(
+        event_id_factory=_flow_factory(),
+        passport_object_id_factory=_flow_factory(),
+        utc_clock=lambda: None,
+    ).recover_current(handle)
+    assert isinstance(recovered, DurableRetraction)
+    assert recovered.committed_sequence == 3
+    with DecisionLedgerStore.open(handle.ledger_path, handle.record.task_project_id) as store:
+        assert store.verify(full_integrity=True).event_count == 3
+
+
 if __name__ == "__main__" and len(sys.argv) == 4:
     if sys.argv[1] == "--child":
         _crashing_append_child(sys.argv[2], sys.argv[3])
@@ -378,3 +651,9 @@ if __name__ == "__main__" and len(sys.argv) == 4:
         _crashing_passport_child(sys.argv[2], sys.argv[3])
     elif sys.argv[1] == "--retraction-child":
         _crashing_retraction_child(sys.argv[2], sys.argv[3])
+    elif sys.argv[1] in {
+        "--flow-initial-child",
+        "--flow-answer-child",
+        "--flow-retraction-child",
+    }:
+        _crashing_live_flow_child(sys.argv[1], sys.argv[3])

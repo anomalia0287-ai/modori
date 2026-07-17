@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
@@ -609,6 +611,62 @@ class ResearchTaskIndex:
         except sqlite3.DatabaseError as exc:
             raise TaskIndexIntegrityError(
                 "active research task lookup failed"
+            ) from exc
+
+    @contextmanager
+    def _active_writer_lease(
+        self,
+        expected_record: ResearchTaskRecord,
+    ) -> Iterator[ResearchTaskRecord]:
+        """Serialize one private ledger writer for an exact active locator."""
+
+        if not isinstance(expected_record, ResearchTaskRecord):
+            raise TaskIndexConflictError(
+                "active lease requires an exact ResearchTaskRecord"
+            )
+        self._require_open()
+        try:
+            self._connection.execute("BEGIN IMMEDIATE")
+            self._require_verified_data_version()
+            current = self._get_unchecked(expected_record.task_project_id)
+            if (
+                current != expected_record
+                or current.state is not ResearchTaskState.ACTIVE
+            ):
+                raise TaskIndexConflictError(
+                    "active lease target is stale, missing, or readonly"
+                )
+            try:
+                yield current
+            except BaseException:
+                if self._connection.in_transaction:
+                    self._connection.rollback()
+                raise
+            current_after = self._get_unchecked(expected_record.task_project_id)
+            if (
+                current_after != expected_record
+                or current_after.state is not ResearchTaskState.ACTIVE
+            ):
+                raise TaskIndexConflictError(
+                    "active lease target changed before release"
+                )
+            self._connection.commit()
+        except (TaskIndexError, sqlite3.DatabaseError) as exc:
+            if self._connection.in_transaction:
+                self._connection.rollback()
+            if isinstance(exc, TaskIndexError):
+                raise
+            sqlite_code = getattr(exc, "sqlite_errorcode", None)
+            if (
+                isinstance(exc, sqlite3.OperationalError)
+                and isinstance(sqlite_code, int)
+                and sqlite_code & 0xFF in {sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED}
+            ):
+                raise TaskIndexConflictError(
+                    "active task writer lease is busy"
+                ) from exc
+            raise TaskIndexIntegrityError(
+                "active task writer lease failed closed"
             ) from exc
 
     def allocate(

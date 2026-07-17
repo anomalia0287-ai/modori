@@ -4,11 +4,13 @@ from dataclasses import FrozenInstanceError
 import inspect
 from pathlib import Path
 import sqlite3
+import threading
 
 import pytest
 
 import modori.research_memory as research_memory
 import modori.research_memory.sqlite_policy as sqlite_policy
+import modori.research_memory.task_index as task_index_module
 from modori.research_memory.canonical import canonical_digest
 from modori.research_memory.task_index import (
     ResearchTaskIndex,
@@ -365,6 +367,84 @@ def test_racing_connections_have_one_winner_and_one_active_row(
         assert reopened.locate_active(CONTRACT_ID, DIGEST) == winner
         assert reopened.get("task:loser") is None
         assert _row_count(reopened) == 1
+
+
+def test_active_lease_serializes_private_ledger_writer_without_mutating_index(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _set_local_app_data(tmp_path, monkeypatch)
+    first = ResearchTaskIndex.open_or_create()
+    record = first.allocate(
+        CONTRACT_ID,
+        DIGEST,
+        task_project_id="task:leased",
+        created_at_utc=None,
+    )
+    waiting = threading.Event()
+    acquired = threading.Event()
+    finished = threading.Event()
+
+    def contender() -> None:
+        with ResearchTaskIndex.open_or_create() as second:
+            waiting.set()
+            with second._active_writer_lease(record):
+                acquired.set()
+        finished.set()
+
+    thread = threading.Thread(target=contender)
+    try:
+        with first._active_writer_lease(record):
+            thread.start()
+            assert waiting.wait(timeout=5)
+            assert acquired.wait(timeout=0.2) is False
+            assert first.get(record.task_project_id) == record
+        assert acquired.wait(timeout=5)
+        assert finished.wait(timeout=5)
+        thread.join(timeout=5)
+        assert thread.is_alive() is False
+        assert first.verify(full_integrity=True).row_count == 1
+        assert first.get(record.task_project_id) == record
+    finally:
+        first.close()
+
+
+def test_active_lease_busy_is_conflict_not_integrity_corruption(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _set_local_app_data(tmp_path, monkeypatch)
+    first = ResearchTaskIndex.open_or_create()
+    record = first.allocate(
+        CONTRACT_ID,
+        DIGEST,
+        task_project_id="task:leased",
+        created_at_utc=None,
+    )
+    second: ResearchTaskIndex | None = None
+    try:
+        configure = task_index_module.configure_managed_connection
+
+        def configure_with_short_busy_timeout(connection, **kwargs) -> None:
+            configure(connection, **kwargs)
+            connection.execute("PRAGMA busy_timeout=50")
+
+        monkeypatch.setattr(
+            task_index_module,
+            "configure_managed_connection",
+            configure_with_short_busy_timeout,
+        )
+        second = ResearchTaskIndex.open_or_create()
+        with first._active_writer_lease(record):
+            with pytest.raises(TaskIndexConflictError, match="busy|lease"):
+                with second._active_writer_lease(record):
+                    pytest.fail("busy contender acquired the active lease")
+        assert first.get(record.task_project_id) == record
+        second.verify(full_integrity=True)
+    finally:
+        first.close()
+        if second is not None:
+            second.close()
 
 
 def test_live_external_modification_requires_verification_and_fails_closed(
