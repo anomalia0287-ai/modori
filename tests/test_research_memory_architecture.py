@@ -78,7 +78,7 @@ def test_research_memory_uses_stdlib_and_pure_modori_contracts_only() -> None:
 def test_sqlite_imports_stay_in_storage_boundaries() -> None:
     for path in RESEARCH_MEMORY_ROOT.glob("*.py"):
         names = _imports(path)
-        if path.name == "ledger_store.py":
+        if path.name in {"ledger_store.py", "task_index.py"}:
             assert "sqlite3" in names
             assert "modori.path_policy" not in names
         elif path.name == "sqlite_policy.py":
