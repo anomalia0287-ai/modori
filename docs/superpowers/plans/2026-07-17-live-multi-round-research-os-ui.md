@@ -1026,7 +1026,7 @@ def map_passport_to_step(
 ) -> PassportStepMapping: ...
 ```
 
-- [ ] **Step 1: Write a byte-canonical oracle test for all six rows**
+- [x] **Step 1: Write a byte-canonical oracle test for all six rows**
 
 Assert the exact Section 12 step type and params after canonicalization:
 
@@ -1039,7 +1039,7 @@ Assert the exact Section 12 step type and params after canonicalization:
 
 Pass each result through the current step schema migrator and validator.
 
-- [ ] **Step 2: Write adversarial identity and mutation tests**
+- [x] **Step 2: Write adversarial identity and mutation tests**
 
 Kill mutants for `pearson -> auto`, `spearman -> auto`, `always_welch -> modern`,
 `classic -> modern`, outcome/predictor swap, outcome/group swap, before/after swap,
@@ -1048,7 +1048,7 @@ nearby capability, extra role, duplicate role, mismatched repeated order, change
 fingerprint, wrong request binding, and a foreign/non-current passport. Every case must
 return typed handoff failure; no nearby-method fallback is permitted.
 
-- [ ] **Step 3: Run the tests and confirm failure**
+- [x] **Step 3: Run the tests and confirm failure**
 
 Run:
 
@@ -1058,7 +1058,7 @@ Run:
 
 Expected: FAIL because the exact mapper does not exist.
 
-- [ ] **Step 4: Implement a closed immutable mapping table**
+- [x] **Step 4: Implement a closed immutable mapping table**
 
 Bind the intermediate `PassportStepMapping` to passport artifact ID/digest, capability
 key, dataset digest, exact step type, canonical params, experimental status, and
@@ -1068,7 +1068,14 @@ or visible candidate. Task 9 alone may combine a verified mapping with preflight
 `PassportBoundPreparation`. Keep both contracts structurally separate from legacy
 `RecommendationPreparation`.
 
-- [ ] **Step 5: Run exact mapping and step-schema tests**
+Pin the accepted P1 Method Space version, ruleset version, Method Space digest, and
+clarification-registry digest in the handoff oracle. A live catalog with the same
+capability IDs but changed semantics is not accepted merely because a new passport
+matches it; catalog evolution must update and revalidate this table explicitly. Recheck
+that every mapped variable is present in the current request inventory and that the
+StudySpec fingerprint still equals the current request fingerprint.
+
+- [x] **Step 5: Run exact mapping and step-schema tests**
 
 Run:
 
@@ -1078,7 +1085,17 @@ Run:
 
 Expected: all pass with every Section 12 row accepted and every mutant rejected.
 
-- [ ] **Step 6: Commit**
+Pre-commit evidence on 2026-07-17: the handoff/passport gate passed 74 tests; the
+handoff plus all five current step-schema suites passed 123 tests; the adjacent flow,
+coordinator, concurrency, intake, passport, and architecture gate passed 226 tests.
+The focused handoff suite passed 45 tests and Ruff passed. All pytest runs disabled the
+cache provider. Four added fail-first cases proved that an unavailable variable, a
+StudySpec/current-fingerprint mismatch, and `stale`/`failure` preparation artifacts had
+previously crossed the standalone contracts; all now fail closed. Ten malformed,
+noncanonical, duplicate-key, non-finite, or future-version parameter byte forms are
+also rejected.
+
+- [x] **Step 6: Commit**
 
 ```powershell
 git add -- src/modori/research_flow/handoff.py src/modori/research_flow/contracts.py src/modori/research_flow/__init__.py tests/test_research_flow_handoff.py

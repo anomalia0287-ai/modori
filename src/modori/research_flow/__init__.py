@@ -5,6 +5,8 @@ from modori.research_flow.contracts import (
     P1_REACHABLE_STATES,
     DatasetIdentity,
     FlowErrorKind,
+    PassportBoundPreparation,
+    PassportStepMapping,
     PreflightDisposition,
     ResearchFlowContractError,
     ResearchFlowState,
@@ -30,6 +32,10 @@ from modori.research_flow.fingerprint import (
     FingerprintLimitError,
     SourceSchemaDescriptor,
     fingerprint_dataset,
+)
+from modori.research_flow.handoff import (
+    PassportHandoffError,
+    map_passport_to_step,
 )
 from modori.research_flow.task_session import (
     ResearchTaskHandle,
@@ -60,6 +66,9 @@ __all__ = [
     "LiveResearchFlowError",
     "LiveResearchFlowIntegrityError",
     "LiveResearchFlowUnavailableError",
+    "PassportBoundPreparation",
+    "PassportHandoffError",
+    "PassportStepMapping",
     "PreflightDisposition",
     "ResearchFlowContractError",
     "ResearchFlowState",
@@ -72,4 +81,5 @@ __all__ = [
     "TaskSessionIntegrityError",
     "TaskSessionUnavailableError",
     "fingerprint_dataset",
+    "map_passport_to_step",
 ]

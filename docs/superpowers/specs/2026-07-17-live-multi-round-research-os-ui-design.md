@@ -537,13 +537,23 @@ computed.
 
 Additional assertions are mandatory:
 
+- the handoff pins Method Space `research-os-p1-v1`, ruleset
+  `research-os-c1-p1-v1`, Method Space digest
+  `3c8eb1ce4ff19c703fc30ef6ceb77c34ba4d03c06b55b65b09a7585b5b576b29`, and
+  clarification-registry digest
+  `ed762a596485de8b678357619455de3519d13659c157208cf9a8e05b0414029e`;
+- runtime catalog drift fails closed even when a forged passport is changed to match
+  the drifted catalog; updating either catalog therefore requires explicit handoff
+  review and a new oracle pin;
 - summary/frequency outcomes are nonempty and unique;
 - Pearson/Spearman have exactly one outcome and one distinct focal predictor;
 - Welch has exactly one outcome and one distinct group role;
 - paired comparison has exactly two repeated-measure variables;
 - repeated-measure role and repeated order contain the same two IDs in the same order;
 - paired outcome is exactly the `after` variable; and
-- the current fingerprint equals the request, passport, and preparation fingerprint.
+- every mapped variable exists in the request's current variable inventory; and
+- the current fingerprint equals the request, bound StudySpec, passport, and
+  preparation fingerprint.
 
 Any mapping mismatch, missing role, extra role, changed method, `auto` method, `modern`
 routing preset, before/after swap, unknown capability, future step schema, or changed
