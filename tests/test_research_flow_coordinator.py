@@ -143,6 +143,23 @@ def _unsealed_copy(record, **changes):
     return forged
 
 
+def test_recover_current_or_none_distinguishes_verified_empty_task() -> None:
+    handle = _handle()
+
+    assert (
+        _coordinator(event_ids=(), passport_ids=()).recover_current_or_none(handle)
+        is None
+    )
+
+    with DecisionLedgerStore.open(
+        handle.ledger_path,
+        handle.record.task_project_id,
+    ) as ledger:
+        report = ledger.verify(full_integrity=True)
+        assert report.event_count == 0
+        assert report.artifact_count == 0
+
+
 def _answer(
     decision: DurableDecision,
     *,
@@ -192,7 +209,9 @@ def test_initial_decision_is_frozen_exact_and_published_only_after_readback(
     with pytest.raises(FrozenInstanceError):
         decision.action = PrimaryAction.ABSTAIN  # type: ignore[misc]
 
-    with DecisionLedgerStore.open(handle.ledger_path, decision.task_project_id) as store:
+    with DecisionLedgerStore.open(
+        handle.ledger_path, decision.task_project_id
+    ) as store:
         assert store.verify(full_integrity=True).head.event_hash == (
             decision.committed_head_hash
         )
@@ -258,8 +277,7 @@ def test_durable_records_cannot_be_constructed_without_coordinator_seal(
     handle = _handle()
     decision = _coordinator().commit_initial(handle, _request(handle))
     values = {
-        name: getattr(decision, name)
-        for name in DurableDecision.__dataclass_fields__
+        name: getattr(decision, name) for name in DurableDecision.__dataclass_fields__
     }
 
     with pytest.raises(LiveResearchFlowError, match="coordinator|verified|seal"):
@@ -286,7 +304,9 @@ def test_request_receipt_without_passport_recovers_only_as_explicit_pending(
     assert recovery.reason_code == "decision_not_committed"
     assert recovery.committed_event_id == "event:project:1"
     assert recovery.committed_sequence == 1
-    with DecisionLedgerStore.open(handle.ledger_path, handle.record.task_project_id) as store:
+    with DecisionLedgerStore.open(
+        handle.ledger_path, handle.record.task_project_id
+    ) as store:
         assert all(
             artifact.artifact_kind is not LedgerArtifactKind.ANALYSIS_PASSPORT
             for artifact in store.artifacts()
@@ -309,7 +329,9 @@ def test_recover_current_is_read_only_and_never_calls_identity_factories(
     _set_local_app_data(tmp_path, monkeypatch)
     handle = _handle()
     original = _coordinator().commit_initial(handle, _request(handle))
-    with DecisionLedgerStore.open(handle.ledger_path, handle.record.task_project_id) as store:
+    with DecisionLedgerStore.open(
+        handle.ledger_path, handle.record.task_project_id
+    ) as store:
         before = store.verify(full_integrity=True)
         before_events = store.events()
         before_artifacts = store.artifacts()
@@ -317,7 +339,9 @@ def test_recover_current_is_read_only_and_never_calls_identity_factories(
     recovered = _coordinator(event_ids=(), passport_ids=()).recover_current(handle)
 
     assert recovered == original
-    with DecisionLedgerStore.open(handle.ledger_path, handle.record.task_project_id) as store:
+    with DecisionLedgerStore.open(
+        handle.ledger_path, handle.record.task_project_id
+    ) as store:
         assert store.verify(full_integrity=True) == before
         assert store.events() == before_events
         assert store.artifacts() == before_artifacts
@@ -341,7 +365,9 @@ def test_answer_commit_consumes_one_passport_and_publishes_one_new_decision(
     assert second.request.question_budget_remaining == 2
     assert second.committed_sequence == 4
     assert second.passport_digest != first.passport_digest
-    with DecisionLedgerStore.open(handle.ledger_path, handle.record.task_project_id) as store:
+    with DecisionLedgerStore.open(
+        handle.ledger_path, handle.record.task_project_id
+    ) as store:
         history = PassportHistory.inspect(store.events(), store.artifacts())
         assert len(history.records) == 2
         assert history.records[0].consumed_by_event_id == answer.event_id
@@ -351,7 +377,9 @@ def test_answer_commit_consumes_one_passport_and_publishes_one_new_decision(
 
     with pytest.raises(LiveResearchFlowError):
         coordinator.commit_answer(handle, answer)
-    with DecisionLedgerStore.open(handle.ledger_path, handle.record.task_project_id) as store:
+    with DecisionLedgerStore.open(
+        handle.ledger_path, handle.record.task_project_id
+    ) as store:
         assert store.verify(full_integrity=True) == before
 
 
@@ -400,9 +428,7 @@ def test_retraction_is_durable_terminal_state_and_never_reissues_same_passport(
 
     assert isinstance(retracted, DurableRetraction)
     assert retracted.request == decision.request
-    assert retracted.retracted_passport_artifact_id == (
-        decision.passport_artifact_id
-    )
+    assert retracted.retracted_passport_artifact_id == (decision.passport_artifact_id)
     assert retracted.retracted_passport_digest == decision.passport_digest
     assert retracted.committed_event_id == "event:retract:3"
     assert retracted.committed_sequence == 3
@@ -462,9 +488,13 @@ def test_three_not_sure_answers_end_in_committed_abstention_not_fourth_question(
                 answer_value=AnswerValue(kind=AnswerValueKind.NOT_SURE),
             ),
         )
-    with DecisionLedgerStore.open(handle.ledger_path, handle.record.task_project_id) as store:
+    with DecisionLedgerStore.open(
+        handle.ledger_path, handle.record.task_project_id
+    ) as store:
         assert store.verify(full_integrity=True).event_count == 8
-        assert len(PassportHistory.inspect(store.events(), store.artifacts()).records) == 4
+        assert (
+            len(PassportHistory.inspect(store.events(), store.artifacts()).records) == 4
+        )
 
 
 def test_stale_readonly_handle_and_mismatched_request_fail_without_ledger_write(
@@ -476,11 +506,15 @@ def test_stale_readonly_handle_and_mismatched_request_fail_without_ledger_write(
     request = _request(handle)
     with ResearchTaskIndex.open_or_create() as index:
         index.mark_readonly(handle.record.task_project_id)
-        assert index.get(handle.record.task_project_id).state is ResearchTaskState.READONLY
+        assert (
+            index.get(handle.record.task_project_id).state is ResearchTaskState.READONLY
+        )
 
     with pytest.raises(LiveResearchFlowError, match="active|handle"):
         _coordinator().commit_initial(handle, request)
-    with DecisionLedgerStore.open(handle.ledger_path, handle.record.task_project_id) as store:
+    with DecisionLedgerStore.open(
+        handle.ledger_path, handle.record.task_project_id
+    ) as store:
         assert store.verify(full_integrity=True).event_count == 0
 
 
@@ -559,7 +593,9 @@ def test_initial_poison_boundaries_recover_only_empty_pending_or_complete_decisi
         else:
             assert isinstance(recovered, DurableDecision)
         assert recovered.committed_sequence == expected_sequence
-    with DecisionLedgerStore.open(handle.ledger_path, handle.record.task_project_id) as store:
+    with DecisionLedgerStore.open(
+        handle.ledger_path, handle.record.task_project_id
+    ) as store:
         report = store.verify(full_integrity=True)
         assert report.event_count == expected_sequence
         history = PassportHistory.inspect(store.events(), store.artifacts())
@@ -610,7 +646,9 @@ def test_planner_or_passport_construction_failure_never_publishes_a_decision(
     recovered = _coordinator(event_ids=(), passport_ids=()).recover_current(handle)
     assert isinstance(recovered, DurablePendingDecision)
     assert recovered.committed_sequence == 1
-    with DecisionLedgerStore.open(handle.ledger_path, handle.record.task_project_id) as store:
+    with DecisionLedgerStore.open(
+        handle.ledger_path, handle.record.task_project_id
+    ) as store:
         assert store.verify(full_integrity=True).event_count == 1
         assert PassportHistory.inspect(store.events(), store.artifacts()).records == ()
 
@@ -658,7 +696,9 @@ def test_answer_poison_boundaries_never_publish_partial_successor(
         else:
             assert recovered.request.question_budget_remaining == 2
     assert recovered.committed_sequence == expected_sequence
-    with DecisionLedgerStore.open(handle.ledger_path, handle.record.task_project_id) as store:
+    with DecisionLedgerStore.open(
+        handle.ledger_path, handle.record.task_project_id
+    ) as store:
         assert store.verify(full_integrity=True).event_count == expected_sequence
 
 
@@ -715,7 +755,9 @@ def test_wrong_foreign_replayed_or_modified_answer_is_rejected_without_write(
     handle = _handle()
     decision = _coordinator().commit_initial(handle, _request(handle))
     answer = replace(_answer(decision, event_id="event:answer:3"), **change)
-    with DecisionLedgerStore.open(handle.ledger_path, handle.record.task_project_id) as store:
+    with DecisionLedgerStore.open(
+        handle.ledger_path, handle.record.task_project_id
+    ) as store:
         before = store.verify(full_integrity=True)
 
     with pytest.raises(LiveResearchFlowError):
@@ -724,7 +766,9 @@ def test_wrong_foreign_replayed_or_modified_answer_is_rejected_without_write(
             passport_ids=("passport:decision:2",),
         ).commit_answer(handle, answer)
 
-    with DecisionLedgerStore.open(handle.ledger_path, handle.record.task_project_id) as store:
+    with DecisionLedgerStore.open(
+        handle.ledger_path, handle.record.task_project_id
+    ) as store:
         assert store.verify(full_integrity=True) == before
 
 
@@ -751,11 +795,15 @@ def test_resume_rejects_nonexact_pending_receipt_without_writing(
     pending = _coordinator(event_ids=(), passport_ids=()).recover_current(handle)
     assert isinstance(pending, DurablePendingDecision)
     forged = _unsealed_copy(pending, **change)
-    with DecisionLedgerStore.open(handle.ledger_path, handle.record.task_project_id) as store:
+    with DecisionLedgerStore.open(
+        handle.ledger_path, handle.record.task_project_id
+    ) as store:
         before = store.verify(full_integrity=True)
 
     with pytest.raises(LiveResearchFlowError, match="stale|current"):
         _coordinator().resume_pending(handle, forged)
 
-    with DecisionLedgerStore.open(handle.ledger_path, handle.record.task_project_id) as store:
+    with DecisionLedgerStore.open(
+        handle.ledger_path, handle.record.task_project_id
+    ) as store:
         assert store.verify(full_integrity=True) == before

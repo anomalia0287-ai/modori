@@ -73,7 +73,9 @@ def _set_local_app_data(
 
 
 def _row_count(index: ResearchTaskIndex) -> int:
-    return int(index._connection.execute("SELECT count(*) FROM research_tasks").fetchone()[0])
+    return int(
+        index._connection.execute("SELECT count(*) FROM research_tasks").fetchone()[0]
+    )
 
 
 def test_default_path_is_fixed_application_owned_and_not_created_by_lookup(
@@ -120,9 +122,12 @@ def test_schema_inventory_application_identity_and_fingerprint_are_exact(
         application_tables = [row for row in table_list if row[1] == "research_tasks"]
         assert len(application_tables) == 1
         assert application_tables[0][5] == 1
-        assert index._connection.execute(
-            "SELECT name FROM sqlite_schema WHERE type IN ('trigger','view')"
-        ).fetchall() == []
+        assert (
+            index._connection.execute(
+                "SELECT name FROM sqlite_schema WHERE type IN ('trigger','view')"
+            ).fetchall()
+            == []
+        )
 
 
 def test_record_contract_is_frozen_exact_and_authority_free() -> None:
@@ -638,6 +643,7 @@ def test_public_index_api_has_no_import_delete_or_execution_authority() -> None:
         "get",
         "locate_active",
         "mark_readonly",
+        "open_existing",
         "open_or_create",
         "verify",
     }

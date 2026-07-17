@@ -87,9 +87,7 @@ def _require_coordinator_seal(value: object) -> None:
 
 def _require_reference(value: object, field_name: str) -> str:
     if not isinstance(value, str) or not value:
-        raise LiveResearchFlowIntegrityError(
-            f"{field_name} must be a non-empty string"
-        )
+        raise LiveResearchFlowIntegrityError(f"{field_name} must be a non-empty string")
     return value
 
 
@@ -107,9 +105,7 @@ def _require_digest(value: object, field_name: str) -> str:
 
 def _require_sequence(value: object, field_name: str) -> int:
     if type(value) is not int or value < 1:
-        raise LiveResearchFlowIntegrityError(
-            f"{field_name} must be a positive integer"
-        )
+        raise LiveResearchFlowIntegrityError(f"{field_name} must be a positive integer")
     return value
 
 
@@ -434,9 +430,7 @@ class LiveResearchFlowCoordinator:
     @staticmethod
     def _validate_handle(handle: ResearchTaskHandle) -> None:
         if not isinstance(handle, ResearchTaskHandle):
-            raise LiveResearchFlowIntegrityError(
-                "handle must be a ResearchTaskHandle"
-            )
+            raise LiveResearchFlowIntegrityError("handle must be a ResearchTaskHandle")
         if handle.record.state is not ResearchTaskState.ACTIVE:
             raise LiveResearchFlowConflictError(
                 "task handle does not name an active locator"
@@ -494,7 +488,12 @@ class LiveResearchFlowCoordinator:
             raise LiveResearchFlowUnavailableError(
                 "secure Decision Ledger runtime is unavailable"
             ) from exc
-        except (LedgerPathError, LedgerIntegrityError, LedgerStoreError, OSError) as exc:
+        except (
+            LedgerPathError,
+            LedgerIntegrityError,
+            LedgerStoreError,
+            OSError,
+        ) as exc:
             if store is not None:
                 store.close()
             raise LiveResearchFlowIntegrityError(
@@ -665,9 +664,28 @@ class LiveResearchFlowCoordinator:
     def recover_current(self, handle: ResearchTaskHandle) -> DurableFlowRecord:
         """Reconstruct the current durable record without planning or writing."""
 
+        recovered = self.recover_current_or_none(handle)
+        if recovered is None:
+            raise LiveResearchFlowConflictError(
+                "task has no committed request to recover"
+            )
+        return recovered
+
+    def recover_current_or_none(
+        self,
+        handle: ResearchTaskHandle,
+    ) -> DurableFlowRecord | None:
+        """Return null only for a fully verified, authority-free empty task."""
+
         self._verify_frozen_inventory()
         with self._active_task_lease(handle):
-            return self._recover_current_leased(handle)
+            store = self._open_store(handle)
+            try:
+                if store.verify(full_integrity=True).head.sequence == 0:
+                    return None
+                return self._recover_from_store(store, handle)
+            finally:
+                store.close()
 
     def _recover_current_leased(
         self,
@@ -747,7 +765,10 @@ class LiveResearchFlowCoordinator:
                 current = self._recover_from_store(store, handle)
                 if isinstance(current, DurableDecision) and current.request == request:
                     return current
-                if isinstance(current, DurablePendingDecision) and current.request == request:
+                if (
+                    isinstance(current, DurablePendingDecision)
+                    and current.request == request
+                ):
                     raise LiveResearchFlowConflictError(
                         "initial request is pending; call resume_pending explicitly"
                     )

@@ -189,6 +189,47 @@ def test_initialized_session_reopens_exact_task_without_allocating(
         assert ledger.load_request().question.envelope.project_id == "task:first"
 
 
+def test_locate_existing_does_not_create_index_or_allocate_when_absent(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    local_app_data = _set_local_app_data(tmp_path, monkeypatch)
+
+    def forbidden_id() -> str:
+        pytest.fail("read-only lookup attempted to allocate a task ID")
+
+    located = ResearchTaskSessionStore(
+        task_id_factory=forbidden_id,
+        utc_clock=lambda: pytest.fail("read-only lookup consulted the UTC clock"),
+    ).locate_existing(_identity())
+
+    assert located is None
+    assert not (local_app_data / "Modori").exists()
+
+
+def test_locate_existing_reopens_and_fully_verifies_active_task(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _set_local_app_data(tmp_path, monkeypatch)
+    identity = _identity()
+    expected = _session("task:first").open_or_allocate(
+        identity,
+        expected_active_task_id=None,
+    )
+    _initialize(expected)
+
+    def forbidden_id() -> str:
+        pytest.fail("read-only lookup attempted to allocate a task ID")
+
+    located = ResearchTaskSessionStore(
+        task_id_factory=forbidden_id,
+        utc_clock=lambda: pytest.fail("read-only lookup consulted the UTC clock"),
+    ).locate_existing(identity)
+
+    assert located == expected
+
+
 _INITIAL_CRASH_STAGES = (
     "before_ledger_create",
     "after_ledger_create",
@@ -350,10 +391,13 @@ def test_same_fingerprint_correction_allocates_next_ordinal_and_preserves_histor
     assert corrected.record.state is ResearchTaskState.ACTIVE
     with ResearchTaskIndex.open_or_create() as index:
         assert index.get("task:first").state is ResearchTaskState.READONLY
-        assert index.locate_active(
-            identity.fingerprint_contract_id,
-            identity.dataset_fingerprint,
-        ) == corrected.record
+        assert (
+            index.locate_active(
+                identity.fingerprint_contract_id,
+                identity.dataset_fingerprint,
+            )
+            == corrected.record
+        )
     with DecisionLedgerStore.open(
         previous.ledger_path,
         previous.record.task_project_id,
@@ -388,10 +432,13 @@ def test_dataset_drift_allocates_new_identity_and_marks_previous_readonly(
     assert current.record.task_ordinal == 1
     with ResearchTaskIndex.open_or_create() as index:
         assert index.get("task:first").state is ResearchTaskState.READONLY
-        assert index.locate_active(
-            new_identity.fingerprint_contract_id,
-            new_identity.dataset_fingerprint,
-        ) == current.record
+        assert (
+            index.locate_active(
+                new_identity.fingerprint_contract_id,
+                new_identity.dataset_fingerprint,
+            )
+            == current.record
+        )
 
 
 @pytest.mark.parametrize(

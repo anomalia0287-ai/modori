@@ -7,8 +7,15 @@ from typing import Any, Callable, Mapping
 from PySide6.QtCore import Property, QObject, Signal, Slot
 
 from modori.knowledge import Library
+from modori.research_os import Language as ResearchLanguage
 from modori.ui.analysis_selection_controller import AnalysisSelectionControllerMixin
-from modori.ui.contracts import CommandResult, ExplainResult, ImportOptions, ReportExportOptions
+from modori.ui.contracts import (
+    CommandResult,
+    ControllerMode,
+    ExplainResult,
+    ImportOptions,
+    ReportExportOptions,
+)
 from modori.ui.controller_services import UiControllerServices
 from modori.ui.data_transform_controller import DataTransformControllerMixin
 from modori.ui.import_layout_controller import ImportLayoutControllerMixin
@@ -24,6 +31,7 @@ from modori.ui.recommendation_controller import (
     RecommendationControllerMixin,
     empty_recommendation_state,
 )
+from modori.ui.research_flow_controller import ResearchFlowController
 from modori.ui.result_state import UiResultState
 from modori.ui.report_export_controller import ReportExportControllerMixin
 from modori.ui.run_tracker import UiRunTracker
@@ -61,8 +69,12 @@ _STEP_TITLE_LABELS_KO = {
 }
 
 _RECONFIRMATION_ERROR_CODE = "experimental_confirmation_required"
-_RECONFIRMATION_RUN_MESSAGE = "변경된 데이터 구성을 다시 확인하거나 분석 방법을 직접 구성해 주세요."
-_RECONFIRMATION_REPORT_MESSAGE = "변경된 데이터 구성을 다시 확인한 뒤 보고서를 저장해 주세요."
+_RECONFIRMATION_RUN_MESSAGE = (
+    "변경된 데이터 구성을 다시 확인하거나 분석 방법을 직접 구성해 주세요."
+)
+_RECONFIRMATION_REPORT_MESSAGE = (
+    "변경된 데이터 구성을 다시 확인한 뒤 보고서를 저장해 주세요."
+)
 
 
 def _localized_step_title(title: str) -> str:
@@ -77,6 +89,27 @@ def export_report_from_pipeline(
     options: ReportExportOptions,
 ) -> Path:
     return PipelineOperations(pipeline).export_report(options)
+
+
+def _worker_boundaries(
+    owner: object,
+    worker: object | None,
+) -> tuple[object, ResearchFlowController]:
+    bound_worker = worker or SerializedEngineWorker()
+    owner.workerResultReady.connect(owner.apply_worker_result)
+    runtime = owner._services.build_research_flow_runtime(
+        pipeline_version_provider=lambda: owner.pipeline_version
+    )
+    flow = ResearchFlowController(
+        runtime=runtime,
+        worker=bound_worker,
+        pipeline_version_provider=lambda: owner.pipeline_version,
+        mode_change_request=lambda mode: owner.setMode(mode).ok,
+        initial_mode=ControllerMode(owner._mode),
+        language=ResearchLanguage.KO,
+    )
+    owner.stateChanged.connect(flow.syncPipelineVersion)
+    return bound_worker, flow
 
 
 class UiController(
@@ -96,7 +129,8 @@ class UiController(
         *,
         pipeline: object | None = None,
         pipeline_factory: Callable[[Path, ImportOptions], object] | None = None,
-        report_exporter: Callable[[object, ReportExportOptions], str | Path] | None = None,
+        report_exporter: Callable[[object, ReportExportOptions], str | Path]
+        | None = None,
         library: Library | None = None,
         reduce_effects: bool | None = None,
         settings_store: UiSettingsStore | None = None,
@@ -133,12 +167,15 @@ class UiController(
         self._experimental_recommendation_confirmed = False
         self.resultsModel: list[Any] = self._result_state.results_model
         self._run_tracker = UiRunTracker()
-        self._worker = worker or SerializedEngineWorker()
-        self.workerResultReady.connect(self.apply_worker_result)
+        self._worker, self._research_flow = _worker_boundaries(self, worker)
 
     @property
     def pipeline_version(self) -> int:
         return self._pipeline_state.pipeline_version
+
+    @Property(QObject, constant=True)
+    def researchFlow(self) -> QObject:
+        return self._research_flow
 
     @Property(str, notify=stateChanged)
     def mode(self) -> str:
@@ -192,6 +229,7 @@ class UiController(
     @Property(str, notify=stateChanged)
     def resultTableText(self) -> str:
         return self._result_state.table_text
+
     @Property(str, notify=stateChanged)
     def resultNotesText(self) -> str:
         return self._result_state.notes_text
@@ -272,6 +310,8 @@ class UiController(
             return self._command_error("지원하지 않는 모드입니다.", "invalid_mode")
         changed = mode != self._mode
         self._mode = mode
+        if changed:
+            self._research_flow.adoptMode(mode)
         if changed:
             self._refresh_recommendations()
         self._last_error = ""
@@ -384,11 +424,17 @@ class UiController(
     def openRecentFileAt(self, index: int) -> bool:
         recent_files = self._session.recent_files
         if index < 0 or index >= len(recent_files):
-            return self._command_error("최근 파일을 찾을 수 없습니다.", "recent_file_missing").ok
+            return self._command_error(
+                "최근 파일을 찾을 수 없습니다.", "recent_file_missing"
+            ).ok
         recent_path = Path(recent_files[index])
         if not recent_path.exists():
-            return self._command_error("최근 파일을 찾을 수 없습니다.", "recent_file_missing").ok
-        return self.openDataFile(recent_path, ImportOptions(confirm_new_session=True)).ok
+            return self._command_error(
+                "최근 파일을 찾을 수 없습니다.", "recent_file_missing"
+            ).ok
+        return self.openDataFile(
+            recent_path, ImportOptions(confirm_new_session=True)
+        ).ok
 
     @Slot(bool, result=bool)
     def setRecentFilesEnabled(self, enabled: bool) -> bool:
@@ -435,7 +481,9 @@ class UiController(
         if self.pipeline is None:
             return self._command_error("다시 실행할 분석이 없습니다.", "no_pipeline")
         if self._session.selection_confirmation_required:
-            return self._command_error(_RECONFIRMATION_RUN_MESSAGE, _RECONFIRMATION_ERROR_CODE)
+            return self._command_error(
+                _RECONFIRMATION_RUN_MESSAGE, _RECONFIRMATION_ERROR_CODE
+            )
         validation = self._services.run_validator.validate(self._services.pipeline_ops)
         if not validation.ok:
             return self._command_error(
@@ -465,7 +513,9 @@ class UiController(
 
     def exportReport(self, options: ReportExportOptions) -> CommandResult:
         if self._session.selection_confirmation_required:
-            return self._command_error(_RECONFIRMATION_REPORT_MESSAGE, _RECONFIRMATION_ERROR_CODE)
+            return self._command_error(
+                _RECONFIRMATION_REPORT_MESSAGE, _RECONFIRMATION_ERROR_CODE
+            )
         exporter = self._report_exporter or export_report_from_pipeline
         selection_origin = self._session.selection_provenance
         effective_options = replace(

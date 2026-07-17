@@ -16,7 +16,9 @@ def test_ui_layer_does_not_import_private_step_helpers() -> None:
                 continue
             if node.module is None or not node.module.startswith("modori.steps"):
                 continue
-            private_names = sorted(alias.name for alias in node.names if alias.name.startswith("_"))
+            private_names = sorted(
+                alias.name for alias in node.names if alias.name.startswith("_")
+            )
             if private_names:
                 violations.append(f"{path}:{node.lineno}:{', '.join(private_names)}")
 
@@ -42,7 +44,9 @@ def test_ui_controller_does_not_keep_pipeline_internals() -> None:
         "_default_report_exporter",
         "_format_step_chain",
     }
-    actual = {node.name for node in controller.body if isinstance(node, ast.FunctionDef)}
+    actual = {
+        node.name for node in controller.body if isinstance(node, ast.FunctionDef)
+    }
 
     assert sorted(actual & forbidden) == []
 
@@ -140,7 +144,9 @@ def test_ui_controller_does_not_own_data_session_loading_policy() -> None:
     assert sorted(name for name in forbidden if name in source) == []
 
 
-def test_ui_controller_uses_service_composition_instead_of_individual_service_fields() -> None:
+def test_ui_controller_uses_service_composition_instead_of_individual_service_fields() -> (
+    None
+):
     path = UI_ROOT / "controller.py"
     source = path.read_text(encoding="utf-8")
     forbidden = {
@@ -195,3 +201,13 @@ def test_ui_controller_stays_within_facade_size_budget() -> None:
     assert controller.end_lineno - controller.lineno + 1 <= 560
     assert len(methods) <= 60
     assert longest_method <= 45
+
+
+def test_research_flow_uses_composition_and_no_second_executor() -> None:
+    controller_source = (UI_ROOT / "controller.py").read_text(encoding="utf-8")
+    flow_source = (UI_ROOT / "research_flow_controller.py").read_text(encoding="utf-8")
+
+    assert "def researchFlow" in controller_source
+    assert "ResearchFlowControllerMixin" not in controller_source
+    assert "ThreadPoolExecutor" not in flow_source
+    assert "SerializedEngineWorker(" not in flow_source

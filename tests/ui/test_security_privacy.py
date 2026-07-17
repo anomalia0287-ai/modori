@@ -28,6 +28,29 @@ def test_ui_network_guard_has_no_runtime_network_imports() -> None:
     assert violations == []
 
 
+def test_research_flow_has_no_process_dynamic_loader_or_network_boundary() -> None:
+    path = Path("src/modori/ui/research_flow_controller.py")
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    forbidden = {
+        "ctypes",
+        "http",
+        "importlib",
+        "multiprocessing",
+        "requests",
+        "socket",
+        "subprocess",
+        "urllib",
+    }
+    imported: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            imported.update(alias.name.split(".")[0] for alias in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.module:
+            imported.add(node.module.split(".")[0])
+
+    assert imported.isdisjoint(forbidden)
+
+
 def test_qml_has_no_remote_assets_or_web_engine() -> None:
     forbidden = ("http://", "https://", "WebEngine", "XmlHttpRequest", "fetch(")
     violations = [
@@ -48,7 +71,9 @@ def test_app_bootstrap_exposes_reduce_effects_from_env(monkeypatch) -> None:
     assert AppBootstrap().reduceEffects is True
 
 
-def test_controller_reduce_effects_toggle_persists_to_settings(tmp_path, monkeypatch) -> None:
+def test_controller_reduce_effects_toggle_persists_to_settings(
+    tmp_path, monkeypatch
+) -> None:
     from modori.ui.controller import UiController
 
     settings_path = tmp_path / "settings.json"

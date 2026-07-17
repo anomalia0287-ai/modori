@@ -118,9 +118,7 @@ def _schema_payload(
     ]
 
 
-_EXPECTED_SCHEMA_FINGERPRINT = canonical_digest(
-    _schema_payload(_EXPECTED_SCHEMA_ROWS)
-)
+_EXPECTED_SCHEMA_FINGERPRINT = canonical_digest(_schema_payload(_EXPECTED_SCHEMA_ROWS))
 
 
 def _require_closed_identifier(value: object, *, field: str) -> str:
@@ -131,9 +129,7 @@ def _require_closed_identifier(value: object, *, field: str) -> str:
 
 def _require_contract_id(value: object) -> str:
     if not isinstance(value, str) or not _CONTRACT_ID_RE.fullmatch(value):
-        raise ValueError(
-            "fingerprint_contract_id must be a closed contract identifier"
-        )
+        raise ValueError("fingerprint_contract_id must be a closed contract identifier")
     return value
 
 
@@ -231,9 +227,7 @@ def default_task_index_path() -> Path:
         raise TaskIndexPathError(
             "LOCALAPPDATA is unavailable for the local research task index"
         )
-    candidate = (
-        Path(local_app_data) / "Modori" / "research-task-index.sqlite3"
-    )
+    candidate = Path(local_app_data) / "Modori" / "research-task-index.sqlite3"
     try:
         return validate_managed_sqlite_path(
             candidate,
@@ -242,7 +236,9 @@ def default_task_index_path() -> Path:
             required_suffix=".sqlite3",
         )
     except ManagedSQLitePathError as exc:
-        raise TaskIndexPathError(str(exc).replace("managed SQLite", "task index")) from exc
+        raise TaskIndexPathError(
+            str(exc).replace("managed SQLite", "task index")
+        ) from exc
 
 
 def _schema_rows(
@@ -409,6 +405,60 @@ class ResearchTaskIndex:
                 "research task index could not be opened or verified"
             ) from exc
 
+    @classmethod
+    def open_existing(cls) -> ResearchTaskIndex | None:
+        """Open and verify the fixed index without ever creating it."""
+
+        _require_runtime()
+        resolved = default_task_index_path()
+        try:
+            if not resolved.exists():
+                return None
+            connection = sqlite3.connect(
+                f"{resolved.as_uri()}?mode=rw",
+                uri=True,
+                timeout=5.0,
+                isolation_level=None,
+                check_same_thread=True,
+            )
+        except OSError as exc:
+            raise TaskIndexPathError(
+                "research task index path could not be inspected"
+            ) from exc
+        except sqlite3.OperationalError as exc:
+            raise TaskIndexRuntimeError(
+                "existing research task index could not be opened without creation"
+            ) from exc
+        try:
+            configure_managed_connection(
+                connection,
+                query_only=False,
+                authorizer=None,
+            )
+            if not _schema_rows(connection):
+                raise TaskIndexIntegrityError(
+                    "existing research task index has no frozen schema"
+                )
+            store = cls(connection)
+            store.verify()
+            configure_managed_durability(connection)
+            connection.set_authorizer(_authorizer)
+            store.verify()
+            return store
+        except TaskIndexError:
+            connection.close()
+            raise
+        except ManagedSQLiteRuntimeError as exc:
+            connection.close()
+            raise TaskIndexRuntimeError(
+                "SQLite rejected required task-index hardening controls"
+            ) from exc
+        except sqlite3.DatabaseError as exc:
+            connection.close()
+            raise TaskIndexIntegrityError(
+                "research task index could not be opened or verified"
+            ) from exc
+
     def _require_open(self) -> None:
         if self._closed:
             raise TaskIndexError("research task index is closed")
@@ -422,9 +472,7 @@ class ResearchTaskIndex:
                 "research task index data version is unavailable"
             ) from exc
         if row is None or type(row[0]) is not int or row[0] < 1:
-            raise TaskIndexIntegrityError(
-                "research task index data version is invalid"
-            )
+            raise TaskIndexIntegrityError("research task index data version is invalid")
         return row[0]
 
     def _accept_verified_data_version(self, expected: int) -> None:
@@ -555,9 +603,7 @@ class ResearchTaskIndex:
         self._verified_data_version = None
         verification_version = self._data_version()
         self._run_database_checks(full_integrity=full_integrity)
-        report = self._validate_header_schema_and_rows(
-            full_integrity=full_integrity
-        )
+        report = self._validate_header_schema_and_rows(full_integrity=full_integrity)
         self._accept_verified_data_version(verification_version)
         return report
 
@@ -583,9 +629,7 @@ class ResearchTaskIndex:
         except TaskIndexError:
             raise
         except sqlite3.DatabaseError as exc:
-            raise TaskIndexIntegrityError(
-                "research task record lookup failed"
-            ) from exc
+            raise TaskIndexIntegrityError("research task record lookup failed") from exc
 
     def locate_active(
         self,
@@ -609,9 +653,7 @@ class ResearchTaskIndex:
         except TaskIndexError:
             raise
         except sqlite3.DatabaseError as exc:
-            raise TaskIndexIntegrityError(
-                "active research task lookup failed"
-            ) from exc
+            raise TaskIndexIntegrityError("active research task lookup failed") from exc
 
     @contextmanager
     def _active_writer_lease(

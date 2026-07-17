@@ -20,6 +20,12 @@ from modori.ui.report_export import ReportExportService
 from modori.ui.result_binding import ResultBindingPresenter
 from modori.ui.result_validation import ResultPayloadValidator
 from modori.ui.run_validation import RunConfigurationValidator
+from modori.research_os import Language
+from modori.ui.research_flow_controller import (
+    ResearchFlowPipelineAccess,
+    ResearchFlowRuntime,
+    build_default_research_flow_runtime,
+)
 
 
 PipelineFactory = Callable[[Path, ImportOptions], object]
@@ -83,3 +89,14 @@ class UiControllerServices:
         self.analysis_editor = AnalysisSelectionEditor(self.pipeline_ops)
         self.metadata_editor = VariableMetadataEditor(self.pipeline_ops)
         self.data_transform_editor = DataTransformEditor(self.pipeline_ops)
+
+    def build_research_flow_runtime(
+        self,
+        *,
+        pipeline_version_provider: Callable[[], int],
+    ) -> ResearchFlowRuntime:
+        return build_default_research_flow_runtime(
+            pipeline_access=ResearchFlowPipelineAccess(lambda: self.pipeline_ops),
+            pipeline_version_provider=pipeline_version_provider,
+            language=Language.KO,
+        )

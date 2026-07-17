@@ -57,9 +57,7 @@ class ResearchTaskHandle:
 
     def __post_init__(self) -> None:
         if not isinstance(self.record, ResearchTaskRecord):
-            raise TaskSessionIntegrityError(
-                "record must be a ResearchTaskRecord"
-            )
+            raise TaskSessionIntegrityError("record must be a ResearchTaskRecord")
         if self.record.state is not ResearchTaskState.ACTIVE:
             raise TaskSessionIntegrityError("task handle must name an active record")
         if not isinstance(self.ledger_path, Path) or not self.ledger_path.is_absolute():
@@ -125,8 +123,7 @@ class ResearchTaskSessionStore:
     ) -> bool:
         return (
             supplied.task_project_id == current.task_project_id
-            and supplied.fingerprint_contract_id
-            == current.fingerprint_contract_id
+            and supplied.fingerprint_contract_id == current.fingerprint_contract_id
             and supplied.dataset_fingerprint == current.dataset_fingerprint
             and supplied.task_ordinal == current.task_ordinal
             and supplied.created_at_utc == current.created_at_utc
@@ -211,7 +208,12 @@ class ResearchTaskSessionStore:
             raise TaskSessionUnavailableError(
                 "secure task ledger runtime is unavailable"
             ) from exc
-        except (LedgerPathError, LedgerIntegrityError, LedgerStoreError, OSError) as exc:
+        except (
+            LedgerPathError,
+            LedgerIntegrityError,
+            LedgerStoreError,
+            OSError,
+        ) as exc:
             raise TaskSessionIntegrityError(
                 "active task ledger failed full verification"
             ) from exc
@@ -301,6 +303,31 @@ class ResearchTaskSessionStore:
         except TaskIndexError as exc:
             raise self._translate_index_error(exc) from exc
 
+    def locate_existing(
+        self,
+        identity: DatasetIdentity,
+    ) -> ResearchTaskHandle | None:
+        """Locate and fully verify an active task without creating any state."""
+
+        identity = self._require_identity(identity)
+        try:
+            index = ResearchTaskIndex.open_existing()
+            if index is None:
+                return None
+            with index:
+                active = index.locate_active(
+                    identity.fingerprint_contract_id,
+                    identity.dataset_fingerprint,
+                )
+                if active is None:
+                    return None
+                self._validate_record_for_identity(active, identity)
+                return self._verified_handle(active)
+        except TaskSessionError:
+            raise
+        except TaskIndexError as exc:
+            raise self._translate_index_error(exc) from exc
+
     def start_replan(
         self,
         previous: ResearchTaskHandle,
@@ -326,9 +353,7 @@ class ResearchTaskSessionStore:
                         "previous handle record no longer matches locator identity"
                     )
                 try:
-                    expected_path = self._expected_path(
-                        previous.record.task_project_id
-                    )
+                    expected_path = self._expected_path(previous.record.task_project_id)
                 except TaskSessionUnavailableError as exc:
                     raise TaskSessionIntegrityError(
                         "previous task ledger path failed secure derivation"
@@ -338,9 +363,7 @@ class ResearchTaskSessionStore:
                         "previous handle ledger path is not application-derived"
                     )
                 if not expected_path.is_file():
-                    raise TaskSessionIntegrityError(
-                        "previous task ledger is missing"
-                    )
+                    raise TaskSessionIntegrityError("previous task ledger is missing")
                 try:
                     with DecisionLedgerStore.open(
                         expected_path,
@@ -357,8 +380,7 @@ class ResearchTaskSessionStore:
                     new_identity.dataset_fingerprint,
                 )
                 if active_new is not None and (
-                    active_new.task_project_id
-                    != previous.record.task_project_id
+                    active_new.task_project_id != previous.record.task_project_id
                 ):
                     self._validate_record_for_identity(active_new, new_identity)
                     if current_previous.state is ResearchTaskState.ACTIVE:
@@ -380,8 +402,7 @@ class ResearchTaskSessionStore:
                     )
                 if (
                     active_new is not None
-                    and active_new.task_project_id
-                    == previous.record.task_project_id
+                    and active_new.task_project_id == previous.record.task_project_id
                     and current_previous.state is not ResearchTaskState.ACTIVE
                 ):
                     raise TaskSessionIntegrityError(
@@ -390,9 +411,7 @@ class ResearchTaskSessionStore:
 
                 task_project_id, path, created_at_utc = self._new_task_identity()
                 if task_project_id == previous.record.task_project_id:
-                    raise TaskSessionConflictError(
-                        "replan task ID must be fresh"
-                    )
+                    raise TaskSessionConflictError("replan task ID must be fresh")
                 self._create_verified_empty_ledger(task_project_id, path)
                 self._poison("before_replan_index_allocate")
                 record = index.allocate(
@@ -401,9 +420,7 @@ class ResearchTaskSessionStore:
                     task_project_id=task_project_id,
                     created_at_utc=created_at_utc,
                     replaces_task_project_id=(
-                        previous.record.task_project_id
-                        if same_index_identity
-                        else None
+                        previous.record.task_project_id if same_index_identity else None
                     ),
                 )
                 self._poison("after_replan_index_allocate")

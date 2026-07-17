@@ -1406,8 +1406,14 @@ git commit -m "feat: project verified Research OS decisions"
 **Files:**
 
 - Create: `src/modori/ui/research_flow_controller.py`
+- Modify: `src/modori/research_memory/task_index.py`
+- Modify: `src/modori/research_flow/task_session.py`
+- Modify: `src/modori/research_flow/coordinator.py`
 - Modify: `src/modori/ui/controller_services.py`
 - Modify: `src/modori/ui/controller.py`
+- Modify: `tests/test_research_task_index.py`
+- Modify: `tests/test_research_flow_task_session.py`
+- Modify: `tests/test_research_flow_coordinator.py`
 - Modify: `tests/ui/test_controller_services.py`
 - Modify: `tests/ui/test_controller.py`
 - Create: `tests/ui/test_research_flow_controller.py`
@@ -1421,7 +1427,7 @@ git commit -m "feat: project verified Research OS decisions"
 roles, answer, retract, replan, cancel, Prepare, and mode change. It does not expose
 stores, passports, requests, datasets, arbitrary paths, or a generic execute method.
 
-- [ ] **Step 1: Write lifecycle and main-thread failure tests**
+- [x] **Step 1: Write lifecycle and main-thread failure tests**
 
 Using a controllable fake worker, assert each command acknowledges and enters the
 correct busy/static state without doing fingerprint, filesystem, SQLite, resolver,
@@ -1435,14 +1441,14 @@ retracted state, or recovery-pending without a question/candidate. Only the expl
 Resume command schedules `resume_pending()`; it is single-shot and cannot revive a
 retracted passport.
 
-- [ ] **Step 2: Prove the causal notice and out-of-scope boundary perform no write**
+- [x] **Step 2: Prove the causal notice and out-of-scope boundary perform no write**
 
 Poison all task-index, ledger-path, directory, SQLite, and append entry points. Selecting
 causal `Yes`, `돌아가기`, causal `Not sure`, or “none of these tasks” must not touch any
 of them. Only `이 제한을 기록하고 계속` may schedule the minimal causal request and
 later publish its passport-backed abstention.
 
-- [ ] **Step 3: Write drift, error taxonomy, and direct-analysis continuity tests**
+- [x] **Step 3: Write drift, error taxonomy, and direct-analysis continuity tests**
 
 Before answer, Prepare, Confirm handoff, and Run handoff, change the pipeline version or
 dataset fingerprint and require `replan_required`. Exercise unavailable, failure,
@@ -1450,7 +1456,7 @@ corruption, unsupported, and cancelled results without collapsing them. In every
 existing direct-analysis commands remain usable. No zero-route result can expose a route
 command.
 
-- [ ] **Step 4: Write facade, dependency, and privacy budget tests**
+- [x] **Step 4: Write facade, dependency, and privacy budget tests**
 
 Require one composed QObject, no second large mixin, and the existing `UiController`
 limits of 560 class lines, 60 methods, and 45 lines in its longest method. Assert no
@@ -1459,7 +1465,7 @@ URL, or command reaches task/index/ledger contracts. Build source-schema identit
 the current import-step source type, selected sheet/layout, canonical source columns,
 and order, never from a path.
 
-- [ ] **Step 5: Run the tests and confirm failure**
+- [x] **Step 5: Run the tests and confirm failure**
 
 Run:
 
@@ -1469,7 +1475,7 @@ Run:
 
 Expected: FAIL because the QObject and composition do not exist.
 
-- [ ] **Step 6: Implement by composing the serialized worker**
+- [x] **Step 6: Implement by composing the serialized worker**
 
 Reuse `SerializedEngineWorker`; do not add a thread pool or parallel ledger writers.
 Run fingerprinting, ledger operations, resolver/planner, passport audit, handoff, and
@@ -1477,7 +1483,7 @@ preflight in serialized jobs. Publish only `ResearchFlowView` values. Cache fing
 only under exact `(pipeline_version, fingerprint_contract_id)` and discard a cache entry
 on any self-authored or external pipeline change.
 
-- [ ] **Step 7: Run controller and existing UI regression tests**
+- [x] **Step 7: Run controller and existing UI regression tests**
 
 Run:
 
@@ -1488,7 +1494,29 @@ Run:
 Expected: all pass; measured fake-worker command acknowledgement remains below the
 test's 100 ms bound without using a relaxed target-machine claim.
 
-- [ ] **Step 8: Commit**
+Evidence on 2026-07-17: the initial RED failed because the controller module did not
+exist. Two later hardening RED tests also failed as intended before the mode-pair
+question-authority check and immutable cross-thread label snapshot were added. The
+controller file passed `22` tests; the focused controller/service/facade/architecture/
+stale/privacy suite passed `89`; the complete UI suite passed `654`; and the ledger,
+task-session, coordinator, concurrency, fingerprint, handoff, preflight, presenter,
+and controller regression set passed `368`. The subprocess import-isolation test in
+that last set was run with this worktree's `src` exported explicitly to child Python
+processes; without it the child could not import this uninstalled worktree, so that
+attempt was invalid rather than a product failure. Ruff check and format passed, and
+`git diff --check` reported no whitespace errors.
+
+Direct audit found and fixed two defects before this checkpoint: pending durable
+records initially bypassed source-schema drift rejection, and default runtime
+construction initially loaded resolver catalogs on the UI thread. Common durable
+drift validation now covers decision, pending, and retraction records, while the
+coordinator is constructed lazily inside the serialized worker. `UiController` remains
+within its frozen facade budget at `548` class lines, `54` methods, and a longest method
+of `44` lines. This evidence establishes a responsive, authority-preserving UI
+boundary; it does not establish recommendation validity and it does not add automatic
+analysis execution.
+
+- [x] **Step 8: Commit**
 
 ```powershell
 git add -- src/modori/ui/research_flow_controller.py src/modori/ui/controller_services.py src/modori/ui/controller.py tests/ui/test_research_flow_controller.py tests/ui/test_controller_services.py tests/ui/test_controller.py tests/ui/test_architecture_guards.py tests/ui/test_security_privacy.py

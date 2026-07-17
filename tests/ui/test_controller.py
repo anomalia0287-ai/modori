@@ -1,4 +1,3 @@
-
 class FakePipeline:
     def __init__(self) -> None:
         self.steps = [{"id": "reliability"}]
@@ -43,6 +42,22 @@ def test_mode_switch_does_not_change_steps_or_pipeline_version() -> None:
     assert pipeline.steps == before_steps
     assert controller.pipeline_version == before_version
     assert pipeline.edits == []
+
+
+def test_research_flow_is_one_composed_qobject_using_existing_worker() -> None:
+    from PySide6.QtCore import QObject
+
+    from modori.ui.controller import UiController
+
+    controller = UiController(pipeline=FakePipeline())
+
+    assert isinstance(controller.researchFlow, QObject)
+    assert controller.researchFlow._worker is controller._worker
+    assert controller.researchFlow.stateModel["state"] == "idle"
+    assert controller.researchFlow.stateModel["mode"] == "standard"
+
+    assert controller.chooseMode("guided") is True
+    assert controller.researchFlow.stateModel["mode"] == "guided"
 
 
 def test_invalid_patch_does_not_mutate_pipeline() -> None:
@@ -141,7 +156,9 @@ def test_worker_success_with_empty_payload_becomes_result_display_error() -> Non
     assert controller.resultsModel == []
 
 
-def test_worker_success_with_malformed_table_payload_becomes_result_display_error() -> None:
+def test_worker_success_with_malformed_table_payload_becomes_result_display_error() -> (
+    None
+):
     from dataclasses import replace
 
     from modori.ui.controller import UiController
@@ -168,7 +185,9 @@ def test_worker_success_with_malformed_table_payload_becomes_result_display_erro
     assert controller.resultsModel == []
 
 
-def test_worker_success_with_malformed_notes_payload_becomes_result_display_error() -> None:
+def test_worker_success_with_malformed_notes_payload_becomes_result_display_error() -> (
+    None
+):
     from dataclasses import replace
 
     from modori.ui.controller import UiController
@@ -200,9 +219,14 @@ def test_open_data_file_requires_confirmation_before_new_session(tmp_path) -> No
     from modori.ui.controller import UiController
 
     previous = ImportablePipeline(["import", "reliability", "report"])
-    controller = UiController(pipeline=previous, pipeline_factory=lambda path, options: ImportablePipeline(["import"]))
+    controller = UiController(
+        pipeline=previous,
+        pipeline_factory=lambda path, options: ImportablePipeline(["import"]),
+    )
 
-    result = controller.openDataFile(tmp_path / "data.csv", ImportOptions(confirm_new_session=False))
+    result = controller.openDataFile(
+        tmp_path / "data.csv", ImportOptions(confirm_new_session=False)
+    )
 
     assert result.ok is False
     assert result.error_code == "confirmation_required"
@@ -210,7 +234,9 @@ def test_open_data_file_requires_confirmation_before_new_session(tmp_path) -> No
     assert controller.pipeline_version == 0
 
 
-def test_open_data_file_new_session_replaces_pipeline_after_confirmation(tmp_path) -> None:
+def test_open_data_file_new_session_replaces_pipeline_after_confirmation(
+    tmp_path,
+) -> None:
     from modori.ui.contracts import ImportOptions
     from modori.ui.controller import UiController
 
@@ -226,7 +252,9 @@ def test_open_data_file_new_session_replaces_pipeline_after_confirmation(tmp_pat
         pipeline_factory=factory,
     )
 
-    result = controller.openDataFile(tmp_path / "data.csv", ImportOptions(confirm_new_session=True))
+    result = controller.openDataFile(
+        tmp_path / "data.csv", ImportOptions(confirm_new_session=True)
+    )
 
     assert result.ok is True
     assert result.changed_step_ids == ["import"]
@@ -247,7 +275,9 @@ def test_open_data_file_failure_leaves_previous_pipeline_untouched(tmp_path) -> 
 
     controller = UiController(pipeline=previous, pipeline_factory=factory)
 
-    result = controller.openDataFile(tmp_path / "bad.csv", ImportOptions(confirm_new_session=True))
+    result = controller.openDataFile(
+        tmp_path / "bad.csv", ImportOptions(confirm_new_session=True)
+    )
 
     assert result.ok is False
     assert result.error_code == "engine_error"
@@ -255,7 +285,9 @@ def test_open_data_file_failure_leaves_previous_pipeline_untouched(tmp_path) -> 
     assert controller.pipeline_version == 0
 
 
-def test_open_data_file_populates_recommendation_without_running_worker(tmp_path) -> None:
+def test_open_data_file_populates_recommendation_without_running_worker(
+    tmp_path,
+) -> None:
     import pandas as pd
 
     from modori.core import Dataset, Measure, Variable
@@ -303,7 +335,9 @@ def test_open_data_file_populates_recommendation_without_running_worker(tmp_path
         worker=worker,
     )
 
-    result = controller.openDataFile(tmp_path / "survey.csv", ImportOptions(confirm_new_session=True))
+    result = controller.openDataFile(
+        tmp_path / "survey.csv", ImportOptions(confirm_new_session=True)
+    )
 
     assert result.ok is True
     assert controller.recommendationTitle == ""
@@ -315,7 +349,9 @@ def test_open_data_file_populates_recommendation_without_running_worker(tmp_path
     assert worker.calls == []
 
 
-def test_default_open_data_file_imports_fixture_for_recommendations_without_worker() -> None:
+def test_default_open_data_file_imports_fixture_for_recommendations_without_worker() -> (
+    None
+):
     from pathlib import Path
 
     from modori.ui.contracts import ImportOptions
@@ -492,6 +528,8 @@ def test_context_change_blocks_assisted_report_recompute(tmp_path) -> None:
     assert result.error_code == "experimental_confirmation_required"
     assert exported == []
     assert output_path.exists() is False
+
+
 def test_export_report_injects_local_selection_origin(tmp_path) -> None:
     from docx import Document
 
@@ -520,7 +558,9 @@ def test_export_report_injects_local_selection_origin(tmp_path) -> None:
     assert seen[0].selection_origin == "experimental_candidate_assisted"
 
 
-def test_select_recommendation_updates_prepared_fields_without_running(tmp_path) -> None:
+def test_select_recommendation_updates_prepared_fields_without_running(
+    tmp_path,
+) -> None:
     import pandas as pd
 
     from modori.core import Dataset, Measure, Variable
@@ -557,8 +597,12 @@ def test_select_recommendation_updates_prepared_fields_without_running(tmp_path)
             self.steps = []
             self.variable_keys = set(frame.columns)
 
-    controller = UiController(pipeline_factory=lambda path, options: PipelineWithDataset())
-    controller.openDataFile(tmp_path / "survey.csv", ImportOptions(confirm_new_session=True))
+    controller = UiController(
+        pipeline_factory=lambda path, options: PipelineWithDataset()
+    )
+    controller.openDataFile(
+        tmp_path / "survey.csv", ImportOptions(confirm_new_session=True)
+    )
     before_version = controller.pipeline_version
 
     assert controller.selectRecommendationAt(1) is True
@@ -654,7 +698,9 @@ def test_confirmed_candidate_fields_use_manual_configuration_before_worker_submi
         pipeline_factory=factory,
         worker=worker,
     )
-    controller.openDataFile(tmp_path / "survey.csv", ImportOptions(confirm_new_session=True))
+    controller.openDataFile(
+        tmp_path / "survey.csv", ImportOptions(confirm_new_session=True)
+    )
     reliability_index = next(
         index
         for index, candidate in enumerate(controller._recommendation_state.candidates)
@@ -676,7 +722,9 @@ def test_confirmed_candidate_fields_use_manual_configuration_before_worker_submi
 
 
 def test_confirmed_manual_configuration_applies_before_worker_submit(tmp_path) -> None:
-    test_confirmed_candidate_fields_use_manual_configuration_before_worker_submit(tmp_path)
+    test_confirmed_candidate_fields_use_manual_configuration_before_worker_submit(
+        tmp_path
+    )
 
 
 def test_advanced_candidates_require_explicit_manual_configuration() -> None:
@@ -769,7 +817,9 @@ def test_advanced_candidates_require_explicit_manual_configuration() -> None:
         controller._refresh_recommendations()
         index = next(
             index
-            for index, candidate in enumerate(controller._recommendation_state.candidates)
+            for index, candidate in enumerate(
+                controller._recommendation_state.candidates
+            )
             if candidate.kind == kind
         )
 
@@ -918,9 +968,13 @@ def test_rerun_blocks_unknown_columns_before_worker_submit() -> None:
 
     class RaisingWorker:
         def submit(self, *, run_id, pipeline_version, job):
-            raise AssertionError("worker must not be submitted for invalid run configuration")
+            raise AssertionError(
+                "worker must not be submitted for invalid run configuration"
+            )
 
-    controller = UiController(pipeline=PipelineWithBadReliability(), worker=RaisingWorker())
+    controller = UiController(
+        pipeline=PipelineWithBadReliability(), worker=RaisingWorker()
+    )
 
     result = controller.rerun()
 
@@ -944,9 +998,13 @@ def test_rerun_blocks_blank_reliability_item_before_worker_submit() -> None:
 
     class RaisingWorker:
         def submit(self, *, run_id, pipeline_version, job):
-            raise AssertionError("worker must not be submitted for invalid run configuration")
+            raise AssertionError(
+                "worker must not be submitted for invalid run configuration"
+            )
 
-    controller = UiController(pipeline=PipelineWithBlankReliabilityItem(), worker=RaisingWorker())
+    controller = UiController(
+        pipeline=PipelineWithBlankReliabilityItem(), worker=RaisingWorker()
+    )
 
     result = controller.rerun()
 
@@ -970,9 +1028,13 @@ def test_rerun_blocks_duplicate_reliability_items_before_worker_submit() -> None
 
     class RaisingWorker:
         def submit(self, *, run_id, pipeline_version, job):
-            raise AssertionError("worker must not be submitted for invalid run configuration")
+            raise AssertionError(
+                "worker must not be submitted for invalid run configuration"
+            )
 
-    controller = UiController(pipeline=PipelineWithDuplicateReliabilityItem(), worker=RaisingWorker())
+    controller = UiController(
+        pipeline=PipelineWithDuplicateReliabilityItem(), worker=RaisingWorker()
+    )
 
     result = controller.rerun()
 
@@ -988,7 +1050,11 @@ def test_rerun_blocks_blank_regression_predictor_before_worker_submit() -> None:
     class Step:
         id = "regression"
         step_type = "stats.regression_ols"
-        params = {"dv": "score", "predictors": ["q1", ""], "regression_policy": {"preset": "modern"}}
+        params = {
+            "dv": "score",
+            "predictors": ["q1", ""],
+            "regression_policy": {"preset": "modern"},
+        }
 
     class PipelineWithBlankRegressionPredictor:
         steps = [Step()]
@@ -996,9 +1062,13 @@ def test_rerun_blocks_blank_regression_predictor_before_worker_submit() -> None:
 
     class RaisingWorker:
         def submit(self, *, run_id, pipeline_version, job):
-            raise AssertionError("worker must not be submitted for invalid run configuration")
+            raise AssertionError(
+                "worker must not be submitted for invalid run configuration"
+            )
 
-    controller = UiController(pipeline=PipelineWithBlankRegressionPredictor(), worker=RaisingWorker())
+    controller = UiController(
+        pipeline=PipelineWithBlankRegressionPredictor(), worker=RaisingWorker()
+    )
 
     result = controller.rerun()
 
@@ -1022,7 +1092,9 @@ def test_rerun_blocks_import_only_pipeline_before_worker_submit() -> None:
 
     class RaisingWorker:
         def submit(self, *, run_id, pipeline_version, job):
-            raise AssertionError("worker must not be submitted without an analysis step")
+            raise AssertionError(
+                "worker must not be submitted without an analysis step"
+            )
 
     controller = UiController(pipeline=ImportOnlyPipeline(), worker=RaisingWorker())
 
@@ -1052,9 +1124,13 @@ def test_rerun_blocks_duplicate_regression_predictors_before_worker_submit() -> 
 
     class RaisingWorker:
         def submit(self, *, run_id, pipeline_version, job):
-            raise AssertionError("worker must not be submitted for invalid run configuration")
+            raise AssertionError(
+                "worker must not be submitted for invalid run configuration"
+            )
 
-    controller = UiController(pipeline=PipelineWithDuplicateRegressionPredictor(), worker=RaisingWorker())
+    controller = UiController(
+        pipeline=PipelineWithDuplicateRegressionPredictor(), worker=RaisingWorker()
+    )
 
     result = controller.rerun()
 
