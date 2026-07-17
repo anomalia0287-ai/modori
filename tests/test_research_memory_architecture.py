@@ -13,6 +13,7 @@ from modori.research_memory.quarantine import QuarantineResult
 
 RESEARCH_MEMORY_ROOT = Path("src/modori/research_memory")
 RESEARCH_OS_ROOT = Path("src/modori/research_os")
+RESEARCH_FLOW_ROOT = Path("src/modori/research_flow")
 PROHIBITED_IMPORT_PREFIXES = (
     "modori.steps",
     "modori.workflow",
@@ -43,7 +44,26 @@ def _imports(path: Path) -> tuple[str, ...]:
 def test_dependency_direction_keeps_research_os_pure() -> None:
     for path in RESEARCH_OS_ROOT.glob("*.py"):
         assert all(
-            not name.startswith("modori.research_memory") for name in _imports(path)
+            not name.startswith(("modori.research_memory", "modori.research_flow"))
+            for name in _imports(path)
+        ), path
+
+
+def test_research_flow_never_imports_the_ui_layer() -> None:
+    for path in RESEARCH_FLOW_ROOT.glob("*.py"):
+        assert all(not name.startswith("modori.ui") for name in _imports(path)), path
+
+
+def test_research_flow_pure_contract_boundaries_have_no_persistence_imports() -> None:
+    for name in ("contracts.py", "fingerprint.py"):
+        path = RESEARCH_FLOW_ROOT / name
+        if not path.exists():
+            continue
+        imports = _imports(path)
+        assert "sqlite3" not in imports, path
+        assert all(
+            not imported.startswith(("modori.path_policy", "modori.research_memory"))
+            for imported in imports
         ), path
 
 
