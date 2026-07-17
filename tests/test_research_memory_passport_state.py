@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 import modori.research_memory as research_memory
+from modori.research_memory.ledger_contracts import LedgerEvent, LedgerEventKind
 from modori.research_memory.passport_state import (
     PassportHistory,
     PassportStateError,
@@ -116,6 +117,35 @@ def test_decision_retraction_makes_a_committed_passport_not_outstanding() -> Non
     assert len(history.records) == 1
     assert history.records[0].retracted_by_event_id == events[-1].event_id
     assert history.records[0].outstanding is False
+
+
+def test_retraction_fold_is_deterministic_and_rejects_a_second_retraction() -> None:
+    events, artifacts = history_with_retraction()
+
+    assert PassportHistory.inspect(events, artifacts) == PassportHistory.inspect(
+        events,
+        artifacts,
+    )
+    first_retraction = events[-1]
+    duplicate = LedgerEvent.create(
+        project_id=first_retraction.project_id,
+        event_id="event:retract:duplicate:4",
+        sequence=first_retraction.sequence + 1,
+        event_kind=LedgerEventKind.DECISION_RETRACTED,
+        subject_artifact_ids=first_retraction.subject_artifact_ids,
+        payload={
+            "retracted_event_id": first_retraction.payload["retracted_event_id"],
+            "reason_code": "user_retracted",
+            "resulting_snapshot_artifact_id": first_retraction.payload[
+                "resulting_snapshot_artifact_id"
+            ],
+        },
+        previous_event_hash=first_retraction.event_hash,
+        recorded_at_utc=None,
+    )
+
+    with pytest.raises(PassportStateError, match="ambiguous"):
+        PassportHistory.inspect((*events, duplicate), artifacts)
 
 
 def test_passport_history_rejects_duplicate_artifact_identities() -> None:

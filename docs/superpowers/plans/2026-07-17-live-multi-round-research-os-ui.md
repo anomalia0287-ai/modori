@@ -723,23 +723,27 @@ class ResearchMemoryCoordinator:
     ) -> PromotionReceipt: ...
 ```
 
-- [ ] **Step 1: Characterize the index-to-ledger recovery protocol**
+- [x] **Step 1: Characterize the ledger-before-index recovery protocol**
 
 Write tests for every observable session boundary:
 
-1. allocate an active index row;
-2. derive the application-owned per-task ledger path;
-3. create/open and fully verify that ledger; and
-4. return a handle only after classifying it as genuine empty or verified initialized
-   state.
+1. generate a closed task ID and derive its application-owned ledger path;
+2. create and fully verify a genuine empty ledger before publishing any locator;
+3. allocate the active index row; and
+4. fully reverify the located ledger and return a handle only after classifying it as
+   genuine empty or verified initialized state.
 
 Inject a crash before and after each boundary. Because two SQLite databases cannot be
-made honestly atomic, recovery must resume the exact active index row, inspect the
-ledger, expose only a genuine empty ledger to Task 7 for initialization, and reuse a
-verified initialized ledger. The session layer does not append a request itself. It
-must never allocate a second ordinal merely because the locator receipt was lost.
+made honestly atomic, an active locator must never precede the ledger it names. After
+such a crash, a missing ledger would be indistinguishable from deleted authoritative
+history. A crash before locator allocation may leave only a fully verified empty,
+authority-free orphan and spends no ordinal. A crash after locator allocation resumes
+the exact active row, inspects the ledger, exposes only a genuine empty ledger to Task 7
+for initialization, and reuses a verified initialized ledger. The session layer does
+not append a request itself. It must never allocate a second ordinal merely because the
+locator receipt was lost, and it never recreates a missing ledger behind an active row.
 
-- [ ] **Step 2: Test correction, drift, and readonly history**
+- [x] **Step 2: Test correction, drift, and readonly history**
 
 Assert that correction of a consumed answer and data-drift replanning allocate a fresh
 task ID and ordinal, mark the previous row readonly, and never modify the previous
@@ -747,15 +751,16 @@ ledger. A mismatch in the expected active ID, fingerprint contract, dataset dige
 ledger project ID fails closed. Missing, foreign, reparse-point, externally changed, or
 corrupt ledgers remain unavailable/corrupt rather than being recreated over history.
 
-- [ ] **Step 3: Test `decision_retracted` at the public coordinator boundary**
+- [x] **Step 3: Test `decision_retracted` at the public coordinator boundary**
 
 Start with a verified current V2 passport, call the new method, and assert exact event
-kind, previous-head binding, snapshot binding, passport artifact reference, and
-idempotent state folding. Reject a consumed, stale, foreign, already retracted, or
-non-current passport. Prove the request snapshot survives and no answer event is
+kind, previous-head binding, exact snapshot-only subject closure, reference to the
+retracted passport-commit event, and deterministic state folding. Reject a consumed,
+stale, foreign, already retracted, or non-current passport. Prove the passport artifact
+remains immutable in history, the request snapshot survives, and no answer event is
 reversed.
 
-- [ ] **Step 4: Run the tests and confirm failure**
+- [x] **Step 4: Run the tests and confirm failure**
 
 Run:
 
@@ -765,15 +770,17 @@ Run:
 
 Expected: FAIL because the session adapter and retraction operation do not exist.
 
-- [ ] **Step 5: Implement the smallest recoverable protocol**
+- [x] **Step 5: Implement the smallest recoverable protocol**
 
 Inject ID and UTC-clock factories. Keep index status changes transactional inside the
 index, and ledger commits transactional inside the ledger; do not describe them as one
-cross-database transaction. Reuse `default_ledger_path()` and the verified store rather
-than adding an arbitrary path parameter. Implement retraction with the current ledger
-contracts and passport-state fold, not with deletion or mutation.
+cross-database transaction. Precreate and fully verify the authority-free empty ledger,
+then transactionally publish its locator; never publish a locator first. Reuse
+`default_ledger_path()` and the verified store rather than adding an arbitrary path
+parameter. Implement retraction with the current ledger contracts and passport-state
+fold, not with deletion or mutation.
 
-- [ ] **Step 6: Run focused recovery and authority tests**
+- [x] **Step 6: Run focused recovery and authority tests**
 
 Run:
 

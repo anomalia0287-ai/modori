@@ -20,6 +20,14 @@ from modori.research_flow.fingerprint import (
     SourceSchemaDescriptor,
     fingerprint_dataset,
 )
+from modori.research_flow.task_session import (
+    ResearchTaskHandle,
+    ResearchTaskSessionStore,
+    TaskSessionConflictError,
+    TaskSessionError,
+    TaskSessionIntegrityError,
+    TaskSessionUnavailableError,
+)
 
 __all__ = [
     "FINGERPRINT_CONTRACT_ID",
@@ -35,7 +43,13 @@ __all__ = [
     "PreflightDisposition",
     "ResearchFlowContractError",
     "ResearchFlowState",
+    "ResearchTaskHandle",
+    "ResearchTaskSessionStore",
     "SourceSchemaDescriptor",
     "StaticBoundary",
+    "TaskSessionConflictError",
+    "TaskSessionError",
+    "TaskSessionIntegrityError",
+    "TaskSessionUnavailableError",
     "fingerprint_dataset",
 ]

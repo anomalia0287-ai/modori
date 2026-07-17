@@ -17,6 +17,7 @@ from modori.research_memory.ledger_contracts import (
     ResearchRequestSnapshot,
 )
 from modori.research_memory.ledger_store import DecisionLedgerStore
+from modori.research_memory.passport_state import PassportHistory
 from modori.research_memory.promotion import (
     PassportCommitReceipt,
     PromotionError,
@@ -743,5 +744,193 @@ def test_unrelated_head_change_never_retries_stale_passport(
             artifact.artifact_kind is not LedgerArtifactKind.ANALYSIS_PASSPORT
             for artifact in store.artifacts()
         )
+    finally:
+        store.close()
+
+
+def test_retract_current_passport_appends_exact_snapshot_preserving_event(
+    tmp_path: Path,
+) -> None:
+    request = _clarify_request()
+    store, request = _initialized(tmp_path, request=request)
+    coordinator = ResearchMemoryCoordinator()
+    try:
+        committed = coordinator.commit_current_passport(
+            store,
+            request,
+            event_id="event:passport:2",
+            passport_object_id="passport:decision:1",
+            recorded_at_utc=None,
+        )
+        commit_event = store.events()[-1]
+        history_before = PassportHistory.inspect(store.events(), store.artifacts())
+        assert len(history_before.records) == 1
+        passport_artifact_id = history_before.records[0].passport_artifact_id
+        artifact_count = len(store.artifacts())
+
+        receipt = coordinator.retract_current_passport(
+            store,
+            request,
+            committed.passport,
+            event_id="event:retract:3",
+            recorded_at_utc="2026-07-17T00:00:00Z",
+        )
+
+        assert receipt.request == request
+        assert receipt.ledger_receipt.head.sequence == 3
+        assert store.load_request() == request
+        assert len(store.artifacts()) == artifact_count
+        retraction = store.events()[-1]
+        assert retraction.event_kind is LedgerEventKind.DECISION_RETRACTED
+        assert retraction.event_id == "event:retract:3"
+        assert retraction.previous_event_hash == commit_event.event_hash
+        assert retraction.recorded_at_utc == "2026-07-17T00:00:00Z"
+        assert retraction.payload == {
+            "retracted_event_id": commit_event.event_id,
+            "reason_code": "user_retracted",
+            "resulting_snapshot_artifact_id": commit_event.payload[
+                "resulting_snapshot_artifact_id"
+            ],
+        }
+        snapshot_artifact = next(
+            artifact
+            for artifact in store.artifacts()
+            if artifact.artifact_id
+            == retraction.payload["resulting_snapshot_artifact_id"]
+        )
+        snapshot = snapshot_artifact.decode_value()
+        expected_subjects = {
+            snapshot_artifact.artifact_id,
+            snapshot.question_artifact_id,
+            snapshot.estimand_artifact_id,
+            snapshot.study_artifact_id,
+            *snapshot.decision_evidence_artifact_ids,
+        }
+        assert set(retraction.subject_artifact_ids) == expected_subjects
+        assert passport_artifact_id not in retraction.subject_artifact_ids
+
+        history = PassportHistory.inspect(store.events(), store.artifacts())
+        assert len(history.records) == 1
+        assert history.records[0].passport_artifact_id == passport_artifact_id
+        assert history.records[0].retracted_by_event_id == retraction.event_id
+        assert history.records[0].outstanding is False
+        assert store.verify(full_integrity=True).event_count == 3
+
+        before_second = store.verify(full_integrity=True)
+        with pytest.raises(PromotionError, match="current|retracted|active"):
+            coordinator.retract_current_passport(
+                store,
+                request,
+                committed.passport,
+                event_id="event:retract:4",
+            )
+        assert store.verify(full_integrity=True) == before_second
+    finally:
+        store.close()
+
+
+def test_consumed_passport_cannot_be_retracted_and_answer_event_survives(
+    tmp_path: Path,
+) -> None:
+    request = _clarify_request()
+    store, request = _initialized(tmp_path, request=request)
+    coordinator = ResearchMemoryCoordinator()
+    try:
+        committed = coordinator.commit_current_passport(
+            store,
+            request,
+            event_id="event:passport:2",
+            passport_object_id="passport:decision:1",
+            recorded_at_utc=None,
+        )
+        answer = _answer_for_passport(
+            request,
+            committed.passport,
+            AnswerValue(kind=AnswerValueKind.CHOICE, choice_value="paired"),
+            event_sequence=3,
+        )
+        durable = coordinator.commit_ready_answer(
+            store,
+            request,
+            committed.passport,
+            answer,
+        ).request
+        before = store.verify(full_integrity=True)
+
+        with pytest.raises(PromotionError, match="current|active|durable"):
+            coordinator.retract_current_passport(
+                store,
+                durable,
+                committed.passport,
+                event_id="event:retract:4",
+            )
+
+        assert store.verify(full_integrity=True) == before
+        assert store.events()[-1].event_kind is LedgerEventKind.CLARIFICATION_ANSWERED
+        history = PassportHistory.inspect(store.events(), store.artifacts())
+        assert history.records[0].consumed_by_event_id == answer.event_id
+        assert history.records[0].retracted_by_event_id is None
+    finally:
+        store.close()
+
+
+def test_stale_uncommitted_v1_and_noncurrent_passports_cannot_retract(
+    tmp_path: Path,
+) -> None:
+    store, request = _initialized(tmp_path)
+    coordinator = ResearchMemoryCoordinator()
+    try:
+        first = coordinator.commit_current_passport(
+            store,
+            request,
+            event_id="event:passport:2",
+            passport_object_id="passport:decision:1",
+            recorded_at_utc=None,
+        ).passport
+        second = coordinator.commit_current_passport(
+            store,
+            request,
+            event_id="event:passport:3",
+            passport_object_id="passport:decision:2",
+            recorded_at_utc=None,
+        ).passport
+        assert first != second
+        ephemeral = ResearchOsService().plan(
+            request,
+            _passport_envelope(
+                event_id="event:passport:ephemeral",
+                object_id="passport:ephemeral:1",
+            ),
+        )
+        legacy = _legacy_clarify_passport(request, "confirm_dependence")
+        stale = replace(request, question_budget_remaining=2)
+
+        cases = (
+            (request, first),
+            (request, ephemeral),
+            (request, legacy),
+            (stale, second),
+        )
+        for ordinal, (candidate_request, candidate_passport) in enumerate(
+            cases,
+            start=4,
+        ):
+            before = store.verify(full_integrity=True)
+            with pytest.raises(PromotionError):
+                coordinator.retract_current_passport(
+                    store,
+                    candidate_request,
+                    candidate_passport,
+                    event_id=f"event:retract:{ordinal}",
+                )
+            assert store.verify(full_integrity=True) == before
+
+        receipt = coordinator.retract_current_passport(
+            store,
+            request,
+            second,
+            event_id="event:retract:8",
+        )
+        assert receipt.ledger_receipt.head.sequence == 4
     finally:
         store.close()

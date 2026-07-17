@@ -43,6 +43,7 @@ from modori.research_os import (
     RevisionAcceptanceCertificate,
     SchemaEnvelope,
     TransitionError,
+    validate_passport_request_binding,
 )
 
 
@@ -420,6 +421,114 @@ class ResearchMemoryCoordinator:
             passport_event_id=event.event_id,
             appended=True,
         )
+
+    def retract_current_passport(
+        self,
+        store: DecisionLedgerStore,
+        request: ResearchRequest,
+        passport: AnalysisPassport,
+        *,
+        event_id: str,
+        recorded_at_utc: str | None = None,
+    ) -> PromotionReceipt:
+        """Close the latest durable passport without deleting its history."""
+
+        project_id, head = self._ensure_store_binding(
+            store,
+            request,
+            require_empty=False,
+        )
+        if (
+            not isinstance(passport, AnalysisPassport)
+            or passport.envelope.schema_version != 2
+        ):
+            raise PromotionError(
+                "only a current durable version 2 passport can be retracted"
+            )
+        try:
+            validate_passport_request_binding(passport, request)
+            passport_artifact = _artifact_for_value(passport)
+        except (ResearchServiceError, LedgerContractError, ValueError, TypeError) as exc:
+            raise PromotionError(
+                "passport is not current for the durable request"
+            ) from exc
+
+        history = self._history(store)
+        exact_matches = tuple(
+            record
+            for record in history.records
+            if record.passport_artifact_id == passport_artifact.artifact_id
+            and record.passport == passport
+        )
+        if len(exact_matches) != 1:
+            raise PromotionError("passport is not a durable committed decision")
+        target = exact_matches[0]
+        if not target.outstanding:
+            raise PromotionError("passport is no longer active and cannot be retracted")
+
+        current_records: list[CommittedPassportRecord] = []
+        for record in history.records:
+            candidate = record.passport
+            if (
+                candidate.envelope.schema_version != 2
+                or candidate.envelope.project_id != project_id
+            ):
+                continue
+            try:
+                validate_passport_request_binding(candidate, request)
+            except ResearchServiceError:
+                continue
+            current_records.append(record)
+        if not current_records or target != max(
+            current_records,
+            key=lambda record: record.commit_sequence,
+        ):
+            raise PromotionError("passport is not the current durable decision")
+
+        if any(event.event_id == event_id for event in store.events()):
+            raise PromotionError("retraction event identity has already been used")
+
+        try:
+            _snapshot, snapshot_artifacts = ResearchRequestSnapshot.capture(request)
+            snapshot_artifact = _snapshot_artifact(snapshot_artifacts)
+            event = LedgerEvent.create(
+                project_id=project_id,
+                event_id=event_id,
+                sequence=head.sequence + 1,
+                event_kind=LedgerEventKind.DECISION_RETRACTED,
+                subject_artifact_ids=_subjects(snapshot_artifacts),
+                payload={
+                    "retracted_event_id": target.commit_event_id,
+                    "reason_code": "user_retracted",
+                    "resulting_snapshot_artifact_id": snapshot_artifact.artifact_id,
+                },
+                previous_event_hash=head.event_hash,
+                recorded_at_utc=recorded_at_utc,
+            )
+            commit = LedgerCommit(
+                expected_head=head,
+                events=(event,),
+                artifacts=snapshot_artifacts,
+                resulting_snapshot_artifact_id=snapshot_artifact.artifact_id,
+            )
+        except (LedgerContractError, ValueError, TypeError) as exc:
+            raise PromotionError("passport retraction could not be constructed") from exc
+
+        receipt = self._append(store, commit, request)
+        refreshed = self._history(store)
+        closed = tuple(
+            record
+            for record in refreshed.records
+            if record.passport_artifact_id == target.passport_artifact_id
+            and record.passport == target.passport
+        )
+        if (
+            len(closed) != 1
+            or closed[0].retracted_by_event_id != event.event_id
+            or closed[0].outstanding
+        ):
+            raise PromotionError("durable passport retraction did not verify")
+        return receipt
 
     def commit_ready_answer(
         self,

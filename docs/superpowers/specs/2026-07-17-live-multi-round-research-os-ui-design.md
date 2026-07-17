@@ -218,6 +218,17 @@ Each task ledger continues to use the hardened application-owned path derived by
 data drift creates a new task ledger. The earlier ledger becomes read-only and is never
 overwritten, merged, or relabelled as current.
 
+The cross-database publication order is deliberately **ledger before locator**. The
+session first creates and fully verifies a genuine empty per-task ledger, then publishes
+its active `ResearchTaskIndex` row, and finally reopens and fully verifies the located
+ledger before returning a handle. Publishing the locator first is forbidden: after a
+crash, a missing ledger would be indistinguishable from deleted authoritative history.
+A crash before locator publication may leave only an empty, authority-free orphan and
+spends no task ordinal. Once an active locator exists, its missing, foreign, reparse,
+externally changed, or corrupt ledger is an integrity failure and is never recreated.
+This is a recoverable sequence of two local transactions, not a claim of cross-database
+atomicity.
+
 ### 6.1 Retention and destruction boundary
 
 P1 does not invent a task-delete method inside `DecisionLedgerStore` or silently delete
