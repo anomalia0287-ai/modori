@@ -280,6 +280,12 @@ displayed until the initial request snapshot and its resulting passport are comm
 A crash before that commit restarts intake and cannot leave an authoritative partial
 answer.
 
+At the commit boundary, request construction receives the freshly allocated closed task
+project ID, the preallocated initial ledger event ID, the full dataset fingerprint, the
+separate source-schema fingerprint, the ordered available-variable IDs, and the selected
+language. None is inferred from a filename, variable label, another digest, or a fixed
+placeholder. The three component envelopes use that exact task and event identity.
+
 ### 8.1 Causal-intent gate
 
 The first question uses the existing neutral causal-intent meaning:

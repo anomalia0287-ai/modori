@@ -9,6 +9,7 @@ from modori.research_os.contracts import (
     CausalIntent,
     ContractError,
     EstimandSpec,
+    EstimandTemplate,
     Fact,
     FactState,
     QuestionSpec,
@@ -62,6 +63,12 @@ _RECOVERY_BY_REASON = {
     "integrity:project_id_mismatch": "align_component_project_ids",
     "integrity:dataset_fingerprint_mismatch": "rebind_specs_to_current_dataset",
     "integrity:unknown_variable_reference": "repair_variable_role_bindings",
+    "integrity:repeated_measure_order_mismatch": (
+        "repair_repeated_measure_role_order"
+    ),
+    "integrity:within_unit_outcome_mismatch": (
+        "repair_within_unit_outcome_binding"
+    ),
     "integrity:invalid_fact_value": "repair_malformed_fact_value",
     "unsupported_causal_target": (
         "declare_noncausal_or_use_external_causal_workflow"
@@ -575,6 +582,35 @@ class ResearchOsService:
             request.study.validate_variable_references(available)
         except ContractError:
             errors.append("unknown_variable_reference")
+        current_states = {
+            FactState.OBSERVED,
+            FactState.INFERRED,
+            FactState.USER_CONFIRMED,
+        }
+        target_roles = {
+            binding.role: binding.variable_ids
+            for binding in request.estimand.target_roles
+        }
+        repeated_role = target_roles.get(TargetRole.REPEATED_MEASURE)
+        outcome_role = target_roles.get(TargetRole.OUTCOME)
+        repeated_order = request.study.repeated_measure_order
+        if (
+            repeated_role is not None
+            and repeated_role.state in current_states
+            and repeated_order.state in current_states
+            and repeated_role.value != repeated_order.value
+        ):
+            errors.append("repeated_measure_order_mismatch")
+        if (
+            request.estimand.template.state in current_states
+            and request.estimand.template.value
+            is EstimandTemplate.WITHIN_UNIT_CHANGE
+            and outcome_role is not None
+            and outcome_role.state in current_states
+            and repeated_order.state in current_states
+            and outcome_role.value != (repeated_order.value[-1],)
+        ):
+            errors.append("within_unit_outcome_mismatch")
         return tuple(errors)
 
     @staticmethod

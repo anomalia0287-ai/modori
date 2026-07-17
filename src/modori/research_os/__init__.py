@@ -91,6 +91,14 @@ from modori.research_os.p1_catalog import (
     build_p1_method_space,
 )
 from modori.research_os.p1_clarifications import build_p1_clarification_registry
+from modori.research_os.p1_intake import (
+    P1IntakeDraft,
+    P1IntakeError,
+    P1RoleBindings,
+    P1TaskProfile,
+    build_causal_abstention_request,
+    build_p1_request,
+)
 from modori.research_os.passport import (
     AbstainPayload,
     AnalysisPassport,
@@ -189,6 +197,10 @@ __all__ = [
     "PassportMigrationRequired",
     "PassportRegistryAudit",
     "PassportRegistryAuditStatus",
+    "P1IntakeDraft",
+    "P1IntakeError",
+    "P1RoleBindings",
+    "P1TaskProfile",
     "PrimaryAction",
     "ProductSurface",
     "RecommendationEvidence",
@@ -227,6 +239,8 @@ __all__ = [
     "TransitionError",
     "canonical_digest",
     "build_p1_clarification_registry",
+    "build_causal_abstention_request",
+    "build_p1_request",
     "build_p1_method_space",
     "clarify_decision_digest",
     "BlockingFact",

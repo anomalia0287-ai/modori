@@ -587,14 +587,20 @@ class P1IntakeDraft:
 def build_p1_request(
     draft: P1IntakeDraft,
     *,
+    task_project_id: str,
+    initial_event_id: str,
     dataset_fingerprint: str,
+    source_schema_fingerprint: str,
     available_variable_ids: tuple[str, ...],
     language: Language,
 ) -> ResearchRequest: ...
 
 def build_causal_abstention_request(
     *,
+    task_project_id: str,
+    initial_event_id: str,
     dataset_fingerprint: str,
+    source_schema_fingerprint: str,
     available_variable_ids: tuple[str, ...],
     language: Language,
 ) -> ResearchRequest: ...
@@ -603,6 +609,8 @@ def build_causal_abstention_request(
 The module remains pure. It receives primitive identities and constructs only existing
 `QuestionSpec`, `EstimandSpec`, `StudySpec`, and `ResearchRequest` values. It does not
 import `DatasetIdentity`, SQLite, filesystem, UI, or calculation code.
+The task project ID and preallocated initial event ID bind every component envelope;
+the separate source-schema fingerprint is never fabricated from the dataset digest.
 
 - [ ] **Step 1: Write exact profile-mapping failure tests**
 

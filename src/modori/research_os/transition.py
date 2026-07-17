@@ -45,6 +45,7 @@ from modori.research_os.decision_evidence import (
     RevisionAcceptanceCertificate,
 )
 from modori.research_os.p1_clarifications import build_p1_clarification_registry
+from modori.research_os.p1_catalog import build_p1_method_space
 from modori.research_os.passport import (
     AnalysisPassport,
     ClarifyPayloadV2,
@@ -335,6 +336,10 @@ class ClarificationTransitionService:
         self._registry = registry or build_p1_clarification_registry()
         if not isinstance(self._registry, ClarificationRegistry):
             raise TransitionError("registry must be a ClarificationRegistry")
+        method_space = build_p1_method_space()
+        self._method_space_version = method_space.version
+        self._method_space_digest = method_space.digest()
+        self._ruleset_version = method_space.ruleset_version
 
     @property
     def clarification_registry_digest(self) -> str:
@@ -438,6 +443,12 @@ class ClarificationTransitionService:
             raise PassportMigrationRequired(
                 "version 1 passport requires a fresh version 2 plan"
             )
+        if (
+            passport.method_space_version != self._method_space_version
+            or passport.method_space_digest != self._method_space_digest
+            or passport.ruleset_version != self._ruleset_version
+        ):
+            raise TransitionError("source method-space identity is stale")
         if (
             passport.action is not PrimaryAction.CLARIFY
             or not isinstance(passport.clarify, ClarifyPayloadV2)

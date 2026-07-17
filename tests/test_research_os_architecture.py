@@ -29,6 +29,13 @@ from modori.research_os.passport import (
     RecommendLocalPayload,
     RouteExternalPayload,
 )
+from modori.research_os.p1_intake import (
+    P1IntakeDraft,
+    P1RoleBindings,
+    P1TaskProfile,
+    build_causal_abstention_request,
+    build_p1_request,
+)
 from modori.research_os.service import (
     ResolvedPassport,
     ResearchOsService,
@@ -333,6 +340,35 @@ def test_existing_recommendation_service_signature_is_unchanged() -> None:
 
     assert tuple(parameters) == ("self", "dataset", "active_analysis")
     assert parameters["active_analysis"].kind is inspect.Parameter.KEYWORD_ONLY
+
+
+def test_p1_intake_is_closed_structure_only_and_requires_both_fingerprints() -> None:
+    assert tuple(P1TaskProfile) == (
+        P1TaskProfile.NUMERIC_DISTRIBUTION,
+        P1TaskProfile.CATEGORY_FREQUENCY,
+        P1TaskProfile.INDEPENDENT_TWO_GROUP_MEAN,
+        P1TaskProfile.PAIRED_TWO_TIME_MEAN_CHANGE,
+        P1TaskProfile.LINEAR_CO_MOVEMENT,
+        P1TaskProfile.RANK_CO_MOVEMENT,
+    )
+    assert tuple(P1RoleBindings.__dataclass_fields__) == (
+        "outcome",
+        "group",
+        "focal_predictor",
+        "repeated_measure_order",
+    )
+    assert tuple(P1IntakeDraft.__dataclass_fields__) == ("profile", "roles")
+    for builder in (build_p1_request, build_causal_abstention_request):
+        parameters = inspect.signature(builder).parameters
+        assert "task_project_id" in parameters
+        assert "initial_event_id" in parameters
+        assert "dataset_fingerprint" in parameters
+        assert "source_schema_fingerprint" in parameters
+        assert "available_variable_ids" in parameters
+        assert "language" in parameters
+        assert "dataset" not in parameters
+        assert "path" not in parameters
+        assert "execute" not in parameters
 
 
 def test_production_code_has_no_direct_migration_event_producer() -> None:
