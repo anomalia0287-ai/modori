@@ -1240,8 +1240,8 @@ git commit -m "refactor: share Research OS preflight validation"
 - Create: `src/modori/ui/research_flow_presenter.py`
 - Modify: `src/modori/ui/strings.py`
 - Create: `tests/ui/test_research_flow_presenter.py`
-- Modify: `tests/ui/test_question_rationale_presenter.py`
-- Modify: `tests/test_question_rationale_adversarial.py`
+- Verify: `tests/ui/test_question_rationale_presenter.py`
+- Verify: `tests/test_question_rationale_adversarial.py`
 
 **Interfaces:**
 
@@ -1314,6 +1314,7 @@ def present_durable_record(
     mode: ControllerMode,
     language: Language,
     preflight: PreflightResult | None,
+    variable_labels: Mapping[str, str] | None = None,
 ) -> ResearchFlowView: ...
 
 def present_static_boundary(
@@ -1327,7 +1328,7 @@ def present_static_boundary(
 Use the repository's existing identities: `ControllerMode.GUIDED` is CASUAL MODE and
 `ControllerMode.STANDARD` is PRO MODE. Do not add `"casual"` or `"pro"` runtime values.
 
-- [ ] **Step 1: Write provenance and mode-invariance tests**
+- [x] **Step 1: Write provenance and mode-invariance tests**
 
 CASUAL and PRO must carry the same internal `decision_identity_digest`, disposition,
 capability, roles, and next command. CASUAL leaves `visible_passport_digest` blank; PRO
@@ -1337,7 +1338,7 @@ from the committed `QuestionCopy` through `project_current_question_rationale()`
 the existing `QuestionRationalePresenter`. Poison planner search and legacy
 `recommendationReason`; neither may be called or copied.
 
-- [ ] **Step 2: Write the closed bilingual state catalog tests**
+- [x] **Step 2: Write the closed bilingual state catalog tests**
 
 Cover available question, ready candidate, static causal notice, causal recorded
 abstention, scope boundary, intake block, preflight block, recovery pending, retracted,
@@ -1346,7 +1347,7 @@ Require Korean and English
 catalog entries, forbid free-form fallback, and distinguish unavailable from failure,
 corruption, stale, and unsupported. `RouteReady` must be rejected rather than rendered.
 
-- [ ] **Step 3: Freeze experimental and no-auto-run vocabulary**
+- [x] **Step 3: Freeze experimental and no-auto-run vocabulary**
 
 Every candidate view must contain the semantic identities for `실험적 후보`, `검토
 상태`, `검증 중인 분석 후보 · 자동 실행 안 함`, and `구성 검토로 이동`. Forbid
@@ -1354,7 +1355,7 @@ Every candidate view must contain the semantic identities for `실험적 후보`
 assumption satisfaction, or causal-effect language. A preflight block says no analysis
 ran and cannot rename a different method as a candidate.
 
-- [ ] **Step 4: Run the tests and confirm failure**
+- [x] **Step 4: Run the tests and confirm failure**
 
 Run:
 
@@ -1364,14 +1365,19 @@ Run:
 
 Expected: FAIL because the composed Research OS presenter is absent.
 
-- [ ] **Step 5: Implement immutable presentation models and catalogs**
+- [x] **Step 5: Implement immutable presentation models and catalogs**
 
 Keep raw passports, mutable requests, SQLite handles, datasets, and paths out of the
 view. Ordinary CASUAL views omit full fingerprints and raw variable IDs; labels are
 resolved locally by the controller only for the current screen. Static boundary views
 are explicitly non-authoritative and cannot masquerade as a committed decision.
 
-- [ ] **Step 6: Run focused projection and integrity tests**
+`variable_labels` is therefore an optional presenter input, not durable authority. It
+is required only when PRO renders role rows; missing, blank, non-NFC, or raw-ID-equal
+labels are rejected instead of falling back to a variable ID. CASUAL never consumes
+the mapping.
+
+- [x] **Step 6: Run focused projection and integrity tests**
 
 Run:
 
@@ -1381,10 +1387,17 @@ Run:
 
 Expected: all pass with identical action authority across modes.
 
-- [ ] **Step 7: Commit**
+Evidence on 2026-07-17: the requested focused projection/integrity command passed
+`150 passed`; the presenter-only contract passed `66 passed`; Ruff check passed and
+Ruff format reported all three changed Python files already formatted. The full UI
+regression passed `628 passed` when run with permission to create `.test-tmp`; the
+sandboxed attempt was invalidated by test-fixture write denials. The initial RED failed
+because `modori.ui.research_flow_presenter` did not exist.
+
+- [x] **Step 7: Commit**
 
 ```powershell
-git add -- src/modori/ui/research_flow_presenter.py src/modori/ui/strings.py tests/ui/test_research_flow_presenter.py tests/ui/test_question_rationale_presenter.py tests/test_question_rationale_adversarial.py
+git add -- src/modori/ui/research_flow_presenter.py src/modori/ui/strings.py tests/ui/test_research_flow_presenter.py docs/superpowers/plans/2026-07-17-live-multi-round-research-os-ui.md
 git commit -m "feat: project verified Research OS decisions"
 ```
 
