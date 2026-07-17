@@ -14,6 +14,8 @@ PearlSurface {
     property bool manualSelectionMode: false
     property bool manualIntentPickerVisible: false
     property bool showOtherRecommendations: false
+    property bool showLegacyCandidates: false
+    property bool researchOnly: false
     property bool experimentalPreparation: uiController.recommendationPreparationPending
     property bool recommendationAvailable: uiController.recommendationCount > 0
     property bool canEditSelection: uiController.status !== "empty" && uiController.status !== "running"
@@ -162,6 +164,7 @@ PearlSurface {
 
     function startManualSelection() {
         uiController.clearExperimentalRecommendationSelection()
+        root.showLegacyCandidates = true
         root.resetPendingSelection(true)
     }
 
@@ -522,6 +525,7 @@ PearlSurface {
 
     ColumnLayout {
         id: guideHeader
+        visible: false
         anchors.top: parent.top
         anchors.left: parent.left
         anchors.right: parent.right
@@ -558,7 +562,7 @@ PearlSurface {
         objectName: "guideFormScroll"
         anchors.fill: parent
         anchors.margins: theme.spaceLg
-        anchors.topMargin: theme.spaceLg + guideHeader.implicitHeight + theme.spaceMd
+        anchors.topMargin: theme.spaceLg
         clip: true
         contentWidth: availableWidth
         ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
@@ -566,6 +570,72 @@ PearlSurface {
         ColumnLayout {
             width: guideScroll.availableWidth
             spacing: theme.spaceMd
+
+            ResearchFlowPanel {
+                Layout.fillWidth: true
+                Layout.preferredHeight: implicitHeight
+                controller: uiController.researchFlow
+                compactMode: !root.researchOnly
+                reduceEffects: uiController.reduceEffects
+            }
+
+            ColumnLayout {
+                visible: !root.researchOnly
+                Layout.fillWidth: true
+                spacing: theme.spaceSm
+
+                Label {
+                    text: appBootstrap.text("research.legacy.title")
+                    color: theme.bronzeDeep
+                    font.bold: true
+                    wrapMode: Text.WordWrap
+                    Layout.fillWidth: true
+                }
+
+                Label {
+                    text: appBootstrap.text("research.legacy.experimental_status")
+                    color: theme.textBody
+                    wrapMode: Text.WordWrap
+                    Layout.fillWidth: true
+                }
+
+                AppButton {
+                    text: root.showLegacyCandidates
+                        ? appBootstrap.text("research.legacy.collapse")
+                        : appBootstrap.text("research.legacy.expand")
+                    Accessible.name: text
+                    variant: "glass"
+                    selected: root.showLegacyCandidates
+                    Layout.fillWidth: true
+                    onClicked: root.showLegacyCandidates = !root.showLegacyCandidates
+                }
+
+                AppButton {
+                    text: appBootstrap.text("research.direct_manual")
+                    Accessible.name: text
+                    variant: "quiet"
+                    enabled: root.canEditSelection
+                    Layout.fillWidth: true
+                    onClicked: {
+                        root.showLegacyCandidates = true
+                        root.startManualSelection()
+                    }
+                }
+            }
+
+            Label {
+                text: appBootstrap.text("research.direct_available")
+                visible: root.researchOnly
+                color: theme.textSecondary
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+
+            ColumnLayout {
+                id: legacyCandidateArea
+                visible: !root.researchOnly && root.showLegacyCandidates
+                Layout.fillWidth: true
+                spacing: theme.spaceMd
 
             Label {
                 text: appBootstrap.text("guide.order_disclaimer")
@@ -1225,6 +1295,7 @@ PearlSurface {
                 color: theme.textControl
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
+            }
             }
         }
     }

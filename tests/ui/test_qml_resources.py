@@ -41,3 +41,14 @@ def test_parisienne_font_and_license_are_packaged() -> None:
     assert "SIL OPEN FONT LICENSE Version 1.1" in license_file.read_text(encoding="utf-8")
     assert '"qml/assets/fonts/*.ttf"' in package
     assert '"qml/assets/fonts/*.txt"' in package
+
+
+def test_research_os_qml_components_resolve_from_package_source() -> None:
+    component_root = Path("src/modori/ui/qml/components")
+
+    for name in (
+        "ResearchFlowPanel.qml",
+        "ResearchQuestionCard.qml",
+        "ResearchCandidateCard.qml",
+    ):
+        assert (component_root / name).is_file()

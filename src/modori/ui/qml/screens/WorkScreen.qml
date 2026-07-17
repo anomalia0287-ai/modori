@@ -7,6 +7,9 @@ import "../theme"
 Item {
     id: root
     property bool reduceEffects: false
+    property bool researchRailOpen: false
+    readonly property bool researchRailVisible: uiController.mode === "guided"
+        || root.researchRailOpen
     signal openDataRequested()
     signal reportRequested()
     signal dataSheetRequested()
@@ -83,6 +86,19 @@ Item {
                 }
 
                 AppButton {
+                    text: root.researchRailOpen
+                        ? appBootstrap.text("research.close")
+                        : appBootstrap.text("research.open")
+                    Accessible.name: text
+                    Accessible.description: appBootstrap.text("research.no_auto_run")
+                    variant: "quiet"
+                    compact: true
+                    selected: root.researchRailOpen
+                    visible: uiController.mode === "standard"
+                    onClicked: root.researchRailOpen = !root.researchRailOpen
+                }
+
+                AppButton {
                     text: appBootstrap.text("work.report")
                     Accessible.name: appBootstrap.text("work.report_menu")
                     variant: "quiet"
@@ -133,10 +149,11 @@ Item {
                 }
 
                 GuideRail {
-                    visible: uiController.mode === "guided"
-                    SplitView.preferredWidth: uiController.mode === "guided" ? theme.guideRailPreferredWidth : theme.spaceNone
-                    SplitView.minimumWidth: uiController.mode === "guided" ? theme.guideRailMinimumWidth : theme.spaceNone
-                    SplitView.maximumWidth: uiController.mode === "guided" ? theme.guideRailMaximumWidth : theme.spaceNone
+                    visible: uiController.mode === "guided" || root.researchRailOpen
+                    researchOnly: uiController.mode === "standard"
+                    SplitView.preferredWidth: root.researchRailVisible ? theme.guideRailPreferredWidth : theme.spaceNone
+                    SplitView.minimumWidth: root.researchRailVisible ? theme.guideRailMinimumWidth : theme.spaceNone
+                    SplitView.maximumWidth: root.researchRailVisible ? theme.guideRailMaximumWidth : theme.spaceNone
                 }
 
                 PearlSurface {

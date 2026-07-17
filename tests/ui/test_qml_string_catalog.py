@@ -70,3 +70,15 @@ def test_recommendation_surface_uses_one_persistent_experimental_status() -> Non
         "현재 규칙으로 표시할 분석 후보가 없습니다. 수동 분석을 사용할 수 있습니다."
     )
     assert "분석 자동 추천" not in UI_STRINGS_KO.values()
+
+
+def test_research_os_surface_uses_experimental_and_no_auto_run_vocabulary() -> None:
+    assert UI_STRINGS_KO["research.panel.title"] == "Research OS"
+    assert UI_STRINGS_KO["research.transformation_first"].startswith(
+        "역코딩·척도 구성·결측 처리"
+    )
+    assert UI_STRINGS_KO["research.experimental"] == "실험적 후보"
+    assert UI_STRINGS_KO["research.no_auto_run"] == (
+        "검증 중인 분석 후보 · 자동 실행 안 함"
+    )
+    assert UI_STRINGS_KO["research.legacy.title"] == "데이터 모양 기반 빠른 후보"

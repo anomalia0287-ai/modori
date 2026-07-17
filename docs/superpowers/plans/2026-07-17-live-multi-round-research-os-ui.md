@@ -1673,7 +1673,7 @@ git commit -m "feat: confirm passport-bound analysis preparation"
 - Modify: `tests/ui/test_qml_visual_contract.py`
 - Modify: `tests/ui/test_human_operated_qml_flow.py`
 
-- [ ] **Step 1: Write the production-component state tests**
+- [x] **Step 1: Write the production-component state tests**
 
 Instantiate the real components against closed synthetic `stateModel` values for:
 transformation-first notice, fingerprint busy, causal question, causal static notice,
@@ -1683,7 +1683,7 @@ corruption, recovery pending, retracted, stale/replan, cancellation, and success
 preparation review. Assert the
 visible and absent regions and that `RouteReady` has no render/action path.
 
-- [ ] **Step 2: Write layout, mode, provenance, and accessibility tests**
+- [x] **Step 2: Write layout, mode, provenance, and accessibility tests**
 
 Require one question per screen, keyboard order, visible focus, accessible names,
 screen-reader roles/status announcements, long Korean/English wrapping, 200% scale,
@@ -1693,7 +1693,7 @@ an explicit header action into the left rail; direct analysis stays reachable. T
 legacy quick-candidate area is collapsed, separately labelled, retains its experimental
 wording, and never shares selection, rationale, or preparation with Research OS.
 
-- [ ] **Step 3: Write Prepare/Confirm/Run interaction tests**
+- [x] **Step 3: Write Prepare/Confirm/Run interaction tests**
 
 Drive QML signals through the real controller. Prepare opens the exact review without
 pipeline mutation; Confirm configures once; Run remains a separate enabled action only
@@ -1701,7 +1701,7 @@ after configuration. Mode switch and drift invalidate the pending review visibly
 static causal notice's back action causes no write; its explicit record action alone
 enters busy/commit state.
 
-- [ ] **Step 4: Run the tests and confirm failure**
+- [x] **Step 4: Run the tests and confirm failure**
 
 Run:
 
@@ -1711,14 +1711,14 @@ Run:
 
 Expected: FAIL because the new QML components are absent.
 
-- [ ] **Step 5: Implement the smallest state-complete surface**
+- [x] **Step 5: Implement the smallest state-complete surface**
 
 Bind only to `uiController.researchFlow` and closed string identities. Reuse current
 theme roles and existing accessible controls; add a semantic theme role only when no
 existing role expresses the state. Do not embed a planner, raw passport mapping,
 fingerprint, store, arbitrary path, or generic method selector in QML.
 
-- [ ] **Step 6: Run QML and human-operated regression tests**
+- [x] **Step 6: Run QML and human-operated regression tests**
 
 Run:
 
@@ -1728,7 +1728,32 @@ Run:
 
 Expected: all pass in offscreen runtime mode.
 
-- [ ] **Step 7: Commit**
+Fail-first evidence was `29 failed, 50 passed`: all new production components,
+closed strings, mode integration, and state render paths were absent. The first green
+pass exposed and corrected a missing explicit QML delegate index. The complete UI
+cohort then found four real compatibility regressions: the intended fifth compact
+header command was not reflected in the visual contract, and two reused legacy string
+identities caused source-level provenance sections to overlap. The corrected surface
+uses distinct Research OS, legacy quick-candidate, and direct-manual identities.
+
+Final evidence on 2026-07-17, using the worktree-local pinned `.venv` and disabling the
+pytest cache provider:
+
+- production Research OS QML state and real-controller interaction tests: `33 passed`;
+- planned QML, string, runtime, human-operated, smoke, and Aurora cohort: `96 passed`;
+- complete UI cohort: `716 passed`;
+- all nineteen synthetic closed states loaded without significant QML runtime warnings;
+- Ruff format/check passed for the new Python test; and
+- `git diff --check` passed.
+
+The real-controller QML tests prove that static causal Back schedules no write while
+explicit Record schedules one commit; paired roles preserve before/after order;
+closed and variable clarification answers cannot invent an option; Prepare makes no
+pipeline change; Confirm configures exactly once; and no QML Research OS component can
+invoke Run. Qt lint also exposed an initially shadowed `QQuickItem.state` property; it
+was renamed `flowState` before the final regression run.
+
+- [x] **Step 7: Commit**
 
 ```powershell
 git add -- src/modori/ui/qml/components/ResearchFlowPanel.qml src/modori/ui/qml/components/ResearchQuestionCard.qml src/modori/ui/qml/components/ResearchCandidateCard.qml src/modori/ui/qml/components/GuideRail.qml src/modori/ui/qml/screens/WorkScreen.qml src/modori/ui/strings.py tests/ui/test_research_flow_qml.py tests/ui/test_qml_resources.py tests/ui/test_qml_string_catalog.py tests/ui/test_qml_runtime_load.py tests/ui/test_qml_visual_contract.py tests/ui/test_human_operated_qml_flow.py

@@ -180,14 +180,43 @@ def test_explain_mode_control_is_bound_to_explanation_surfaces() -> None:
 def test_guided_and_standard_modes_change_visible_work_surface() -> None:
     work = qml_text("screens/WorkScreen.qml")
 
-    assert 'visible: uiController.mode === "guided"' in work
-    assert 'SplitView.preferredWidth: uiController.mode === "guided" ? theme.guideRailPreferredWidth : theme.spaceNone' in work
-    assert 'SplitView.minimumWidth: uiController.mode === "guided" ? theme.guideRailMinimumWidth : theme.spaceNone' in work
-    assert 'SplitView.maximumWidth: uiController.mode === "guided" ? theme.guideRailMaximumWidth : theme.spaceNone' in work
+    assert 'visible: uiController.mode === "guided" || root.researchRailOpen' in work
+    assert 'SplitView.preferredWidth: root.researchRailVisible ? theme.guideRailPreferredWidth : theme.spaceNone' in work
+    assert 'SplitView.minimumWidth: root.researchRailVisible ? theme.guideRailMinimumWidth : theme.spaceNone' in work
+    assert 'SplitView.maximumWidth: root.researchRailVisible ? theme.guideRailMaximumWidth : theme.spaceNone' in work
     assert "ModeSegment" in work
     assert "currentMode: uiController.mode" in work
     assert 'onGuidedRequested: uiController.chooseMode("guided")' in work
     assert 'onStandardRequested: uiController.chooseMode("standard")' in work
+
+
+def test_research_os_is_embedded_in_casual_and_explicitly_opened_in_pro() -> None:
+    work = qml_text("screens/WorkScreen.qml")
+    guide = qml_text("components/GuideRail.qml")
+
+    assert "researchRailOpen" in work
+    assert 'uiController.mode === "guided" || root.researchRailOpen' in work
+    assert "ResearchFlowPanel" in guide
+    assert "controller: uiController.researchFlow" in guide
+    assert "researchOnly" in guide
+    assert "showLegacyCandidates" in guide
+    assert "guide.experimental_status" in guide
+    assert "uiController.recommendationReason" in guide
+    assert "recommendationReason" not in qml_text(
+        "components/ResearchFlowPanel.qml"
+    )
+
+
+def test_research_os_keeps_manual_run_outside_candidate_and_review_cards() -> None:
+    panel = qml_text("components/ResearchFlowPanel.qml")
+    candidate = qml_text("components/ResearchCandidateCard.qml")
+    work = qml_text("screens/WorkScreen.qml")
+
+    assert "controller.prepare()" in panel
+    assert "controller.confirm()" in panel
+    assert "rerunNow" not in panel
+    assert "rerunNow" not in candidate
+    assert "onClicked: uiController.rerunNow()" in work
 
 
 def test_work_actions_are_disabled_until_required_state_exists() -> None:
