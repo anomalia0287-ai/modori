@@ -5,6 +5,7 @@ from dataclasses import FrozenInstanceError
 import pandas as pd
 import pytest
 
+import modori.steps.input_validation as input_validation_module
 from modori.core import Dataset, Measure, PipelineContext, Variable
 from modori.steps.correlation import CorrelationStep
 from modori.steps.descriptives_table1 import DescriptivesTableStep
@@ -731,6 +732,25 @@ def test_shared_validator_accepts_all_six_exact_input_shapes(
     params: dict[str, object],
 ) -> None:
     assert validate_step_input(dataset, step_type, _normalize(step_type, params)) == ()
+
+
+@pytest.mark.parametrize("valid_case_index", (2, 4))
+def test_numeric_validator_contract_violation_fails_closed_without_assert(
+    valid_case_index: int,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    step_type, dataset, params = _valid_cases()[valid_case_index]
+    monkeypatch.setattr(
+        input_validation_module,
+        "_numeric_values",
+        lambda *_args, **_kwargs: (None, None),
+    )
+
+    with pytest.raises(
+        RuntimeError,
+        match="numeric validation returned neither values nor issue",
+    ):
+        validate_step_input(dataset, step_type, _normalize(step_type, params))
 
 
 @pytest.mark.parametrize("case_name", tuple(_invalid_cases()))

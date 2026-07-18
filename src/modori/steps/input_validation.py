@@ -324,7 +324,10 @@ def _validate_correlation(
             )
             if issue is not None:
                 return (issue,)
-            assert values is not None
+            if values is None:
+                raise RuntimeError(
+                    "numeric validation returned neither values nor issue"
+                )
             numeric[key] = values
         for key, role in ((x, "x"), (y, "y")):
             if numeric[key].nunique(dropna=True) < 2:
@@ -411,7 +414,8 @@ def _validate_compare_groups(
     )
     if issue is not None:
         return (issue,)
-    assert values is not None
+    if values is None:
+        raise RuntimeError("numeric validation returned neither values nor issue")
     group_values = ordered_group_values(frame, group)
     if len(group_values) != 2:
         return (StepInputIssue(code="wrong_group_cardinality", role="group"),)
