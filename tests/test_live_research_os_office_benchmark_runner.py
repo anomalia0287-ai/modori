@@ -1306,6 +1306,58 @@ def test_complete_runner_collects_exact_cold_warm_inventory_and_discards_warmup(
     assert canonical_result_bytes(result)
 
 
+def test_complete_runner_cleans_only_warm_scenarios_that_created_child_roots(
+    tmp_path: Path,
+    acceptance_fixture,
+) -> None:
+    protocol = OfficeBenchmarkProtocol(cold_processes_per_stratum=1, warm_iterations=1)
+    executable = tmp_path / "ModoriLiveResearchOSBenchmark.exe"
+    executable.write_bytes(b"verified")
+    working_root = initialize_working_root(
+        tmp_path / "ModoriBenchmarkRuns",
+        run_id=RUN_ID,
+    )
+    nonces = iter(f"{index:032x}" for index in range(1, 8))
+
+    def child_executor(_executable: Path, **kwargs: object) -> ChildObservation:
+        return _fake_observation(
+            cache_state="cold",
+            child_id=kwargs["child_id"],
+            profile=kwargs["profile"],
+            include_acknowledgements=kwargs["mode"] == "identity",
+        )
+
+    result = run_complete_benchmark(
+        protocol,
+        verified_self_executable=executable,
+        working_root=working_root,
+        source_commit=SOURCE_COMMIT,
+        kit_identity_digest="b" * 64,
+        execution_conditions=_execution_conditions(),
+        hardware=_hardware(),
+        recorded_at_utc="2026-07-18T01:02:03Z",
+        run_id=RUN_ID,
+        fixture_builder=lambda: acceptance_fixture,
+        child_process_executor=child_executor,
+        warm_iteration_runner=run_warm_iteration,
+        stress_check_runner=lambda _protocol: {
+            "column_count": 40,
+            "duration_ns": None,
+            "error_code": None,
+            "fixture_digest": (
+                "3dad9993f2e0114ec310436e3df6d02381ff696404a5947022c0cdbca14fdc82"
+            ),
+            "fixture_id": "modori.live_research_os.office_stress_fixture.v1",
+            "outcome": "not_run",
+            "row_count": 125_000,
+        },
+        nonce_factory=lambda: next(nonces),
+    )
+
+    assert canonical_result_bytes(result)
+    assert not (working_root / RUN_ID).exists()
+
+
 def test_outputs_publish_json_last_and_remove_every_partial_on_failure(
     tmp_path: Path,
 ) -> None:

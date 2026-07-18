@@ -2310,7 +2310,8 @@ def run_complete_benchmark(
             cache_state="warm",
             profile=observation.profile,
         )
-        cleanup_child_ids.append(observation.child_id)
+        if observation.profile is not None:
+            cleanup_child_ids.append(observation.child_id)
 
     for iteration in range(protocol.warm_iterations):
         observations = warm_iteration_runner(
@@ -2332,7 +2333,8 @@ def run_complete_benchmark(
                 cache_state="warm",
                 profile=profile,
             )
-            cleanup_child_ids.append(observation.child_id)
+            if profile is not None:
+                cleanup_child_ids.append(observation.child_id)
             if profile is None:
                 identities[("warm", iteration)] = observation
             else:
