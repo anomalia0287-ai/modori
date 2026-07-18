@@ -658,7 +658,7 @@ Before transfer, independently verify the final ZIP and sidecar again and report
 absolute development-PC paths, full file names, byte size, SHA-256, source commit, and
 expected target extraction directory:
 
-`%LOCALAPPDATA%\ModoriBench-LiveResearchOS-<source_commit[0:12]>`
+`%LOCALAPPDATA%\MBL-<source_commit[0:12]>`
 
 No similarly named prior kit is valid evidence.
 

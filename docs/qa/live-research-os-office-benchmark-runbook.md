@@ -49,7 +49,7 @@ Status: B4 검증 도구 구현 중. 최종 ZIP 이름·크기·SHA-256은 B4 �
 
 최종 채팅에 보고된 source commit 앞 12자리를 사용해 다음 폴더를 만든다.
 
-`%LOCALAPPDATA%\ModoriBench-LiveResearchOS-<source_commit[0:12]>`
+`%LOCALAPPDATA%\MBL-<source_commit[0:12]>`
 
 1. USB의 ZIP과 `.zip.sha256`을 위 폴더로 복사한다.
 2. USB에서 직접 실행하지 않는다. USB 속도를 제품 속도로 오인하게 된다.
@@ -59,7 +59,8 @@ Status: B4 검증 도구 구현 중. 최종 ZIP 이름·크기·SHA-256은 B4 �
 5. 위 폴더 안에서 ZIP을 새로 압축 해제한다. 다른 위치에서 풀어 둔 폴더를
    이동하거나 이전 실행 폴더 위에 덮어쓰지 않는다.
 6. 압축 해제 후 전체 경로가 너무 길면 `kit_path_too_long`으로 중단된다. 폴더
-   이름을 임의로 길게 바꾸지 않는다.
+   이름을 임의로 길게 바꾸지 않는다. `MBL-`은 230자 gate와 현재 runtime의
+   최장 상대 경로를 함께 만족시키기 위해 의도적으로 짧게 정한 이름이다.
 
 ## 6. 실행
 

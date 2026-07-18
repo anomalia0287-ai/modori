@@ -218,7 +218,7 @@ def test_runbook_closes_operator_paths_outputs_and_claim_limits() -> None:
     )
     folded = text.casefold()
     for required in (
-        "%localappdata%\\modoribench-liveresearchos-",
+        "%localappdata%\\mbl-",
         "ac 전원",
         "usb에서 직접 실행하지",
         "onedrive",
