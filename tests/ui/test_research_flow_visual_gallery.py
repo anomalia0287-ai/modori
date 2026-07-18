@@ -206,17 +206,9 @@ def test_every_declared_research_flow_contrast_pair_passes_unrounded_gate() -> N
 
 
 @pytest.fixture(scope="module")
-def rendered_scale_sample(tmp_path_factory: pytest.TempPathFactory) -> Path:
+def rendered_gallery(tmp_path_factory: pytest.TempPathFactory) -> Path:
     assert CAPTURE_SCRIPT.is_file(), "capture harness must exist before rendering"
     output = tmp_path_factory.mktemp("research-flow-gallery")
-    selected = [
-        "shell-guided-idle-ko-min",
-        "interaction-primary-default",
-        "interaction-primary-hover",
-        "question-standard-en",
-        "loading-ko-scale-150",
-        "interaction-primary-disabled",
-    ]
     completed = subprocess.run(
         [
             sys.executable,
@@ -226,7 +218,6 @@ def rendered_scale_sample(tmp_path_factory: pytest.TempPathFactory) -> Path:
             "--output",
             str(output),
             "--allow-dirty",
-            *[argument for item in selected for argument in ("--item", item)],
         ],
         cwd=ROOT,
         env={**os.environ, "QT_QPA_PLATFORM": "offscreen"},
@@ -239,14 +230,15 @@ def rendered_scale_sample(tmp_path_factory: pytest.TempPathFactory) -> Path:
     return output
 
 
-def test_selected_scale_items_render_the_production_component_contract(
-    rendered_scale_sample: Path,
+def test_full_matrix_renders_the_production_component_contract(
+    rendered_gallery: Path,
 ) -> None:
     gallery = json.loads(
-        (rendered_scale_sample / "gallery-manifest.json").read_text(encoding="utf-8")
+        (rendered_gallery / "gallery-manifest.json").read_text(encoding="utf-8")
     )
     assert gallery["schema_id"] == "modori.research-flow.rendered-gallery"
     assert gallery["source_commit"]
+    assert len(gallery["items"]) == 29
     assert {item["scale_factor"] for item in gallery["items"]} == {
         1.0,
         1.25,
@@ -275,7 +267,7 @@ def test_selected_scale_items_render_the_production_component_contract(
         if item["interaction_response_ms"] is not None:
             interaction_response_times.append(float(item["interaction_response_ms"]))
         assert item["logical_size"] in ([1024, 640], [1180, 760])
-        image_path = rendered_scale_sample / item["image"]
+        image_path = rendered_gallery / item["image"]
         assert image_path.is_file()
         assert hashlib.sha256(image_path.read_bytes()).hexdigest() == item["sha256"]
 
@@ -289,16 +281,16 @@ def test_selected_scale_items_render_the_production_component_contract(
 
 
 def test_captures_have_no_text_metadata_or_os_chrome_fields(
-    rendered_scale_sample: Path,
+    rendered_gallery: Path,
 ) -> None:
     gallery = json.loads(
-        (rendered_scale_sample / "gallery-manifest.json").read_text(encoding="utf-8")
+        (rendered_gallery / "gallery-manifest.json").read_text(encoding="utf-8")
     )
     serialized = json.dumps(gallery, ensure_ascii=False, sort_keys=True)
     for pattern in _manifest()["privacy"]["forbidden_text_patterns"]:
         assert re.search(pattern, serialized) is None
     for item in gallery["items"]:
-        reader = QImageReader(str(rendered_scale_sample / item["image"]))
+        reader = QImageReader(str(rendered_gallery / item["image"]))
         assert reader.canRead()
         assert list(reader.textKeys()) == []
         assert item["capture_scope"] == "application-content-only"
@@ -306,7 +298,7 @@ def test_captures_have_no_text_metadata_or_os_chrome_fields(
 
 
 def test_mode_a_packet_is_digest_bound_and_contains_no_source(
-    rendered_scale_sample: Path,
+    rendered_gallery: Path,
     tmp_path: Path,
 ) -> None:
     packet_dir = tmp_path / "mode-a"
@@ -315,7 +307,7 @@ def test_mode_a_packet_is_digest_bound_and_contains_no_source(
             sys.executable,
             str(PACKET_SCRIPT),
             "--gallery",
-            str(rendered_scale_sample),
+            str(rendered_gallery),
             "--output",
             str(packet_dir),
             "--source-manifest",
@@ -354,12 +346,12 @@ def test_mode_a_packet_is_digest_bound_and_contains_no_source(
 
 
 def test_mode_a_packet_rejects_structural_only_offscreen_renders(
-    rendered_scale_sample: Path,
+    rendered_gallery: Path,
     tmp_path: Path,
 ) -> None:
     packet = _load_script(PACKET_SCRIPT, "research_flow_packet_platform_gate")
     structural_gallery = tmp_path / "structural-gallery"
-    shutil.copytree(rendered_scale_sample, structural_gallery)
+    shutil.copytree(rendered_gallery, structural_gallery)
     gallery_path = structural_gallery / "gallery-manifest.json"
     gallery = json.loads(gallery_path.read_text(encoding="utf-8"))
     gallery["items"][0]["qt_platform"] = "offscreen"

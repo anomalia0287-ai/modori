@@ -1862,14 +1862,24 @@ nearest-rank p95 directly to those two fields. Full `WorkScreen` construction re
 separate cold shell diagnostic and is never averaged with component or interaction
 response. Final committed capture evidence is recorded only after Step 6.
 
-- [ ] **Step 6: Capture the committed first pass**
+- [x] **Step 6: Capture the committed first pass**
 
 Require a clean worktree, then generate `.visual-qa/research-flow/` from the exact
 manifest. Verify every image and generated item manifest names the current HEAD. Inspect
 at native size and side by side; if an owner defect is fixed, commit it and regenerate
 the complete gallery before building any review packet.
 
-- [ ] **Step 7: Run bounded advisory review**
+The clean first-pass recapture at `f4d35cdce705a0fa447a9b2a3dfb3d987cbb939a`
+produced 29 native Windows items and a digest-bound Mode A packet. Every item named that
+one commit, used `production-windows` with 387 available font families, and reported
+zero missing regions, unexpected regions, property mismatches, horizontal overflow,
+title clipping, OS chrome, or non-production component substitutions. All 29 images
+and the readable contact sheet were inspected. Nearest-rank p95 was `242.801 ms` for
+state stabilization against the frozen `250 ms` gate and `31.517 ms` for interaction
+response against the frozen `200 ms` gate. Total test-process/QML construction time
+remains diagnostic only and was not substituted for either response measure.
+
+- [x] **Step 7: Run bounded advisory review**
 
 Build a Mode A packet containing only sanitized synthetic images, a one-page visual
 brief, immutable/forbidden change lists, and viewport/scaling constraints. A fresh
@@ -1880,7 +1890,15 @@ tests. Classify each finding `accept`, `adapt`, or `reject`; reproduce technical
 locally. No reviewer writes this worktree. External review unavailability does not
 block the owner-side gallery/rubric.
 
-- [ ] **Step 8: Apply only accepted findings and re-run focused gates**
+The sanitized Mode A packet was built with the native Windows font database and
+reviewed owner-side without disclosing source or user data. No fresh external visual
+reviewer was available, which is explicitly non-blocking. The warranted source-aware
+technical audit stayed local and read-only in scope: exact theme-token contrast,
+header geometry, focus treatment, privacy fields, platform fidelity, and package
+exclusion were verified by deterministic tests and the rendered evidence. No advisory
+finding was accepted without a local reproduction.
+
+- [x] **Step 8: Apply only accepted findings and re-run focused gates**
 
 Run:
 
@@ -1891,7 +1909,14 @@ Run:
 Expected: all pass. At this point the rendered images are provisional if accepted code
 changes are still uncommitted.
 
-- [ ] **Step 9: Commit accepted polish, if any**
+The first post-capture cohort exposed one measurement-test defect: a six-item shortcut
+used nearest-rank p95, which equals the maximum for that sample size and therefore
+passed or failed on a single scheduler outlier. The frozen `250 ms` threshold was not
+changed. The regression fixture now renders all 29 frozen states, matching the evidence
+population on which p95 is defined. The full-matrix performance test passed in
+`38.56 s`, and the complete Step 8 cohort then passed `94` tests in `64.68 s`.
+
+- [x] **Step 9: Commit accepted polish, if any**
 
 ```powershell
 git add -- src/modori/ui/qml/components/ResearchFlowPanel.qml src/modori/ui/qml/components/ResearchQuestionCard.qml src/modori/ui/qml/components/ResearchCandidateCard.qml src/modori/ui/qml/theme/Theme.qml tests/ui/test_research_flow_visual_gallery.py tests/ui/test_qml_visual_contract.py tests/ui/test_cream_nacre_visual_system.py
@@ -1900,6 +1925,13 @@ git commit -m "style: finish live Research OS surface"
 
 Skip this commit when no finding was accepted. In either case, stage only actually
 changed paths; omit `Theme.qml` or any test/component absent from the reviewed diff.
+
+Accepted visual and evidence changes were committed in bounded slices:
+`df462e4` adds the 29-state native gallery and the reproduced visual fixes, while
+`f4d35cd` separates response gates from diagnostic capture construction. The final
+full-population p95 regression correction and this execution record form a test/docs
+follow-up only; they do not change product copy, state meaning, provenance, authority,
+or any recommendation rule.
 
 - [ ] **Step 10: Recapture and verify the final committed gallery**
 
