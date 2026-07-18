@@ -236,6 +236,19 @@ def test_runbook_closes_operator_paths_outputs_and_claim_limits() -> None:
     assert "파티션" in folded and "수정하지" in folded
 
 
+def test_runbook_prevents_explorer_from_duplicating_the_archive_root() -> None:
+    text = Path("docs/qa/live-research-os-office-benchmark-runbook.md").read_text(
+        encoding="utf-8"
+    )
+    folded = " ".join(text.casefold().split())
+
+    assert "0x80010135" in folded
+    assert "zip 안에 같은 이름의 최상위 폴더" in folded
+    assert "압축 풀기 창의 대상 폴더" in folded
+    assert "zip 파일명까지 자동으로 붙인 기본값" in folded
+    assert "%localappdata%\\mbl-<source_commit[0:12]>" in folded
+
+
 def test_300_sealed_mutations_fail_before_runtime_or_valid_result(
     tmp_path: Path,
 ) -> None:
