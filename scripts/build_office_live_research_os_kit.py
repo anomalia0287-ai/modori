@@ -496,7 +496,12 @@ def validate_pyinstaller_diagnostics(raw: str) -> tuple[str, ...]:
         if re.search(r"(?:^|\s)(?:WARNING|ERROR):|Traceback", line)
     )
     if dangerous:
-        raise KitBuildError("PyInstaller returned an unexpected diagnostic")
+        first = dangerous[0]
+        if len(first) > 500:
+            first = first[:500] + "..."
+        raise KitBuildError(
+            f"PyInstaller returned an unexpected diagnostic: {first}"
+        )
     return tuple(line.strip() for line in raw.splitlines() if line.strip())
 
 
