@@ -7,8 +7,11 @@ from pathlib import Path
 
 AUDITED_FILE_OPERATION_FILES = {
     "scripts/build_installer.py",
+    "scripts/build_office_live_research_os_kit.py",
     "scripts/installer_contract.py",
     "scripts/installer_smoke.py",
+    "scripts/live_research_os_office_benchmark.py",
+    "scripts/live_research_os_office_kit.py",
     "scripts/benchmark_counterfactual_clarification.py",
     "scripts/benchmark_research_memory.py",
     "scripts/build_office_research_memory_kit.py",
@@ -23,9 +26,11 @@ AUDITED_FILE_OPERATION_FILES = {
     "scripts/package_public_data_smoke.py",
     "scripts/package_windows.py",
     "scripts/recommendation_benchmark.py",
+    "scripts/run_office_live_research_os_benchmark.py",
     "scripts/run_office_research_memory_benchmark.py",
     "scripts/stress_matrix.py",
     "scripts/verify_office_research_memory_kit.py",
+    "scripts/verify_office_live_research_os_kit.py",
     "scripts/verify_release_integration.py",
     "src/modori/app.py",
     "src/modori/cache.py",
@@ -100,6 +105,52 @@ def test_file_operation_audit_document_covers_every_audited_file() -> None:
     ]
 
     assert missing == []
+
+
+def test_live_research_os_office_tools_document_their_closed_file_boundaries() -> None:
+    contract = _audit_row("scripts/live_research_os_office_benchmark.py")
+    kit_contract = _audit_row("scripts/live_research_os_office_kit.py")
+    builder = _audit_row("scripts/build_office_live_research_os_kit.py")
+    runner = _audit_row("scripts/run_office_live_research_os_benchmark.py")
+    verifier = _audit_row("scripts/verify_office_live_research_os_kit.py")
+
+    for row in (contract, kit_contract):
+        for required_text in (
+            "scanner false positive",
+            "no filesystem mutation",
+            "not packaged in the shipping app",
+        ):
+            assert required_text in row
+    for required_text in (
+        "Developer-only",
+        "clean committed HEAD",
+        "`dist/live-research-os-office`",
+        "exclusive creation",
+        "UUID-named staging",
+        "no user files",
+        "no network",
+    ):
+        assert required_text in builder
+    for required_text in (
+        "Offline",
+        "synthetic fixture",
+        "kit's own `work`",
+        "marked child roots",
+        "quarantine",
+        "atomically",
+        "no caller-selected path",
+        "no network",
+    ):
+        assert required_text in runner
+    for required_text in (
+        "Read-only inputs",
+        "`TemporaryDirectory`",
+        "no-follow",
+        "traversal",
+        "fixed identity arguments",
+        "does not modify the supplied ZIP or extracted root",
+    ):
+        assert required_text in verifier
 
 
 def test_live_research_os_persistence_exposes_no_broad_file_authority() -> None:
