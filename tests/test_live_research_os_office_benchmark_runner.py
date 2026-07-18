@@ -1559,6 +1559,18 @@ def test_runtime_self_identity_is_canonical_and_checks_imported_runtime_versions
     (resource_root / RUNTIME_IDENTITY_RESOURCE_NAME).write_bytes(raw + b"\n")
     with pytest.raises(BenchmarkRunnerError, match="runtime identity"):
         load_runtime_identity(resource_root=resource_root)
+    stderr = BytesIO()
+    assert (
+        benchmark_child_main(
+            ["--self-identity"],
+            stdout=BytesIO(),
+            stderr=stderr,
+            resource_root=resource_root,
+            self_executable=_executable,
+        )
+        != 0
+    )
+    assert stderr.getvalue() == b"modori-runtime-error:runtime_resource_invalid\n"
 
 
 def test_packaged_identity_binds_external_identity_lock_protocol_and_executable(

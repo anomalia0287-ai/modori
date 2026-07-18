@@ -2754,6 +2754,19 @@ def parse_entry_mode(
     _fail("entry arguments are not one closed invocation")
 
 
+def _runtime_failure_reason(exc: Exception) -> bytes:
+    if isinstance(exc, (ImportError, ModuleNotFoundError)):
+        return b"runtime_import_failure"
+    message = str(exc).casefold()
+    if "resource" in message:
+        return b"runtime_resource_invalid"
+    if "imported runtime" in message:
+        return b"runtime_import_contract_mismatch"
+    if "package lock" in message:
+        return b"package_lock_mismatch"
+    return b"runtime_identity_mismatch"
+
+
 class _SystemPowerStatus(ctypes.Structure):
     _fields_ = (
         ("ac_line_status", ctypes.c_ubyte),
@@ -3067,11 +3080,11 @@ def main(
                 identity=runtime_identity,
             )
             return 0
-        except Exception:
+        except Exception as exc:
             reason = (
                 b"release_failure"
                 if entry_mode == "release"
-                else b"runtime_identity_mismatch"
+                else _runtime_failure_reason(exc)
             )
             error_stream.write(_RUNTIME_FAILURE_PREFIX + reason + b"\n")
             error_stream.flush()

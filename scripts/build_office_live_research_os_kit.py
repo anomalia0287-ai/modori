@@ -658,7 +658,12 @@ def _verify_runtime_product(runtime: RuntimeProduct) -> None:
         or completed.stderr
         or completed.stdout != identity_bytes(runtime.identity) + b"\n"
     ):
-        raise KitBuildError("dedicated runtime self-identity does not match")
+        stderr_code = completed.stderr[:200].decode("ascii", errors="replace").strip()
+        raise KitBuildError(
+            "dedicated runtime self-identity does not match "
+            f"(exit={completed.returncode}, stderr={stderr_code or 'empty'}, "
+            f"stdout_bytes={len(completed.stdout)})"
+        )
 
 
 def build_kit_from_repository(
