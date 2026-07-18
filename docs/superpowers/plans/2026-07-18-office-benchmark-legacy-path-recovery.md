@@ -363,13 +363,27 @@ Run:
 ```powershell
 .\.venv\Scripts\python.exe -m pytest tests/test_live_research_os_office_benchmark_runner.py tests/test_live_research_os_office_benchmark_contract.py tests/test_office_live_research_os_kit_builder.py tests/test_office_live_research_os_kit_verifier.py tests/test_office_live_research_os_kit_runner.py tests/test_office_live_research_os_kit_architecture.py tests/test_file_operation_audit.py -q -p no:cacheprovider
 .\.venv\Scripts\python.exe -m ruff check .
-.\.venv\Scripts\python.exe -m ruff format --check .
-.\.venv\Scripts\python.exe -m bandit -q -r src scripts
+$base = git rev-parse 0a395e4^
+$pythonFiles = @(git diff --name-only "$base..HEAD" | Where-Object { $_ -like '*.py' })
+.\.venv\Scripts\python.exe -m ruff format --check @pythonFiles
+.\.venv\Scripts\python.exe -m bandit -q -r src
+.\.venv\Scripts\python.exe -m bandit -q scripts/build_office_live_research_os_kit.py scripts/live_research_os_office_benchmark.py scripts/run_office_live_research_os_benchmark.py scripts/verify_office_live_research_os_kit.py
 git diff --check
 git status --short
 ```
 
 Expected: all commands pass and status is clean. Do not build from dirty source.
+
+The recovery gate deliberately scopes `ruff format --check` to every Python file changed
+since the recovery design parent and runs Bandit over both the product `src` tree and all
+four recovery scripts. This is not a waiver of an existing repository gate: the official
+quality gate runs `ruff check` over `src`, `tests`, and `scripts`, and Bandit over `src`,
+but has no format command. On the clean `9b2b4f5` baseline, a newly proposed repository-
+wide format command identified 213 pre-existing files, while repository-wide Bandit over
+`src scripts` reported 52 pre-existing low-severity findings and zero medium/high findings.
+The official `src` Bandit gate and the four changed scripts both returned zero findings.
+Those baseline findings must not be silently erased or converted into 213 unrelated edits
+inside this recovery.
 
 - [ ] **Step 2: Build three independent source-pinned kits**
 
