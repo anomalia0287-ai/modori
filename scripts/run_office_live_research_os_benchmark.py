@@ -22,7 +22,7 @@ import sys
 import time
 from threading import Event
 from types import SimpleNamespace
-from typing import Any, Literal, NoReturn
+from typing import Any, Final, Literal, NoReturn
 import uuid
 
 from modori.path_policy import resolve_secure_directory_path
@@ -113,17 +113,24 @@ _RUNTIME_IDENTITY_RESOURCE_NAME = "LIVE-RESEARCH-OS-RUNTIME-IDENTITY.json"
 _RUNTIME_IDENTITY_FAILURE_EXIT_CODE = 21
 _RELEASE_FAILURE_EXIT_CODE = 22
 _ENTRY_ARGUMENT_FAILURE_EXIT_CODE = 64
+LEGACY_DYNAMIC_PATH_BUDGET_UNITS: Final[int] = 240
 _CHILD_FAILURE_CODES = frozenset(
     {
         "acknowledgement_failure",
+        "child_root_failure",
         "fingerprint_cancelled",
         "fingerprint_limit_exceeded",
         "fingerprint_timeout",
+        "fixture_build_failure",
         "identity_mismatch",
+        "identity_sample_failure",
         "product_authority_failure",
         "resource_measurement_failure",
+        "scenario_execution_failure",
+        "scenario_fingerprint_failure",
     }
 )
+_STAGE_FAILURE_CODES = _CHILD_FAILURE_CODES | {"dynamic_path_budget_exceeded"}
 _CLOUD_PARTS = frozenset(
     {
         "dropbox",
@@ -147,6 +154,18 @@ _DRIVE_TYPES = {
 
 class BenchmarkRunnerError(RuntimeError):
     """Raised when a run cannot produce valid benchmark evidence."""
+
+
+class BenchmarkStageError(BenchmarkRunnerError):
+    """Carry one closed operational phase without exposing its raw cause."""
+
+    def __init__(self, reason_code: str) -> None:
+        if reason_code not in _STAGE_FAILURE_CODES:
+            raise BenchmarkRunnerError(
+                "stage failure reason is not in the closed inventory"
+            )
+        super().__init__(reason_code)
+        self.reason_code = reason_code
 
 
 def _fail(message: str) -> NoReturn:
@@ -551,6 +570,112 @@ def _secure_directory(path: Path, field: str) -> Path:
     return resolved
 
 
+def release_working_root(kit_root: Path) -> Path:
+    """Derive the one short application-owned release workspace without creating it."""
+
+    root = _secure_directory(Path(kit_root), "release kit root")
+    parent = _secure_directory(root.parent, "release extraction parent")
+    candidate = parent / "w"
+    resolved = resolve_secure_directory_path(candidate)
+    if (
+        resolved is None
+        or resolved.parent != parent
+        or resolved.name != "w"
+        or (resolved.exists() and not resolved.is_dir())
+    ):
+        _fail("release workspace is not one plain directory target")
+    if _drive_type(resolved) != "fixed" or _contains_cloud_part(resolved):
+        _fail("release workspace is not one plain local directory target")
+    return resolved
+
+
+def _utf16_units(value: str) -> int:
+    try:
+        return len(value.encode("utf-16-le", errors="strict")) // 2
+    except UnicodeError as exc:
+        raise BenchmarkRunnerError("dynamic path contains invalid Unicode") from exc
+
+
+def _release_dynamic_path_candidates(
+    working_root: Path,
+    *,
+    run_id: str,
+) -> tuple[Path, ...]:
+    root = Path(working_root)
+    if (
+        not root.is_absolute()
+        or str(root).startswith(("\\\\", "//"))
+        or _contains_cloud_part(root)
+    ):
+        _fail("dynamic path root must be one absolute local path")
+    run_id = _run_id(run_id)
+    longest_child_id = max(
+        (
+            f"{cache_state}-{profile.value}-00"
+            for cache_state in ("cold", "warm")
+            for profile in P1TaskProfile
+        ),
+        key=lambda value: (_utf16_units(value), value),
+    )
+    nonce = "0" * 32
+    project_directory = "0" * 32
+    active_parent = root / run_id / "children" / longest_child_id
+    crash_parent = root / run_id / "q" / nonce
+    quarantined_run_parent = root / "q" / nonce / "children" / longest_child_id
+    candidates: list[Path] = [
+        root / _ROOT_MARKER,
+        root / run_id / _RUN_MARKER,
+        active_parent / _CHILD_MARKER,
+        crash_parent / _CHILD_MARKER,
+        quarantined_run_parent / _CHILD_MARKER,
+    ]
+    for parent in (active_parent, crash_parent, quarantined_run_parent):
+        local_app_data = parent / "LocalAppData"
+        task_index = local_app_data / "Modori" / "research-task-index.sqlite3"
+        ledger = (
+            local_app_data
+            / "Modori"
+            / "projects"
+            / project_directory
+            / "decision-ledger.sqlite3"
+        )
+        for database in (task_index, ledger):
+            candidates.extend(
+                (
+                    database,
+                    Path(f"{database}-journal"),
+                    Path(f"{database}-shm"),
+                    Path(f"{database}-wal"),
+                )
+            )
+    return tuple(candidates)
+
+
+def release_dynamic_path_budget_units(
+    working_root: Path,
+    *,
+    run_id: str,
+) -> int:
+    """Return the longest frozen release path in Windows UTF-16 code units."""
+
+    return max(
+        _utf16_units(str(path))
+        for path in _release_dynamic_path_candidates(working_root, run_id=run_id)
+    )
+
+
+def _ensure_release_dynamic_path_budget(
+    working_root: Path,
+    *,
+    run_id: str,
+) -> None:
+    if (
+        release_dynamic_path_budget_units(working_root, run_id=run_id)
+        > LEGACY_DYNAMIC_PATH_BUDGET_UNITS
+    ):
+        raise BenchmarkStageError("dynamic_path_budget_exceeded")
+
+
 def _root_marker_mapping() -> dict[str, object]:
     return {
         "schema_id": "modori.live_research_os_benchmark_root",
@@ -660,7 +785,7 @@ def quarantine_existing_run_residues(
     """Move only marked prior synthetic runs out of the active run namespace."""
 
     root = _validate_working_root(working_root, run_id=current_run_id)
-    quarantine_root = root / "quarantine"
+    quarantine_root = root / "q"
     if quarantine_root.exists():
         quarantine_root = _secure_directory(quarantine_root, "quarantine root")
     else:
@@ -668,7 +793,7 @@ def quarantine_existing_run_residues(
         quarantine_root = _secure_directory(quarantine_root, "quarantine root")
     quarantined: list[Path] = []
     for candidate in sorted(root.iterdir(), key=lambda path: path.name):
-        if candidate.name in {_ROOT_MARKER, "quarantine"}:
+        if candidate.name in {_ROOT_MARKER, "q"}:
             continue
         try:
             run_id = _run_id(candidate.name)
@@ -684,7 +809,7 @@ def quarantine_existing_run_residues(
         ):
             _fail("residual run root marker is invalid")
         nonce = _text(nonce_factory(), "quarantine nonce", _NONCE_RE)
-        target = quarantine_root / f"{run_id}-{nonce}"
+        target = quarantine_root / nonce
         if target.exists() or root not in target.parents:
             _fail("residual quarantine target is invalid")
         _rename_directory_with_retry(
@@ -801,10 +926,10 @@ def quarantine_crash_residue(
         child_id=child_id,
         require_empty=False,
     )
-    quarantine_root = root / run_id / "quarantine"
+    quarantine_root = root / run_id / "q"
     quarantine_root.mkdir(parents=True, exist_ok=True)
     quarantine_root = _secure_directory(quarantine_root, "quarantine root")
-    target = quarantine_root / f"{child_id}-{nonce}"
+    target = quarantine_root / nonce
     if target.exists() or root not in target.parents:
         _fail("quarantine target is invalid")
     _rename_directory_with_retry(parent, target)
@@ -2168,6 +2293,7 @@ def run_complete_benchmark(
     hardware: Mapping[str, object],
     recorded_at_utc: str | None,
     run_id: str | None = None,
+    enforce_legacy_path_budget: bool = False,
     fixture_builder: Callable[[], BenchmarkFixture] = build_acceptance_fixture,
     child_process_executor: Callable[..., ChildObservation] = execute_child_process,
     warm_iteration_runner: Callable[
@@ -2187,10 +2313,14 @@ def run_complete_benchmark(
     source_commit = _text(source_commit, "source_commit", _COMMIT_RE)
     kit_identity_digest = _text(kit_identity_digest, "kit_identity_digest", _DIGEST_RE)
     run_id = _run_id(run_id or str(uuid.uuid4()))
+    if type(enforce_legacy_path_budget) is not bool:
+        _fail("enforce_legacy_path_budget must be a bool")
     executable = Path(verified_self_executable).resolve(strict=True)
     if not executable.is_file() or executable.is_symlink():
         _fail("verified self executable is not one regular file")
     root = initialize_working_root(working_root, run_id=run_id)
+    if enforce_legacy_path_budget:
+        _ensure_release_dynamic_path_budget(root, run_id=run_id)
     quarantine_existing_run_residues(root, current_run_id=run_id)
 
     fixture_started = timer()
@@ -2479,8 +2609,24 @@ def write_benchmark_outputs(
 
 
 def _closed_failure_code(exc: Exception) -> str:
+    current: BaseException | None = exc
+    seen: set[int] = set()
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        if isinstance(current, BenchmarkStageError):
+            return current.reason_code
+        current = current.__cause__ or current.__context__
+
+    child_match = re.fullmatch(
+        r"child process failed: ([a-z0-9][a-z0-9_.:-]*)",
+        str(exc),
+    )
+    if child_match is not None and child_match.group(1) in _CHILD_FAILURE_CODES:
+        return child_match.group(1)
+
     message = str(exc).casefold()
     for fragment, reason in (
+        ("dynamic_path_budget_exceeded", "dynamic_path_budget_exceeded"),
         ("fingerprint worker timed out", "fingerprint_timeout"),
         ("fingerprint_timeout", "fingerprint_timeout"),
         ("fingerprint_cancelled", "fingerprint_cancelled"),
@@ -2499,6 +2645,21 @@ def _closed_failure_code(exc: Exception) -> str:
         if fragment in message:
             return reason
     return "product_authority_failure"
+
+
+def _run_child_stage(reason_code: str, operation: Callable[[], Any]) -> Any:
+    if reason_code not in _CHILD_FAILURE_CODES:
+        _fail("child stage reason is not in the closed inventory")
+    try:
+        return operation()
+    except Exception as exc:
+        preserved = _closed_failure_code(exc)
+        selected = (
+            reason_code if preserved == "product_authority_failure" else preserved
+        )
+        if selected not in _CHILD_FAILURE_CODES:
+            selected = reason_code
+        raise BenchmarkStageError(selected) from exc
 
 
 def _write_bootstrap_error(
@@ -2578,62 +2739,95 @@ def run_child_mode(
         _fail("child mode is invalid")
     if (mode == "identity") != (profile is None):
         _fail("child mode/profile binding is invalid")
-    _validate_child_root(
-        local_app_data,
-        working_root=working_root,
-        run_id=run_id,
-        child_id=child_id,
-        require_empty=True,
+    _run_child_stage(
+        "child_root_failure",
+        lambda: _validate_child_root(
+            local_app_data,
+            working_root=working_root,
+            run_id=run_id,
+            child_id=child_id,
+            require_empty=True,
+        ),
     )
     if process_startup_import_ns is not None:
         _positive_int(process_startup_import_ns, "process_startup_import_ns")
-    fixture_started = timer()
-    fixture = fixture_builder()
-    fixture_build_ns = _elapsed(timer, fixture_started, "child fixture build")
-    if (
-        not isinstance(fixture, BenchmarkFixture)
-        or fixture.fixture_digest != ACCEPTANCE_FIXTURE_DIGEST
-    ):
-        _fail("child fixture is not the frozen acceptance fixture")
+
+    def build_fixture() -> tuple[BenchmarkFixture, int]:
+        fixture_started = timer()
+        fixture = fixture_builder()
+        fixture_build_ns = _elapsed(timer, fixture_started, "child fixture build")
+        if (
+            not isinstance(fixture, BenchmarkFixture)
+            or fixture.fixture_digest != ACCEPTANCE_FIXTURE_DIGEST
+        ):
+            _fail("child fixture is not the frozen acceptance fixture")
+        return fixture, fixture_build_ns
+
+    fixture, fixture_build_ns = _run_child_stage(
+        "fixture_build_failure",
+        build_fixture,
+    )
     protocol = OfficeBenchmarkProtocol()
     if mode == "identity":
-        observation = run_identity_sample(
-            protocol,
-            run_id=run_id,
-            child_id=child_id,
-            cache_state="cold",
-            fixture=fixture,
-            source_commit=source_commit,
-            pipeline_version=1,
+        observation = _run_child_stage(
+            "identity_sample_failure",
+            lambda: run_identity_sample(
+                protocol,
+                run_id=run_id,
+                child_id=child_id,
+                cache_state="cold",
+                fixture=fixture,
+                source_commit=source_commit,
+                pipeline_version=1,
+            ),
+        )
+        acknowledgements = _run_child_stage(
+            "acknowledgement_failure",
+            lambda: measure_public_acknowledgements(cache_state="cold"),
         )
         observation = replace(
             observation,
-            acknowledgement_ns=measure_public_acknowledgements(cache_state="cold"),
+            acknowledgement_ns=acknowledgements,
         )
     else:
-        identity_started = timer()
-        identity = _fingerprint_with_worker_deadline(
-            protocol,
-            fixture,
-            pipeline_version=1,
-            started_ns=identity_started,
-            timer=timer,
+
+        def fingerprint_scenario() -> DatasetIdentity:
+            identity_started = timer()
+            identity = _fingerprint_with_worker_deadline(
+                protocol,
+                fixture,
+                pipeline_version=1,
+                started_ns=identity_started,
+                timer=timer,
+            )
+            identity_duration = _elapsed(
+                timer,
+                identity_started,
+                "scenario fingerprint",
+            )
+            if identity_duration > protocol.fingerprint_worker_limit_ms * 1_000_000:
+                _fail("fingerprint worker timed out")
+            _validate_fixture_and_identity(fixture, identity)
+            return identity
+
+        identity = _run_child_stage(
+            "scenario_fingerprint_failure",
+            fingerprint_scenario,
         )
-        identity_duration = _elapsed(timer, identity_started, "scenario fingerprint")
-        if identity_duration > protocol.fingerprint_worker_limit_ms * 1_000_000:
-            _fail("fingerprint worker timed out")
-        _validate_fixture_and_identity(fixture, identity)
-        observation = run_profile_scenario(
-            protocol,
-            run_id=run_id,
-            child_id=child_id,
-            cache_state="cold",
-            profile=profile,
-            fixture=fixture,
-            identity=identity,
-            source_commit=source_commit,
-            isolated_local_app_data=local_app_data,
-            working_root=working_root,
+        observation = _run_child_stage(
+            "scenario_execution_failure",
+            lambda: run_profile_scenario(
+                protocol,
+                run_id=run_id,
+                child_id=child_id,
+                cache_state="cold",
+                profile=profile,
+                fixture=fixture,
+                identity=identity,
+                source_commit=source_commit,
+                isolated_local_app_data=local_app_data,
+                working_root=working_root,
+            ),
         )
     if process_startup_import_ns is None:
         return observation
@@ -3005,11 +3199,12 @@ def execute_release_benchmark(
         _fail("release UTC clock returned an invalid value")
     error_timestamp = recorded_at.replace("-", "").replace(":", "")
     output_directory = _secure_directory(root / "results", "release result root")
-    working_root = _secure_directory(root / "work", "release work root")
+    working_root = release_working_root(root)
     return benchmark_publisher(
         OfficeBenchmarkProtocol(),
         output_directory=output_directory,
         error_timestamp=error_timestamp,
+        enforce_legacy_path_budget=True,
         verified_self_executable=executable,
         working_root=working_root,
         source_commit=identity.source_commit,

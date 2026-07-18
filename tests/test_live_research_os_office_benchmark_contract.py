@@ -770,6 +770,29 @@ def test_release_protocol_and_execution_conditions_are_authoritative() -> None:
     assert "benchmark_error" in evaluation.reason_codes
 
 
+@pytest.mark.parametrize(
+    "error_code",
+    (
+        "child_root_failure",
+        "dynamic_path_budget_exceeded",
+        "fixture_build_failure",
+        "identity_sample_failure",
+        "scenario_execution_failure",
+        "scenario_fingerprint_failure",
+    ),
+)
+def test_stage_failure_codes_belong_to_the_closed_result_inventory(
+    error_code: str,
+) -> None:
+    result = _base_result()
+    result["error_codes"] = [error_code]
+
+    evaluation = evaluate_result(result)
+
+    assert evaluation.disposition == "stop"
+    assert "benchmark_error" in evaluation.reason_codes
+
+
 def test_sealed_result_is_canonical_hash_bound_and_recomputed() -> None:
     sealed = seal_result(_base_result())
     raw = canonical_result_bytes(sealed)

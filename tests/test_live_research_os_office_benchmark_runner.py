@@ -43,8 +43,11 @@ from scripts.live_research_os_office_kit import (
     sha256_bytes,
 )
 from scripts.run_office_live_research_os_benchmark import (
+    LEGACY_DYNAMIC_PATH_BUDGET_UNITS,
     BenchmarkRunnerError,
+    BenchmarkStageError,
     ChildObservation,
+    _closed_failure_code,
     build_child_environment,
     build_fixed_child_command,
     cleanup_synthetic_child_root,
@@ -59,6 +62,8 @@ from scripts.run_office_live_research_os_benchmark import (
     prepare_isolated_child_root,
     quarantine_existing_run_residues,
     quarantine_crash_residue,
+    release_dynamic_path_budget_units,
+    release_working_root,
     run_identity_sample,
     run_stress_fingerprint_check,
     run_complete_benchmark,
@@ -675,6 +680,48 @@ def test_working_root_and_child_root_are_closed_fresh_and_application_owned(
         )
 
 
+def test_release_workspace_removes_immutable_kit_name_from_dynamic_paths() -> None:
+    parent = Path(r"C:\Users\V\AppData\Local\MBL-0123456789ab")
+    kit_root = parent / "modori-live-research-os-office-kit-0123456789ab-py31210"
+
+    old_units = release_dynamic_path_budget_units(
+        kit_root / "work",
+        run_id=RUN_ID,
+    )
+    short_units = release_dynamic_path_budget_units(parent / "w", run_id=RUN_ID)
+
+    assert old_units > LEGACY_DYNAMIC_PATH_BUDGET_UNITS
+    assert short_units <= LEGACY_DYNAMIC_PATH_BUDGET_UNITS
+    assert old_units - short_units == len(str(kit_root.name)) + 4
+
+
+def test_release_working_root_is_the_exact_plain_sibling(tmp_path: Path) -> None:
+    kit_root, _executable, _identity_value = _packaged_runtime(tmp_path)
+
+    assert release_working_root(kit_root) == (tmp_path / "w").resolve()
+    assert not (tmp_path / "w").exists()
+
+    blocked = tmp_path / "blocked"
+    blocked.mkdir()
+    blocked_kit, _executable, _identity_value = _packaged_runtime(blocked)
+    (blocked / "w").write_bytes(b"foreign")
+    with pytest.raises(BenchmarkRunnerError, match="workspace|directory|plain"):
+        release_working_root(blocked_kit)
+
+
+def test_dynamic_path_budget_counts_utf16_code_units() -> None:
+    ascii_units = release_dynamic_path_budget_units(
+        Path("C:/MBL-x") / "x",
+        run_id=RUN_ID,
+    )
+    astral_units = release_dynamic_path_budget_units(
+        Path("C:/MBL-x") / "\U0001f680",
+        run_id=RUN_ID,
+    )
+
+    assert astral_units == ascii_units + 1
+
+
 def test_next_run_reuses_only_the_application_root_and_quarantines_old_residue(
     tmp_path: Path,
 ) -> None:
@@ -700,6 +747,7 @@ def test_next_run_reuses_only_the_application_root_and_quarantines_old_residue(
     quarantined = quarantine_existing_run_residues(
         root,
         current_run_id=second_run,
+        nonce_factory=lambda: "f" * 32,
         rename_operation=transient_lock,
         sleeper=lambda _delay: None,
     )
@@ -708,7 +756,7 @@ def test_next_run_reuses_only_the_application_root_and_quarantines_old_residue(
     # the just-written directory locked for another bounded attempt.
     assert 2 <= len(rename_attempts) <= 7
     assert len(quarantined) == 1
-    assert quarantined[0].parent.name == "quarantine"
+    assert quarantined[0] == (root / "q" / ("f" * 32)).resolve()
     assert not (root / first_run).exists()
     assert (quarantined[0] / "children").is_dir()
 
@@ -975,6 +1023,167 @@ def test_child_process_preserves_a_closed_fingerprint_timeout_reason(
         )
 
 
+def test_child_process_preserves_exact_registered_stage_reason(
+    tmp_path: Path,
+) -> None:
+    executable = tmp_path / "ModoriLiveResearchOSBenchmark.exe"
+    executable.write_bytes(b"verified executable")
+    working_root = _working_root(tmp_path)
+    local_app_data = prepare_isolated_child_root(
+        working_root,
+        run_id=RUN_ID,
+        child_id="cold-identity-00",
+    )
+
+    def stage_failure(_command, **_kwargs):
+        return SimpleNamespace(
+            returncode=20,
+            stdout=b"",
+            stderr=b"modori-child-error:scenario_execution_failure\n",
+        )
+
+    with pytest.raises(
+        BenchmarkRunnerError,
+        match="scenario_execution_failure",
+    ) as captured:
+        execute_child_process(
+            executable,
+            mode="identity",
+            run_id=RUN_ID,
+            child_id="cold-identity-00",
+            source_commit=SOURCE_COMMIT,
+            working_root=working_root,
+            local_app_data=local_app_data,
+            profile=None,
+            nonce="e" * 32,
+            subprocess_run=stage_failure,
+        )
+
+    assert _closed_failure_code(captured.value) == "scenario_execution_failure"
+
+
+@pytest.mark.parametrize(
+    ("phase", "expected_reason"),
+    (
+        ("child_root", "child_root_failure"),
+        ("fixture", "fixture_build_failure"),
+        ("identity", "identity_sample_failure"),
+        ("acknowledgement", "acknowledgement_failure"),
+        ("scenario_fingerprint", "scenario_fingerprint_failure"),
+        ("scenario_execution", "scenario_execution_failure"),
+    ),
+)
+def test_child_phase_failures_are_typed_without_raw_exception_text(
+    tmp_path: Path,
+    acceptance_fixture,
+    monkeypatch: pytest.MonkeyPatch,
+    phase: str,
+    expected_reason: str,
+) -> None:
+    working_root = _working_root(tmp_path)
+    mode = "scenario" if phase.startswith("scenario_") else "identity"
+    child_id = f"cold-{phase}-00"
+    if phase == "child_root":
+        local_app_data = tmp_path / "foreign-local-app-data"
+        local_app_data.mkdir()
+    else:
+        local_app_data = prepare_isolated_child_root(
+            working_root,
+            run_id=RUN_ID,
+            child_id=child_id,
+        )
+
+    def secret_failure(*_args, **_kwargs):
+        raise OSError(r"C:\Users\Private\survey.xlsx")
+
+    def accepted_fixture():
+        return acceptance_fixture
+
+    fixture_builder = accepted_fixture
+    if phase == "fixture":
+        fixture_builder = secret_failure
+    elif phase == "identity":
+        monkeypatch.setattr(
+            "scripts.run_office_live_research_os_benchmark.run_identity_sample",
+            secret_failure,
+        )
+    elif phase == "acknowledgement":
+        monkeypatch.setattr(
+            "scripts.run_office_live_research_os_benchmark."
+            "measure_public_acknowledgements",
+            secret_failure,
+        )
+    elif phase == "scenario_fingerprint":
+        monkeypatch.setattr(
+            "scripts.run_office_live_research_os_benchmark."
+            "_fingerprint_with_worker_deadline",
+            secret_failure,
+        )
+    elif phase == "scenario_execution":
+        monkeypatch.setattr(
+            "scripts.run_office_live_research_os_benchmark.run_profile_scenario",
+            secret_failure,
+        )
+
+    with pytest.raises(BenchmarkStageError) as captured:
+        run_child_mode(
+            mode=mode,
+            run_id=RUN_ID,
+            child_id=child_id,
+            source_commit=SOURCE_COMMIT,
+            working_root=working_root,
+            local_app_data=local_app_data,
+            profile=(
+                P1TaskProfile.NUMERIC_DISTRIBUTION if mode == "scenario" else None
+            ),
+            child_nonce="e" * 32,
+            fixture_builder=fixture_builder,
+        )
+
+    assert captured.value.reason_code == expected_reason
+    assert str(captured.value) == expected_reason
+    assert _closed_failure_code(captured.value) == expected_reason
+    assert "Private" not in str(captured.value)
+    assert "survey.xlsx" not in str(captured.value)
+
+
+def test_specific_fingerprint_timeout_precedes_broader_stage_reason(
+    tmp_path: Path,
+    acceptance_fixture,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    working_root = _working_root(tmp_path)
+    child_id = "cold-scenario-timeout-00"
+    local_app_data = prepare_isolated_child_root(
+        working_root,
+        run_id=RUN_ID,
+        child_id=child_id,
+    )
+
+    def timed_out(*_args, **_kwargs):
+        raise BenchmarkRunnerError("fingerprint worker timed out")
+
+    monkeypatch.setattr(
+        "scripts.run_office_live_research_os_benchmark."
+        "_fingerprint_with_worker_deadline",
+        timed_out,
+    )
+    with pytest.raises(BenchmarkStageError) as captured:
+        run_child_mode(
+            mode="scenario",
+            run_id=RUN_ID,
+            child_id=child_id,
+            source_commit=SOURCE_COMMIT,
+            working_root=working_root,
+            local_app_data=local_app_data,
+            profile=P1TaskProfile.NUMERIC_DISTRIBUTION,
+            child_nonce="e" * 32,
+            fixture_builder=lambda: acceptance_fixture,
+        )
+
+    assert captured.value.reason_code == "fingerprint_timeout"
+
+
 def test_child_main_emits_only_one_closed_failure_line(
     tmp_path: Path,
     monkeypatch,
@@ -1012,6 +1221,45 @@ def test_child_main_emits_only_one_closed_failure_line(
     assert result == 20
     assert stdout.getvalue() == b""
     assert stderr.getvalue() == b"modori-child-error:fingerprint_timeout\n"
+
+
+def test_child_main_emits_exact_stage_code_without_exception_text(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
+    monkeypatch.setenv("MODORI_BENCHMARK_CHILD_NONCE", "e" * 32)
+    monkeypatch.setenv("MODORI_BENCHMARK_PARENT_START_NS", "1")
+
+    def scenario_failure(**_kwargs):
+        raise BenchmarkStageError("scenario_execution_failure")
+
+    monkeypatch.setattr(
+        "scripts.run_office_live_research_os_benchmark.run_child_mode",
+        scenario_failure,
+    )
+    stdout = BytesIO()
+    stderr = BytesIO()
+    result = benchmark_child_main(
+        [
+            "--child-mode",
+            "identity",
+            "--run-id",
+            RUN_ID,
+            "--child-id",
+            "cold-identity-00",
+            "--source-commit",
+            SOURCE_COMMIT,
+            "--working-root",
+            str(tmp_path),
+        ],
+        stdout=stdout,
+        stderr=stderr,
+    )
+
+    assert result == 20
+    assert stdout.getvalue() == b""
+    assert stderr.getvalue() == b"modori-child-error:scenario_execution_failure\n"
 
 
 def test_crash_residue_is_verified_then_quarantined_not_merged(
@@ -1054,6 +1302,7 @@ def test_crash_residue_is_verified_then_quarantined_not_merged(
         child_id=child_id,
         nonce="f" * 32,
     )
+    assert quarantined == (working_root / RUN_ID / "q" / ("f" * 32)).resolve()
     assert quarantined.is_dir()
     assert not local_app_data.parent.exists()
 
@@ -1559,6 +1808,63 @@ def test_failed_complete_run_writes_only_closed_bootstrap_error(
     )
 
 
+def test_release_dynamic_path_budget_fails_before_fixture_or_child(
+    tmp_path: Path,
+) -> None:
+    executable = tmp_path / "ModoriLiveResearchOSBenchmark.exe"
+    executable.write_bytes(b"verified")
+    working_root = tmp_path / "w"
+    observed_units = release_dynamic_path_budget_units(
+        working_root,
+        run_id=RUN_ID,
+    )
+    if observed_units <= LEGACY_DYNAMIC_PATH_BUDGET_UNITS:
+        padding = LEGACY_DYNAMIC_PATH_BUDGET_UNITS - observed_units + 1
+        working_root = tmp_path / ("w" + ("x" * padding))
+    assert (
+        release_dynamic_path_budget_units(working_root, run_id=RUN_ID)
+        > LEGACY_DYNAMIC_PATH_BUDGET_UNITS
+    )
+    output = tmp_path / "output"
+    output.mkdir()
+    fixture_called = False
+
+    def forbidden_fixture():
+        nonlocal fixture_called
+        fixture_called = True
+        pytest.fail("fixture construction ran after the dynamic path gate")
+
+    with pytest.raises(BenchmarkRunnerError, match="dynamic_path_budget_exceeded"):
+        run_benchmark_and_write_outputs(
+            OfficeBenchmarkProtocol(cold_processes_per_stratum=1, warm_iterations=1),
+            output_directory=output,
+            error_timestamp="20260718T020304Z",
+            enforce_legacy_path_budget=True,
+            verified_self_executable=executable,
+            working_root=working_root,
+            source_commit=SOURCE_COMMIT,
+            kit_identity_digest="b" * 64,
+            execution_conditions=_execution_conditions(),
+            hardware=_hardware(),
+            recorded_at_utc="2026-07-18T02:03:04Z",
+            run_id=RUN_ID,
+            fixture_builder=forbidden_fixture,
+            nonce_factory=lambda: "e" * 32,
+        )
+
+    assert fixture_called is False
+    assert tuple(path.name for path in output.iterdir()) == (
+        "bootstrap-error-20260718T020304Z.txt",
+    )
+    assert (output / "bootstrap-error-20260718T020304Z.txt").read_text(
+        encoding="utf-8"
+    ) == (
+        "Modori 라이브 Research OS 벤치마크 오류\n"
+        "reason_code: dynamic_path_budget_exceeded\n"
+        "result_json_created: false\n"
+    )
+
+
 def test_stress_check_records_completion_and_cooperative_limit_without_gating() -> None:
     stress = build_stress_fixture()
 
@@ -1749,7 +2055,8 @@ def test_release_executor_uses_fixed_protocol_paths_and_identity(
     assert result == expected_outputs
     assert captured["protocol"] == OfficeBenchmarkProtocol()
     assert captured["output_directory"] == kit_root / "results"
-    assert captured["working_root"] == kit_root / "work"
+    assert captured["working_root"] == kit_root.parent / "w"
+    assert captured["enforce_legacy_path_budget"] is True
     assert captured["verified_self_executable"] == executable
     assert captured["source_commit"] == SOURCE_COMMIT
     assert captured["kit_identity_digest"] == sha256_bytes(identity_bytes(identity))

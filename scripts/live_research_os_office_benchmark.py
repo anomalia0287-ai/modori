@@ -123,16 +123,22 @@ _CLOSED_ERROR_CODES = frozenset(
         "acknowledgement_failure",
         "child_nonzero_exit",
         "child_output_invalid",
+        "child_root_failure",
         "child_timeout",
         "cleanup_failure",
+        "dynamic_path_budget_exceeded",
         "fingerprint_cancelled",
         "fingerprint_limit_exceeded",
         "fingerprint_timeout",
+        "fixture_build_failure",
         "hardware_probe_failure",
         "identity_mismatch",
+        "identity_sample_failure",
         "product_authority_failure",
         "resource_measurement_failure",
         "result_serialization_failure",
+        "scenario_execution_failure",
+        "scenario_fingerprint_failure",
     }
 )
 _PRIVACY_KEYS = frozenset(
