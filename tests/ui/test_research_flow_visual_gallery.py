@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import importlib.util
 import json
+import math
 import os
 import re
 import shutil
@@ -27,6 +28,12 @@ THEME_PATH = ROOT / "src/modori/ui/qml/theme/Theme.qml"
 
 def _manifest() -> dict[str, object]:
     return json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+
+
+def _nearest_rank_p95(values: list[float]) -> float:
+    assert values
+    ordered = sorted(values)
+    return ordered[math.ceil(len(ordered) * 0.95) - 1]
 
 
 def _load_script(path: Path, name: str) -> ModuleType:
@@ -246,6 +253,8 @@ def test_selected_scale_items_render_the_production_component_contract(
         1.5,
         2.0,
     }
+    state_render_times: list[float] = []
+    interaction_response_times: list[float] = []
     for item in gallery["items"]:
         assert item["source_commit"] == gallery["source_commit"]
         assert item["capture_kind"] in {"panel", "work_shell", "interaction"}
@@ -262,10 +271,21 @@ def test_selected_scale_items_render_the_production_component_contract(
         if item["capture_kind"] == "panel":
             assert 0 < item["component_width"] <= 360
             assert item["header_title_clipped"] is False, item
+        state_render_times.append(float(item["state_render_ms"]))
+        if item["interaction_response_ms"] is not None:
+            interaction_response_times.append(float(item["interaction_response_ms"]))
         assert item["logical_size"] in ([1024, 640], [1180, 760])
         image_path = rendered_scale_sample / item["image"]
         assert image_path.is_file()
         assert hashlib.sha256(image_path.read_bytes()).hexdigest() == item["sha256"]
+
+    performance = _manifest()["constraints"]["performance_baseline"]["regression_gate"]
+    assert _nearest_rank_p95(state_render_times) <= float(
+        performance["single_item_render_p95_ms_max"]
+    )
+    assert _nearest_rank_p95(interaction_response_times) <= float(
+        performance["interaction_response_p95_ms_max"]
+    )
 
 
 def test_captures_have_no_text_metadata_or_os_chrome_fields(

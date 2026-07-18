@@ -1852,10 +1852,15 @@ pinned `.venv`:
 - the package-exclusion cohort passed `12` tests; and
 - Ruff check and `git diff --check` passed for the changed Python and repository diff.
 
-The owner capture also demonstrated that the aggregate render p95 is not a product
-latency measure: full `WorkScreen` construction is a separate cold shell capture and
-must not be combined with component or interaction renders. Final committed capture
-evidence is recorded only after Step 6.
+The first clean committed capture exposed a comparability gap before Step 6 could be
+accepted: `render_ms` included test-process/QML construction and therefore was not the
+pre-change product-response measure named by the frozen 250 ms/200 ms gates. The
+thresholds were not changed. The harness now records `state_render_ms` from scene show
+to stable state and `interaction_response_ms` from input to stable response, while
+retaining total capture time as diagnostic evidence. The generated-gallery test applies
+nearest-rank p95 directly to those two fields. Full `WorkScreen` construction remains a
+separate cold shell diagnostic and is never averaged with component or interaction
+response. Final committed capture evidence is recorded only after Step 6.
 
 - [ ] **Step 6: Capture the committed first pass**
 

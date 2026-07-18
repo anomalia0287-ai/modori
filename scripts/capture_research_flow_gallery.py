@@ -472,6 +472,8 @@ Rectangle {
                     base_name="ResearchFlowInteractionWrapper.qml",
                 )
 
+            state_render_started = time.perf_counter()
+            interaction_response_ms: float | None = None
             view.show()
             app.processEvents()
             QTest.qWait(40)
@@ -511,11 +513,15 @@ Rectangle {
                     "view_active": view.isActive(),
                     "view_exposed": view.isExposed(),
                 }
+                interaction_started: float | None = None
                 if item["interaction_state"] == "hover":
+                    interaction_started = time.perf_counter()
                     QTest.mouseMove(view, point, delay=10)
                 elif item["interaction_state"] == "keyboard_focus":
+                    interaction_started = time.perf_counter()
                     action.forceActiveFocus(Qt.FocusReason.TabFocusReason)
                 elif item["interaction_state"] == "pressed":
+                    interaction_started = time.perf_counter()
                     QTest.mousePress(
                         view,
                         Qt.MouseButton.LeftButton,
@@ -527,6 +533,12 @@ Rectangle {
                 app.processEvents()
                 QTest.qWait(25)
                 app.processEvents()
+                if interaction_started is not None:
+                    interaction_response_ms = (
+                        time.perf_counter() - interaction_started
+                    ) * 1000.0
+
+            state_render_ms = (time.perf_counter() - state_render_started) * 1000.0
 
             component_width: float | None = None
             header_title_clipped: bool | None = None
@@ -638,6 +650,12 @@ Rectangle {
                 "horizontal_overflow": bool(horizontal_overflow_sources),
                 "horizontal_overflow_sources": horizontal_overflow_sources,
                 "render_ms": round(elapsed_ms, 3),
+                "state_render_ms": round(state_render_ms, 3),
+                "interaction_response_ms": (
+                    None
+                    if interaction_response_ms is None
+                    else round(interaction_response_ms, 3)
+                ),
                 "interaction_diagnostics": interaction_diagnostics,
                 "qt_platform": app.platformName(),
                 "visual_fidelity": (
