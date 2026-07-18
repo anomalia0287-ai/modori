@@ -10,6 +10,7 @@ from scripts.package_environment import (
     ExplicitDirectoryBoundary,
     packaged_subprocess_environment,
 )
+from scripts.package_windows import build_pyinstaller_command
 
 
 def _create_directory_junction(link: Path, target: Path) -> None:
@@ -155,3 +156,14 @@ def test_explicit_directory_boundary_rejects_junction_replacement(
 
     assert marker.read_text(encoding="utf-8") == "keep"
     assert sorted(path.name for path in outside.iterdir()) == ["preserve.txt"]
+
+
+def test_production_package_has_no_live_research_os_benchmark_entry_or_fixture() -> (
+    None
+):
+    joined = "\n".join(build_pyinstaller_command()).casefold()
+    assert "src/modori/app.py" in joined
+    assert "run_office_live_research_os_benchmark.py" not in joined
+    assert "live_research_os_office_benchmark" not in joined
+    assert "office_live_research_os_kit" not in joined
+    assert "office_fixture" not in joined

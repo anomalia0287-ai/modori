@@ -33,6 +33,15 @@ from scripts.live_research_os_office_benchmark import (
     result_filename,
     result_sidecar_bytes,
 )
+from scripts.live_research_os_office_kit import (
+    BUILDER_CONTRACT_VERSION,
+    VERIFIER_CONTRACT_VERSION,
+    KitIdentity,
+    PackageLockEntry,
+    identity_bytes,
+    package_lock_bytes,
+    sha256_bytes,
+)
 from scripts.run_office_live_research_os_benchmark import (
     BenchmarkRunnerError,
     ChildObservation,
@@ -40,10 +49,13 @@ from scripts.run_office_live_research_os_benchmark import (
     build_fixed_child_command,
     cleanup_synthetic_child_root,
     execute_child_process,
+    execute_release_benchmark,
     initialize_working_root,
+    load_runtime_identity,
     measure_public_acknowledgements,
     main as benchmark_child_main,
     parse_cli_arguments,
+    parse_entry_mode,
     prepare_isolated_child_root,
     quarantine_existing_run_residues,
     quarantine_crash_residue,
@@ -55,12 +67,14 @@ from scripts.run_office_live_research_os_benchmark import (
     run_profile_scenario,
     run_warm_iteration,
     verify_scenario_recovery,
+    verify_packaged_kit_identity,
     write_benchmark_outputs,
 )
 
 
 SOURCE_COMMIT = "a" * 40
 RUN_ID = "12345678-1234-4abc-8def-1234567890ab"
+RUNTIME_IDENTITY_RESOURCE_NAME = "LIVE-RESEARCH-OS-RUNTIME-IDENTITY.json"
 
 
 @pytest.fixture(scope="module")
@@ -80,6 +94,65 @@ def _identity(fixture, *, pipeline_version: int = 1) -> DatasetIdentity:
 
 def _working_root(tmp_path: Path) -> Path:
     return initialize_working_root(tmp_path / "ModoriBenchmarkRuns", run_id=RUN_ID)
+
+
+def _kit_lock() -> bytes:
+    return package_lock_bytes(
+        (
+            PackageLockEntry("numpy", "2.5.0"),
+            PackageLockEntry("pandas", "3.0.3"),
+            PackageLockEntry("pyinstaller", "6.21.0"),
+            PackageLockEntry("pyside6", "6.11.1"),
+        )
+    )
+
+
+def _kit_identity() -> KitIdentity:
+    import numpy
+    import pandas
+    import PySide6
+    import sqlite3
+    import sys
+
+    return KitIdentity(
+        source_commit=SOURCE_COMMIT,
+        source_date_epoch=1_752_000_000,
+        protocol_digest=(
+            "b2f24c4c752daaa2f2f34c7095ecb10518e6175ed7475d59621ea5bcefe72193"
+        ),
+        fixture_digest=(
+            "f0a70250178dbf4a2a59795b72356d6c1dcaa1046e0ce4dada04885d5814602b"
+        ),
+        python_version=sys.version.split()[0],
+        sqlite_version=sqlite3.sqlite_version,
+        pyside_version=PySide6.__version__,
+        numpy_version=numpy.__version__,
+        pandas_version=pandas.__version__,
+        pyinstaller_version="6.21.0",
+        pyinstaller_bootloader_sha256="4" * 64,
+        package_lock_sha256=sha256_bytes(_kit_lock()),
+        executable_path="runtime/ModoriLiveResearchOSBenchmark.exe",
+        runtime_layout="pyinstaller_onefolder_console",
+        builder_contract_version=BUILDER_CONTRACT_VERSION,
+        verifier_contract_version=VERIFIER_CONTRACT_VERSION,
+        result_schema_id="modori.live_research_os_office_benchmark",
+        result_schema_version=1,
+    )
+
+
+def _packaged_runtime(tmp_path: Path) -> tuple[Path, Path, KitIdentity]:
+    identity = _kit_identity()
+    kit_root = tmp_path / "kit"
+    internal = kit_root / "runtime" / "_internal"
+    internal.mkdir(parents=True)
+    (kit_root / "results").mkdir()
+    (kit_root / "work").mkdir()
+    executable = kit_root / "runtime" / "ModoriLiveResearchOSBenchmark.exe"
+    executable.write_bytes(b"MZ")
+    (internal / RUNTIME_IDENTITY_RESOURCE_NAME).write_bytes(identity_bytes(identity))
+    (kit_root / "KIT-IDENTITY.json").write_bytes(identity_bytes(identity))
+    (kit_root / "PACKAGE-LOCK.json").write_bytes(_kit_lock())
+    return kit_root, executable, identity
 
 
 EXPECTED_STEPS = {
@@ -1474,3 +1547,147 @@ def test_stress_check_records_completion_and_cooperative_limit_without_gating() 
     )
     assert cancelled["outcome"] == "cancelled"
     assert cancelled["error_code"] == "fingerprint_cancelled"
+
+
+def test_runtime_self_identity_is_canonical_and_checks_imported_runtime_versions(
+    tmp_path: Path,
+) -> None:
+    kit_root, _executable, identity = _packaged_runtime(tmp_path)
+    resource_root = kit_root / "runtime" / "_internal"
+    assert load_runtime_identity(resource_root=resource_root) == identity
+    raw = (resource_root / RUNTIME_IDENTITY_RESOURCE_NAME).read_bytes()
+    (resource_root / RUNTIME_IDENTITY_RESOURCE_NAME).write_bytes(raw + b"\n")
+    with pytest.raises(BenchmarkRunnerError, match="runtime identity"):
+        load_runtime_identity(resource_root=resource_root)
+
+
+def test_packaged_identity_binds_external_identity_lock_protocol_and_executable(
+    tmp_path: Path,
+) -> None:
+    kit_root, executable, identity = _packaged_runtime(tmp_path)
+    assert (
+        verify_packaged_kit_identity(
+            kit_root=kit_root,
+            self_executable=executable,
+            runtime_identity=identity,
+        )
+        == identity
+    )
+    (kit_root / "PACKAGE-LOCK.json").write_bytes(_kit_lock() + b"\n")
+    with pytest.raises(BenchmarkRunnerError, match="package lock"):
+        verify_packaged_kit_identity(
+            kit_root=kit_root,
+            self_executable=executable,
+            runtime_identity=identity,
+        )
+
+
+def test_entry_mode_is_closed_and_release_has_no_arbitrary_arguments() -> None:
+    assert parse_entry_mode(["--self-identity"]) == "self_identity"
+    assert parse_entry_mode(["--verify-kit-identity"]) == "verify_kit_identity"
+    assert parse_entry_mode(["--release"]) == "release"
+    assert (
+        parse_entry_mode(
+            [
+                "--child-mode",
+                "identity",
+                "--run-id",
+                RUN_ID,
+                "--child-id",
+                "cold-identity-00",
+                "--source-commit",
+                SOURCE_COMMIT,
+                "--working-root",
+                "C:/fixed",
+            ]
+        )
+        == "child"
+    )
+    with pytest.raises(BenchmarkRunnerError, match="entry arguments"):
+        parse_entry_mode(["--release", "--output", "C:/arbitrary"])
+
+
+def test_self_identity_and_verify_modes_emit_no_freeform_output(tmp_path: Path) -> None:
+    kit_root, executable, identity = _packaged_runtime(tmp_path)
+    resource_root = kit_root / "runtime" / "_internal"
+    stdout = BytesIO()
+    stderr = BytesIO()
+    assert (
+        benchmark_child_main(
+            ["--self-identity"],
+            stdout=stdout,
+            stderr=stderr,
+            resource_root=resource_root,
+            self_executable=executable,
+        )
+        == 0
+    )
+    assert stdout.getvalue() == identity_bytes(identity) + b"\n"
+    assert stderr.getvalue() == b""
+
+    stdout = BytesIO()
+    stderr = BytesIO()
+    assert (
+        benchmark_child_main(
+            ["--verify-kit-identity"],
+            stdout=stdout,
+            stderr=stderr,
+            resource_root=resource_root,
+            self_executable=executable,
+        )
+        == 0
+    )
+    assert stdout.getvalue() == b""
+    assert stderr.getvalue() == b""
+
+    (kit_root / "KIT-IDENTITY.json").write_bytes(
+        identity_bytes(replace(identity, source_commit="b" * 40))
+    )
+    stderr = BytesIO()
+    assert (
+        benchmark_child_main(
+            ["--verify-kit-identity"],
+            stdout=BytesIO(),
+            stderr=stderr,
+            resource_root=resource_root,
+            self_executable=executable,
+        )
+        != 0
+    )
+    assert stderr.getvalue() == b"modori-runtime-error:runtime_identity_mismatch\n"
+
+
+def test_release_executor_uses_fixed_protocol_paths_and_identity(
+    tmp_path: Path,
+) -> None:
+    kit_root, executable, identity = _packaged_runtime(tmp_path)
+    captured: dict[str, object] = {}
+    expected_outputs = (
+        kit_root / "results" / "result.json",
+        kit_root / "results" / "result.json.sha256",
+        kit_root / "results" / "result.summary-ko.txt",
+    )
+
+    def publisher(protocol, **kwargs):
+        captured["protocol"] = protocol
+        captured.update(kwargs)
+        return expected_outputs
+
+    result = execute_release_benchmark(
+        self_executable=executable,
+        kit_root=kit_root,
+        identity=identity,
+        execution_conditions_provider=lambda _root: _execution_conditions(),
+        hardware_provider=lambda _root: _hardware(),
+        utc_now=lambda: "2026-07-18T12:34:56Z",
+        benchmark_publisher=publisher,
+    )
+    assert result == expected_outputs
+    assert captured["protocol"] == OfficeBenchmarkProtocol()
+    assert captured["output_directory"] == kit_root / "results"
+    assert captured["working_root"] == kit_root / "work"
+    assert captured["verified_self_executable"] == executable
+    assert captured["source_commit"] == SOURCE_COMMIT
+    assert captured["kit_identity_digest"] == sha256_bytes(identity_bytes(identity))
+    assert captured["recorded_at_utc"] == "2026-07-18T12:34:56Z"
+    assert captured["error_timestamp"] == "20260718T123456Z"

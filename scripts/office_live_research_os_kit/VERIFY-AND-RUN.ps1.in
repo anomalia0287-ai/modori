@@ -1,0 +1,142 @@
+$ErrorActionPreference = 'Stop'
+$KitRoot = [System.IO.Path]::GetFullPath($PSScriptRoot).TrimEnd([System.IO.Path]::DirectorySeparatorChar)
+$Results = Join-Path $KitRoot 'results'
+$Work = Join-Path $KitRoot 'work'
+$ExpectedManifestDigest = '__MANIFEST_SHA256__'
+$ExpectedIdentityDigest = '__IDENTITY_SHA256__'
+
+function Get-ModoriSha256([string]$LiteralPath) {
+    $stream = [System.IO.File]::OpenRead($LiteralPath)
+    try {
+        $algorithm = [System.Security.Cryptography.SHA256]::Create()
+        try {
+            return ([System.BitConverter]::ToString($algorithm.ComputeHash($stream))).Replace('-', '').ToLowerInvariant()
+        } finally {
+            $algorithm.Dispose()
+        }
+    } finally {
+        $stream.Dispose()
+    }
+}
+
+function Stop-ModoriKit([string]$Code) {
+    Write-Host ("오류 코드: " + $Code)
+    try {
+        if (Test-Path -LiteralPath $Results -PathType Container) {
+            $stamp = [DateTime]::UtcNow.ToString('yyyyMMddTHHmmssZ')
+            $diagnostic = Join-Path $Results ("bootstrap-error-" + $stamp + ".txt")
+            if (-not (Test-Path -LiteralPath $diagnostic)) {
+                [System.IO.File]::WriteAllText(
+                    $diagnostic,
+                    ("Modori live Research OS benchmark bootstrap error`r`nreason_code: " + $Code + "`r`nresult_json_created: false`r`n"),
+                    [System.Text.UTF8Encoding]::new($false)
+                )
+            }
+        }
+    } catch {
+    }
+    exit 1
+}
+
+function Assert-ModoriPlainDirectory([string]$LiteralPath, [string]$Code) {
+    if (-not (Test-Path -LiteralPath $LiteralPath -PathType Container)) {
+        Stop-ModoriKit $Code
+    }
+    $item = Get-Item -LiteralPath $LiteralPath -Force
+    if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+        Stop-ModoriKit $Code
+    }
+}
+
+try {
+    Assert-ModoriPlainDirectory $KitRoot 'kit_root_invalid'
+    Assert-ModoriPlainDirectory $Results 'results_root_invalid'
+    Assert-ModoriPlainDirectory $Work 'work_root_invalid'
+
+    $manifestPath = Join-Path $KitRoot 'MANIFEST.json'
+    $identityPath = Join-Path $KitRoot 'KIT-IDENTITY.json'
+    if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
+        Stop-ModoriKit 'manifest_missing'
+    }
+    if (-not (Test-Path -LiteralPath $identityPath -PathType Leaf)) {
+        Stop-ModoriKit 'identity_missing'
+    }
+    if ((Get-ModoriSha256 $manifestPath) -ne $ExpectedManifestDigest) {
+        Stop-ModoriKit 'manifest_digest_mismatch'
+    }
+    if ((Get-ModoriSha256 $identityPath) -ne $ExpectedIdentityDigest) {
+        Stop-ModoriKit 'identity_digest_mismatch'
+    }
+
+    $manifest = Get-Content -Raw -LiteralPath $manifestPath -Encoding UTF8 | ConvertFrom-Json
+    $declared = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+    foreach ($entry in $manifest.entries) {
+        $relative = [string]$entry.path
+        if (
+            [string]::IsNullOrWhiteSpace($relative) -or
+            $relative.Contains('\') -or
+            $relative.Contains(':') -or
+            $relative.StartsWith('/') -or
+            $relative.Contains('../') -or
+            $relative.Contains('/..') -or
+            -not $declared.Add($relative)
+        ) {
+            Stop-ModoriKit 'manifest_path_invalid'
+        }
+        $candidate = [System.IO.Path]::GetFullPath((Join-Path $KitRoot $relative))
+        if (-not $candidate.StartsWith($KitRoot + [System.IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
+            Stop-ModoriKit 'manifest_path_escape'
+        }
+        if (-not (Test-Path -LiteralPath $candidate -PathType Leaf)) {
+            Stop-ModoriKit 'manifest_member_missing'
+        }
+        $item = Get-Item -LiteralPath $candidate -Force
+        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $item.PSIsContainer) {
+            Stop-ModoriKit 'manifest_member_invalid'
+        }
+        if ([int64]$item.Length -ne [int64]$entry.size_bytes) {
+            Stop-ModoriKit 'manifest_size_mismatch'
+        }
+        if ((Get-ModoriSha256 $candidate) -ne [string]$entry.sha256) {
+            Stop-ModoriKit 'manifest_file_digest_mismatch'
+        }
+    }
+
+    $bootstrapNames = @(
+        'MANIFEST.json',
+        'RUN-MODORI-LIVE-RESEARCH-OS-BENCHMARK.cmd',
+        'VERIFY-AND-RUN.ps1'
+    )
+    foreach ($item in Get-ChildItem -LiteralPath $KitRoot -File -Recurse -Force) {
+        $full = [System.IO.Path]::GetFullPath($item.FullName)
+        if (
+            $full.StartsWith($Results + [System.IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase) -or
+            $full.StartsWith($Work + [System.IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)
+        ) {
+            continue
+        }
+        $relative = $full.Substring($KitRoot.Length + 1).Replace([System.IO.Path]::DirectorySeparatorChar, '/')
+        if ($bootstrapNames -contains $relative) {
+            continue
+        }
+        if (-not $declared.Contains($relative)) {
+            Stop-ModoriKit 'undeclared_file_present'
+        }
+    }
+
+    $executable = Join-Path $KitRoot 'runtime\ModoriLiveResearchOSBenchmark.exe'
+    if (-not (Test-Path -LiteralPath $executable -PathType Leaf)) {
+        Stop-ModoriKit 'runtime_executable_missing'
+    }
+    & $executable --verify-kit-identity
+    if ($LASTEXITCODE -ne 0) {
+        Stop-ModoriKit 'runtime_identity_mismatch'
+    }
+    & $executable --release
+    if ($LASTEXITCODE -ne 0) {
+        Stop-ModoriKit ("runner_exit_" + $LASTEXITCODE)
+    }
+    exit 0
+} catch {
+    Stop-ModoriKit 'bootstrap_unhandled_error'
+}

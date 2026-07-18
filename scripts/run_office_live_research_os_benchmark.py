@@ -7,10 +7,12 @@ from collections.abc import Callable, Mapping, Sequence
 from contextlib import contextmanager
 import ctypes
 from dataclasses import dataclass, replace
+from datetime import datetime, timezone
 import hashlib
 import json
 import os
 from pathlib import Path
+import platform
 import re
 import shutil
 
@@ -83,6 +85,14 @@ from scripts.live_research_os_office_benchmark import (
     result_sidecar_bytes,
     seal_result,
 )
+from scripts.live_research_os_office_kit import (
+    KitContractError,
+    KitIdentity,
+    identity_bytes,
+    parse_identity,
+    parse_package_lock,
+    sha256_bytes,
+)
 
 
 CHILD_OBSERVATION_SCHEMA_ID = "modori.live_research_os_office_child_observation"
@@ -98,6 +108,11 @@ _CLOSED_ID_RE = re.compile(r"^[a-z0-9][a-z0-9_.:-]*$")
 _CHILD_ID_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,127}$")
 _CHILD_FAILURE_EXIT_CODE = 20
 _CHILD_FAILURE_PREFIX = b"modori-child-error:"
+_RUNTIME_FAILURE_PREFIX = b"modori-runtime-error:"
+_RUNTIME_IDENTITY_RESOURCE_NAME = "LIVE-RESEARCH-OS-RUNTIME-IDENTITY.json"
+_RUNTIME_IDENTITY_FAILURE_EXIT_CODE = 21
+_RELEASE_FAILURE_EXIT_CODE = 22
+_ENTRY_ARGUMENT_FAILURE_EXIT_CODE = 64
 _CHILD_FAILURE_CODES = frozenset(
     {
         "acknowledgement_failure",
@@ -2627,6 +2642,369 @@ def run_child_mode(
     )
 
 
+def _runtime_resource_root(resource_root: Path | None) -> Path:
+    if resource_root is None:
+        frozen_root = getattr(sys, "_MEIPASS", None)
+        if not isinstance(frozen_root, str) or not frozen_root:
+            _fail("runtime identity resource root is unavailable")
+        resource_root = Path(frozen_root)
+    return _secure_directory(Path(resource_root), "runtime identity resource root")
+
+
+def load_runtime_identity(*, resource_root: Path | None = None) -> KitIdentity:
+    """Load the embedded build identity and bind it to imported runtime versions."""
+
+    root = _runtime_resource_root(resource_root)
+    path = root / _RUNTIME_IDENTITY_RESOURCE_NAME
+    if not path.is_file() or path.is_symlink():
+        _fail("runtime identity resource is missing or linked")
+    try:
+        identity = parse_identity(path.read_bytes())
+    except (OSError, KitContractError) as exc:
+        raise BenchmarkRunnerError("runtime identity resource is invalid") from exc
+
+    import numpy
+    import pandas
+    import PySide6
+    import sqlite3
+
+    observed = {
+        "fixture_digest": ACCEPTANCE_FIXTURE_DIGEST,
+        "numpy_version": numpy.__version__,
+        "pandas_version": pandas.__version__,
+        "protocol_digest": protocol_digest(OfficeBenchmarkProtocol()),
+        "pyside_version": PySide6.__version__,
+        "python_version": sys.version.split()[0],
+        "result_schema_id": LIVE_BENCHMARK_RESULT_SCHEMA_ID,
+        "result_schema_version": LIVE_BENCHMARK_RESULT_SCHEMA_VERSION,
+        "sqlite_version": sqlite3.sqlite_version,
+    }
+    expected = {
+        "fixture_digest": identity.fixture_digest,
+        "numpy_version": identity.numpy_version,
+        "pandas_version": identity.pandas_version,
+        "protocol_digest": identity.protocol_digest,
+        "pyside_version": identity.pyside_version,
+        "python_version": identity.python_version,
+        "result_schema_id": identity.result_schema_id,
+        "result_schema_version": identity.result_schema_version,
+        "sqlite_version": identity.sqlite_version,
+    }
+    if observed != expected:
+        _fail("runtime identity does not match imported runtime contracts")
+    return identity
+
+
+def verify_packaged_kit_identity(
+    *,
+    kit_root: Path,
+    self_executable: Path,
+    runtime_identity: KitIdentity,
+) -> KitIdentity:
+    """Bind the embedded identity to the exact external kit and executable."""
+
+    if not isinstance(runtime_identity, KitIdentity):
+        _fail("runtime identity is invalid")
+    root = _secure_directory(Path(kit_root), "packaged kit root")
+    executable = Path(self_executable).resolve(strict=True)
+    expected_executable = (root / runtime_identity.executable_path).resolve(strict=True)
+    if (
+        executable != expected_executable
+        or not executable.is_file()
+        or executable.is_symlink()
+    ):
+        _fail("runtime identity executable binding does not match")
+    identity_path = root / "KIT-IDENTITY.json"
+    lock_path = root / "PACKAGE-LOCK.json"
+    if (
+        not identity_path.is_file()
+        or identity_path.is_symlink()
+        or not lock_path.is_file()
+        or lock_path.is_symlink()
+    ):
+        _fail("runtime identity or package lock is missing")
+    try:
+        external_raw = identity_path.read_bytes()
+        external = parse_identity(external_raw)
+        lock_raw = lock_path.read_bytes()
+        parse_package_lock(lock_raw)
+    except (OSError, KitContractError) as exc:
+        raise BenchmarkRunnerError(
+            "runtime identity or package lock is invalid"
+        ) from exc
+    if external_raw != identity_bytes(runtime_identity) or external != runtime_identity:
+        _fail("runtime identity does not match the packaged identity")
+    if sha256_bytes(lock_raw) != runtime_identity.package_lock_sha256:
+        _fail("package lock digest does not match runtime identity")
+    return external
+
+
+def parse_entry_mode(
+    argv: Sequence[str],
+) -> Literal["child", "release", "self_identity", "verify_kit_identity"]:
+    arguments = list(argv)
+    if arguments == ["--self-identity"]:
+        return "self_identity"
+    if arguments == ["--verify-kit-identity"]:
+        return "verify_kit_identity"
+    if arguments == ["--release"]:
+        return "release"
+    if arguments and arguments[0] == "--child-mode":
+        return "child"
+    _fail("entry arguments are not one closed invocation")
+
+
+class _SystemPowerStatus(ctypes.Structure):
+    _fields_ = (
+        ("ac_line_status", ctypes.c_ubyte),
+        ("battery_flag", ctypes.c_ubyte),
+        ("battery_life_percent", ctypes.c_ubyte),
+        ("system_status_flag", ctypes.c_ubyte),
+        ("battery_life_time", ctypes.c_uint32),
+        ("battery_full_life_time", ctypes.c_uint32),
+    )
+
+
+class _MemoryStatusEx(ctypes.Structure):
+    _fields_ = (
+        ("length", ctypes.c_uint32),
+        ("memory_load", ctypes.c_uint32),
+        ("total_physical", ctypes.c_uint64),
+        ("available_physical", ctypes.c_uint64),
+        ("total_page_file", ctypes.c_uint64),
+        ("available_page_file", ctypes.c_uint64),
+        ("total_virtual", ctypes.c_uint64),
+        ("available_virtual", ctypes.c_uint64),
+        ("available_extended_virtual", ctypes.c_uint64),
+    )
+
+
+def _ac_power_connected() -> bool:
+    if os.name != "nt":
+        return True
+    status = _SystemPowerStatus()
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    function = kernel32.GetSystemPowerStatus
+    function.argtypes = [ctypes.POINTER(_SystemPowerStatus)]
+    function.restype = ctypes.c_int
+    if not function(ctypes.byref(status)):
+        _fail("hardware power probe failed")
+    return status.ac_line_status == 1
+
+
+def _physical_memory_bytes() -> int:
+    if os.name != "nt":
+        return 1
+    status = _MemoryStatusEx()
+    status.length = ctypes.sizeof(_MemoryStatusEx)
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    function = kernel32.GlobalMemoryStatusEx
+    function.argtypes = [ctypes.POINTER(_MemoryStatusEx)]
+    function.restype = ctypes.c_int
+    if not function(ctypes.byref(status)) or status.total_physical < 1:
+        _fail("hardware memory probe failed")
+    return int(status.total_physical)
+
+
+def _physical_core_count() -> int:
+    logical = os.cpu_count() or 1
+    if os.name != "nt":
+        return logical
+    relation_processor_core = 0
+    required = ctypes.c_uint32(0)
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    function = kernel32.GetLogicalProcessorInformationEx
+    function.argtypes = [ctypes.c_int, ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint32)]
+    function.restype = ctypes.c_int
+    function(relation_processor_core, None, ctypes.byref(required))
+    if required.value < 8 or required.value > 16 * 1024 * 1024:
+        _fail("hardware CPU probe failed")
+    buffer = ctypes.create_string_buffer(required.value)
+    if not function(
+        relation_processor_core,
+        ctypes.byref(buffer),
+        ctypes.byref(required),
+    ):
+        _fail("hardware CPU probe failed")
+    offset = 0
+    count = 0
+    while offset < required.value:
+        if required.value - offset < 8:
+            _fail("hardware CPU probe returned a truncated record")
+        relationship = ctypes.c_uint32.from_buffer(buffer, offset).value
+        size = ctypes.c_uint32.from_buffer(buffer, offset + 4).value
+        if (
+            relationship != relation_processor_core
+            or size < 8
+            or offset + size > required.value
+        ):
+            _fail("hardware CPU probe returned an invalid record")
+        count += 1
+        offset += size
+    if offset != required.value or count < 1 or count > logical:
+        _fail("hardware CPU probe returned an impossible count")
+    return count
+
+
+def _filesystem_name(path: Path) -> str:
+    if os.name != "nt":
+        return "unknown"
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    function = kernel32.GetVolumeInformationW
+    function.argtypes = [
+        ctypes.c_wchar_p,
+        ctypes.c_wchar_p,
+        ctypes.c_uint32,
+        ctypes.c_void_p,
+        ctypes.c_void_p,
+        ctypes.c_void_p,
+        ctypes.c_wchar_p,
+        ctypes.c_uint32,
+    ]
+    function.restype = ctypes.c_int
+    filesystem = ctypes.create_unicode_buffer(64)
+    if not function(
+        path.anchor,
+        None,
+        0,
+        None,
+        None,
+        None,
+        filesystem,
+        len(filesystem),
+    ):
+        _fail("hardware filesystem probe failed")
+    value = filesystem.value.casefold()
+    return value if _CLOSED_ID_RE.fullmatch(value) else "unknown"
+
+
+def collect_execution_conditions(kit_root: Path) -> dict[str, object]:
+    root = _secure_directory(Path(kit_root), "release kit root")
+    local_app_data_raw = os.environ.get("LOCALAPPDATA")
+    is_internal = False
+    if local_app_data_raw:
+        try:
+            local_app_data = _secure_directory(
+                Path(local_app_data_raw), "local application data root"
+            )
+            root.relative_to(local_app_data)
+            is_internal = True
+        except (BenchmarkRunnerError, ValueError):
+            is_internal = False
+    return {
+        "ac_power": _ac_power_connected(),
+        "drive_type": _drive_type(root),
+        "is_internal": is_internal,
+        "is_regular_directory": root.is_dir(),
+        "is_reparse_point": False,
+        "is_synced_root": _contains_cloud_part(root),
+        "release_protocol": False,
+        "runtime_verified": True,
+        "working_root_class": "local_application_owned",
+    }
+
+
+def collect_hardware_evidence(kit_root: Path) -> dict[str, object]:
+    root = _secure_directory(Path(kit_root), "hardware probe root")
+    logical = os.cpu_count() or 1
+    machine = platform.machine().casefold().replace("x86_64", "amd64")
+    if not _CLOSED_ID_RE.fullmatch(machine):
+        machine = "unknown"
+    if os.name == "nt":
+        version = sys.getwindowsversion()
+        if version.major == 10 and version.build >= 22_000:
+            family = "windows_11"
+        elif version.major == 10:
+            family = "windows_10"
+        else:
+            family = "windows_other"
+    else:
+        family = "non_windows_test"
+    return {
+        "logical_cpu_count": logical,
+        "machine": machine,
+        "physical_core_count": _physical_core_count(),
+        "physical_memory_bytes": _physical_memory_bytes(),
+        "storage": {
+            "bus_type": "unknown",
+            "filesystem": _filesystem_name(root),
+            "media_type": "unknown",
+        },
+        "windows_version_family": family,
+    }
+
+
+def _utc_now() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def execute_release_benchmark(
+    *,
+    self_executable: Path,
+    kit_root: Path,
+    identity: KitIdentity,
+    execution_conditions_provider: Callable[[Path], Mapping[str, object]] = (
+        collect_execution_conditions
+    ),
+    hardware_provider: Callable[
+        [Path], Mapping[str, object]
+    ] = collect_hardware_evidence,
+    utc_now: Callable[[], str] = _utc_now,
+    benchmark_publisher: Callable[..., tuple[Path, Path, Path]] = (
+        run_benchmark_and_write_outputs
+    ),
+) -> tuple[Path, Path, Path]:
+    """Run the unchangeable release protocol into fixed kit-owned directories."""
+
+    root = _secure_directory(Path(kit_root), "release kit root")
+    executable = Path(self_executable).resolve(strict=True)
+    if (
+        verify_packaged_kit_identity(
+            kit_root=root,
+            self_executable=executable,
+            runtime_identity=identity,
+        )
+        != identity
+    ):
+        _fail("runtime identity verification returned a different identity")
+    execution = dict(execution_conditions_provider(root))
+    required_true = (
+        "ac_power",
+        "is_internal",
+        "is_regular_directory",
+        "runtime_verified",
+    )
+    if any(execution.get(key) is not True for key in required_true):
+        _fail("release execution conditions are not satisfied")
+    if (
+        execution.get("drive_type") != "fixed"
+        or execution.get("is_reparse_point") is not False
+        or execution.get("is_synced_root") is not False
+        or execution.get("working_root_class") != "local_application_owned"
+    ):
+        _fail("release execution conditions are not satisfied")
+    recorded_at = utc_now()
+    if not isinstance(recorded_at, str) or not re.fullmatch(
+        r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", recorded_at
+    ):
+        _fail("release UTC clock returned an invalid value")
+    error_timestamp = recorded_at.replace("-", "").replace(":", "")
+    output_directory = _secure_directory(root / "results", "release result root")
+    working_root = _secure_directory(root / "work", "release work root")
+    return benchmark_publisher(
+        OfficeBenchmarkProtocol(),
+        output_directory=output_directory,
+        error_timestamp=error_timestamp,
+        verified_self_executable=executable,
+        working_root=working_root,
+        source_commit=identity.source_commit,
+        kit_identity_digest=sha256_bytes(identity_bytes(identity)),
+        execution_conditions=execution,
+        hardware=dict(hardware_provider(root)),
+        recorded_at_utc=recorded_at,
+    )
+
+
 def parse_cli_arguments(argv: Sequence[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
     parser.add_argument("--child-mode", required=True, choices=("identity", "scenario"))
@@ -2648,9 +3026,62 @@ def main(
     *,
     stdout: Any | None = None,
     stderr: Any | None = None,
+    resource_root: Path | None = None,
+    self_executable: Path | None = None,
+    release_executor: Callable[..., tuple[Path, Path, Path]] = (
+        execute_release_benchmark
+    ),
 ) -> int:
     child_entry_ns = time.perf_counter_ns()
-    parsed = parse_cli_arguments(sys.argv[1:] if argv is None else argv)
+    arguments = list(sys.argv[1:] if argv is None else argv)
+    error_stream = sys.stderr.buffer if stderr is None else stderr
+    output_stream = sys.stdout.buffer if stdout is None else stdout
+    try:
+        entry_mode = parse_entry_mode(arguments)
+    except BenchmarkRunnerError:
+        error_stream.write(_RUNTIME_FAILURE_PREFIX + b"entry_arguments_invalid\n")
+        error_stream.flush()
+        return _ENTRY_ARGUMENT_FAILURE_EXIT_CODE
+
+    if entry_mode != "child":
+        executable = Path(
+            sys.executable if self_executable is None else self_executable
+        )
+        try:
+            runtime_identity = load_runtime_identity(resource_root=resource_root)
+            if entry_mode == "self_identity":
+                output_stream.write(identity_bytes(runtime_identity) + b"\n")
+                output_stream.flush()
+                return 0
+            kit_root = executable.resolve(strict=True).parent.parent
+            verify_packaged_kit_identity(
+                kit_root=kit_root,
+                self_executable=executable,
+                runtime_identity=runtime_identity,
+            )
+            if entry_mode == "verify_kit_identity":
+                return 0
+            release_executor(
+                self_executable=executable,
+                kit_root=kit_root,
+                identity=runtime_identity,
+            )
+            return 0
+        except Exception:
+            reason = (
+                b"release_failure"
+                if entry_mode == "release"
+                else b"runtime_identity_mismatch"
+            )
+            error_stream.write(_RUNTIME_FAILURE_PREFIX + reason + b"\n")
+            error_stream.flush()
+            return (
+                _RELEASE_FAILURE_EXIT_CODE
+                if entry_mode == "release"
+                else _RUNTIME_IDENTITY_FAILURE_EXIT_CODE
+            )
+
+    parsed = parse_cli_arguments(arguments)
     try:
         local_app_data = os.environ.get("LOCALAPPDATA")
         child_nonce = os.environ.get("MODORI_BENCHMARK_CHILD_NONCE")
@@ -2680,13 +3111,11 @@ def main(
         reason_code = _closed_failure_code(exc)
         if reason_code not in _CHILD_FAILURE_CODES:
             reason_code = "product_authority_failure"
-        error_stream = sys.stderr.buffer if stderr is None else stderr
         error_stream.write(_child_failure_bytes(reason_code))
         error_stream.flush()
         return _CHILD_FAILURE_EXIT_CODE
-    stream = sys.stdout.buffer if stdout is None else stdout
-    stream.write(payload)
-    stream.flush()
+    output_stream.write(payload)
+    output_stream.flush()
     return 0
 
 
