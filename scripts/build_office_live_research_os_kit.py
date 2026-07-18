@@ -57,6 +57,7 @@ from scripts.package_environment import without_workspace_reference_runtime  # n
 BENCHMARK_EXECUTABLE_NAME = "ModoriLiveResearchOSBenchmark"
 RUNTIME_IDENTITY_RESOURCE_NAME = "LIVE-RESEARCH-OS-RUNTIME-IDENTITY.json"
 PACKAGE_LOCK_SOURCE = "scripts/office_live_research_os_kit/PACKAGE-LOCK.json"
+PYINSTALLER_HOOK_SOURCE = "scripts/office_live_research_os_kit/hooks"
 TEMPLATE_SOURCE_FILES = {
     "cmd": (
         "scripts/office_live_research_os_kit/"
@@ -480,6 +481,8 @@ def build_pyinstaller_command(
         str(work / "spec"),
         "--paths",
         str(repository / "src"),
+        "--additional-hooks-dir",
+        str(repository / PYINSTALLER_HOOK_SOURCE),
         "--add-data",
         f"{resource}{os.pathsep}.",
         *hidden_args,
@@ -499,9 +502,7 @@ def validate_pyinstaller_diagnostics(raw: str) -> tuple[str, ...]:
         first = dangerous[0]
         if len(first) > 500:
             first = first[:500] + "..."
-        raise KitBuildError(
-            f"PyInstaller returned an unexpected diagnostic: {first}"
-        )
+        raise KitBuildError(f"PyInstaller returned an unexpected diagnostic: {first}")
     return tuple(line.strip() for line in raw.splitlines() if line.strip())
 
 

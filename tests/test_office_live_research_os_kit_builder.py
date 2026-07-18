@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from dataclasses import replace
 import hashlib
+import importlib.util
 import io
 from pathlib import Path
 import re
+import runpy
 import zipfile
 
 import pytest
@@ -12,6 +14,7 @@ import pytest
 from scripts.build_office_live_research_os_kit import (
     BENCHMARK_EXECUTABLE_NAME,
     PACKAGE_LOCK_SOURCE,
+    PYINSTALLER_HOOK_SOURCE,
     RUNTIME_IDENTITY_RESOURCE_NAME,
     TEMPLATE_SOURCE_FILES,
     KitBuildError,
@@ -136,6 +139,9 @@ def test_pyinstaller_command_is_dedicated_onedir_console_and_closed(
     assert command[command.index("--distpath") + 1] == str(tmp_path / "work" / "dist")
     assert command[command.index("--workpath") + 1] == str(tmp_path / "work" / "build")
     assert command[command.index("--specpath") + 1] == str(tmp_path / "work" / "spec")
+    assert command[command.index("--additional-hooks-dir") + 1] == str(
+        repository / PYINSTALLER_HOOK_SOURCE
+    )
     assert command[-1] == str(
         repository / "scripts" / "run_office_live_research_os_benchmark.py"
     )
@@ -272,6 +278,17 @@ def test_unexpected_pyinstaller_diagnostics_are_rejected(diagnostics: str) -> No
     assert validate_pyinstaller_diagnostics("") == ()
 
 
+def test_scipy_118_hook_removes_only_the_retired_cdflib_hidden_import() -> None:
+    assert importlib.util.find_spec("scipy.special._cdflib") is None
+    namespace = runpy.run_path(
+        "scripts/office_live_research_os_kit/hooks/hook-scipy.special._ufuncs.py"
+    )
+    assert namespace["hiddenimports"] == [
+        "scipy.special._ufuncs_cxx",
+        "scipy.special._special_ufuncs",
+    ]
+
+
 def test_templates_are_powershell_51_literal_offline_and_non_elevating() -> None:
     root = Path("scripts/office_live_research_os_kit")
     command = (root / "RUN-MODORI-LIVE-RESEARCH-OS-BENCHMARK.cmd.in").read_text(
@@ -304,6 +321,7 @@ def test_package_lock_and_templates_use_a_closed_source_location() -> None:
     assert PACKAGE_LOCK_SOURCE == (
         "scripts/office_live_research_os_kit/PACKAGE-LOCK.json"
     )
+    assert PYINSTALLER_HOOK_SOURCE == "scripts/office_live_research_os_kit/hooks"
     assert TEMPLATE_SOURCE_FILES == {
         "cmd": (
             "scripts/office_live_research_os_kit/"
