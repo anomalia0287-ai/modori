@@ -1,7 +1,17 @@
 # Modori 라이브 Research OS 사무용 PC 측정 절차
 
-Status: B4 검증 도구 구현 중. 최종 ZIP 이름·크기·SHA-256은 B4 최종 봉인 후
-채팅에서 별도로 고정하며, 그보다 앞선 ZIP은 HP 판정 증거가 아니다.
+Status: B4 로컬 검증 완료. B5 동일 HP 노트북 실측·최종 판정 대기.
+
+2026-07-18에 선택한 유일한 B5 후보는 다음 두 파일이다.
+
+- `dist/live-research-os-office/modori-live-research-os-office-kit-0cae87dfeb11-py31210.zip`
+- 같은 전체 이름 뒤에 `.sha256`이 붙은 파일
+
+ZIP 크기는 `138,386,244` bytes, SHA-256은
+`4aefcc613d3456c6ab0f81f730c34cdde00e40ed6f9636b0333292ce0e823de9`, 소스
+커밋은 `0cae87dfeb117174e360c56125bf5ef8b00874cb`이다. 이 키트는 로컬 개발 PC의
+전체 프로토콜과 독립 검증을 통과했지만, 그 결과는 대상 HP 노트북의 성능 판정을
+대신하지 않는다. 비슷한 이름의 이전 ZIP은 B5 증거가 아니다.
 
 ## 1. 이 측정이 답하는 질문
 

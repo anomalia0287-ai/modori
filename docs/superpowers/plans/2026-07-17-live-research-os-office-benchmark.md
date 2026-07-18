@@ -548,7 +548,7 @@ count, fixture identity, acceptance gate, or timing boundary changed.
 - Create: `tests/test_office_live_research_os_kit_architecture.py`
 - Create: `docs/qa/live-research-os-office-benchmark-runbook.md`
 
-- [ ] **Step 1: Write an independent verifier test**
+- [x] **Step 1: Write an independent verifier test**
 
 The verifier imports only `live_research_os_office_kit.py`, never the builder, and
 accepts either a ZIP+sidecar or extracted root. It independently checks outer SHA-256,
@@ -557,7 +557,7 @@ identity canonicalization, every manifest size/digest, bootstrap embedded digest
 runtime self-identity, source commit, protocol/fixture digest, and executable closure.
 It must complete before any child or output JSON can run.
 
-- [ ] **Step 2: Write returned-result verification tests**
+- [x] **Step 2: Write returned-result verification tests**
 
 Given a kit identity plus JSON/sidecar/summary, independently verify canonical bytes,
 file SHA-256, `result_hash`, raw observation counts/types, child identities, stage/profile/
@@ -566,7 +566,7 @@ conditions, hardware schema, source/kit/protocol/fixture binding, and summary eq
 Reject a stored `pass` when recomputation fails. The API returns typed `valid_pass`,
 `valid_stop`, or `invalid_run`; invalid protocol is not mislabeled as product failure.
 
-- [ ] **Step 3: Write a 300-case mutation and path corpus**
+- [x] **Step 3: Write a 300-case mutation and path corpus**
 
 Cover one-byte changes across executable/bootloader/DLL/Python/Qt/payload/identity/
 manifest/PowerShell/CMD/ZIP, truncation, missing/extra/duplicate/case-colliding members,
@@ -577,7 +577,7 @@ deletion/reorder, p95/evaluation forgery, and contamination with source/bytecode
 files. Every immutable mutation blocks before a result JSON; every returned-result
 mutation is rejected by independent recomputation.
 
-- [ ] **Step 4: Write the precise Korean runbook and error contract**
+- [x] **Step 4: Write the precise Korean runbook and error contract**
 
 The runbook names the exact ZIP/sidecar pattern, local target directory, required AC
 power, fresh extraction, expected long-running progress, output file names, and returned
@@ -587,7 +587,7 @@ to return are JSON, JSON sidecar, Korean summary, and—on failure—the bootstr
 plus optional photo. It distinguishes rerunnable setup error from a valid threshold
 stop.
 
-- [ ] **Step 5: Run the tests and confirm failure**
+- [x] **Step 5: Run the tests and confirm failure**
 
 Run:
 
@@ -597,7 +597,7 @@ Run:
 
 Expected: FAIL because the independent verifier, attack corpus, and runbook are absent.
 
-- [ ] **Step 6: Implement the verifier and fixed bootstrap**
+- [x] **Step 6: Implement the verifier and fixed bootstrap**
 
 Use handles/byte streams already verified; do not verify one path and execute a second
 unresolved path. PowerShell probes AC state and working-volume/path conditions with a
@@ -605,7 +605,7 @@ closed schema, records coarse hardware evidence, and invokes only the verified r
 The benchmark may run on an internal HDD or SSD; media class is reported, not used to
 weaken the single 30-second threshold.
 
-- [ ] **Step 7: Commit verifier, attacks, and runbook**
+- [x] **Step 7: Commit verifier, attacks, and runbook**
 
 Run the focused tests above to green, then:
 
@@ -614,7 +614,7 @@ git add -- scripts/verify_office_live_research_os_kit.py tests/test_office_live_
 git commit -m "test: verify live Research OS office kit"
 ```
 
-- [ ] **Step 8: Build three identical outer archives at committed HEAD**
+- [x] **Step 8: Build three identical outer archives at committed HEAD**
 
 Build one immutable runtime staging tree, repack it independently three times, and
 compare bytes. Preserve only the selected final ZIP and `.zip.sha256` under the dedicated
@@ -622,14 +622,14 @@ dist directory after verifying all three. Record full path, size, SHA-256, membe
 CRC, duplicates, identity, runtime versions, and source commit. Do not delete or modify
 older research-memory kit artifacts elsewhere.
 
-- [ ] **Step 9: Attack the selected archive and run the full protocol locally**
+- [x] **Step 9: Attack the selected archive and run the full protocol locally**
 
 Execute all 300 mutations against disposable extracted copies. Then run the unmodified
 kit from a fresh local non-reparse directory on the development PC using the full 20/30
 release protocol. Verify the returned files independently. Report the development
 result as smoke/performance context only; it cannot pass or replace the HP gate.
 
-- [ ] **Step 10: Re-run the complete product quality gate**
+- [x] **Step 10: Re-run the complete product quality gate**
 
 Run:
 
@@ -640,6 +640,64 @@ Run:
 Expected: all local product and package gates remain green at the exact kit source
 commit. If kit work changes product behaviour or package contents unexpectedly, stop
 instead of shipping the measurement tool.
+
+**B4 execution evidence (2026-07-18):**
+
+- The independent verifier, returned-result recomputation, bootstrap closure, path
+  boundary, and attack corpus landed in `5e41f70`. The later target-path correction,
+  warm-cleanup fix, and file-operation audit landed in `039d29f`, `3291a7e`, and
+  `0cae87d` respectively. The final related runner/verifier cohort passed `161` tests;
+  Ruff and the file-operation audit passed without widening an execution boundary.
+- The selected clean-source archive is
+  `modori-live-research-os-office-kit-0cae87dfeb11-py31210.zip`, source commit
+  `0cae87dfeb117174e360c56125bf5ef8b00874cb`, size `138,386,244` bytes, SHA-256
+  `4aefcc613d3456c6ab0f81f730c34cdde00e40ed6f9636b0333292ce0e823de9`.
+  Independent verification found `1,613` sorted ZIP members, `1,413` manifest entries,
+  clean CRC, exact sidecar and embedded runtime identity, protocol digest
+  `b2f24c4c752daaa2f2f34c7095ecb10518e6175ed7475d59621ea5bcefe72193`, and
+  fixture digest
+  `f0a70250178dbf4a2a59795b72356d6c1dcaa1046e0ce4dada04885d5814602b`.
+  Three independent outer repacks were byte-identical to the selected archive.
+- The selected archive itself faced `300` disposable attacks: `120` immutable-byte,
+  `60` missing-member, `60` contamination, and `60` outer-byte cases. All `300` were
+  rejected before a runtime probe, result file, or residual work file could appear.
+- The first full local release run at `039d29f` correctly ended invalid with
+  `cleanup_failure`: warm identity observations do not create persisted child roots,
+  but the cleanup list included their IDs. A real-run RED test reproduced the defect;
+  `3291a7e` now schedules cleanup only for roots that were actually persisted. No
+  cleanup error was downgraded or ignored.
+- A fresh fixed, local, non-reparse extraction of the final `0cae87d` archive completed
+  the exact `20` cold / `30` warm protocol and independently verified as `valid_pass`.
+  Its result ID is `e80e8d3b-0178-40b4-b98a-a7e9952204ed`, result-file SHA-256 is
+  `e8f3d9b9f1e5024cdb3e33192dfb1fdb45d48c7f2483f0f880056fea458bcca1`, and canonical
+  `result_hash` is
+  `29c69610a8217e098421185440066e7a6f4dffd94716ee5ccf5f81b431818b28`.
+  All `98` separated evaluation rows passed with zero reason/error codes. The worst
+  p95 was cold initial identity at `2,201.456 ms`; warm initial identity was
+  `2,152.687 ms`; the worst later decision p95 was `473.617 ms`. The result contains
+  `50` identity waits, `1,100` decision waits, `7,050` component observations, `900`
+  acknowledgements, `8` overhead observations, and `350` resource observations.
+  The 5,000,000-cell stress check completed in `4,354.592 ms`; peak working set was
+  `262,873,088` bytes. Post-run work cleanup left only the owned root marker and empty
+  quarantine directory.
+- This development-PC pass is smoke/performance context only. It used Windows 11,
+  `12` physical cores / `16` logical CPUs, and about `16.8` GB physical memory; it
+  neither substitutes for the HP run nor proves recommendation validity, statistical
+  accuracy, expert equivalence, or SPSS superiority.
+- The first post-smoke complete quality run exposed a pre-existing scheduler-sensitive
+  visual gate: Windows state-render p95 was `250.795 ms` against the unchanged
+  `250 ms` ceiling. Three new full 29-state isolated runs passed at `240.394 ms`,
+  `239.596 ms`, and `241.896 ms`; one contained a permitted single `613.384 ms`
+  maximum, confirming why the frozen nearest-rank p95 population exists. The unchanged
+  complete command was then rerun and exited zero: `3,211 passed, 13 skipped`, Ruff,
+  Bandit, launch smoke, dependency consistency, package check/build, packaged launch,
+  engine/public-data smokes, and the separate slow-statistics gate (`4 passed, 3,220
+  deselected`) all passed. The transient failure remains disclosed rather than erased.
+- PyInstaller still warned that the unused Qt Labs asset-downloader plugin DLL does not
+  exist and that hidden import `scipy.special._cdflib` is absent from the pinned SciPy
+  environment. The production package build and all packaged launch/engine/public-data
+  smokes passed; these warnings are recorded, not converted into evidence that the
+  optional modules exist.
 
 ### Task B5: Run the target HP protocol and issue the final go/stop evidence
 
