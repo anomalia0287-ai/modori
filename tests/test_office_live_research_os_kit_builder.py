@@ -22,6 +22,7 @@ from scripts.build_office_live_research_os_kit import (
     KitSource,
     OuterBuildRequest,
     RuntimeProduct,
+    _build_environment,
     _clean_head,
     build_outer_kit,
     build_pyinstaller_command,
@@ -150,6 +151,21 @@ def test_pyinstaller_command_is_dedicated_onedir_console_and_closed(
     for required in ("numpy", "pandas", "pyside6.qtcore"):
         assert required in joined
     assert "modori.exe" not in joined
+
+
+def test_build_environment_pins_python_hash_order(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repository = tmp_path / "repository"
+    work_root = tmp_path / "work"
+    repository.mkdir()
+    work_root.mkdir()
+    monkeypatch.setenv("PYTHONHASHSEED", "random")
+
+    environment = _build_environment(repository, work_root)
+
+    assert environment["PYTHONHASHSEED"] == "0"
 
 
 def test_outer_builder_is_byte_identical_for_three_repacks(tmp_path: Path) -> None:

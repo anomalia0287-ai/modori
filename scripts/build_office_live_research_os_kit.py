@@ -618,6 +618,7 @@ def _bootloader_path() -> Path:
 
 def _build_environment(repository_root: Path, work_root: Path) -> dict[str, str]:
     environment = without_workspace_reference_runtime(os.environ)
+    environment["PYTHONHASHSEED"] = "0"
     environment["PYTHONPATH"] = str(repository_root / "src")
     environment["MPLCONFIGDIR"] = str(work_root / "matplotlib-cache")
     environment["MODORI_CACHE_DIR"] = str(work_root / "modori-cache")
