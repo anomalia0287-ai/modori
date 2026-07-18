@@ -343,7 +343,7 @@ git commit -m "docs: update office benchmark path boundary"
 
 **Files:**
 
-- Generate, do not commit: `.tmp/live-os-repack-{1,2,3}/live-research-os-office/*`
+- Generate, do not commit: `.tmp/live-os-repack-{1,2,3}/dist/live-research-os-office/*`
 - Generate, do not commit: `dist/live-research-os-office/*.zip`
 - Generate, do not commit: fresh local run outputs below a short ignored `.tmp` or
   `%LOCALAPPDATA%` directory
@@ -391,14 +391,19 @@ Let `$commit = git rev-parse HEAD`. Build into three ignored parents whose final
 has the required exact name:
 
 ```powershell
-.\.venv\Scripts\python.exe scripts/build_office_live_research_os_kit.py --source-commit $commit --output-dir .tmp/live-os-repack-1/live-research-os-office
-.\.venv\Scripts\python.exe scripts/build_office_live_research_os_kit.py --source-commit $commit --output-dir .tmp/live-os-repack-2/live-research-os-office
-.\.venv\Scripts\python.exe scripts/build_office_live_research_os_kit.py --source-commit $commit --output-dir .tmp/live-os-repack-3/live-research-os-office
+.\.venv\Scripts\python.exe scripts/build_office_live_research_os_kit.py --source-commit $commit --output-dir .tmp/live-os-repack-1/dist/live-research-os-office
+.\.venv\Scripts\python.exe scripts/build_office_live_research_os_kit.py --source-commit $commit --output-dir .tmp/live-os-repack-2/dist/live-research-os-office
+.\.venv\Scripts\python.exe scripts/build_office_live_research_os_kit.py --source-commit $commit --output-dir .tmp/live-os-repack-3/dist/live-research-os-office
 ```
 
 Hash all three ZIPs and require one distinct SHA-256 and byte-identical sidecars. Copy
 only repack 1's exact ZIP and sidecar into an otherwise empty
 `dist/live-research-os-office`; do not retain the revoked archive there.
+
+Each independent parent contains the required literal `dist` component. The first
+pre-build attempt on `09f8f0c` omitted that component, was correctly rejected with
+`dedicated output directory is required`, and left neither an archive nor a build-root
+residue; it is invalid setup evidence, not a kit build.
 
 - [ ] **Step 3: Independently verify and execute all 300 attacks**
 
