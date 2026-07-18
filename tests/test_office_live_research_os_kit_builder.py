@@ -207,7 +207,7 @@ def test_archive_has_one_root_sorted_entries_and_no_repository_material(
     assert names == tuple(sorted(names))
     assert all(name.startswith(result.kit_name + "/") for name in names)
     assert any(name.endswith("/results/") for name in names)
-    assert any(name.endswith("/work/") for name in names)
+    assert not any(name.endswith("/work/") for name in names)
     forbidden = re.compile(r"(?:^|/)(?:\.git|\.venv|tests|fixtures|src)(?:/|$)")
     assert not any(forbidden.search(name) for name in names)
 
@@ -324,6 +324,13 @@ def test_templates_are_powershell_51_literal_offline_and_non_elevating() -> None
     assert "--release" in powershell
     assert "kit_path_too_long" in powershell
     assert "230" in powershell
+    assert "$Work" not in powershell
+    assert "obsolete_work_root_present" in powershell
+    assert "BeforeRunnerDiagnostics" in powershell
+    assert "NewRunnerDiagnosticCount" in powershell
+    assert "$RunnerExitCode = $LASTEXITCODE" in powershell
+    assert "-eq 1" in powershell
+    assert 'Stop-ModoriKit ("runner_exit_" + $RunnerExitCode) $false' in powershell
     combined = (command + "\n" + powershell).casefold()
     for forbidden in (
         "invoke-webrequest",

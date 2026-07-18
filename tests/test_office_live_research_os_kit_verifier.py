@@ -111,7 +111,6 @@ def _fake_kit(tmp_path: Path) -> Path:
         tmp_path / kit_name(identity.source_commit, identity.python_version)
     ).resolve()
     (root / "results").mkdir(parents=True)
-    (root / "work").mkdir()
     _write(root / "README-KO.txt", "합성 벤치마크".encode())
     _write(root / "PACKAGE-LOCK.json", _package_lock())
     _write(root / "KIT-IDENTITY.json", identity_bytes(identity))
@@ -227,7 +226,7 @@ def test_extracted_verifier_rejects_immutable_mutation(
         verify_kit(root, runtime_probe=lambda *_args: None)
 
 
-def test_verifier_rejects_extra_source_bytecode_and_mutable_zip_content(
+def test_verifier_rejects_extra_source_bytecode_and_obsolete_work_content(
     tmp_path: Path,
 ) -> None:
     for relative in ("runtime/extra.py", "runtime/extra.pyc", "work/forged.json"):
@@ -236,7 +235,10 @@ def test_verifier_rejects_extra_source_bytecode_and_mutable_zip_content(
         if not relative.startswith("work/"):
             _write(root / "MANIFEST.json", _manifest(root))
         archive, sidecar = _archive_with_sidecar(root, root.parent)
-        with pytest.raises(KitVerificationError, match="source|bytecode|mutable"):
+        with pytest.raises(
+            KitVerificationError,
+            match="source|bytecode|mutable|inventory|unexpected",
+        ):
             verify_kit(archive, sidecar=sidecar, runtime_probe=lambda *_args: None)
 
 
@@ -296,8 +298,13 @@ def test_verifier_rejects_empty_immutable_and_preseeded_mutable_directories(
     with pytest.raises(KitVerificationError, match="directory|inventory"):
         verify_kit(extracted, runtime_probe=lambda *_args: None)
 
+    obsolete = _fake_kit(tmp_path / "obsolete")
+    (obsolete / "work").mkdir()
+    with pytest.raises(KitVerificationError, match="directory|inventory"):
+        verify_kit(obsolete, runtime_probe=lambda *_args: None)
+
     root = _fake_kit(tmp_path / "zipped")
-    (root / "work/preseeded").mkdir()
+    (root / "results/preseeded").mkdir()
     archive, sidecar = _archive_with_sidecar(root, tmp_path)
     with pytest.raises(KitVerificationError, match="mutable|directory|inventory"):
         verify_kit(archive, sidecar=sidecar, runtime_probe=lambda *_args: None)
@@ -333,10 +340,40 @@ def test_runtime_probe_uses_only_two_literal_identity_modes(
         assert kwargs["timeout"] == 120
         assert "PYTHONPATH" not in kwargs["env"]
         assert "PYTHONHOME" not in kwargs["env"]
-        assert kwargs["env"]["LOCALAPPDATA"] == str(root / "work")
-        assert kwargs["env"]["TEMP"] == str(root / "work")
-        assert kwargs["env"]["TMP"] == str(root / "work")
+        probe_root = Path(kwargs["env"]["LOCALAPPDATA"])
+        assert probe_root != root / "work"
+        assert not probe_root.is_relative_to(root)
+        assert kwargs["env"]["TEMP"] == str(probe_root)
+        assert kwargs["env"]["TMP"] == str(probe_root)
         if "SystemRoot" in os.environ:
             assert kwargs["env"]["PATH"] == str(
                 Path(os.environ["SystemRoot"]) / "System32"
             )
+
+
+def test_runtime_probe_rejects_temporary_workspace_inside_supplied_kit(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root = _fake_kit(tmp_path)
+    results = root / "results"
+    monkeypatch.setenv("LOCALAPPDATA", str(results))
+    monkeypatch.setattr(
+        verifier_module.subprocess,
+        "run",
+        lambda command, **kwargs: subprocess.CompletedProcess(
+            command,
+            0,
+            stdout=(
+                identity_bytes(_identity()) + b"\n"
+                if command[-1] == "--self-identity"
+                else b""
+            ),
+            stderr=b"",
+        ),
+    )
+
+    with pytest.raises(KitVerificationError, match="overlap|outside"):
+        probe_runtime_identity(root, _identity())
+
+    assert tuple(results.iterdir()) == ()

@@ -51,7 +51,7 @@ _BOOTSTRAP_FILES = frozenset(
         "VERIFY-AND-RUN.ps1",
     }
 )
-_MUTABLE_ROOTS = frozenset({"results", "work"})
+_MUTABLE_ROOTS = frozenset({"results"})
 _EMBEDDED_IDENTITY = "runtime/_internal/LIVE-RESEARCH-OS-RUNTIME-IDENTITY.json"
 _PYINSTALLER_BASE_LIBRARY = "runtime/_internal/base_library.zip"
 _MAX_ARCHIVE_BYTES = 2 * 1024**3
@@ -300,8 +300,8 @@ def _verify_bootstrap_chain(
         _fail("bootstrap contains an unresolved template token")
 
 
-def _probe_environment(root: Path) -> dict[str, str]:
-    work = str(root / "work")
+def _probe_environment(probe_root: Path) -> dict[str, str]:
+    work = str(probe_root)
     environment = {
         "LOCALAPPDATA": work,
         "PYTHONDONTWRITEBYTECODE": "1",
@@ -323,32 +323,57 @@ def _probe_environment(root: Path) -> dict[str, str]:
 def probe_runtime_identity(root: Path, identity: KitIdentity) -> None:
     """Run only the two fixed identity modes after static verification succeeds."""
 
-    executable = _safe_manifest_path(root, identity.executable_path)
+    verified_root = _plain_directory(Path(root), "runtime identity kit root")
+    executable = _safe_manifest_path(verified_root, identity.executable_path)
     commands = (
         ([str(executable), "--self-identity"], identity_bytes(identity) + b"\n"),
         ([str(executable), "--verify-kit-identity"], b""),
     )
-    for command, expected_stdout in commands:
-        try:
-            # The executable is manifest-verified and both arguments are literals.
-            completed = subprocess.run(  # nosec B603
-                command,
-                cwd=root,
-                env=_probe_environment(root),
-                capture_output=True,
-                check=False,
-                timeout=120,
+    temporary_base = _plain_directory(
+        Path(os.environ.get("LOCALAPPDATA") or tempfile.gettempdir()),
+        "runtime identity probe base",
+    )
+    if temporary_base == verified_root or verified_root in temporary_base.parents:
+        _fail("runtime identity probe workspace must not overlap the supplied kit")
+    try:
+        with tempfile.TemporaryDirectory(
+            prefix="mrv-probe-",
+            dir=temporary_base,
+        ) as raw_probe_root:
+            probe_root = _plain_directory(
+                Path(raw_probe_root),
+                "runtime identity probe root",
             )
-        except (OSError, subprocess.SubprocessError) as exc:
-            raise KitVerificationError(
-                "runtime identity probe could not execute"
-            ) from exc
-        if (
-            completed.returncode != 0
-            or completed.stderr
-            or completed.stdout != expected_stdout
-        ):
-            _fail("runtime self-identity does not match the sealed kit")
+            if probe_root == verified_root or verified_root in probe_root.parents:
+                _fail("runtime identity probe workspace must remain outside the kit")
+            environment = _probe_environment(probe_root)
+            for command, expected_stdout in commands:
+                try:
+                    # The executable is manifest-verified and both arguments are literals.
+                    completed = subprocess.run(  # nosec B603
+                        command,
+                        cwd=verified_root,
+                        env=environment,
+                        capture_output=True,
+                        check=False,
+                        timeout=120,
+                    )
+                except (OSError, subprocess.SubprocessError) as exc:
+                    raise KitVerificationError(
+                        "runtime identity probe could not execute"
+                    ) from exc
+                if (
+                    completed.returncode != 0
+                    or completed.stderr
+                    or completed.stdout != expected_stdout
+                ):
+                    _fail("runtime self-identity does not match the sealed kit")
+    except KitVerificationError:
+        raise
+    except OSError as exc:
+        raise KitVerificationError(
+            "runtime identity probe workspace is unavailable"
+        ) from exc
 
 
 def _verify_directory(
@@ -509,7 +534,7 @@ def _validate_zip_inventory(
                 _fail("ZIP member is not a regular file")
             top = relative.split("/", 1)[0]
             if top in _MUTABLE_ROOTS:
-                _fail("ZIP contains mutable result or work content")
+                _fail("ZIP contains mutable result content")
             _reject_contamination(relative)
             file_relatives.add(relative)
         total += info.file_size

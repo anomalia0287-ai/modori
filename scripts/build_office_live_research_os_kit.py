@@ -390,7 +390,6 @@ def build_outer_kit(request: OuterBuildRequest) -> BuildResult:
     archive_linked = False
     try:
         (root / "results").mkdir(parents=True)
-        (root / "work").mkdir()
         for relative, source in runtime_files:
             _write_new(root / "runtime" / PurePosixPath(relative), source.read_bytes())
         _write_new(root / "README-KO.txt", request.source.readme)

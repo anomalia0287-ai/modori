@@ -1,7 +1,6 @@
 $ErrorActionPreference = 'Stop'
 $KitRoot = [System.IO.Path]::GetFullPath($PSScriptRoot).TrimEnd([System.IO.Path]::DirectorySeparatorChar)
 $Results = Join-Path $KitRoot 'results'
-$Work = Join-Path $KitRoot 'work'
 $ExpectedManifestDigest = '__MANIFEST_SHA256__'
 $ExpectedIdentityDigest = '__IDENTITY_SHA256__'
 $VerifiedStreams = New-Object 'System.Collections.Generic.List[System.IO.FileStream]'
@@ -31,10 +30,10 @@ function Get-ModoriSha256([System.IO.Stream]$Stream) {
     }
 }
 
-function Stop-ModoriKit([string]$Code) {
+function Stop-ModoriKit([string]$Code, [bool]$WriteDiagnostic = $true) {
     Write-Host ("오류 코드: " + $Code)
     try {
-        if (Test-Path -LiteralPath $Results -PathType Container) {
+        if ($WriteDiagnostic -and (Test-Path -LiteralPath $Results -PathType Container)) {
             $stamp = [DateTime]::UtcNow.ToString('yyyyMMddTHHmmssZ')
             $diagnostic = Join-Path $Results ("bootstrap-error-" + $stamp + ".txt")
             if (-not (Test-Path -LiteralPath $diagnostic)) {
@@ -95,8 +94,7 @@ function Assert-ModoriInventory([System.Collections.Generic.HashSet[string]]$Dec
     foreach ($item in Get-ChildItem -LiteralPath $KitRoot -File -Recurse -Force) {
         $full = [System.IO.Path]::GetFullPath($item.FullName)
         if (
-            $full.StartsWith($Results + [System.IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase) -or
-            $full.StartsWith($Work + [System.IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)
+            $full.StartsWith($Results + [System.IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)
         ) {
             continue
         }
@@ -113,7 +111,10 @@ function Assert-ModoriInventory([System.Collections.Generic.HashSet[string]]$Dec
 try {
     Assert-ModoriPlainDirectory $KitRoot 'kit_root_invalid'
     Assert-ModoriPlainDirectory $Results 'results_root_invalid'
-    Assert-ModoriPlainDirectory $Work 'work_root_invalid'
+    $obsoleteWork = Join-Path $KitRoot 'work'
+    if (Test-Path -LiteralPath $obsoleteWork) {
+        Stop-ModoriKit 'obsolete_work_root_present'
+    }
 
     $manifestPath = Join-Path $KitRoot 'MANIFEST.json'
     $identityPath = Join-Path $KitRoot 'KIT-IDENTITY.json'
@@ -177,9 +178,32 @@ try {
         Stop-ModoriKit 'runtime_identity_mismatch'
     }
     Assert-ModoriInventory $declared
+    $BeforeRunnerDiagnostics = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+    foreach ($diagnostic in Get-ChildItem -LiteralPath $Results -File -Force) {
+        if (
+            $diagnostic.Name -match '^bootstrap-error-\d{8}T\d{6}Z\.txt$' -and
+            ($diagnostic.Attributes -band [IO.FileAttributes]::ReparsePoint) -eq 0
+        ) {
+            [void]$BeforeRunnerDiagnostics.Add($diagnostic.Name)
+        }
+    }
     & $executable --release
-    if ($LASTEXITCODE -ne 0) {
-        Stop-ModoriKit ("runner_exit_" + $LASTEXITCODE)
+    $RunnerExitCode = $LASTEXITCODE
+    if ($RunnerExitCode -ne 0) {
+        $NewRunnerDiagnosticCount = 0
+        foreach ($diagnostic in Get-ChildItem -LiteralPath $Results -File -Force) {
+            if (
+                $diagnostic.Name -match '^bootstrap-error-\d{8}T\d{6}Z\.txt$' -and
+                ($diagnostic.Attributes -band [IO.FileAttributes]::ReparsePoint) -eq 0 -and
+                -not $BeforeRunnerDiagnostics.Contains($diagnostic.Name)
+            ) {
+                $NewRunnerDiagnosticCount += 1
+            }
+        }
+        if ($NewRunnerDiagnosticCount -eq 1) {
+            Stop-ModoriKit ("runner_exit_" + $RunnerExitCode) $false
+        }
+        Stop-ModoriKit ("runner_exit_" + $RunnerExitCode)
     }
     exit 0
 } catch {

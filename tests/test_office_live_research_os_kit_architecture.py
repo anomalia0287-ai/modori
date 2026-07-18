@@ -198,6 +198,13 @@ def test_bootstrap_holds_verified_streams_and_has_only_fixed_identity_release_mo
     assert "verifiedstreams" in combined
     assert "--verify-kit-identity" in combined
     assert "--release" in combined
+    assert "$work" not in combined
+    assert "obsolete_work_root_present" in combined
+    assert "beforerunnerdiagnostics" in combined
+    assert "newrunnerdiagnosticcount" in combined
+    assert "$runnerexitcode = $lastexitcode" in combined
+    assert r"bootstrap-error-\d{8}t\d{6}z\.txt" in combined
+    assert 'stop-modorikit ("runner_exit_" + $runnerexitcode) $false' in combined
     for forbidden in (
         "invoke-webrequest",
         "invoke-restmethod",
