@@ -1933,11 +1933,20 @@ full-population p95 regression correction and this execution record form a test/
 follow-up only; they do not change product copy, state meaning, provenance, authority,
 or any recommendation rule.
 
-- [ ] **Step 10: Recapture and verify the final committed gallery**
+- [x] **Step 10: Recapture and verify the final committed gallery**
 
 Require a clean worktree, regenerate every state, and rerun the Step 8 cohort. Every
 final item must identify the one current HEAD, privacy scan must pass, and no rendered
 or packet artifact is staged. A polished pre-commit screenshot is not final evidence.
+
+At committed HEAD `6b8188380c04c456bc1485851596a47d88ea0aed`, the clean
+recapture and packet both named that exact commit for all 29 items. Every item used the
+native Windows renderer and production component contract with 387 font families;
+all structural, privacy, clipping, overflow, and substitution counters were zero.
+Nearest-rank p95 was `222.688 ms` for state stabilization (maximum `237.448 ms`) and
+`31.533 ms` for interaction response, both inside the unchanged gates. The contact
+sheet and all 29 current-run images were inspected, and the Step 8 cohort passed
+`94` tests in `61.93 s`. Generated `.visual-qa` evidence remained ignored and unstaged.
 
 ### Task 15: Close local security, packaging, and full-regression gates
 
