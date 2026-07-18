@@ -459,7 +459,7 @@ git add -- docs/qa/live-research-os-office-benchmark-runbook.md docs/superpowers
 git commit -m "docs: record recovered office benchmark evidence"
 ```
 
-- [ ] **Step 7: Audit the selected artifact after the documentation commit**
+- [x] **Step 7: Audit the selected artifact after the documentation commit**
 
 Re-hash and independently verify the unchanged selected ZIP/sidecar. Confirm its
 embedded source commit is the earlier clean build commit, not the later evidence commit;
@@ -544,6 +544,19 @@ is run on the target HP notebook and its returned JSON, sidecar, Korean summary,
 typed diagnostic are independently verified. This record makes no claim of statistical
 accuracy, recommendation validity, expert equivalence, SPSS superiority, or target-PC
 performance.
+
+### Post-evidence artifact and USB audit
+
+- Evidence commit: `bc3e51166c8f498ad0f74f5f009aa2722bc196fc`.
+- The unchanged selected ZIP was rehashed after that commit. SHA-256 remained
+  `6f567b327ad53c68eff5f27623e494c1273f9a424e11896e99c5d9f5a0bb8d43`.
+- Independent `verify_kit()` returned source commit
+  `989d5c5829e3d3de69ebda0f4fc88e6f76d16112`, 1,413 manifest entries, 1,612
+  ZIP members, and `runtime_verified=True`.
+- The exact pair was copied without deleting or changing existing USB contents to
+  `E:\Modori-Live-Research-OS-989d5c-HP-RERUN`. The new folder contains exactly the
+  138,390,004-byte ZIP and its 126-byte sidecar; a USB-side rehash matched the selected
+  digest.
 
 ---
 
