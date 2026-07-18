@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import os
 import subprocess
 import sys
@@ -49,6 +50,54 @@ def test_pyinstaller_command_collects_qml_and_pyside6() -> None:
     assert "src/modori/ui/qml;modori/ui/qml" in command
     assert "library/entries;library/entries" in command
     assert "src/modori/app.py" in command
+
+
+def _imported_modules(path: str) -> set[str]:
+    tree = ast.parse(Path(path).read_text(encoding="utf-8"))
+    modules: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            modules.update(alias.name for alias in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.module:
+            modules.add(node.module)
+    return modules
+
+
+def test_research_os_runtime_and_qml_are_statically_reachable_from_package() -> None:
+    command = build_pyinstaller_command()
+    app_imports = _imported_modules("src/modori/app.py")
+    controller_imports = _imported_modules("src/modori/ui/controller.py")
+    flow_imports = _imported_modules("src/modori/ui/research_flow_controller.py")
+
+    assert "modori.ui.controller" in app_imports
+    assert "modori.ui.research_flow_controller" in controller_imports
+    assert "modori.research_flow" in flow_imports
+    assert "modori.research_os" in flow_imports
+    assert command.count("src/modori/ui/qml;modori/ui/qml") == 1
+    for qml in (
+        "src/modori/ui/qml/components/ResearchFlowPanel.qml",
+        "src/modori/ui/qml/components/ResearchQuestionCard.qml",
+        "src/modori/ui/qml/components/ResearchCandidateCard.qml",
+    ):
+        assert Path(qml).is_file()
+
+
+def test_production_package_has_no_research_gallery_or_user_memory_inputs() -> None:
+    command = " ".join(build_pyinstaller_command()).replace("\\", "/").casefold()
+
+    forbidden = (
+        ".visual-qa",
+        "appdata",
+        "build_research_flow_visual_review_packet.py",
+        "capture_research_flow_gallery.py",
+        "decision-ledger.sqlite3",
+        "packet-manifest.json",
+        "research-flow-mode-a",
+        "research-task-index.sqlite3",
+        "research_flow_visual_states.json",
+        "tests/fixtures",
+    )
+    assert [token for token in forbidden if token in command] == []
 
 
 def test_pyproject_declares_packaging_extra() -> None:
