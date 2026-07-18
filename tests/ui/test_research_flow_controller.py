@@ -13,7 +13,9 @@ import pytest
 from modori.core import Dataset, Measure, Pipeline, StepResult, Variable
 from modori.research_flow import (
     FINGERPRINT_CONTRACT_ID,
+    FINGERPRINT_WORKER_DEADLINE_SECONDS,
     DatasetIdentity,
+    FingerprintCancelled,
     LiveResearchFlowCoordinator,
     ResearchFlowState,
     ResearchTaskSessionStore,
@@ -793,6 +795,69 @@ def test_runtime_cancellation_is_not_reported_as_failure() -> None:
     views = runtime.start(pipeline_version=1, cancel_event=cancelled)
 
     assert views.standard.state is ResearchFlowState.CANCELLED
+
+
+@pytest.mark.parametrize("cooperative", (False, True))
+def test_runtime_fingerprint_deadline_is_unavailable_and_never_cached(
+    monkeypatch,
+    cooperative: bool,
+) -> None:
+    dataset = _small_dataset()
+    snapshot = ResearchFlowPipelineSnapshot(
+        dataset=dataset,
+        source_schema=SourceSchemaDescriptor(
+            source_type="csv",
+            sheet_name=None,
+            header_row_index=None,
+            header_row_count=None,
+            data_start_row_index=None,
+            source_columns=("outcome", "group"),
+            included_columns=("outcome", "group"),
+        ),
+        variable_labels={"outcome": "결과", "group": "집단"},
+    )
+    deadline_ns = FINGERPRINT_WORKER_DEADLINE_SECONDS * 1_000_000_000
+    ticks = iter((0, deadline_ns + 1, deadline_ns + 2))
+    monkeypatch.setattr(
+        "modori.ui.research_flow_controller.monotonic_ns",
+        lambda: next(ticks),
+        raising=False,
+    )
+
+    def slow_fingerprint(
+        _dataset,
+        _source_schema,
+        *,
+        pipeline_version: int,
+        cancel_requested,
+    ) -> DatasetIdentity:
+        if cooperative and cancel_requested():
+            raise FingerprintCancelled("injected deadline cancellation")
+        return DatasetIdentity(
+            fingerprint_contract_id=FINGERPRINT_CONTRACT_ID,
+            dataset_fingerprint="a" * 64,
+            source_schema_fingerprint="b" * 64,
+            variable_ids=("outcome", "group"),
+            pipeline_version=pipeline_version,
+        )
+
+    session = ReadOnlySession()
+    runtime = ResearchFlowRuntime(
+        pipeline_access=SnapshotAccess(snapshot),
+        pipeline_version_provider=lambda: 1,
+        session_store=session,
+        coordinator=UnusedCoordinator(),
+        initial_event_id_factory=_queue(),
+        answer_event_id_factory=_queue(),
+        language=Language.KO,
+        fingerprint=slow_fingerprint,
+    )
+
+    views = runtime.start(pipeline_version=1, cancel_event=Event())
+
+    assert views.standard.state is ResearchFlowState.MEMORY_UNAVAILABLE
+    assert runtime.current_dataset_fingerprint() is None
+    assert session.located == []
 
 
 def _queue(*values: str):

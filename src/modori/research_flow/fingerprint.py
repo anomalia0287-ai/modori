@@ -43,6 +43,10 @@ class FingerprintCancelled(RuntimeError):
     """Raised without returning an identity when cancellation is requested."""
 
 
+class FingerprintDeadlineExceeded(FingerprintCancelled):
+    """Raised when the worker exceeds its fixed fingerprint time budget."""
+
+
 def _canonical_text(value: object, field_name: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise FingerprintContractError(f"{field_name} must be a non-empty string")

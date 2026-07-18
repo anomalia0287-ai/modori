@@ -139,6 +139,47 @@ def _base_result(*, duration_ns: int = 10_000_000) -> dict[str, object]:
         }
         for cache_state in ("cold", "warm")
     ]
+    components: list[dict[str, object]] = []
+    for wait in identity_waits:
+        components.append(
+            {
+                "duration_ns": wait["duration_ns"],
+                "name": "fingerprint",
+                "parent_observation_id": wait["observation_id"],
+            }
+        )
+    for wait in decision_waits:
+        if wait["stage"] == "initial_decision":
+            names = (
+                "ledger_create_open",
+                "projection",
+                "publication_readback_audit",
+                "request_build",
+                "request_initialize_append",
+                "resolve_plan_passport_append",
+                "task_index_allocate",
+                "task_session",
+            )
+        else:
+            names = [
+                "answer_append_transition",
+                "answer_build",
+                "projection",
+                "publication_readback_audit",
+                "resolve_plan_passport_append",
+            ]
+            if wait["round_ordinal"] == PROFILE_LATER_ROUND_COUNTS[wait["profile"]]:
+                names.extend(("handoff", "preflight"))
+            names = tuple(sorted(names))
+        for name in names:
+            components.append(
+                {
+                    "duration_ns": 1_000_000,
+                    "name": name,
+                    "parent_observation_id": wait["observation_id"],
+                }
+            )
+    components.sort(key=lambda item: (item["parent_observation_id"], item["name"]))
     return {
         "schema_id": LIVE_BENCHMARK_RESULT_SCHEMA_ID,
         "schema_version": LIVE_BENCHMARK_RESULT_SCHEMA_VERSION,
@@ -182,6 +223,7 @@ def _base_result(*, duration_ns: int = 10_000_000) -> dict[str, object]:
         },
         "observations": {
             "acknowledgements": acknowledgements,
+            "components": components,
             "decision_waits": decision_waits,
             "identity_waits": identity_waits,
             "overheads": overheads,
@@ -198,6 +240,29 @@ def _base_result(*, duration_ns: int = 10_000_000) -> dict[str, object]:
         },
         "error_codes": [],
     }
+
+
+def test_component_spans_are_complete_bound_and_diagnostic_only() -> None:
+    base = _base_result()
+    assert evaluate_result(base).disposition == "pass"
+
+    missing = deepcopy(base)
+    missing["observations"]["components"].pop()
+    with pytest.raises(BenchmarkContractError, match="component.*completeness"):
+        canonical_result_bytes(missing)
+
+    rebound = deepcopy(base)
+    rebound["observations"]["components"][0]["parent_observation_id"] = (
+        "cold:identity:99"
+    )
+    with pytest.raises(
+        BenchmarkContractError, match="component.*(?:completeness|bound)"
+    ):
+        canonical_result_bytes(rebound)
+
+    slow_diagnostic = deepcopy(base)
+    slow_diagnostic["observations"]["components"][0]["duration_ns"] = 9_999_999
+    assert evaluate_result(slow_diagnostic).disposition == "pass"
 
 
 def _evaluation_row(

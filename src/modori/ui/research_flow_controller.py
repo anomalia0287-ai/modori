@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from threading import Event
 from threading import Lock
+from time import monotonic_ns
 from types import MappingProxyType
 from typing import Protocol
 import unicodedata
@@ -17,12 +18,14 @@ from PySide6.QtCore import Property, QObject, Signal, Slot
 from modori.core import Dataset
 from modori.research_flow import (
     FINGERPRINT_CONTRACT_ID,
+    FINGERPRINT_WORKER_DEADLINE_SECONDS,
     DatasetIdentity,
     DurableDecision,
     DurableFlowRecord,
     DurablePendingDecision,
     FingerprintCancelled,
     FingerprintContractError,
+    FingerprintDeadlineExceeded,
     LiveResearchFlowCoordinator,
     LiveResearchFlowConflictError,
     LiveResearchFlowIntegrityError,
@@ -510,12 +513,31 @@ class ResearchFlowRuntime:
             cached = None if force else self._identity_cache.get(key)
         if cached is not None:
             return cached
-        identity = self._fingerprint(
-            snapshot.dataset,
-            snapshot.source_schema,
-            pipeline_version=pipeline_version,
-            cancel_requested=cancel_event.is_set,
-        )
+        started_ns = monotonic_ns()
+        deadline_ns = FINGERPRINT_WORKER_DEADLINE_SECONDS * 1_000_000_000
+
+        def cancel_requested() -> bool:
+            return cancel_event.is_set() or monotonic_ns() - started_ns > deadline_ns
+
+        try:
+            identity = self._fingerprint(
+                snapshot.dataset,
+                snapshot.source_schema,
+                pipeline_version=pipeline_version,
+                cancel_requested=cancel_requested,
+            )
+        except FingerprintCancelled as exc:
+            if cancel_event.is_set():
+                raise
+            if monotonic_ns() - started_ns > deadline_ns:
+                raise FingerprintDeadlineExceeded(
+                    "fingerprint worker exceeded its fixed deadline"
+                ) from exc
+            raise
+        if monotonic_ns() - started_ns > deadline_ns:
+            raise FingerprintDeadlineExceeded(
+                "fingerprint worker exceeded its fixed deadline"
+            )
         if not isinstance(identity, DatasetIdentity):
             raise ResearchFlowControllerError("fingerprint returned no DatasetIdentity")
         if identity.pipeline_version != pipeline_version:
@@ -558,7 +580,6 @@ class ResearchFlowRuntime:
             snapshot,
             pipeline_version=pipeline_version,
             cancel_event=cancel_event,
-            force=True,
         )
         if not self._pipeline_is_current(pipeline_version) or not self._same_identity(
             identity, previous
@@ -634,6 +655,8 @@ class ResearchFlowRuntime:
     def _typed_error(self, exc: Exception) -> ResearchFlowViews:
         if isinstance(exc, ResearchFlowStaleError):
             state = ResearchFlowState.REPLAN_REQUIRED
+        elif isinstance(exc, FingerprintDeadlineExceeded):
+            state = ResearchFlowState.MEMORY_UNAVAILABLE
         elif isinstance(exc, FingerprintCancelled):
             state = ResearchFlowState.CANCELLED
         elif isinstance(

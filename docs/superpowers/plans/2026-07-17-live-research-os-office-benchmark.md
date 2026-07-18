@@ -314,7 +314,7 @@ def run_complete_benchmark(
 ) -> Mapping[str, object]: ...
 ```
 
-- [ ] **Step 1: Write real-flow timing-boundary tests**
+- [x] **Step 1: Write real-flow timing-boundary tests**
 
 Instrument the actual fingerprint worker/function, task index, ledger creation/open,
 initial append, resolver/planner, passport append/audit, handoff, preflight, projection,
@@ -323,7 +323,7 @@ design Section 14. Fixture construction, child process startup/import, serializa
 and cleanup must be separately timed and excluded. A later round must reuse only the
 exact cached fingerprint and still include every later authority operation.
 
-- [ ] **Step 2: Write six-profile walk and no-shortcut tests**
+- [x] **Step 2: Write six-profile walk and no-shortcut tests**
 
 Every warm iteration must execute all six approved profiles with the exact safe answer
 walk; each cold scenario child executes its one declared profile. Every walk ends in the
@@ -332,7 +332,7 @@ recommendations, fake passports, schema-only fingerprints, pre-seeded ledgers,
 preflight bypass, planner-result reuse across tasks, and an unverified route. The runner
 must fail rather than measure a shortcut.
 
-- [ ] **Step 3: Write parent/child isolation and process tests**
+- [x] **Step 3: Write parent/child isolation and process tests**
 
 The parent invokes only its own already verified executable, with `shell=False`, a fixed
 closed argument list, bounded timeout, and per-child nonce/root. It sets child
@@ -342,7 +342,7 @@ USB/network/cloud/reparse roots, inherited `PYTHONPATH`, arbitrary executable/ar
 extra environment variables, child schema/digest mismatch, nonzero exit, timeout,
 partial output, or duplicate child identity.
 
-- [ ] **Step 4: Write crash, acknowledgement, and cleanup tests**
+- [x] **Step 4: Write crash, acknowledgement, and cleanup tests**
 
 Crash before/after each product append and parent collection boundary. Reopen and verify
 the last committed synthetic task; do not count a failed scenario as a duration sample.
@@ -351,7 +351,7 @@ thread. Cleanup may remove only the exact disposable synthetic benchmark run roo
 result sealing; it is not exported as a product ledger-delete API. A crash residue is
 detected and quarantined on the next run, never merged into samples.
 
-- [ ] **Step 5: Run the tests and confirm failure**
+- [x] **Step 5: Run the tests and confirm failure**
 
 Run:
 
@@ -361,7 +361,7 @@ Run:
 
 Expected: FAIL because the runner is absent.
 
-- [ ] **Step 6: Implement fixed orchestration and output**
+- [x] **Step 6: Implement fixed orchestration and output**
 
 Generate one canonical JSON, `.json.sha256`, and `.summary-ko.txt` only after all child
 observations verify. Before that point, failures create a timestamped
@@ -369,7 +369,7 @@ observations verify. Before that point, failures create a timestamped
 samples in JSON; the summary reports every cold/warm/stage/profile/round p95 and never a
 combined average.
 
-- [ ] **Step 7: Run runner and authority regression tests**
+- [x] **Step 7: Run runner and authority regression tests**
 
 Run:
 
@@ -380,12 +380,31 @@ Run:
 Expected: all pass using reduced test-only repetition counts that cannot be selected by
 the release CLI. The release protocol remains hard-coded to 20/30.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```powershell
 git add -- scripts/run_office_live_research_os_benchmark.py scripts/live_research_os_office_benchmark.py tests/test_live_research_os_office_benchmark_runner.py
 git commit -m "test: run full live Research OS office protocol"
 ```
+
+Execution evidence on 2026-07-18: the first focused run failed at collection because
+the runner module did not exist. The RED tests then forced the real committed authority
+chain, exact component-to-timer containment, all six profile walks, fixed child process
+and environment closure, crash quarantine, bounded acknowledgement, JSON-last atomic
+publication, and a non-gating 5,000,000-cell stress diagnostic. During independent
+audit, additional tests exposed and closed a schema-only cold-fingerprint shortcut, an
+unenforced 10-second fingerprint-worker deadline in both the benchmark and product
+runtime, a fresh-context forced-rehash defect, Windows transient rename contention, a
+raw huge-integer JSON parser escape, and child-failure tests that had been reaching the
+wrong earlier branch. Canonical child failures now preserve a closed reason without a
+traceback, while noncanonical stderr or partial output remains invalid. The real stress
+diagnostic completed in approximately `7.086` seconds and cannot influence acceptance.
+After the final implementation, the runner/contract cohort passed `92` tests and the
+runner, contract, fingerprint, coordinator, concurrency, crash-recovery, and UI cohort
+passed `254` tests. Ruff check/format, Bandit, and `git diff --check` passed. The release
+CLI still hard-codes `20` cold processes per profile and `30` warm iterations; reduced
+counts remain test-only. No threshold, repetition count, fixture identity, acceptance
+gate, or timing boundary changed.
 
 ### Task B3: Build a dedicated sealed one-folder runtime and deterministic outer kit
 

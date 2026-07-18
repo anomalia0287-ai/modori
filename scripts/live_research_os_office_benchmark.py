@@ -100,6 +100,24 @@ _OVERHEAD_STAGES = (
     "result_serialization",
     "cleanup",
 )
+_INITIAL_COMPONENTS = (
+    "ledger_create_open",
+    "projection",
+    "publication_readback_audit",
+    "request_build",
+    "request_initialize_append",
+    "resolve_plan_passport_append",
+    "task_index_allocate",
+    "task_session",
+)
+_LATER_COMPONENTS = (
+    "answer_append_transition",
+    "answer_build",
+    "projection",
+    "publication_readback_audit",
+    "resolve_plan_passport_append",
+)
+_TERMINAL_LATER_COMPONENTS = tuple(sorted((*_LATER_COMPONENTS, "handoff", "preflight")))
 _CLOSED_ERROR_CODES = frozenset(
     {
         "acknowledgement_failure",
@@ -848,6 +866,7 @@ _STORAGE_FIELDS = frozenset({"bus_type", "filesystem", "media_type"})
 _OBSERVATION_FIELDS = frozenset(
     {
         "acknowledgements",
+        "components",
         "decision_waits",
         "identity_waits",
         "overheads",
@@ -1073,6 +1092,45 @@ def _validate_decision_waits(
     return waits
 
 
+def _validate_components(
+    value: object,
+    identity_waits: Sequence[Mapping[str, object]],
+    decision_waits: Sequence[Mapping[str, object]],
+) -> None:
+    observations = _list(value, "observations.components")
+    expected: list[tuple[str, str]] = [
+        (item["observation_id"], "fingerprint") for item in identity_waits
+    ]
+    parent_durations = {
+        item["observation_id"]: item["duration_ns"]
+        for item in (*identity_waits, *decision_waits)
+    }
+    for item in decision_waits:
+        if item["stage"] == "initial_decision":
+            names = _INITIAL_COMPONENTS
+        elif item["round_ordinal"] == PROFILE_LATER_ROUND_COUNTS[item["profile"]]:
+            names = _TERMINAL_LATER_COMPONENTS
+        else:
+            names = _LATER_COMPONENTS
+        expected.extend((item["observation_id"], name) for name in names)
+    expected.sort()
+
+    actual: list[tuple[str, str]] = []
+    fields = frozenset({"duration_ns", "name", "parent_observation_id"})
+    for index, raw in enumerate(observations):
+        item = _mapping(raw, f"components[{index}]")
+        _require_fields(item, fields, f"components[{index}]")
+        parent = _validate_observation_id(item["parent_observation_id"], "component")
+        name = _text(item["name"], "component.name", pattern=_CLOSED_ID_RE)
+        duration = _duration(item["duration_ns"], f"components[{index}]")
+        parent_duration = parent_durations.get(parent)
+        if parent_duration is None or duration > parent_duration:
+            _fail("component duration is not bound by its parent wait")
+        actual.append((parent, name))
+    if len(actual) != len(set(actual)) or actual != expected:
+        _fail("component span completeness or order is invalid")
+
+
 def _validate_acknowledgements(
     value: object, protocol: OfficeBenchmarkProtocol
 ) -> list[Mapping[str, object]]:
@@ -1114,7 +1172,7 @@ def _validate_overheads(value: object) -> None:
             _fail("overhead cache_state is invalid")
         if item["stage"] not in _OVERHEAD_STAGES:
             _fail("overhead stage is invalid")
-        _duration(item["duration_ns"], f"overheads[{index}]")
+        _integer(item["duration_ns"], f"overheads[{index}] duration")
         actual_ids.append(_validate_observation_id(item["observation_id"], "overhead"))
     if actual_ids != expected_ids:
         _fail("overhead completeness or order is invalid")
@@ -1247,6 +1305,7 @@ def _validate_result_base(
     _require_fields(observations, _OBSERVATION_FIELDS, "observations")
     identity_waits = _validate_identity_waits(observations["identity_waits"], protocol)
     decision_waits = _validate_decision_waits(observations["decision_waits"], protocol)
+    _validate_components(observations["components"], identity_waits, decision_waits)
     acknowledgements = _validate_acknowledgements(
         observations["acknowledgements"], protocol
     )
