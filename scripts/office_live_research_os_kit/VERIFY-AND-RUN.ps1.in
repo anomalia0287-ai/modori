@@ -84,6 +84,9 @@ try {
             Stop-ModoriKit 'manifest_path_invalid'
         }
         $candidate = [System.IO.Path]::GetFullPath((Join-Path $KitRoot $relative))
+        if ($candidate.Length -gt 230) {
+            Stop-ModoriKit 'kit_path_too_long'
+        }
         if (-not $candidate.StartsWith($KitRoot + [System.IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
             Stop-ModoriKit 'manifest_path_escape'
         }

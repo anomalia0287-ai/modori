@@ -8,7 +8,8 @@ Modori 라이브 Research OS 사무용 PC 측정 키트
 1. 노트북을 AC 전원에 연결하십시오.
 2. ZIP과 같은 이름의 .zip.sha256 파일을 함께 받으십시오.
 3. ZIP을 USB가 아니라 시험할 노트북의 내부 디스크로 복사하십시오.
-4. Win+R을 누르고 %LOCALAPPDATA%를 연 뒤 일반 폴더를 하나 만드십시오.
+4. Win+R을 누르고 %LOCALAPPDATA%를 연 뒤 ModoriBench-live처럼 이름이 짧은
+   일반 폴더를 하나 만드십시오. 긴 하위 경로는 실행 전에 거부됩니다.
 5. 그 폴더 안에서 ZIP을 새로 압축 해제하십시오. OneDrive, Google Drive,
    바탕 화면 동기화 폴더, USB, 네트워크 드라이브에서는 실행하지 마십시오.
 

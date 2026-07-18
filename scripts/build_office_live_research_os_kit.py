@@ -55,6 +55,7 @@ from scripts.package_environment import without_workspace_reference_runtime  # n
 
 
 BENCHMARK_EXECUTABLE_NAME = "ModoriLiveResearchOSBenchmark"
+PYINSTALLER_BUILD_NAME = "MROS"
 RUNTIME_IDENTITY_RESOURCE_NAME = "LIVE-RESEARCH-OS-RUNTIME-IDENTITY.json"
 PACKAGE_LOCK_SOURCE = "scripts/office_live_research_os_kit/PACKAGE-LOCK.json"
 PYINSTALLER_HOOK_SOURCE = "scripts/office_live_research_os_kit/hooks"
@@ -477,13 +478,13 @@ def build_pyinstaller_command(
         "--onedir",
         "--console",
         "--name",
-        BENCHMARK_EXECUTABLE_NAME,
+        PYINSTALLER_BUILD_NAME,
         "--distpath",
-        str(work / "dist"),
+        str(work / "d"),
         "--workpath",
-        str(work / "build"),
+        str(work / "w"),
         "--specpath",
-        str(work / "spec"),
+        str(work / "s"),
         "--paths",
         str(repository / "src"),
         "--additional-hooks-dir",
@@ -731,7 +732,7 @@ def build_kit_from_repository(
     )
     temporary_parent = repository / ".tmp" / "live-research-os-office-kit"
     temporary_parent.mkdir(parents=True, exist_ok=True)
-    work_root = temporary_parent / f"build-{commit[:12]}-{uuid.uuid4().hex}"
+    work_root = temporary_parent / "b"
     if work_root.exists() or _is_link_or_reparse(temporary_parent):
         raise KitBuildError("dedicated build root is unsafe")
     try:
@@ -760,7 +761,21 @@ def build_kit_from_repository(
         validate_pyinstaller_diagnostics(completed.stdout + "\n" + completed.stderr)
         if completed.returncode != 0:
             raise KitBuildError("PyInstaller returned a nonzero exit")
-        runtime_root = work_root / "dist" / BENCHMARK_EXECUTABLE_NAME
+        runtime_root = work_root / "d" / PYINSTALLER_BUILD_NAME
+        built_executable = runtime_root / f"{PYINSTALLER_BUILD_NAME}.exe"
+        final_executable = runtime_root / f"{BENCHMARK_EXECUTABLE_NAME}.exe"
+        if (
+            not built_executable.is_file()
+            or _is_link_or_reparse(built_executable)
+            or final_executable.exists()
+        ):
+            raise KitBuildError("PyInstaller runtime executable is invalid")
+        try:
+            os.replace(built_executable, final_executable)
+        except OSError as exc:
+            raise KitBuildError(
+                "PyInstaller runtime executable could not be renamed"
+            ) from exc
         runtime = RuntimeProduct(
             root=runtime_root.resolve(strict=True), identity=identity
         )
@@ -775,9 +790,7 @@ def build_kit_from_repository(
         )
     finally:
         if work_root.exists():
-            if work_root.parent != temporary_parent or not work_root.name.startswith(
-                f"build-{commit[:12]}-"
-            ):
+            if work_root.parent != temporary_parent or work_root.name != "b":
                 raise KitBuildError("refusing unsafe PyInstaller cleanup")
             shutil.rmtree(work_root)
 

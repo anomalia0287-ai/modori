@@ -14,6 +14,7 @@ import pytest
 from scripts.build_office_live_research_os_kit import (
     BENCHMARK_EXECUTABLE_NAME,
     PACKAGE_LOCK_SOURCE,
+    PYINSTALLER_BUILD_NAME,
     PYINSTALLER_HOOK_SOURCE,
     RUNTIME_IDENTITY_RESOURCE_NAME,
     TEMPLATE_SOURCE_FILES,
@@ -135,10 +136,10 @@ def test_pyinstaller_command_is_dedicated_onedir_console_and_closed(
     assert "--console" in command
     assert "--onefile" not in command
     assert "--windowed" not in command
-    assert command[command.index("--name") + 1] == BENCHMARK_EXECUTABLE_NAME
-    assert command[command.index("--distpath") + 1] == str(tmp_path / "work" / "dist")
-    assert command[command.index("--workpath") + 1] == str(tmp_path / "work" / "build")
-    assert command[command.index("--specpath") + 1] == str(tmp_path / "work" / "spec")
+    assert command[command.index("--name") + 1] == PYINSTALLER_BUILD_NAME
+    assert command[command.index("--distpath") + 1] == str(tmp_path / "work" / "d")
+    assert command[command.index("--workpath") + 1] == str(tmp_path / "work" / "w")
+    assert command[command.index("--specpath") + 1] == str(tmp_path / "work" / "s")
     assert command[command.index("--additional-hooks-dir") + 1] == str(
         repository / PYINSTALLER_HOOK_SOURCE
     )
@@ -301,6 +302,8 @@ def test_templates_are_powershell_51_literal_offline_and_non_elevating() -> None
     assert "-LiteralPath" in powershell
     assert "--verify-kit-identity" in powershell
     assert "--release" in powershell
+    assert "kit_path_too_long" in powershell
+    assert "230" in powershell
     combined = (command + "\n" + powershell).casefold()
     for forbidden in (
         "invoke-webrequest",
