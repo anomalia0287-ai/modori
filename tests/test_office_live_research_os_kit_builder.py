@@ -290,6 +290,26 @@ def test_scipy_118_hook_removes_only_the_retired_cdflib_hidden_import() -> None:
     ]
 
 
+def test_sklearn_hook_keeps_runtime_data_without_tests_or_build_sources() -> None:
+    namespace = runpy.run_path(
+        "scripts/office_live_research_os_kit/hooks/hook-sklearn.py"
+    )
+    datas = tuple(namespace["datas"])
+    forbidden_suffixes = namespace["SOURCE_ONLY_SUFFIXES"]
+
+    assert datas
+    assert any(
+        "datasets\\data" in destination.casefold()
+        and Path(source).suffix.casefold() == ".gz"
+        for source, destination in datas
+    )
+    assert any(Path(source).suffix.casefold() == ".dll" for source, _ in datas)
+    for source, destination in datas:
+        parts = {part.casefold() for part in Path(destination).parts}
+        assert parts.isdisjoint({"tests", "src"})
+        assert Path(source).suffix.casefold() not in forbidden_suffixes
+
+
 def test_templates_are_powershell_51_literal_offline_and_non_elevating() -> None:
     root = Path("scripts/office_live_research_os_kit")
     command = (root / "RUN-MODORI-LIVE-RESEARCH-OS-BENCHMARK.cmd.in").read_text(
