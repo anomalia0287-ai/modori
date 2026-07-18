@@ -134,11 +134,18 @@ def test_live_research_os_office_tools_document_their_closed_file_boundaries() -
     for required_text in (
         "Offline",
         "synthetic fixture",
-        "kit's own `work`",
+        "sibling `<extraction-parent>/w`",
+        "`q/<nonce>`",
+        "marked ownership",
+        "240 UTF-16 code units",
+        "dynamic path preflight",
+        "only `results` inside the kit",
         "marked child roots",
-        "quarantine",
+        "exact ancestry",
         "atomically",
         "no caller-selected path",
+        "no registry",
+        "no user dataset or document",
         "no network",
     ):
         assert required_text in runner
@@ -148,6 +155,8 @@ def test_live_research_os_office_tools_document_their_closed_file_boundaries() -
         "no-follow",
         "traversal",
         "fixed identity arguments",
+        "runtime identity probe",
+        "outside the supplied kit",
         "does not modify the supplied ZIP or extracted root",
     ):
         assert required_text in verifier

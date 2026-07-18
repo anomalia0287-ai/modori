@@ -237,8 +237,16 @@ def test_runbook_closes_operator_paths_outputs_and_claim_limits() -> None:
         "valid_stop",
         "invalid_run",
         "origin authentication",
+        "b4-r 복구 진행 중",
+        "<mbl 폴더>\\w",
+        "240 utf-16",
+        "dynamic_path_budget_exceeded",
+        "results 폴더",
+        "한 실행에서 새 오류 문서 하나",
     ):
         assert required in folded
+    assert "0cae87d" in folded and "폐기" in folded
+    assert "현재 hp 노트북에 전달할 유효 후보는 없다" in folded
     assert "hp_tools" not in folded
     assert "파티션" in folded and "수정하지" in folded
 
