@@ -616,9 +616,15 @@ def _bootloader_path() -> Path:
     return path
 
 
-def _build_environment(repository_root: Path, work_root: Path) -> dict[str, str]:
+def _build_environment(
+    repository_root: Path,
+    work_root: Path,
+    *,
+    source_date_epoch: int,
+) -> dict[str, str]:
     environment = without_workspace_reference_runtime(os.environ)
     environment["PYTHONHASHSEED"] = "0"
+    environment["SOURCE_DATE_EPOCH"] = str(source_date_epoch)
     environment["PYTHONPATH"] = str(repository_root / "src")
     environment["MPLCONFIGDIR"] = str(work_root / "matplotlib-cache")
     environment["MODORI_CACHE_DIR"] = str(work_root / "modori-cache")
@@ -749,7 +755,11 @@ def build_kit_from_repository(
             completed = subprocess.run(  # nosec B603
                 command,
                 cwd=repository,
-                env=_build_environment(repository, work_root),
+                env=_build_environment(
+                    repository,
+                    work_root,
+                    source_date_epoch=epoch,
+                ),
                 capture_output=True,
                 check=False,
                 timeout=30 * 60,

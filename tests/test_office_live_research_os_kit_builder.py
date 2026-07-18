@@ -162,10 +162,16 @@ def test_build_environment_pins_python_hash_order(
     repository.mkdir()
     work_root.mkdir()
     monkeypatch.setenv("PYTHONHASHSEED", "random")
+    monkeypatch.setenv("SOURCE_DATE_EPOCH", "9999999999")
 
-    environment = _build_environment(repository, work_root)
+    environment = _build_environment(
+        repository,
+        work_root,
+        source_date_epoch=1_751_629_888,
+    )
 
     assert environment["PYTHONHASHSEED"] == "0"
+    assert environment["SOURCE_DATE_EPOCH"] == "1751629888"
 
 
 def test_outer_builder_is_byte_identical_for_three_repacks(tmp_path: Path) -> None:
