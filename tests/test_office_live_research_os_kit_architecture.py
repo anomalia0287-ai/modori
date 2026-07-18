@@ -237,7 +237,8 @@ def test_runbook_closes_operator_paths_outputs_and_claim_limits() -> None:
         "valid_stop",
         "invalid_run",
         "origin authentication",
-        "b4-r 복구 진행 중",
+        "b4-r 개발 pc 복구 검증 완료",
+        "b5 hp 노트북 실측 대기",
         "<mbl 폴더>\\w",
         "240 utf-16",
         "dynamic_path_budget_exceeded",
@@ -246,7 +247,24 @@ def test_runbook_closes_operator_paths_outputs_and_claim_limits() -> None:
     ):
         assert required in folded
     assert "0cae87d" in folded and "폐기" in folded
-    assert "현재 hp 노트북에 전달할 유효 후보는 없다" in folded
+    assert "989d5c5829e3d3de69ebda0f4fc88e6f76d16112" in folded
+    assert (
+        "modori-live-research-os-office-kit-989d5c5829e3-py31210.zip"
+        in folded
+    )
+    assert (
+        "6f567b327ad53c68eff5f27623e494c1273f9a424e11896e99c5d9f5a0bb8d43"
+        in folded
+    )
+    assert "138,390,004" in folded
+    assert "1,612" in folded
+    assert "98/98" in folded
+    assert "3233 passed" in folded
+    assert "13 skipped" in folded
+    assert "256.569" in folded
+    assert "241.296" in folded
+    assert "추천 타당성" in folded and "증명" in folded
+    assert "현재 hp 노트북에 전달할 유효 후보는 없다" not in folded
     assert "hp_tools" not in folded
     assert "파티션" in folded and "수정하지" in folded
 
@@ -261,7 +279,7 @@ def test_runbook_prevents_explorer_from_duplicating_the_archive_root() -> None:
     assert "zip 안에 같은 이름의 최상위 폴더" in folded
     assert "압축 풀기 창의 대상 폴더" in folded
     assert "zip 파일명까지 자동으로 붙인 기본값" in folded
-    assert "%localappdata%\\mbl-<source_commit[0:12]>" in folded
+    assert "%localappdata%\\mbl-989d5c5829e3" in folded
 
 
 def test_300_sealed_mutations_fail_before_runtime_or_valid_result(

@@ -43,7 +43,7 @@
 - Produces: `BenchmarkStageError(reason_code: str)` whose code is preserved by `_closed_failure_code()`.
 - Preserves: `run_complete_benchmark()` and `execute_release_benchmark()` public call shapes.
 
-- [ ] **Step 1: Write failing path and workspace tests**
+- [x] **Step 1: Write failing path and workspace tests**
 
 Add tests that construct a target-style root and assert the old projection is over the
 budget while the sibling projection is not:
@@ -70,7 +70,7 @@ executor was called, and an updated release-publisher assertion:
 assert captured["working_root"] == kit_root.parent / "w"
 ```
 
-- [ ] **Step 2: Run the focused RED tests**
+- [x] **Step 2: Run the focused RED tests**
 
 Run:
 
@@ -81,7 +81,7 @@ Run:
 Expected: FAIL because the sibling projection and UTF-16 dynamic budget interfaces do
 not exist and the executor still selects `kit_root/work`.
 
-- [ ] **Step 3: Implement the fixed path projection and budget**
+- [x] **Step 3: Implement the fixed path projection and budget**
 
 Add the fixed constant and UTF-16 helper:
 
@@ -109,7 +109,7 @@ and before quarantine, fixture construction, or child launch. Change quarantine 
 `quarantine/<run-id>-<nonce>` to `q/<nonce>` while retaining and rechecking the original
 run marker inside the moved directory.
 
-- [ ] **Step 4: Write failing stage-diagnostic tests**
+- [x] **Step 4: Write failing stage-diagnostic tests**
 
 Inject failures at child-root validation, fixture construction, identity sampling,
 acknowledgement, scenario fingerprinting, and durable scenario execution. Assert the
@@ -132,7 +132,7 @@ assert b"Traceback" not in stderr
 Also assert that a parent receiving `child process failed: scenario_execution_failure`
 preserves that exact code, while an unregistered or padded code is rejected.
 
-- [ ] **Step 5: Run the stage RED tests**
+- [x] **Step 5: Run the stage RED tests**
 
 Run:
 
@@ -143,7 +143,7 @@ Run:
 Expected: FAIL because unknown child failures still collapse to
 `product_authority_failure`.
 
-- [ ] **Step 6: Implement typed closed-stage propagation**
+- [x] **Step 6: Implement typed closed-stage propagation**
 
 Add `BenchmarkStageError` and a small wrapper that preserves an existing specific
 closed reason before applying its broader stage reason:
@@ -164,7 +164,7 @@ walk the cause chain for `BenchmarkStageError`, accept the exact
 fingerprint/acknowledgement reasons, and otherwise remain fail-closed. Wrap each phase
 in `run_child_mode()` without changing its timing boundaries or successful output.
 
-- [ ] **Step 7: Run the focused GREEN tests and static checks**
+- [x] **Step 7: Run the focused GREEN tests and static checks**
 
 Run:
 
@@ -177,7 +177,7 @@ git diff --check
 
 Expected: all tests and static checks pass with no threshold or protocol diff.
 
-- [ ] **Step 8: Commit Task 1**
+- [x] **Step 8: Commit Task 1**
 
 ```powershell
 git add -- scripts/run_office_live_research_os_benchmark.py scripts/live_research_os_office_benchmark.py tests/test_live_research_os_office_benchmark_runner.py tests/test_live_research_os_office_benchmark_contract.py
@@ -207,7 +207,7 @@ git commit -m "fix: bound office benchmark dynamic paths"
 - Produces: PowerShell publishes a wrapper bootstrap file only when the failed runtime
   did not publish exactly one new typed diagnostic.
 
-- [ ] **Step 1: Write failing package-boundary tests**
+- [x] **Step 1: Write failing package-boundary tests**
 
 Change fake kits and builder assertions to require `results/` and forbid `work/`.
 Assert both directory and ZIP verification reject an empty or populated `work` subtree.
@@ -224,7 +224,7 @@ Add a bootstrap source contract asserting it snapshots pre-run diagnostic names 
 on runtime failure, suppresses only the second file when exactly one new
 `bootstrap-error-*.txt` exists.
 
-- [ ] **Step 2: Run the package RED tests**
+- [x] **Step 2: Run the package RED tests**
 
 Run:
 
@@ -235,7 +235,7 @@ Run:
 Expected: FAIL because the builder/verifier/template still require `work` and the
 wrapper always writes `runner_exit_22` as another file.
 
-- [ ] **Step 3: Implement the package and probe boundary**
+- [x] **Step 3: Implement the package and probe boundary**
 
 Build only `results/`, set verifier `_MUTABLE_ROOTS = frozenset({"results"})`, and make
 all work members ordinary unexpected inventory. In `probe_runtime_identity()`, create
@@ -248,7 +248,7 @@ In PowerShell, collect the set of existing diagnostic filenames immediately befo
 zero or more than one causes the existing generic closed wrapper diagnostic. Do not
 read or echo raw exception text.
 
-- [ ] **Step 4: Parse PowerShell and run package GREEN tests**
+- [x] **Step 4: Parse PowerShell and run package GREEN tests**
 
 Run:
 
@@ -261,7 +261,7 @@ git diff --check
 
 Expected: parser, tests, Ruff, and diff check pass.
 
-- [ ] **Step 5: Commit Task 2**
+- [x] **Step 5: Commit Task 2**
 
 ```powershell
 git add -- scripts/build_office_live_research_os_kit.py scripts/verify_office_live_research_os_kit.py scripts/office_live_research_os_kit/VERIFY-AND-RUN.ps1.in scripts/office_live_research_os_kit/README-KO.txt tests/test_office_live_research_os_kit_builder.py tests/test_office_live_research_os_kit_verifier.py tests/test_office_live_research_os_kit_architecture.py
@@ -286,7 +286,7 @@ git commit -m "fix: close office kit legacy work boundary"
   failed invocation.
 - Produces: nondeveloper instructions naming only files/folders the operator touches.
 
-- [ ] **Step 1: Write failing documentation-contract tests**
+- [x] **Step 1: Write failing documentation-contract tests**
 
 Require the runbook to state:
 
@@ -302,7 +302,7 @@ Require the file-operation audit row to name the exact sibling `w`, `q/<nonce>`,
 ownership, dynamic preflight, result-only kit mutation, no registry/network/user data,
 and exact cleanup boundary. Remove the obsolete `kit's own work` assertion.
 
-- [ ] **Step 2: Run documentation RED tests**
+- [x] **Step 2: Run documentation RED tests**
 
 Run:
 
@@ -312,7 +312,7 @@ Run:
 
 Expected: FAIL against the old `kit/work` wording.
 
-- [ ] **Step 3: Update runbook, README, and audit without broad warnings**
+- [x] **Step 3: Update runbook, README, and audit without broad warnings**
 
 Mark the old `0cae87d` identity revoked, remove its transfer/hash instructions, and say
 the replacement identity will be inserted only after a clean committed build. Explain
@@ -321,7 +321,7 @@ sibling `w` itself, so the user does not create, copy, inspect, or return it. On
 return the one newly created bootstrap file. Do not mention OEM partitions or unrelated
 folders except the existing concise non-interference statement.
 
-- [ ] **Step 4: Run documentation GREEN tests and commit**
+- [x] **Step 4: Run documentation GREEN tests and commit**
 
 Run:
 
@@ -356,7 +356,7 @@ git commit -m "docs: update office benchmark path boundary"
 - Produces: one selected ZIP/sidecar, three-repack byte identity, 300 rejected attacks,
   one independently verified full local result, and a complete product quality gate.
 
-- [ ] **Step 1: Run the complete pre-build verification**
+- [x] **Step 1: Run the complete pre-build verification**
 
 Run:
 
@@ -385,7 +385,7 @@ The official `src` Bandit gate and the four changed scripts both returned zero f
 Those baseline findings must not be silently erased or converted into 213 unrelated edits
 inside this recovery.
 
-- [ ] **Step 2: Build three independent source-pinned kits**
+- [x] **Step 2: Build three independent source-pinned kits**
 
 Let `$commit = git rev-parse HEAD`. Build into three ignored parents whose final child
 has the required exact name:
@@ -405,7 +405,7 @@ pre-build attempt on `09f8f0c` omitted that component, was correctly rejected wi
 `dedicated output directory is required`, and left neither an archive nor a build-root
 residue; it is invalid setup evidence, not a kit build.
 
-- [ ] **Step 3: Independently verify and execute all 300 attacks**
+- [x] **Step 3: Independently verify and execute all 300 attacks**
 
 Run the verifier/builder/architecture cohort against the selected archive:
 
@@ -418,7 +418,7 @@ result creation, or residual synthetic work. Confirm sorted unique members, CRC,
 sidecar, manifest, embedded identity, runtime probe, source commit, and absence of a
 `work/` member.
 
-- [ ] **Step 4: Run the unchanged full local 20/30 protocol**
+- [x] **Step 4: Run the unchanged full local 20/30 protocol**
 
 Extract the selected ZIP into a fresh short local non-reparse parent and run
 `RUN-MODORI-LIVE-RESEARCH-OS-BENCHMARK.cmd`. Do not reduce repetitions or substitute a
@@ -434,7 +434,7 @@ verifier. Expected for B4 completion: `valid_pass`, exact source/fixture/protoco
 identity, all 98 separated rows passing, no closed error code, and synthetic work
 containing only its root marker plus permitted empty quarantine state after cleanup.
 
-- [ ] **Step 5: Run the unchanged complete product quality gate**
+- [x] **Step 5: Run the unchanged complete product quality gate**
 
 Run:
 
@@ -445,7 +445,7 @@ Run:
 Expected: exit zero. Record every warning, skip, transient rerun, count, and package
 smoke; do not erase or reinterpret a failure.
 
-- [ ] **Step 6: Record B4-R evidence and commit documentation**
+- [x] **Step 6: Record B4-R evidence and commit documentation**
 
 Record source commit, ZIP name/size/SHA-256/member count/CRC, three-repack identity,
 300-case counts, local result identifiers and separated p95/resource results, quality-
@@ -465,6 +465,85 @@ Re-hash and independently verify the unchanged selected ZIP/sidecar. Confirm its
 embedded source commit is the earlier clean build commit, not the later evidence commit;
 confirm `git status --short` is empty. Only then copy the exact pair into a newly named
 USB folder and provide the user the exact local extraction and return-file paths.
+
+---
+
+## Execution record (2026-07-18 to 2026-07-19)
+
+### Implemented recovery commits
+
+- `91065b4`: short sibling workspace, fixed UTF-16 path inventory, and typed stage
+  propagation.
+- `c484931`: archive mutable-root closure and single-diagnostic boundary.
+- `9b2b4f5`: operator, README, and file-operation contract reconciliation.
+- `09f8f0c`: exact pre-build static gates reconciled to the repository baseline without
+  weakening the official gate.
+- `4cebedf`: independent build roots corrected to use their required immediate `dist`
+  parent.
+- `aee1c55`: Python archive order pinned with `PYTHONHASHSEED=0` after the first
+  reproducibility failure.
+- `989d5c5`: PE and debug timestamps pinned from the source commit through
+  `SOURCE_DATE_EPOCH` after the second reproducibility failure.
+
+The selected artifact's source/build commit is
+`989d5c5829e3d3de69ebda0f4fc88e6f76d16112`. The later evidence commit records
+results only; it must not replace the embedded source identity.
+
+### Selected artifact and independent verification
+
+- ZIP: `modori-live-research-os-office-kit-989d5c5829e3-py31210.zip`
+- sidecar: the exact ZIP name plus `.sha256`
+- size: `138,390,004` bytes
+- SHA-256:
+  `6f567b327ad53c68eff5f27623e494c1273f9a424e11896e99c5d9f5a0bb8d43`
+- three independently built ZIPs and sidecars: byte-identical
+- outer members: 1,612, ordinal-sorted; duplicates: 0; `work` members: 0; CRC read:
+  pass
+- manifest entries: 1,413; source commit, archive digest, and runtime identity:
+  independently verified
+- 300 sealed mutations: all rejected before runtime/valid result; focused cohort:
+  `34 passed`
+
+### Full local protocol
+
+- Exact CMD entry point executed from
+  `%LOCALAPPDATA%\MBL-989d5c5829e3\modori-live-research-os-office-kit-989d5c5829e3-py31210`.
+- Exit 0 after approximately 24 minutes 59 seconds; no bootstrap diagnostic.
+- Run ID: `c44906b4-5814-4c34-a7cd-0de2087944ee`.
+- Result hash:
+  `64504c753554bf2741c83d651055fd0cb563eaff5b028975f987a71e7be07d19`.
+- Independent disposition: `valid_pass`; 98/98 rows passed; failed rows 0; closed
+  reason codes 0; origin authentication false by the documented threat boundary.
+- Identity p95: cold 2,569.428 ms, warm 2,087.265 ms.
+- Maximum separated decision p95: 656.206 ms; maximum acknowledgement p95:
+  0.178 ms.
+- Working-set p95/max: 250.316/250.680 MiB. The 125,000 x 40 synthetic stress
+  fixture completed in 4.468 seconds.
+
+### Product gate and disclosed instability
+
+- Official quality gate exit 0 in 693.3 seconds: `3233 passed, 13 skipped`; compileall,
+  Ruff, Bandit `src`, pip/package checks, package build, and packaged launch/engine/
+  public-data smokes passed. Slow-stats gate: `4 passed, 3242 deselected`.
+- Skips: 1 recommendation-ineligible paired case, 4 opt-in slow-stat cases, and 8
+  Rscript reference cases on a machine without Rscript.
+- PyInstaller warning retained: hidden import `scipy.special._cdflib` was not found.
+  Installed SciPy 1.18.0 does not expose that module; passing engine smoke is not
+  generalized into proof of every SciPy path.
+- An unnecessary extra full pytest run used only to collect skip reasons produced one
+  unrelated UI gallery timing failure: p95 256.569 ms against the unchanged 250 ms
+  limit. Its immediate isolated rerun passed at 241.296 ms. The threshold was not
+  changed, the failure is not erased, and the state remains a separate release-test
+  timing instability. The visible gallery also calls `view.show()` for production
+  Windows captures; repeated interactive probes are therefore prohibited in this task.
+
+### Current boundary
+
+B4-R is complete on the development PC. B5 remains open until the exact selected pair
+is run on the target HP notebook and its returned JSON, sidecar, Korean summary, and any
+typed diagnostic are independently verified. This record makes no claim of statistical
+accuracy, recommendation validity, expert equivalence, SPSS superiority, or target-PC
+performance.
 
 ---
 
