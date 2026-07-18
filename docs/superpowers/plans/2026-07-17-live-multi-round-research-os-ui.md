@@ -1770,9 +1770,10 @@ git commit -m "feat: add live Research OS QML flow"
 - Create: `tests/ui/test_research_flow_visual_gallery.py`
 - Modify: `tests/ui/test_qml_visual_contract.py`
 - Modify: `tests/ui/test_cream_nacre_visual_system.py`
+- Modify as defect evidence requires: `src/modori/ui/qml/components/AppButton.qml`
 - Modify as accepted: the three new Research OS QML components and existing semantic theme roles only
 
-- [ ] **Step 1: Freeze the gallery manifest before the first capture**
+- [x] **Step 1: Freeze the gallery manifest before the first capture**
 
 Freeze a `1024 x 640` minimum logical viewport, the existing
 `1180 x 760` reference viewport, Korean and English, scale factors `1.0`, `1.25`, `1.5`,
@@ -1786,7 +1787,7 @@ collapsed/expanded disclosure, and
 the default/hover/keyboard-focus/disabled/pressed interaction strip. Do not reinterpret
 these values after seeing a defect.
 
-- [ ] **Step 2: Write capture, privacy, and production-exclusion failure tests**
+- [x] **Step 2: Write capture, privacy, and production-exclusion failure tests**
 
 The gallery must instantiate the production QML component/property contract with
 synthetic fixtures. Each item records state ID, locale, mode, interaction state,
@@ -1796,7 +1797,7 @@ for usernames, paths, filenames, project/ledger IDs, recent items, free text, an
 data. Fixture injection, capture scripts, and review assets must be absent from the
 production package.
 
-- [ ] **Step 3: Add deterministic contrast and geometry gates**
+- [x] **Step 3: Add deterministic contrast and geometry gates**
 
 Extend the checked-in foreground/background pair manifest for every new text, control,
 focus, state, and meaningful graphic. Calculate exact sRGB/alpha-composited ratios from
@@ -1804,7 +1805,7 @@ theme tokens, rejecting unrounded `4.499:1` and `2.999:1` boundaries. Test geome
 clipping, focus order, accessible names, long copy, minimum viewport, all scale factors,
 and reduced effects from source/runtime state, never by sampling screenshot colours.
 
-- [ ] **Step 4: Run the tests and confirm failure**
+- [x] **Step 4: Run the tests and confirm failure**
 
 Run:
 
@@ -1814,7 +1815,7 @@ Run:
 
 Expected: FAIL because the P1 gallery manifest and capture harness are absent.
 
-- [ ] **Step 5: Implement the harness and owner-side first visual pass**
+- [x] **Step 5: Implement the harness and owner-side first visual pass**
 
 Implement the production-component capture harness and make the first bounded owner
 pass over hierarchy, rhythm, wrapping, alignment, state distinction, and interaction
@@ -1822,12 +1823,39 @@ affordance without changing closed copy, state meaning, provenance, or authority
 the Step 4 cohort to green and review `git diff --check`, then:
 
 ```powershell
-git add -- tests/fixtures/research_flow_visual_states.json scripts/capture_research_flow_gallery.py scripts/build_research_flow_visual_review_packet.py tests/ui/test_research_flow_visual_gallery.py tests/ui/test_qml_visual_contract.py tests/ui/test_cream_nacre_visual_system.py src/modori/ui/qml/components/ResearchFlowPanel.qml src/modori/ui/qml/components/ResearchQuestionCard.qml src/modori/ui/qml/components/ResearchCandidateCard.qml src/modori/ui/qml/theme/Theme.qml
+git add -- docs/superpowers/plans/2026-07-17-live-multi-round-research-os-ui.md tests/fixtures/research_flow_visual_states.json scripts/capture_research_flow_gallery.py scripts/build_research_flow_visual_review_packet.py tests/ui/test_research_flow_visual_gallery.py tests/ui/test_qml_visual_contract.py tests/ui/test_cream_nacre_visual_system.py src/modori/ui/qml/components/AppButton.qml src/modori/ui/qml/components/ResearchFlowPanel.qml src/modori/ui/qml/theme/Theme.qml
 git commit -m "test: add Research OS visual gallery"
 ```
 
 An unchanged listed path contributes nothing to the commit; no path outside this
 reviewed set is staged.
+
+Fail-first evidence included an absent gallery/capture contract and, after the first
+native Windows owner capture, four targeted failures for three observed defects: long
+status badges could squeeze the `Research OS` heading out of view; the Mode A contact
+sheet used an offscreen Qt platform with zero font families; and a primary button's
+focus ring reused its own fill colour. The bounded fixes use a responsive header grid,
+native-font fail-closed packet rendering in an isolated process, and an on-brand inner
+focus ring with a separately declared exact contrast pair. They do not change closed
+copy, state meaning, provenance, or authority.
+
+First-pass evidence on 2026-07-18, using synthetic fixtures and the worktree-local
+pinned `.venv`:
+
+- all 29 native Windows captures were inspected individually;
+- every generated item used one source commit, a production Windows renderer, and a
+  non-empty 387-family font database, with zero expected-region, property, or horizontal
+  overflow mismatches;
+- the targeted defect gate moved from `4 failed` to `4 passed`;
+- the Task 14 focused Research OS/QML/human-operated cohort passed `94` tests;
+- the complete UI cohort passed `727` tests;
+- the package-exclusion cohort passed `12` tests; and
+- Ruff check and `git diff --check` passed for the changed Python and repository diff.
+
+The owner capture also demonstrated that the aggregate render p95 is not a product
+latency measure: full `WorkScreen` construction is a separate cold shell capture and
+must not be combined with component or interaction renders. Final committed capture
+evidence is recorded only after Step 6.
 
 - [ ] **Step 6: Capture the committed first pass**
 

@@ -1,0 +1,785 @@
+{
+  "schema_id": "modori.research-flow.visual-gallery",
+  "schema_version": 1,
+  "production_component": "src/modori/ui/qml/components/ResearchFlowPanel.qml",
+  "work_shell_component": "src/modori/ui/qml/screens/WorkScreen.qml",
+  "constraints": {
+    "viewports": {
+      "minimum": {
+        "width": 1024,
+        "height": 640
+      },
+      "reference": {
+        "width": 1180,
+        "height": 760
+      }
+    },
+    "panel_capture_width": 360,
+    "locales": [
+      "ko",
+      "en"
+    ],
+    "modes": [
+      "guided",
+      "standard"
+    ],
+    "scale_factors": [
+      1.0,
+      1.25,
+      1.5,
+      2.0
+    ],
+    "reduce_effects": [
+      false,
+      true
+    ],
+    "performance_baseline": {
+      "measured_at_utc": "2026-07-17T22:04:05Z",
+      "command": ".venv/Scripts/python.exe -m pytest tests/ui/test_research_flow_qml.py -q -p no:cacheprovider --durations=12",
+      "environment_class": "current-development-pc",
+      "closed_state_runtime_load_ms": 720,
+      "single_state_render_slowest_ms": 100,
+      "interaction_slowest_ms": 130,
+      "complete_test_seconds": 6.08,
+      "regression_gate": {
+        "single_item_render_p95_ms_max": 250,
+        "interaction_response_p95_ms_max": 200
+      }
+    }
+  },
+  "privacy": {
+    "capture_scope": "application-content-only",
+    "metadata_policy": "no-text-metadata",
+    "forbidden_text_patterns": [
+      "(?i)[a-z]:[\\\\/]",
+      "(?i)\\\\users\\\\",
+      "(?i)/home/",
+      "(?i)onedrive|appdata|file://",
+      "(?i)\\.(csv|xlsx|xls|sav|db|sqlite)(?:\\b|$)",
+      "(?i)(?:project|ledger|event|artifact):[a-z0-9_-]+",
+      "(?i)\\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\\b"
+    ],
+    "forbidden_fixture_fields": [
+      "freeTextAnswer",
+      "rawData",
+      "sourcePath",
+      "projectId",
+      "ledgerId",
+      "recentItems"
+    ]
+  },
+  "ui_copy_overrides": {
+    "en": {
+      "research.candidate.claim": "Interpretation boundary",
+      "research.candidate.evidence": "Verification evidence",
+      "research.candidate.method": "Method to prepare",
+      "research.candidate.passport": "Passport trace",
+      "research.candidate.review_state": "Review state",
+      "research.candidate.roles": "Variable roles",
+      "research.confirm": "Confirm these settings",
+      "research.confirmed_run_hint": "Only the settings were confirmed. Start calculation separately from the Run command.",
+      "research.direct_available": "Direct analysis remains available at any time.",
+      "research.experimental": "Experimental candidate",
+      "research.no_auto_run": "Candidate under verification · never runs automatically",
+      "research.panel.accessible": "Local Research OS study-task guidance",
+      "research.panel.title": "Research OS",
+      "research.preparation.digest": "Preparation review reference",
+      "research.preparation.settings": "Settings to review",
+      "research.preparation.step": "Analysis step",
+      "research.question.answer_required": "Choose one answer.",
+      "research.question.caution": "Explanation boundary",
+      "research.question.remaining": "Still unresolved",
+      "research.question.selection": "Why this question comes first",
+      "research.question.variables_accessible": "Relevant variable key list",
+      "research.question.variables_placeholder": "Separate variable keys with commas · leave blank if none",
+      "research.question.why": "Why this question is asked",
+      "research.transformation_first": "Finish reverse coding, scale construction, and missing-data handling before starting a study task. If the data changes, current answers must be checked again."
+    }
+  },
+  "contrast_pairs": [
+    {
+      "id": "panel-title",
+      "foreground_token": "bronzeDeep",
+      "background_token": "surfaceCream",
+      "semantic_role": "normal_text",
+      "states": ["all"],
+      "modes": ["guided", "standard"],
+      "threshold": 4.5
+    },
+    {
+      "id": "heading",
+      "foreground_token": "textStrong",
+      "background_token": "surfaceCream",
+      "semantic_role": "normal_text",
+      "states": ["all"],
+      "modes": ["guided", "standard"],
+      "threshold": 4.5
+    },
+    {
+      "id": "body",
+      "foreground_token": "textBody",
+      "background_token": "surfaceCream",
+      "semantic_role": "normal_text",
+      "states": ["all"],
+      "modes": ["guided", "standard"],
+      "threshold": 4.5
+    },
+    {
+      "id": "secondary-body",
+      "foreground_token": "textSecondary",
+      "background_token": "surfaceCream",
+      "semantic_role": "normal_text",
+      "states": ["clarify_ready", "candidate_ready", "prepare_review"],
+      "modes": ["guided", "standard"],
+      "threshold": 4.5
+    },
+    {
+      "id": "disabled-control",
+      "foreground_token": "textMuted",
+      "background_token": "quietSurface",
+      "semantic_role": "normal_text",
+      "states": ["interaction_disabled"],
+      "modes": ["guided", "standard"],
+      "threshold": 4.5
+    },
+    {
+      "id": "primary-default",
+      "foreground_token": "onBrand",
+      "background_token": "bronzeAction",
+      "semantic_role": "normal_text",
+      "states": ["interaction_default"],
+      "modes": ["guided", "standard"],
+      "threshold": 4.5
+    },
+    {
+      "id": "primary-hover",
+      "foreground_token": "onBrand",
+      "background_token": "bronzeHover",
+      "semantic_role": "normal_text",
+      "states": ["interaction_hover"],
+      "modes": ["guided", "standard"],
+      "threshold": 4.5
+    },
+    {
+      "id": "primary-pressed",
+      "foreground_token": "onBrand",
+      "background_token": "bronzeDeep",
+      "semantic_role": "normal_text",
+      "states": ["interaction_pressed"],
+      "modes": ["guided", "standard"],
+      "threshold": 4.5
+    },
+    {
+      "id": "focus-indicator",
+      "foreground_token": "focusRing",
+      "background_token": "surfaceCream",
+      "semantic_role": "focus_indicator",
+      "states": ["interaction_focus"],
+      "modes": ["guided", "standard"],
+      "threshold": 3.0
+    },
+    {
+      "id": "primary-focus-indicator",
+      "foreground_token": "onBrand",
+      "background_token": "bronzeAction",
+      "semantic_role": "focus_indicator",
+      "states": ["interaction_focus"],
+      "modes": ["guided", "standard"],
+      "threshold": 3.0
+    },
+    {
+      "id": "latest-badge",
+      "foreground_token": "bronzeAction",
+      "background_token": "bronzeWash",
+      "semantic_role": "normal_text",
+      "states": ["candidate_ready"],
+      "modes": ["guided", "standard"],
+      "threshold": 4.5
+    },
+    {
+      "id": "running-badge",
+      "foreground_token": "bronzeDeep",
+      "background_token": "pearlLilac",
+      "semantic_role": "normal_text",
+      "states": ["fingerprinting", "committing", "handoff_preflight"],
+      "modes": ["guided", "standard"],
+      "threshold": 4.5
+    },
+    {
+      "id": "stale-badge",
+      "foreground_token": "warning",
+      "background_token": "warningSurface",
+      "semantic_role": "normal_text",
+      "states": ["preparation_blocked", "replan_required"],
+      "modes": ["guided", "standard"],
+      "threshold": 4.5
+    },
+    {
+      "id": "error-badge",
+      "foreground_token": "danger",
+      "background_token": "dangerSurface",
+      "semantic_role": "normal_text",
+      "states": ["failure", "corruption"],
+      "modes": ["guided", "standard"],
+      "threshold": 4.5
+    }
+  ],
+  "fixtures": {
+    "shell_idle_ko": {
+      "kind": "work_shell",
+      "locale": "ko"
+    },
+    "interaction_primary_ko": {
+      "kind": "primary_action",
+      "locale": "ko",
+      "label": "답변 기록"
+    },
+    "idle_ko": {
+      "kind": "panel",
+      "state_model": {
+        "state": "idle",
+        "mode": "guided",
+        "language": "ko",
+        "title": "연구과업을 시작할 수 있습니다",
+        "body": "데이터 변환을 마쳤다면 연구 목적과 변수 역할을 차례로 확인합니다.",
+        "stageText": "",
+        "badgeText": "로컬 Research OS",
+        "primaryAction": {"command": "start", "label": "연구과업 시작", "enabled": true},
+        "secondaryActions": [],
+        "options": [],
+        "question": null,
+        "candidate": null,
+        "evidenceRows": []
+      }
+    },
+    "clarify_guided_ko": {
+      "kind": "panel",
+      "state_model": {
+        "state": "clarify_ready",
+        "mode": "guided",
+        "language": "ko",
+        "title": "한 가지 연구 사실을 확인합니다",
+        "body": "이 답변은 다음 질문이나 후보 경계를 바꿀 수 있습니다.",
+        "stageText": "",
+        "badgeText": "질문 1 / 최대 3",
+        "primaryAction": {"command": "answer", "label": "답변 기록", "enabled": true},
+        "secondaryActions": [
+          {"command": "answer_not_sure", "label": "잘 모르겠습니다", "enabled": true},
+          {"command": "retract", "label": "이 결정 철회", "enabled": true}
+        ],
+        "options": [
+          {"optionId": "independent", "label": "서로 독립적입니다", "selected": false, "enabled": true},
+          {"optionId": "clustered", "label": "같은 집단 안에서 묶여 있습니다", "selected": false, "enabled": true},
+          {"optionId": "not_sure", "label": "잘 모르겠습니다", "selected": false, "enabled": true}
+        ],
+        "question": {
+          "questionText": "관측 단위가 서로 독립적입니까?",
+          "baseReason": "표본이 묶여 있으면 현재 범위의 분석 후보를 그대로 제시할 수 없습니다.",
+          "selectionSummary": "분석을 가로막는 심각한 불확실성을 다음 후보보다 먼저 줄입니다.",
+          "remainingUncertainty": "가중치 사용 여부는 아직 확인되지 않았습니다.",
+          "notSureGuidance": "모르면 기권을 포함한 안전한 경로를 다시 계산합니다.",
+          "caution": "이 설명은 분석의 타당성을 보증하지 않습니다.",
+          "evidenceRows": []
+        },
+        "candidate": null,
+        "evidenceRows": []
+      }
+    },
+    "clarify_not_sure_ko": {
+      "kind": "panel",
+      "state_model": {
+        "state": "clarify_ready",
+        "mode": "guided",
+        "language": "ko",
+        "title": "확실하지 않아도 답할 수 있습니다",
+        "body": "모름을 기록하면 확인되지 않은 사실을 지어내지 않습니다.",
+        "stageText": "",
+        "badgeText": "질문 2 / 최대 3",
+        "primaryAction": {"command": "answer", "label": "답변 기록", "enabled": true},
+        "secondaryActions": [
+          {"command": "answer_not_sure", "label": "잘 모르겠습니다", "enabled": true}
+        ],
+        "options": [
+          {"optionId": "yes", "label": "예", "selected": false, "enabled": true},
+          {"optionId": "no", "label": "아니요", "selected": false, "enabled": true},
+          {"optionId": "not_sure", "label": "잘 모르겠습니다", "selected": false, "enabled": true}
+        ],
+        "question": {
+          "questionText": "각 관측값에 분석 가중치가 적용됩니까?",
+          "baseReason": "가중치가 있으면 현재 자동 구성 범위를 벗어납니다.",
+          "selectionSummary": "지원 가능 여부를 먼저 가르는 질문입니다.",
+          "remainingUncertainty": "가중치의 종류와 생성 방식은 확인하지 않습니다.",
+          "notSureGuidance": "확인할 수 없다면 잘 모르겠습니다를 선택하세요.",
+          "caution": "모름을 선택하면 후보를 보류할 수 있습니다.",
+          "evidenceRows": []
+        },
+        "candidate": null,
+        "evidenceRows": []
+      }
+    },
+    "clarify_standard_en": {
+      "kind": "panel",
+      "state_model": {
+        "state": "clarify_ready",
+        "mode": "standard",
+        "language": "en",
+        "title": "One research fact needs confirmation",
+        "body": "This answer may change the next question or the candidate boundary.",
+        "stageText": "",
+        "badgeText": "Question 1 of at most 3",
+        "primaryAction": {"command": "answer", "label": "Record answer", "enabled": true},
+        "secondaryActions": [
+          {"command": "answer_not_sure", "label": "I am not sure", "enabled": true},
+          {"command": "retract", "label": "Retract this decision", "enabled": true}
+        ],
+        "options": [
+          {"optionId": "independent", "label": "The observations are independent", "selected": false, "enabled": true},
+          {"optionId": "clustered", "label": "Observations are grouped within clusters", "selected": false, "enabled": true},
+          {"optionId": "not_sure", "label": "I am not sure", "selected": false, "enabled": true}
+        ],
+        "question": {
+          "questionText": "Are the observational units independent of one another?",
+          "baseReason": "Clustered observations would place this task outside the current supported boundary.",
+          "selectionSummary": "The first differing rank component is unresolved blocker severity.",
+          "remainingUncertainty": "The use of analysis weights remains unresolved.",
+          "notSureGuidance": "If unknown, the resolver recalculates a safe path that may abstain.",
+          "caution": "This explanation does not establish recommendation validity.",
+          "evidenceRows": [
+            {"label": "Selected rank", "selectedValue": "4 · 1 · 0", "runnerUpValue": "4 · 2 · 0"},
+            {"label": "Tie break", "selectedValue": "Not used", "runnerUpValue": "Not used"}
+          ]
+        },
+        "candidate": null,
+        "evidenceRows": []
+      }
+    },
+    "clarify_long_ko": {
+      "kind": "panel",
+      "state_model": {
+        "state": "clarify_ready",
+        "mode": "guided",
+        "language": "ko",
+        "title": "긴 한국어 문장에서도 질문의 위계와 행동 경계를 보존합니다",
+        "body": "이 상태는 최소 창에서 줄바꿈, 세로 스크롤, 선택지와 주요 행동의 접근 가능성을 확인하기 위한 합성 사례입니다.",
+        "stageText": "",
+        "badgeText": "질문 3 / 최대 3",
+        "primaryAction": {"command": "answer", "label": "이 답변을 연구 기록에 남기기", "enabled": true},
+        "secondaryActions": [
+          {"command": "answer_not_sure", "label": "현재 정보만으로는 판단하기 어렵습니다", "enabled": true}
+        ],
+        "options": [
+          {"optionId": "person", "label": "같은 참여자의 반복 측정이 아니라 서로 다른 참여자의 관측입니다", "selected": false, "enabled": true},
+          {"optionId": "repeated", "label": "같은 참여자 또는 같은 관측 단위를 여러 시점에 반복해서 측정했습니다", "selected": false, "enabled": true},
+          {"optionId": "not_sure", "label": "연구 설계 문서를 다시 확인해야 해서 지금은 잘 모르겠습니다", "selected": false, "enabled": true}
+        ],
+        "question": {
+          "questionText": "분석에 포함하려는 두 측정값은 서로 다른 사람에게서 한 번씩 얻은 값입니까, 아니면 같은 사람이나 같은 기관처럼 동일한 관측 단위를 여러 시점에 반복해서 측정한 값입니까?",
+          "baseReason": "독립된 집단을 비교하는 방법과 같은 단위의 변화를 비교하는 방법은 관측값이 만들어진 구조가 다르므로, 표의 열 개수만 보고 둘 중 하나를 임의로 선택해서는 안 됩니다.",
+          "selectionSummary": "지원 경계를 잘못 넘는 일을 막기 위해 이 연구 사실을 다른 세부 설정보다 먼저 확인합니다.",
+          "remainingUncertainty": "결측값 처리와 분석 가중치 사용 여부는 이 답변 뒤에도 남을 수 있습니다.",
+          "notSureGuidance": "연구 설계 문서에서 확인할 수 없다면 모름을 기록하고 기권 또는 외부 안내 경로를 받으세요.",
+          "caution": "질문에 답해도 분석의 학문적 타당성이 자동으로 보증되지는 않습니다.",
+          "evidenceRows": []
+        },
+        "candidate": null,
+        "evidenceRows": []
+      }
+    },
+    "clarify_long_en": {
+      "kind": "panel",
+      "state_model": {
+        "state": "clarify_ready",
+        "mode": "standard",
+        "language": "en",
+        "title": "Long English copy must preserve hierarchy and action boundaries",
+        "body": "This synthetic case checks wrapping, scrolling, and access to every answer at the reference viewport.",
+        "stageText": "",
+        "badgeText": "Question 3 of at most 3",
+        "primaryAction": {"command": "answer", "label": "Record this answer in the local research record", "enabled": true},
+        "secondaryActions": [
+          {"command": "answer_not_sure", "label": "The available study information is not sufficient", "enabled": true}
+        ],
+        "options": [
+          {"optionId": "independent", "label": "Each value comes from a different participant observed once", "selected": false, "enabled": true},
+          {"optionId": "repeated", "label": "The same participant or observational unit was measured at more than one time", "selected": false, "enabled": true},
+          {"optionId": "not_sure", "label": "I need to inspect the study protocol and cannot determine this now", "selected": false, "enabled": true}
+        ],
+        "question": {
+          "questionText": "Do the two measurements come from separate participants observed once, or from the same participant, organisation, or other observational unit measured repeatedly over time?",
+          "baseReason": "Independent-group comparison and within-unit change use different observation structures, so the resolver must not substitute one merely because the table contains two columns.",
+          "selectionSummary": "This question removes a support-boundary blocker before lower-risk configuration details.",
+          "remainingUncertainty": "Missing-data handling and analysis weights may remain unresolved after this answer.",
+          "notSureGuidance": "If the protocol does not establish this fact, record uncertainty and allow abstention or an external-method route.",
+          "caution": "Answering this question does not by itself establish scholarly validity.",
+          "evidenceRows": [
+            {"label": "Selected rank", "selectedValue": "5 · 1 · 1 · 0", "runnerUpValue": "4 · 3 · 0 · 0"},
+            {"label": "First difference", "selectedValue": "Support blocker", "runnerUpValue": "Interpretation uncertainty"}
+          ]
+        },
+        "candidate": null,
+        "evidenceRows": []
+      }
+    },
+    "scope_boundary_en": {
+      "kind": "panel",
+      "state_model": {
+        "state": "scope_boundary",
+        "mode": "guided",
+        "language": "en",
+        "title": "This study task is outside the current local method space",
+        "body": "No supported candidate is substituted. Use direct analysis or consult an external method guide.",
+        "stageText": "",
+        "badgeText": "Outside current scope",
+        "primaryAction": {"command": "back", "label": "Return to study-task selection", "enabled": true},
+        "secondaryActions": [],
+        "options": [],
+        "question": null,
+        "candidate": null,
+        "evidenceRows": []
+      }
+    },
+    "memory_unavailable_ko": {
+      "kind": "panel",
+      "state_model": {
+        "state": "memory_unavailable",
+        "mode": "guided",
+        "language": "ko",
+        "title": "연구 기록을 지금 열 수 없습니다",
+        "body": "분석 계산 기능은 유지됩니다. 기록을 사용할 수 있을 때 다시 확인하세요.",
+        "stageText": "",
+        "badgeText": "기록 사용 불가",
+        "primaryAction": {"command": "resume", "label": "기록에서 다시 확인", "enabled": true},
+        "secondaryActions": [],
+        "options": [],
+        "question": null,
+        "candidate": null,
+        "evidenceRows": []
+      }
+    },
+    "failure_en": {
+      "kind": "panel",
+      "state_model": {
+        "state": "failure",
+        "mode": "standard",
+        "language": "en",
+        "title": "The research decision could not be verified",
+        "body": "No candidate is shown from an unverified state. Re-open the local record before continuing.",
+        "stageText": "",
+        "badgeText": "Verification failed",
+        "primaryAction": {"command": "resume", "label": "Verify from the record again", "enabled": true},
+        "secondaryActions": [],
+        "options": [],
+        "question": null,
+        "candidate": null,
+        "evidenceRows": []
+      }
+    },
+    "fingerprinting_ko": {
+      "kind": "panel",
+      "state_model": {
+        "state": "fingerprinting",
+        "mode": "guided",
+        "language": "ko",
+        "title": "현재 데이터 버전을 확인합니다",
+        "body": "답변이 다른 데이터에 적용되지 않도록 로컬 지문을 계산합니다.",
+        "stageText": "데이터 구조와 버전을 확인하는 중",
+        "badgeText": "로컬 확인 중",
+        "primaryAction": {"command": "cancel", "label": "중단", "enabled": true},
+        "secondaryActions": [],
+        "options": [],
+        "question": null,
+        "candidate": null,
+        "evidenceRows": []
+      }
+    },
+    "fingerprinting_en": {
+      "kind": "panel",
+      "state_model": {
+        "state": "fingerprinting",
+        "mode": "standard",
+        "language": "en",
+        "title": "Checking the current data version",
+        "body": "A local fingerprint prevents answers from being applied to different data.",
+        "stageText": "Checking data structure and version",
+        "badgeText": "Local check in progress",
+        "primaryAction": {"command": "cancel", "label": "Cancel", "enabled": true},
+        "secondaryActions": [],
+        "options": [],
+        "question": null,
+        "candidate": null,
+        "evidenceRows": []
+      }
+    },
+    "candidate_guided_ko": {
+      "kind": "panel",
+      "state_model": {
+        "state": "candidate_ready",
+        "mode": "guided",
+        "language": "ko",
+        "title": "검토할 분석 후보가 있습니다",
+        "body": "연구 사실과 현재 지원 경계에 맞는 설정을 검토하세요.",
+        "stageText": "",
+        "badgeText": "실험적 후보",
+        "visiblePassportDigest": "SYNTHETIC-01",
+        "primaryAction": {"command": "prepare", "label": "구성 검토로 이동", "enabled": true},
+        "secondaryActions": [],
+        "options": [],
+        "question": null,
+        "candidate": {
+          "capabilityLabel": "서로 겹치지 않는 두 집단의 평균 차이",
+          "methodLabel": "Welch 두 독립표본 t 방법",
+          "claimBoundary": "관측된 차이이며 인과효과로 해석하지 않습니다.",
+          "roleRows": [
+            {"label": "결과 역할", "value": "합성 웰빙 지표"},
+            {"label": "집단 역할", "value": "합성 조건 분류"}
+          ],
+          "reviewStatus": "검토 필요",
+          "persistentBoundary": "검증 중인 분석 후보 · 자동 실행 안 함"
+        },
+        "evidenceRows": [
+          {"label": "실행 전 구조 검사", "value": "구성 검토 가능"}
+        ]
+      }
+    },
+    "candidate_standard_en": {
+      "kind": "panel",
+      "state_model": {
+        "state": "candidate_ready",
+        "mode": "standard",
+        "language": "en",
+        "title": "A candidate is ready for review",
+        "body": "Review the exact method, variable roles, and claim boundary before configuration.",
+        "stageText": "",
+        "badgeText": "Experimental candidate",
+        "visiblePassportDigest": "SYNTHETIC-02",
+        "primaryAction": {"command": "prepare", "label": "Open configuration review", "enabled": true},
+        "secondaryActions": [],
+        "options": [],
+        "question": null,
+        "candidate": {
+          "capabilityLabel": "Mean difference between two non-overlapping groups",
+          "methodLabel": "Welch independent-samples t method",
+          "claimBoundary": "An observed association; do not interpret it as a causal effect.",
+          "roleRows": [
+            {"label": "Outcome role", "value": "Synthetic wellbeing measure"},
+            {"label": "Group role", "value": "Synthetic condition category"}
+          ],
+          "reviewStatus": "Review required",
+          "persistentBoundary": "Candidate under verification · never runs automatically"
+        },
+        "evidenceRows": [
+          {"label": "Preflight structure check", "value": "Configuration review available"},
+          {"label": "Routing policy", "value": "Welch policy fixed"}
+        ]
+      }
+    },
+    "preparation_blocked_ko": {
+      "kind": "panel",
+      "state_model": {
+        "state": "preparation_blocked",
+        "mode": "standard",
+        "language": "ko",
+        "title": "현재 데이터로는 구성을 준비할 수 없습니다",
+        "body": "패스포트와 실제 설정이 달라 후보를 자동으로 대체하지 않습니다.",
+        "stageText": "",
+        "badgeText": "재검토 필요",
+        "visiblePassportDigest": "SYNTHETIC-03",
+        "primaryAction": null,
+        "secondaryActions": [],
+        "options": [],
+        "question": null,
+        "candidate": {
+          "capabilityLabel": "서로 겹치지 않는 두 집단의 평균 차이",
+          "methodLabel": "Welch 두 독립표본 t 방법",
+          "claimBoundary": "관측된 차이이며 인과효과로 해석하지 않습니다.",
+          "roleRows": [],
+          "reviewStatus": "현재 데이터에서는 구성을 준비할 수 없음",
+          "persistentBoundary": "자동 대체하지 않음 · 다시 계획 필요"
+        },
+        "evidenceRows": [
+          {"label": "차단 조건", "value": "변수 역할이 현재 데이터와 일치하지 않음"}
+        ]
+      }
+    },
+    "recovery_pending_en": {
+      "kind": "panel",
+      "state_model": {
+        "state": "recovery_pending",
+        "mode": "standard",
+        "language": "en",
+        "title": "An interrupted local commit needs recovery",
+        "body": "No new decision is accepted until the recorded transaction is checked.",
+        "stageText": "",
+        "badgeText": "Recovery required",
+        "primaryAction": {"command": "resume", "label": "Check the recorded transaction", "enabled": true},
+        "secondaryActions": [],
+        "options": [],
+        "question": null,
+        "candidate": null,
+        "evidenceRows": []
+      }
+    },
+    "retracted_ko": {
+      "kind": "panel",
+      "state_model": {
+        "state": "retracted",
+        "mode": "guided",
+        "language": "ko",
+        "title": "이전 결정을 철회했습니다",
+        "body": "과거 기록은 덮어쓰지 않고 철회 사실과 함께 읽기 전용으로 남습니다.",
+        "stageText": "",
+        "badgeText": "철회됨",
+        "primaryAction": {"command": "replan", "label": "현재 데이터로 다시 계획", "enabled": true},
+        "secondaryActions": [],
+        "options": [],
+        "question": null,
+        "candidate": null,
+        "evidenceRows": []
+      }
+    },
+    "replan_required_en": {
+      "kind": "panel",
+      "state_model": {
+        "state": "replan_required",
+        "mode": "standard",
+        "language": "en",
+        "title": "The data changed after the recorded answers",
+        "body": "Prior answers remain read-only but cannot authorise a candidate for the current data.",
+        "stageText": "",
+        "badgeText": "Replan required",
+        "primaryAction": {"command": "replan", "label": "Replan with the current data", "enabled": true},
+        "secondaryActions": [],
+        "options": [],
+        "question": null,
+        "candidate": null,
+        "evidenceRows": []
+      }
+    },
+    "abstain_ready_ko": {
+      "kind": "panel",
+      "state_model": {
+        "state": "abstain_ready",
+        "mode": "guided",
+        "language": "ko",
+        "title": "현재 정보로는 분석 후보를 제시하지 않습니다",
+        "body": "확인되지 않은 연구 사실을 임의로 채우지 않았습니다. 직접 분석 또는 외부 방법 안내를 이용하세요.",
+        "stageText": "",
+        "badgeText": "기권 기록됨",
+        "primaryAction": {"command": "replan", "label": "현재 데이터로 다시 계획", "enabled": true},
+        "secondaryActions": [],
+        "options": [],
+        "question": null,
+        "candidate": null,
+        "evidenceRows": []
+      }
+    },
+    "causal_scope_notice_en": {
+      "kind": "panel",
+      "state_model": {
+        "state": "causal_scope_notice",
+        "mode": "guided",
+        "language": "en",
+        "title": "P1 does not recommend causal-effect analyses",
+        "body": "You may record this boundary and continue with a non-causal descriptive task, or return without writing anything.",
+        "stageText": "",
+        "badgeText": "Static scope notice",
+        "primaryAction": {"command": "causal_record", "label": "Record this boundary and continue", "enabled": true},
+        "secondaryActions": [
+          {"command": "back", "label": "Go back without recording", "enabled": true}
+        ],
+        "options": [],
+        "question": null,
+        "candidate": null,
+        "evidenceRows": []
+      }
+    },
+    "prepare_review_ko": {
+      "kind": "panel",
+      "state_model": {
+        "state": "prepare_review",
+        "mode": "standard",
+        "language": "ko",
+        "title": "분석 편집기에 넣을 설정을 확인합니다",
+        "body": "이 단계는 설정만 준비하며 계산을 시작하지 않습니다.",
+        "stageText": "",
+        "badgeText": "구성 검토",
+        "primaryAction": null,
+        "secondaryActions": [],
+        "options": [],
+        "question": null,
+        "candidate": null,
+        "evidenceRows": [],
+        "preparationReview": {
+          "stepType": "stats.compare_groups",
+          "visiblePreparationDigest": "SYNTHETIC-04",
+          "experimental": true,
+          "automaticRun": false,
+          "settingsRows": [
+            {"label": "결과 역할", "value": "합성 웰빙 지표"},
+            {"label": "집단 역할", "value": "합성 조건 분류"},
+            {"label": "분산 정책", "value": "Welch 정책 고정"}
+          ]
+        }
+      }
+    },
+    "confirmed_en": {
+      "kind": "panel",
+      "state_model": {
+        "state": "confirmed",
+        "mode": "standard",
+        "language": "en",
+        "title": "The editor configuration is confirmed",
+        "body": "No calculation has started. Use the separate Run command only after final review.",
+        "stageText": "",
+        "badgeText": "Configuration confirmed",
+        "primaryAction": null,
+        "secondaryActions": [],
+        "options": [],
+        "question": null,
+        "candidate": null,
+        "evidenceRows": [],
+        "preparationReview": {
+          "stepType": "stats.compare_groups",
+          "visiblePreparationDigest": "SYNTHETIC-05",
+          "experimental": true,
+          "automaticRun": false,
+          "settingsRows": [
+            {"label": "Outcome role", "value": "Synthetic wellbeing measure"},
+            {"label": "Group role", "value": "Synthetic condition category"}
+          ]
+        }
+      }
+    }
+  },
+  "items": [
+    {"id": "shell-guided-idle-ko-min", "capture_kind": "work_shell", "state_id": "idle", "locale": "ko", "mode": "guided", "interaction_state": null, "viewport": "minimum", "scale_factor": 1.0, "reduce_effects": false, "fixture_id": "shell_idle_ko", "expected_present": ["guideRail", "researchFlowPanel", "resultsReportPreview", "pipelineRail"], "expected_absent": [], "expected_properties": {"guideRail.showLegacyCandidates": false}},
+    {"id": "shell-standard-idle-ko-reference", "capture_kind": "work_shell", "state_id": "idle", "locale": "ko", "mode": "standard", "interaction_state": null, "viewport": "reference", "scale_factor": 1.0, "reduce_effects": false, "fixture_id": "shell_idle_ko", "expected_present": ["guideRail", "researchFlowPanel", "resultsReportPreview", "pipelineRail"], "expected_absent": [], "expected_properties": {"root.researchRailOpen": true}},
+    {"id": "question-guided-ko", "capture_kind": "panel", "state_id": "clarify_ready", "locale": "ko", "mode": "guided", "interaction_state": null, "viewport": "minimum", "scale_factor": 1.0, "reduce_effects": false, "fixture_id": "clarify_guided_ko", "expected_present": ["researchQuestionCard"], "expected_absent": ["researchCandidateCard", "researchBusyStage"], "expected_properties": {}},
+    {"id": "question-standard-en", "capture_kind": "panel", "state_id": "clarify_ready", "locale": "en", "mode": "standard", "interaction_state": null, "viewport": "reference", "scale_factor": 1.25, "reduce_effects": false, "fixture_id": "clarify_standard_en", "expected_present": ["researchQuestionCard"], "expected_absent": ["researchCandidateCard"], "expected_properties": {}},
+    {"id": "question-not-sure-ko", "capture_kind": "panel", "state_id": "clarify_ready", "locale": "ko", "mode": "guided", "interaction_state": null, "viewport": "minimum", "scale_factor": 1.0, "reduce_effects": true, "fixture_id": "clarify_not_sure_ko", "expected_present": ["researchQuestionCard"], "expected_absent": ["researchCandidateCard"], "expected_properties": {}},
+    {"id": "scope-not-applicable-en", "capture_kind": "panel", "state_id": "scope_boundary", "locale": "en", "mode": "guided", "interaction_state": null, "viewport": "minimum", "scale_factor": 1.0, "reduce_effects": false, "fixture_id": "scope_boundary_en", "expected_present": ["researchStaticBoundary"], "expected_absent": ["researchQuestionCard", "researchCandidateCard"], "expected_properties": {}},
+    {"id": "memory-unavailable-ko", "capture_kind": "panel", "state_id": "memory_unavailable", "locale": "ko", "mode": "guided", "interaction_state": null, "viewport": "minimum", "scale_factor": 1.0, "reduce_effects": false, "fixture_id": "memory_unavailable_ko", "expected_present": ["researchStatusPanel"], "expected_absent": ["researchQuestionCard", "researchCandidateCard"], "expected_properties": {}},
+    {"id": "failure-standard-en", "capture_kind": "panel", "state_id": "failure", "locale": "en", "mode": "standard", "interaction_state": null, "viewport": "reference", "scale_factor": 1.25, "reduce_effects": false, "fixture_id": "failure_en", "expected_present": ["researchStatusPanel"], "expected_absent": ["researchQuestionCard", "researchCandidateCard"], "expected_properties": {}},
+    {"id": "loading-ko-scale-150", "capture_kind": "panel", "state_id": "fingerprinting", "locale": "ko", "mode": "guided", "interaction_state": null, "viewport": "minimum", "scale_factor": 1.5, "reduce_effects": false, "fixture_id": "fingerprinting_ko", "expected_present": ["researchBusyStage"], "expected_absent": ["researchQuestionCard", "researchCandidateCard"], "expected_properties": {}},
+    {"id": "loading-en-reduced-scale-200", "capture_kind": "panel", "state_id": "fingerprinting", "locale": "en", "mode": "standard", "interaction_state": null, "viewport": "reference", "scale_factor": 2.0, "reduce_effects": true, "fixture_id": "fingerprinting_en", "expected_present": ["researchBusyStage"], "expected_absent": ["researchQuestionCard", "researchCandidateCard"], "expected_properties": {}},
+    {"id": "long-copy-ko-min", "capture_kind": "panel", "state_id": "clarify_ready", "locale": "ko", "mode": "guided", "interaction_state": null, "viewport": "minimum", "scale_factor": 1.25, "reduce_effects": false, "fixture_id": "clarify_long_ko", "expected_present": ["researchQuestionCard"], "expected_absent": ["researchCandidateCard"], "expected_properties": {}},
+    {"id": "long-copy-en-reference", "capture_kind": "panel", "state_id": "clarify_ready", "locale": "en", "mode": "standard", "interaction_state": null, "viewport": "reference", "scale_factor": 1.5, "reduce_effects": false, "fixture_id": "clarify_long_en", "expected_present": ["researchQuestionCard"], "expected_absent": ["researchCandidateCard"], "expected_properties": {}},
+    {"id": "candidate-guided-ko", "capture_kind": "panel", "state_id": "candidate_ready", "locale": "ko", "mode": "guided", "interaction_state": null, "viewport": "minimum", "scale_factor": 1.0, "reduce_effects": false, "fixture_id": "candidate_guided_ko", "expected_present": ["researchCandidateCard"], "expected_absent": ["researchQuestionCard"], "expected_properties": {}},
+    {"id": "candidate-standard-en", "capture_kind": "panel", "state_id": "candidate_ready", "locale": "en", "mode": "standard", "interaction_state": null, "viewport": "reference", "scale_factor": 1.25, "reduce_effects": false, "fixture_id": "candidate_standard_en", "expected_present": ["researchCandidateCard"], "expected_absent": ["researchQuestionCard"], "expected_properties": {}},
+    {"id": "preflight-block-ko", "capture_kind": "panel", "state_id": "preparation_blocked", "locale": "ko", "mode": "standard", "interaction_state": null, "viewport": "minimum", "scale_factor": 1.0, "reduce_effects": false, "fixture_id": "preparation_blocked_ko", "expected_present": ["researchCandidateCard"], "expected_absent": ["researchQuestionCard"], "expected_properties": {}},
+    {"id": "recovery-pending-en", "capture_kind": "panel", "state_id": "recovery_pending", "locale": "en", "mode": "standard", "interaction_state": null, "viewport": "reference", "scale_factor": 1.0, "reduce_effects": true, "fixture_id": "recovery_pending_en", "expected_present": ["researchStatusPanel"], "expected_absent": ["researchQuestionCard", "researchCandidateCard"], "expected_properties": {}},
+    {"id": "retracted-ko", "capture_kind": "panel", "state_id": "retracted", "locale": "ko", "mode": "guided", "interaction_state": null, "viewport": "minimum", "scale_factor": 1.0, "reduce_effects": false, "fixture_id": "retracted_ko", "expected_present": ["researchStatusPanel"], "expected_absent": ["researchQuestionCard", "researchCandidateCard"], "expected_properties": {}},
+    {"id": "stale-replan-en", "capture_kind": "panel", "state_id": "replan_required", "locale": "en", "mode": "standard", "interaction_state": null, "viewport": "reference", "scale_factor": 1.0, "reduce_effects": false, "fixture_id": "replan_required_en", "expected_present": ["researchStatusPanel"], "expected_absent": ["researchQuestionCard", "researchCandidateCard"], "expected_properties": {}},
+    {"id": "recorded-abstention-ko", "capture_kind": "panel", "state_id": "abstain_ready", "locale": "ko", "mode": "guided", "interaction_state": null, "viewport": "minimum", "scale_factor": 1.0, "reduce_effects": false, "fixture_id": "abstain_ready_ko", "expected_present": ["researchStatusPanel"], "expected_absent": ["researchQuestionCard", "researchCandidateCard"], "expected_properties": {}},
+    {"id": "causal-scope-notice-en", "capture_kind": "panel", "state_id": "causal_scope_notice", "locale": "en", "mode": "guided", "interaction_state": null, "viewport": "minimum", "scale_factor": 1.0, "reduce_effects": false, "fixture_id": "causal_scope_notice_en", "expected_present": ["researchStaticBoundary"], "expected_absent": ["researchQuestionCard", "researchCandidateCard"], "expected_properties": {}},
+    {"id": "prepare-review-ko", "capture_kind": "panel", "state_id": "prepare_review", "locale": "ko", "mode": "standard", "interaction_state": null, "viewport": "reference", "scale_factor": 1.0, "reduce_effects": false, "fixture_id": "prepare_review_ko", "expected_present": ["researchPreparationReview"], "expected_absent": ["researchQuestionCard", "researchCandidateCard"], "expected_properties": {}},
+    {"id": "confirmed-en", "capture_kind": "panel", "state_id": "confirmed", "locale": "en", "mode": "standard", "interaction_state": null, "viewport": "reference", "scale_factor": 1.0, "reduce_effects": true, "fixture_id": "confirmed_en", "expected_present": ["researchPreparationReview"], "expected_absent": ["researchQuestionCard", "researchCandidateCard"], "expected_properties": {}},
+    {"id": "legacy-disclosure-collapsed", "capture_kind": "work_shell", "state_id": "idle", "locale": "ko", "mode": "guided", "interaction_state": "collapsed", "viewport": "minimum", "scale_factor": 1.0, "reduce_effects": false, "fixture_id": "shell_idle_ko", "expected_present": ["guideRail", "researchFlowPanel"], "expected_absent": [], "expected_properties": {"guideRail.showLegacyCandidates": false}},
+    {"id": "legacy-disclosure-expanded", "capture_kind": "work_shell", "state_id": "idle", "locale": "ko", "mode": "guided", "interaction_state": "expanded", "viewport": "reference", "scale_factor": 1.0, "reduce_effects": false, "fixture_id": "shell_idle_ko", "expected_present": ["guideRail", "researchFlowPanel"], "expected_absent": [], "expected_properties": {"guideRail.showLegacyCandidates": true}},
+    {"id": "interaction-primary-default", "capture_kind": "interaction", "state_id": "interaction_default", "locale": "ko", "mode": "guided", "interaction_state": "default", "viewport": "minimum", "scale_factor": 1.0, "reduce_effects": false, "fixture_id": "interaction_primary_ko", "expected_present": ["galleryAction"], "expected_absent": [], "expected_properties": {"galleryAction.enabled": true}},
+    {"id": "interaction-primary-hover", "capture_kind": "interaction", "state_id": "interaction_hover", "locale": "ko", "mode": "guided", "interaction_state": "hover", "viewport": "minimum", "scale_factor": 1.25, "reduce_effects": false, "fixture_id": "interaction_primary_ko", "expected_present": ["galleryAction"], "expected_absent": [], "expected_properties": {"galleryAction.enabled": true, "galleryAction.hovered": true}},
+    {"id": "interaction-primary-focus", "capture_kind": "interaction", "state_id": "interaction_focus", "locale": "ko", "mode": "guided", "interaction_state": "keyboard_focus", "viewport": "minimum", "scale_factor": 1.5, "reduce_effects": false, "fixture_id": "interaction_primary_ko", "expected_present": ["galleryAction"], "expected_absent": [], "expected_properties": {"galleryAction.activeFocus": true}},
+    {"id": "interaction-primary-disabled", "capture_kind": "interaction", "state_id": "interaction_disabled", "locale": "ko", "mode": "guided", "interaction_state": "disabled", "viewport": "minimum", "scale_factor": 2.0, "reduce_effects": true, "fixture_id": "interaction_primary_ko", "expected_present": ["galleryAction"], "expected_absent": [], "expected_properties": {"galleryAction.enabled": false}},
+    {"id": "interaction-primary-pressed", "capture_kind": "interaction", "state_id": "interaction_pressed", "locale": "ko", "mode": "guided", "interaction_state": "pressed", "viewport": "reference", "scale_factor": 1.0, "reduce_effects": false, "fixture_id": "interaction_primary_ko", "expected_present": ["galleryAction"], "expected_absent": [], "expected_properties": {"galleryAction.down": true}}
+  ]
+}

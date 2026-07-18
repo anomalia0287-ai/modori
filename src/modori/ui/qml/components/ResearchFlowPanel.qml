@@ -284,22 +284,35 @@ ColumnLayout {
         Layout.fillWidth: true
         spacing: theme.spaceMd
 
-        RowLayout {
+        GridLayout {
+            id: researchPanelHeader
+            objectName: "researchPanelHeader"
             Layout.fillWidth: true
-            spacing: theme.spaceSm
+            columns: !researchPanelBadge.visible
+                || researchPanelTitle.implicitWidth
+                    + researchPanelBadge.implicitWidth
+                    + columnSpacing <= width
+                ? 2 : 1
+            columnSpacing: theme.spaceSm
+            rowSpacing: theme.spaceXs
 
             Label {
+                id: researchPanelTitle
+                objectName: "researchPanelTitle"
                 text: appBootstrap.text("research.panel.title")
                 color: theme.bronzeDeep
                 font.pixelSize: theme.fontTitle
                 font.bold: true
                 Layout.fillWidth: true
+                Layout.minimumWidth: implicitWidth
             }
 
             StateBadge {
+                id: researchPanelBadge
                 state: root.statusBadgeState()
                 label: String(root.stateModel.badgeText || "")
                 visible: label.length > 0
+                Layout.alignment: Qt.AlignRight
             }
         }
 

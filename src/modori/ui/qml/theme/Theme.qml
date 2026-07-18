@@ -77,7 +77,7 @@ QtObject {
     readonly property color onBrand: "#FFFFFF"
     readonly property color onBrandDanger: "#FFE6E6"
     readonly property color selectionSurface: "#F2E7E2"
-    readonly property color warning: "#8B641F"
+    readonly property color warning: "#865F1B"
     readonly property color warningSurface: "#F5E8C8"
     readonly property color danger: "#A33D4B"
     readonly property color dangerSurface: "#F5E2E3"

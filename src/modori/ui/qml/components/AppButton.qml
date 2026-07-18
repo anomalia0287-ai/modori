@@ -5,6 +5,8 @@ import "../theme"
 Button {
     id: control
 
+    hoverEnabled: true
+
     property string variant: "secondary"
     property bool semanticLight: false
     property bool compact: false
@@ -61,7 +63,9 @@ Button {
     background: Rectangle {
         radius: theme.radiusSmall
         color: control.glassVariant ? theme.transparent : control.backgroundColor()
-        border.color: control.activeFocus ? theme.focusRing : theme.transparent
+        border.color: control.activeFocus
+            ? control.variant === "primary" ? theme.onBrand : theme.focusRing
+            : theme.transparent
         border.width: control.activeFocus ? theme.borderWidthFocus : theme.spaceNone
 
         Rectangle {

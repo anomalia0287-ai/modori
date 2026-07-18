@@ -210,3 +210,25 @@ def test_loading_and_screen_changes_use_truthful_reduced_motion_feedback() -> No
     assert "property bool reduceEffects: false" in overlay
     assert "visible: !root.reduceEffects" in overlay
     assert "reduceEffects: root.reduceEffects" in work[work.index("LoadingOverlay {"):]
+
+
+def test_research_flow_actions_keep_accessible_names_and_keyboard_focus_contracts() -> (
+    None
+):
+    panel = (QML_ROOT / "components/ResearchFlowPanel.qml").read_text(encoding="utf-8")
+    question = (QML_ROOT / "components/ResearchQuestionCard.qml").read_text(
+        encoding="utf-8"
+    )
+    candidate = (QML_ROOT / "components/ResearchCandidateCard.qml").read_text(
+        encoding="utf-8"
+    )
+    button = (QML_ROOT / "components/AppButton.qml").read_text(encoding="utf-8")
+
+    for source in (panel, question, candidate):
+        assert "AppButton" in source
+        assert "Accessible.name" in source
+    assert "control.activeFocus" in button
+    assert "theme.focusRing" in button
+    assert 'control.variant === "primary" ? theme.onBrand : theme.focusRing' in button
+    assert "control.enabled" in button
+    assert "hoverEnabled: true" in button

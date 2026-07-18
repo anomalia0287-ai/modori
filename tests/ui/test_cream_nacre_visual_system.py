@@ -19,12 +19,18 @@ def test_theme_exposes_cream_nacre_semantic_tokens() -> None:
         "pearlRose",
         "pearlLilac",
         "bronzeFocus",
+        "bronzeAction",
+        "bronzeHover",
+        "focusRing",
         "semanticGlow",
         "textStrong",
         "textBody",
         "textMuted",
+        "onBrand",
         "warning",
+        "warningSurface",
         "danger",
+        "dangerSurface",
     }
     expected_int_tokens = {
         "controlHeight",
