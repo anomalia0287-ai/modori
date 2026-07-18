@@ -30,7 +30,6 @@ _MAX_MANIFEST_ENTRIES = 50_000
 _COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
 _DIGEST_RE = re.compile(r"^[0-9a-f]{64}$")
 _KEY_RE = re.compile(r"^[a-z][a-z0-9_]*$")
-_PATH_RE = re.compile(r"^[A-Za-z0-9._/-]+$")
 _SCHEMA_ID_RE = re.compile(r"^[a-z][a-z0-9_.]*$")
 _VERSION_RE = re.compile(r"^\d+\.\d+\.\d+(?:[A-Za-z0-9.+-]*)?$")
 _PACKAGE_NAME_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,127}$")
@@ -149,15 +148,22 @@ def sha256_bytes(raw: bytes) -> str:
 def _relative_path(value: object, field: str) -> str:
     path = _text(value, field)
     candidate = PurePosixPath(path)
+    forbidden = frozenset('<>:"\\|?*')
     if (
         not path
+        or len(path.encode("utf-8")) > 4_096
+        or not path.isascii()
+        or any(ord(character) < 0x20 or ord(character) > 0x7E for character in path)
+        or any(character in forbidden for character in path)
         or candidate.is_absolute()
         or candidate.as_posix() != path
         or "\\" in path
         or ":" in path
-        or not _PATH_RE.fullmatch(path)
         or any(part in {"", ".", ".."} for part in candidate.parts)
-        or any(part.endswith((".", " ")) for part in candidate.parts)
+        or any(
+            len(part) > 255 or part != part.strip(" ") or part.endswith(".")
+            for part in candidate.parts
+        )
         or any(
             part.split(".", 1)[0].casefold() in _WINDOWS_DEVICE_NAMES
             for part in candidate.parts

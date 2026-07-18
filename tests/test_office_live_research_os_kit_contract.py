@@ -144,6 +144,20 @@ def test_manifest_roundtrip_is_sorted_complete_and_case_unique() -> None:
         )
 
 
+def test_manifest_accepts_standard_office_and_license_member_names() -> None:
+    entries = (
+        ManifestEntry(
+            "runtime/_internal/docx/templates/default-docx-template/[Content_Types].xml",
+            1,
+            "a" * 64,
+        ),
+        ManifestEntry("runtime/_internal/licenses/Third Party (BSD).txt", 2, "b" * 64),
+    )
+    assert parse_manifest(manifest_bytes(entries)) == tuple(
+        sorted(entries, key=lambda entry: entry.path)
+    )
+
+
 @pytest.mark.parametrize(
     "path",
     (
