@@ -197,7 +197,7 @@ def evaluate_result(result_without_evaluation: Mapping[str, object]) -> Benchmar
 def canonical_result_bytes(result: Mapping[str, object]) -> bytes: ...
 ```
 
-- [ ] **Step 1: Write exact fixture identity tests**
+- [x] **Step 1: Write exact fixture identity tests**
 
 Assert dimensions, column order/kinds, metadata, typed missingness, the fixed digest, all
 six role bindings, and feasibility floors. Repeated builds must produce identical
@@ -205,7 +205,7 @@ dataset/source-schema fingerprints and values. A row reorder, column reorder, me
 change, missing-mask change, NFC mutation, bool/int collision, float/date mutation, or
 source-layout change must alter the appropriate identity.
 
-- [ ] **Step 2: Write p95 and no-averaging tests**
+- [x] **Step 2: Write p95 and no-averaging tests**
 
 Use known 20- and 30-value sequences to prove the exact nearest-rank index. Reject too
 few, nonpositive, Boolean, float, missing, reordered-without-identity, or undeclared
@@ -213,7 +213,7 @@ samples. Construct a result where the pooled p95 passes while one profile fails 
 require overall failure. Construct cold-pass/warm-fail, identity-pass/decision-fail, and
 round-1-pass/round-2-fail cases; each must fail independently.
 
-- [ ] **Step 3: Write canonical result and privacy tests**
+- [x] **Step 3: Write canonical result and privacy tests**
 
 Require the closed top-level/nested field sets, canonical key order/number profile,
 `result_hash` recomputation, source/protocol/fixture digest binding, and sidecar bytes.
@@ -221,7 +221,7 @@ Reject NaN/Infinity, unknown fields, trusted stored `pass`, missing raw observat
 hostname, username, serials, MAC/IP, absolute paths, filenames, free text, user values,
 and a summary that does not reproduce the verified evaluation.
 
-- [ ] **Step 4: Run the tests and confirm failure**
+- [x] **Step 4: Run the tests and confirm failure**
 
 Run:
 
@@ -231,14 +231,14 @@ Run:
 
 Expected: FAIL because the benchmark contract is absent.
 
-- [ ] **Step 5: Implement the closed contract and fixture**
+- [x] **Step 5: Implement the closed contract and fixture**
 
 Use `time.perf_counter_ns()` only through an injected timer. Keep fixture generation
 outside timed spans. Recompute evaluation from raw samples and frozen thresholds every
 time; never accept a serialized evaluation as proof. Keep the 5,000,000-cell stress
 fixture under a separate explicit API and result section with no acceptance influence.
 
-- [ ] **Step 6: Run contract tests**
+- [x] **Step 6: Run contract tests**
 
 Run:
 
@@ -248,12 +248,32 @@ Run:
 
 Expected: all pass.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```powershell
 git add -- scripts/live_research_os_office_benchmark.py tests/test_live_research_os_office_benchmark_contract.py
 git commit -m "test: freeze live Research OS office benchmark"
 ```
+
+Execution evidence on 2026-07-18: the first focused run failed at collection because
+the benchmark contract module did not exist. After the first implementation, the RED
+set exposed the three deliberately unfrozen identity constants plus two defective test
+examples: one attempted to replace a cell that was already missing, and the pooling
+example slowed an entire profile so both the profile and pooled p95 failed. The examples
+were corrected without changing any gate. The 2,000,000-cell fixture was then frozen at
+dataset fingerprint
+`3b499392e8e1764359b43d45d9c965a4ae759bda89e1d2df0647c51158551c2d`, source-schema
+fingerprint
+`e3ff262b4a6829f3acdae909e2caeecd2910688e8e3d444a943b5a77c2079e60`, and fixture
+digest `f0a70250178dbf4a2a59795b72356d6c1dcaa1046e0ce4dada04885d5814602b`.
+The separate 5,000,000-cell stress fixture was frozen at digest
+`3dad9993f2e0114ec310436e3df6d02381ff696404a5947022c0cdbca14fdc82` and is proven
+unable to change acceptance. The focused contract file passed `46` tests; the contract
+plus fingerprint, handoff, and preflight regression cohort passed `202` tests. Ruff
+check/format, Bandit, source compilation, and `git diff --check`
+passed with cache disabled after the sandboxed formatter was unable to write this
+external dedicated worktree's cache. No threshold, repetition, fixture size, or stage
+boundary changed.
 
 ### Task B2: Exercise the real committed authority chain in cold and warm series
 
