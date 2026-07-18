@@ -221,7 +221,12 @@ def _relative_runtime_files(root: Path) -> tuple[tuple[str, Path], ...]:
             if not path.is_file():
                 raise KitBuildError("runtime contains a non-regular member")
             relative = path.relative_to(root).as_posix()
-            ManifestEntry(relative, path.stat().st_size, _sha256_file(path))
+            try:
+                ManifestEntry(relative, path.stat().st_size, _sha256_file(path))
+            except KitContractError as exc:
+                raise KitBuildError(
+                    f"runtime member path is invalid: {relative}"
+                ) from exc
             total += path.stat().st_size
             if total > _MAX_RUNTIME_BYTES:
                 raise KitBuildError("runtime exceeds its closed size limit")
