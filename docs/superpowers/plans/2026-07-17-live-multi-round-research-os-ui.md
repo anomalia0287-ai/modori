@@ -1959,7 +1959,7 @@ sheet and all 29 current-run images were inspected, and the Step 8 cohort passed
 - Modify: `tests/test_quality_gate_script.py`
 - Do not yet create: `docs/qa/live-research-os-p1-evidence.md`
 
-- [ ] **Step 1: Add the exact file-operation and package failure tests**
+- [x] **Step 1: Add the exact file-operation and package failure tests**
 
 Permit only the fixed application-owned ResearchTaskIndex operation and the already
 approved per-task ledger derivation. Reject an arbitrary caller path, directory-wide
@@ -1968,7 +1968,7 @@ loader, or network operation. Assert the packaged application includes the new r
 modules and QML but excludes gallery fixtures/scripts, review packets, ledger contents,
 user data, and `.visual-qa`.
 
-- [ ] **Step 2: Run the tests and confirm the audit is incomplete**
+- [x] **Step 2: Run the tests and confirm the audit is incomplete**
 
 Run:
 
@@ -1979,14 +1979,14 @@ Run:
 Expected: FAIL until the exact operation and package inventory are documented and
 handled.
 
-- [ ] **Step 3: Update only the narrow audit and package contracts**
+- [x] **Step 3: Update only the narrow audit and package contracts**
 
 Document the operation, fixed root, input provenance, path proof, reparse/remote checks,
 concurrency, failure mode, and retained lifecycle limitation. Do not add task deletion
 or claim secure erasure. Update package discovery only as required for the runtime QML
 and Python modules; do not weaken package-content assertions.
 
-- [ ] **Step 4: Run focused security and package checks**
+- [x] **Step 4: Run focused security and package checks**
 
 Run:
 
@@ -1996,7 +1996,7 @@ Run:
 
 Expected: all pass.
 
-- [ ] **Step 5: Commit the exact audit/package delta**
+- [x] **Step 5: Commit the exact audit/package delta**
 
 ```powershell
 git add -- docs/security/file-operations-audit-2026-06-29.md tests/test_file_operation_audit.py tests/test_package_public_data_smoke_script.py tests/test_package_windows_script.py tests/test_quality_gate_script.py
@@ -2005,7 +2005,7 @@ git commit -m "test: audit live Research OS file operations"
 
 Stage only files actually changed by this task.
 
-- [ ] **Step 6: Run frozen-inventory and adversarial gates at committed HEAD**
+- [x] **Step 6: Run frozen-inventory and adversarial gates at committed HEAD**
 
 Run:
 
@@ -2016,7 +2016,7 @@ Run:
 Expected: all pass with exact 6/67/15/0 inventory, no active-passport race, every poison
 point recovered, all mapping mutants killed, and no route state.
 
-- [ ] **Step 7: Run the complete local quality and packaged-launch gate**
+- [x] **Step 7: Run the complete local quality and packaged-launch gate**
 
 Do not spend GitHub Actions quota. Run locally:
 
@@ -2029,7 +2029,7 @@ package check/build, packaged launch/engine/public-data smokes, and slow statist
 all exit zero. Explain every skip, warning, resource increase, and package-content delta;
 do not dismiss or hide one.
 
-- [ ] **Step 8: Review the complete diff and stop at the local-evidence boundary**
+- [x] **Step 8: Review the complete diff and stop at the local-evidence boundary**
 
 Require a clean worktree, record the exact HEAD and local command outputs outside the
 product package, and compare every design stop condition. If an authority, mapping,
@@ -2037,6 +2037,55 @@ preflight, security, accessibility, packaging, or full-suite gate remains red af
 focused evidence-backed repair, disable the live Research OS surface rather than relax
 the contract. Do not create the P1 evidence document or claim completion yet: the
 separate target-HP plan below is mandatory.
+
+**Task 15 execution record (2026-07-18):**
+
+- The deliberate audit RED run failed exactly four new documentation/boundary tests;
+  the corrected focused security/package cohort then passed `65` tests. Commit
+  `d59a07f21d7dc822d561ef92ee0d52d61920935a` contains only the audit document
+  and its two enforcement test files.
+- The first `321`-test adversarial run passed `320` tests and rejected the visual
+  regression because its Windows state-render p95 was `254.262 ms` against the
+  frozen `250 ms` ceiling. No threshold changed. The isolated full-matrix rerun
+  passed at `231.270 ms`, and the exact `321`-test cohort then passed at
+  `242.472 ms` p95 with `31.014 ms` interaction p95. This transient overrun remains
+  disclosed rather than being erased from the evidence history.
+- The first complete quality command stopped at two Bandit B101 findings in shared
+  numeric input validation. A RED test proved both paths depended on removable
+  `assert` statements. Commit `03a2186adc723190b00c67dad0e9fe235affa598`
+  replaces them with explicit fail-closed runtime checks. The focused shared-input
+  and Research OS preflight cohort passed `122` tests and Bandit then returned zero.
+- At exact product HEAD `03a2186adc723190b00c67dad0e9fe235affa598`, the complete
+  quality command exited zero in `564.2 s`: compileall, Ruff, Bandit, launch smoke,
+  `3056 passed, 13 skipped`, dependency consistency, package-tool check, a real
+  PyInstaller Windows build, packaged launch/engine/public-data smokes, and the
+  separate slow-statistics gate (`4 passed, 3065 deselected`). The final complete
+  run's Windows gallery passed at `245.285 ms` state-render p95 and `30.845 ms`
+  interaction p95; its single-item maximum was `254.323 ms`, which the frozen p95
+  rule deliberately permits.
+- The `13` skips are fully classified: one paired-comparison module contract is
+  intentionally ineligible for automatic recommendation; four slow-statistics tests
+  are skipped in the ordinary suite and all four passed in the mandatory slow gate;
+  and eight optional R reference checks (one regression, one reliability, six
+  cross-engine cases) could not run because this host has no Rscript. They are not
+  counted as local numerical-validation passes.
+- PyInstaller emitted two warnings. The absent Qt Labs asset-downloader DLL belongs
+  to an unused optional QML module that no Modori source imports; all required Modori
+  QML loaded and packaged launch passed. `scipy.special._cdflib` is absent from the
+  pinned SciPy `1.18.0` environment itself; the packaged engine nevertheless executed
+  all `22` frozen V1 statistical smoke paths with zero failures. The generated module
+  warning inventory otherwise consists of conditional, platform-specific, or optional
+  imports. Its two Modori-named entries, `preflight_mapped_step` and `PreflightResult`,
+  are package-exported attributes that the scanner misclassified as submodules; the
+  actual `modori.research_flow.preflight` module is present. The Analysis/PYZ tables
+  contain the complete `modori.research_flow`, `modori.research_memory`,
+  `modori.research_os`, and UI-controller runtime closure.
+- The built directory contains `4,494` files and `625,429,001` bytes (`596.456 MiB`),
+  versus the earlier approximate `4,376`-file / `595.5 MiB` baseline: `+118` files
+  and about `+0.956 MiB`. The three required Research OS QML components are present;
+  gallery fixtures/scripts, review packets, `.visual-qa`, and user ledger/index names
+  have zero package matches. The worktree was clean after all local gates. No P1
+  release-evidence document was created; target-HP evidence remains mandatory.
 
 ---
 
