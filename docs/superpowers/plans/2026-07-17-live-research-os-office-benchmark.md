@@ -415,8 +415,12 @@ gate, or timing boundary changed.
 - Create: `scripts/office_live_research_os_kit/RUN-MODORI-LIVE-RESEARCH-OS-BENCHMARK.cmd.in`
 - Create: `scripts/office_live_research_os_kit/VERIFY-AND-RUN.ps1.in`
 - Create: `scripts/office_live_research_os_kit/README-KO.txt`
+- Create: `scripts/office_live_research_os_kit/PACKAGE-LOCK.json`
+- Create: `scripts/office_live_research_os_kit/hooks/hook-scipy.special._ufuncs.py`
+- Create: `scripts/office_live_research_os_kit/hooks/hook-sklearn.py`
 - Create: `tests/test_office_live_research_os_kit_contract.py`
 - Create: `tests/test_office_live_research_os_kit_builder.py`
+- Modify: `scripts/run_office_live_research_os_benchmark.py`
 - Modify: `tests/test_package_environment.py`
 
 **Kit name:**
@@ -427,7 +431,7 @@ The ZIP contains one identically named root directory. It is written only under
 `dist/live-research-os-office/`, so prior benchmark artifacts are neither deleted nor
 relabeled.
 
-- [ ] **Step 1: Write the closed identity and manifest tests**
+- [x] **Step 1: Write the closed identity and manifest tests**
 
 `KIT-IDENTITY.json` must bind schema/version, full source commit, protocol and fixture
 digests, Python/SQLite/PySide versions, PyInstaller version/bootloader digest, package-
@@ -438,7 +442,7 @@ identity fields, noncanonical bytes, duplicate/case-colliding/absolute/traversal
 paths, backslashes, links/reparse points, devices, extra/missing files, and unsupported
 versions.
 
-- [ ] **Step 2: Write the bootstrap-chain and PowerShell 5.1 tests**
+- [x] **Step 2: Write the bootstrap-chain and PowerShell 5.1 tests**
 
 The CMD template contains and verifies the exact PowerShell bootstrap digest before
 launch. PowerShell contains and verifies the exact manifest and identity digests before
@@ -447,7 +451,7 @@ DLLs, Python modules, Qt runtime, and payload. Outer ZIP digest covers the CMD i
 Require literal argument arrays, no download/network/elevation/registry/service/power-
 plan change, no encoded command, no wildcard execution, and no arbitrary executable.
 
-- [ ] **Step 3: Write dedicated-runtime closure tests**
+- [x] **Step 3: Write dedicated-runtime closure tests**
 
 Build a PyInstaller **one-folder console** executable whose entry point is only
 `run_office_live_research_os_benchmark.py`. Assert it imports the exact committed
@@ -456,7 +460,7 @@ no source-worktree module at runtime. It must self-report source/protocol/runtim
 identity and fail if these differ from `KIT-IDENTITY.json`. The shipping `Modori.exe`
 gains no benchmark switch, and the shipping package gains no benchmark fixture or CLI.
 
-- [ ] **Step 4: Run the tests and confirm failure**
+- [x] **Step 4: Run the tests and confirm failure**
 
 Run:
 
@@ -466,7 +470,7 @@ Run:
 
 Expected: FAIL because the separate kit contract/builder is absent.
 
-- [ ] **Step 5: Implement a clean-HEAD builder**
+- [x] **Step 5: Implement a clean-HEAD builder**
 
 The builder refuses a dirty worktree, detached/mismatched source commit, missing lock,
 unsupported runtime, unexpected PyInstaller warning, or output outside the dedicated
@@ -481,7 +485,7 @@ Pass explicit `--workpath`, `--distpath`, and `--specpath` under the exact
 another kit. The selected outer artifact alone is copied to
 `dist/live-research-os-office/`.
 
-- [ ] **Step 6: Run builder and package-separation tests**
+- [x] **Step 6: Run builder and package-separation tests**
 
 Run:
 
@@ -492,12 +496,47 @@ Run:
 Expected: all pass without changing the production package inventory beyond product
 files already authorized by the core plan.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```powershell
 git add -- scripts/live_research_os_office_kit.py scripts/build_office_live_research_os_kit.py scripts/office_live_research_os_kit/RUN-MODORI-LIVE-RESEARCH-OS-BENCHMARK.cmd.in scripts/office_live_research_os_kit/VERIFY-AND-RUN.ps1.in scripts/office_live_research_os_kit/README-KO.txt tests/test_office_live_research_os_kit_contract.py tests/test_office_live_research_os_kit_builder.py tests/test_package_environment.py
 git commit -m "build: seal live Research OS office kit"
 ```
+
+Execution evidence on 2026-07-18: the first focused run failed at collection because
+the kit contract and builder did not exist. TDD then closed canonical identity,
+manifest, package-lock, bootstrap-chain, member-name, clean-HEAD, output-containment,
+and fixed-runtime contracts. The 45-entry package lock binds Python `3.12.10`, SQLite
+`3.49.1`, PySide `6.11.1`, NumPy `2.5.0`, pandas `3.0.3`, PyInstaller `6.21.0`, and all
+other installed build/runtime distributions exactly.
+
+Four real packaging defects were found rather than suppressed. The upstream SciPy hook
+still requested the removed SciPy 1.18 `_cdflib` extension; a version-bounded local
+hook removed only that stale import. The member-name contract originally rejected the
+safe OOXML `[Content_Types].xml` name and was corrected without permitting Windows
+forbidden characters. A long PyInstaller staging path caused Windows to reject
+`_smoothers_lowess.pyd`; the internal build root/name were shortened while a
+230-character extracted-kit preflight remained fixed. Finally, the upstream
+scikit-learn hook collected its entire non-Python tree, including OpenML test fixtures,
+C/C++/Cython sources, and linker `.lib` files. A tested local hook now excludes only
+`tests`/`src` and a closed source-only suffix set while retaining real dataset files and
+runtime DLLs.
+
+The sealed B3 integration artifact was built from clean HEAD
+`6f3d331fc6468a6e7057e719ae7de3df2fd29582` as
+`modori-live-research-os-office-kit-6f3d331fc646-py31210.zip`, size `138,384,311`
+bytes, SHA-256
+`a9a9cda3abf71e031c1d34bf710f8984473bfe9a5495d105d80c1829a28ad9d4`.
+The builder successfully launched the frozen executable and matched its embedded
+identity before sealing. Independent ZIP inspection found `1,613` sorted entries,
+`1,413` manifest entries, clean CRC, no duplicates or case collisions, no `.py`/`.pyc`,
+no test paths, and no excluded source/build suffixes. The remaining `src` path strings
+are all NumPy third-party license paths, not executable source or worktree material.
+The builder/package cohort passed `71` tests and the protocol/runner/kit-contract cohort
+passed `113` tests. Ruff format/check, Bandit, PowerShell 5.1 AST parsing, and
+`git diff --check` passed. This artifact proves B3 integration only; B4 must rebuild
+and attack a later final clean HEAD before any HP handoff. No threshold, repetition
+count, fixture identity, acceptance gate, or timing boundary changed.
 
 ### Task B4: Independently verify, attack, and locally smoke the final kit
 
