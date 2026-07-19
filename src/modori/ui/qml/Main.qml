@@ -73,16 +73,8 @@ ApplicationWindow {
             }
         }
 
-        onGuidedRequested: {
-            if (uiController.chooseMode("guided")) {
-                root.currentScreen = "work"
-            }
-        }
-        onStandardRequested: {
-            if (uiController.chooseMode("standard")) {
-                root.currentScreen = "work"
-            }
-        }
+        onGuidedRequested: uiController.chooseMode("guided")
+        onStandardRequested: uiController.chooseMode("standard")
         onOpenDataRequested: dataFileDialog.open()
         onSettingsRequested: settingsDialog.open()
         onRecentFileRequested: {

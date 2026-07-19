@@ -53,14 +53,23 @@ def test_entry_recent_files_are_clickable_and_open_existing_sessions() -> None:
     assert 'root.currentScreen = "work"' in main
 
 
-def test_entry_mode_buttons_transition_to_work_screen_when_mode_is_selected() -> None:
+def test_entry_mode_buttons_select_mode_without_entering_work_screen() -> None:
     main = qml_text("Main.qml")
 
-    assert "onGuidedRequested: {" in main
-    assert 'uiController.chooseMode("guided")' in main
+    guided_handler = main[
+        main.index("onGuidedRequested:") : main.index("onStandardRequested:")
+    ]
+    standard_handler = main[
+        main.index("onStandardRequested:") : main.index("onOpenDataRequested:")
+    ]
+
+    assert 'uiController.chooseMode("guided")' in guided_handler
+    assert 'root.currentScreen = "work"' not in guided_handler
+    assert 'uiController.chooseMode("standard")' in standard_handler
+    assert 'root.currentScreen = "work"' not in standard_handler
+    assert "onOpenDataRequested: dataFileDialog.open()" in main
+    assert "uiController.confirmPendingImport" in main
     assert 'root.currentScreen = "work"' in main
-    assert "onStandardRequested: {" in main
-    assert 'uiController.chooseMode("standard")' in main
 
 
 def test_work_qml_wires_rerun_results_explain_and_report() -> None:

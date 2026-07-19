@@ -43,6 +43,7 @@ Item {
 
         RowLayout {
             Layout.fillWidth: true
+            Layout.topMargin: theme.spaceSm
             spacing: theme.spaceSm
 
             AppTextField {
