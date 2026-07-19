@@ -199,7 +199,7 @@ Dialog {
         Label {
             text: uiController.reportPath
             visible: uiController.reportPath.length > 0
-            color: theme.bronzeDeep
+            color: theme.workspaceBrand
             wrapMode: Text.WordWrap
             Layout.fillWidth: true
         }

@@ -21,35 +21,36 @@ def theme_literal_colors() -> dict[str, str]:
     }
 
 
-def test_shared_darker_neutral_is_thirty_percent_farther_from_canvas() -> None:
+def test_shared_workspace_surfaces_alias_the_approved_entry_palette() -> None:
     colors = theme_literal_colors()
+    source = THEME_PATH.read_text(encoding="utf-8")
 
-    assert colors["canvasCream"] == "#FEFDFC"
-    assert colors["surfaceRaised"] == "#FAF8F5"
-    assert colors["surfaceQuiet"] == "#FAF8F5"
-    assert colors["gridColumnHeaderSurface"] == "#FAF8F5"
-    assert colors["gridRowHeaderSurface"] == "#FAF8F5"
+    assert colors["entryCanvas"] == "#F7F3EA"
+    assert colors["entryCard"] == "#FFFDF8"
+    assert "readonly property color canvasCream: workspaceCanvas" in source
+    assert "readonly property color surfaceCream: workspaceCard" in source
+    assert "readonly property color surfaceRaised: workspaceCanvas" in source
+    assert "readonly property color surfaceQuiet: workspaceCanvas" in source
+    assert "readonly property color gridColumnHeaderSurface: workspaceCanvas" in source
+    assert "readonly property color gridRowHeaderSurface: workspaceCanvas" in source
 
 
-def test_theme_uses_bronze_for_interaction_and_removes_teal_roles() -> None:
-    colors = theme_literal_colors()
+def test_theme_uses_royal_blue_for_interaction_and_keeps_compatibility_aliases() -> None:
+    source = THEME_PATH.read_text(encoding="utf-8")
 
-    for role in (
-        "bronzeDeep",
-        "bronzeHover",
-        "bronzeAction",
-        "bronzeFocus",
-        "bronzeWash",
-        "glassListSurface",
-        "glassListHoverSurface",
-        "footerGlassTop",
-        "footerGlassMiddle",
-        "footerGlassBottom",
+    for declaration in (
+        "readonly property color bronzeDeep: workspaceBrand",
+        "readonly property color bronzeHover: workspacePrimaryHover",
+        "readonly property color bronzeAction: workspacePrimary",
+        "readonly property color bronzeFocus: workspaceFocus",
+        "readonly property color bronzeWash: workspaceSelected",
+        "readonly property color glassListSurface: workspaceCard",
+        "readonly property color glassListHoverSurface: workspaceHover",
     ):
-        assert role in colors
+        assert declaration in source
 
     for role in ("deepTeal", "brandTeal", "actionTeal", "aqua"):
-        assert role not in colors
+        assert f"readonly property color {role}:" not in source
 
 
 def test_non_theme_qml_has_no_legacy_teal_role_references() -> None:
@@ -119,7 +120,7 @@ def test_alternate_candidates_are_distinct_glass_rows() -> None:
 def test_results_panel_uses_one_panel_plane() -> None:
     results = qml_text("components/ResultsPanel.qml")
 
-    assert "fillColor: theme.surfaceCream" in results[:500]
+    assert "fillColor: theme.workspaceCard" in results[:500]
     assert re.search(r'Item\s*\{\s*objectName: "resultsReportPreview"', results)
     assert not re.search(
         r'PearlSurface\s*\{\s*objectName: "resultsReportPreview"',
@@ -127,13 +128,15 @@ def test_results_panel_uses_one_panel_plane() -> None:
     )
 
 
-def test_pipeline_is_a_full_width_neutral_aurora_footer() -> None:
+def test_pipeline_is_a_full_width_ivory_footer_with_royal_blue_emphasis() -> None:
     pipeline = qml_text("components/PipelineRail.qml")
     work = qml_text("screens/WorkScreen.qml")
 
-    assert re.match(r"(?:import[^\n]*\n)+\n?AuroraGlassSurface\s*\{", pipeline)
-    assert 'surfaceTreatment: "footer"' in pipeline
-    assert "tiffanyBloomEnabled: false" in pipeline
+    assert re.match(r"(?:import[^\n]*\n)+\n?PearlSurface\s*\{", pipeline)
+    assert "fillColor: theme.workspaceCard" in pipeline
+    assert 'objectName: "workspacePipelineTopDivider"' in pipeline
+    assert "color: theme.workspacePrimary" in pipeline
+    assert "AuroraGlassSurface" not in pipeline
     assert "radius: theme.spaceNone" in pipeline
     assert "id: mainWorkspace" in work
     assert "Layout.margins: theme.workOuterMargin" in work

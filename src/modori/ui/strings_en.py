@@ -84,7 +84,7 @@ UI_STRINGS_EN = {
     "guide.form_unavailable": "This candidate cannot yet be configured in the guided view. Choose a supported analysis from manual selection.",
     "guide.manual_selection": "Manual selection",
     "guide.no_recommendation": "No analysis candidate to review",
-    "guide.other_recommendations": "View other experimental candidates",
+    "guide.other_recommendations": "Other experimental candidates",
     "guide.outcome_accessible": "Outcome variable",
     "guide.outcome_placeholder": "Outcome variable",
     "guide.predictors_accessible": "Predictor variables",

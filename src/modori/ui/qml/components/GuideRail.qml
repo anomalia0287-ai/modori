@@ -535,7 +535,7 @@ PearlSurface {
         Label {
             text: appBootstrap.text("guide.title", appBootstrap.language)
             font.bold: true
-            color: theme.bronzeDeep
+            color: theme.workspaceBrand
             Layout.fillWidth: true
         }
 
@@ -663,7 +663,7 @@ PearlSurface {
                 visible: uiController.recommendationTitle.length > 0
                 Layout.fillWidth: true
                 Layout.preferredHeight: candidateContent.implicitHeight + theme.spaceContent * 2
-                fillColor: theme.surfaceCream
+                fillColor: theme.workspaceCard
 
                 ColumnLayout {
                     id: candidateContent
@@ -674,7 +674,7 @@ PearlSurface {
                     Label {
                         text: appBootstrap.text("guide.default_recommendation", appBootstrap.language)
                         font.bold: true
-                        color: theme.bronzeDeep
+                        color: theme.workspaceBrand
                         Layout.fillWidth: true
                     }
 

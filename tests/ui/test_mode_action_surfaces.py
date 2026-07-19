@@ -141,13 +141,13 @@ def test_pipeline_shows_only_selected_direct_analysis_form() -> None:
     assert 'appBootstrap.text("pipeline.run", appBootstrap.language)' in rail
 
 
-def test_work_tabs_use_cream_surfaces_with_rose_bronze_selection() -> None:
+def test_work_tabs_use_ivory_surfaces_with_royal_blue_selection() -> None:
     work = qml_text("screens/WorkScreen.qml")
 
     assert work.count("background: Rectangle") >= 3
-    assert "theme.surfaceCream" in work
-    assert "theme.surfaceRaised" in work
-    assert "theme.lineStrong" in work
+    assert "theme.workspaceCard" in work
+    assert "theme.workspaceSelected" in work
+    assert "theme.workspacePrimary" in work
     assert "theme.actionTeal" not in work
 
 
@@ -188,7 +188,8 @@ def test_final_mode_entry_loading_and_footer_copy_contract() -> None:
     assert UI_STRINGS_KO["loading.calculating"] == "로딩 중"
     assert entry.count("EntryModeCard {") == 2
     assert "model: uiController.recentFilesModel" in entry
-    assert 'variant: "glassStrong"' in pipeline
+    run_action = pipeline[pipeline.index("text: uiController.resultSummary.length > 0") :]
+    assert 'variant: "primary"' in run_action[:500]
 
 
 def test_report_language_names_are_localized_for_korean_ui() -> None:

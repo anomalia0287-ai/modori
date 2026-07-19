@@ -13,8 +13,8 @@ SpinBox {
         z: 2
         text: control.textFromValue(control.value, control.locale)
         color: control.enabled ? theme.textControl : theme.textMuted
-        selectionColor: theme.bronzeAction
-        selectedTextColor: theme.onBrand
+        selectionColor: theme.workspacePrimary
+        selectedTextColor: theme.workspaceOnPrimary
         font: control.font
         horizontalAlignment: Qt.AlignLeft
         verticalAlignment: Qt.AlignVCenter
@@ -30,8 +30,8 @@ SpinBox {
         y: theme.spaceNone
         implicitWidth: theme.spinIndicatorWidth
         implicitHeight: Math.ceil(control.height / 2)
-        color: control.up.pressed ? theme.selectionSurface : theme.transparent
-        border.color: theme.lineSubtle
+        color: control.up.pressed ? theme.workspaceSelected : theme.transparent
+        border.color: theme.workspaceDivider
         border.width: theme.borderWidth
 
         Image {
@@ -49,8 +49,8 @@ SpinBox {
         y: Math.floor(control.height / 2)
         implicitWidth: theme.spinIndicatorWidth
         implicitHeight: Math.ceil(control.height / 2)
-        color: control.down.pressed ? theme.selectionSurface : theme.transparent
-        border.color: theme.lineSubtle
+        color: control.down.pressed ? theme.workspaceSelected : theme.transparent
+        border.color: theme.workspaceDivider
         border.width: theme.borderWidth
 
         Image {
@@ -65,8 +65,8 @@ SpinBox {
 
     background: Rectangle {
         radius: theme.radiusSmall
-        color: control.enabled ? theme.surfaceCream : theme.surfaceQuiet
-        border.color: control.activeFocus ? theme.focusRing : theme.lineSubtle
+        color: control.enabled ? theme.workspaceCard : theme.surfaceQuiet
+        border.color: control.activeFocus ? theme.workspaceFocus : theme.workspaceDivider
         border.width: control.activeFocus ? theme.borderWidthFocus : theme.borderWidth
     }
 

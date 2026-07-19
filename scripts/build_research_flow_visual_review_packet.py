@@ -86,13 +86,34 @@ def passes_contrast(ratio: float, threshold: float) -> bool:
 
 
 def _theme_color_expressions(theme_path: Path) -> dict[str, str]:
-    pattern = re.compile(
-        r"^\s*readonly property color (\w+):\s*(.+?)\s*$", re.MULTILINE
+    declaration = re.compile(r"^\s*readonly property color (\w+):\s*(.*?)\s*$")
+    lines = theme_path.read_text(encoding="utf-8").splitlines()
+    expressions: dict[str, str] = {}
+    index = 0
+    while index < len(lines):
+        match = declaration.match(lines[index])
+        if match is None:
+            index += 1
+            continue
+        name, expression = match.groups()
+        parenthesis_depth = expression.count("(") - expression.count(")")
+        while parenthesis_depth > 0 and index + 1 < len(lines):
+            index += 1
+            continuation = lines[index].strip()
+            expression = f"{expression} {continuation}"
+            parenthesis_depth += continuation.count("(") - continuation.count(")")
+        expressions[name] = " ".join(expression.split())
+        index += 1
+    return expressions
+
+
+def _format_rgba(color: tuple[float, float, float, float]) -> str:
+    channels = tuple(
+        max(0, min(255, int(channel * 255.0 + 0.5))) for channel in color
     )
-    return {
-        name: expression
-        for name, expression in pattern.findall(theme_path.read_text(encoding="utf-8"))
-    }
+    red, green, blue, alpha = channels
+    suffix = f"{alpha:02X}" if alpha < 255 else ""
+    return f"#{red:02X}{green:02X}{blue:02X}{suffix}"
 
 
 def _resolve_theme_color(
@@ -114,7 +135,35 @@ def _resolve_theme_color(
     alias = re.fullmatch(r"[A-Za-z_]\w*", expression)
     if alias:
         return _resolve_theme_color(alias.group(0), expressions, stack=(*stack, name))
-    raise ReviewPacketError(f"theme token {name} is not a closed literal or alias")
+    rgba = re.fullmatch(
+        r"Qt\.rgba\(\s*([A-Za-z_]\w*)\.r\s*,\s*\1\.g\s*,\s*\1\.b\s*,"
+        r"\s*(0(?:\.\d+)?|1(?:\.0+)?)\s*\)",
+        expression,
+    )
+    if rgba:
+        base_name, alpha_text = rgba.groups()
+        base = _parse_hex(
+            _resolve_theme_color(base_name, expressions, stack=(*stack, name))
+        )
+        return _format_rgba((base[0], base[1], base[2], float(alpha_text)))
+    transform = re.fullmatch(
+        r"Qt\.(lighter|darker)\(\s*([A-Za-z_]\w*)\s*,\s*(\d+(?:\.\d+)?)\s*\)",
+        expression,
+    )
+    if transform:
+        from PySide6.QtGui import QColor
+
+        operation, base_name, factor_text = transform.groups()
+        base = _parse_hex(
+            _resolve_theme_color(base_name, expressions, stack=(*stack, name))
+        )
+        color = QColor.fromRgbF(*base)
+        factor = int(float(factor_text) * 100.0 + 0.5)
+        transformed = getattr(color, operation)(factor)
+        return _format_rgba(transformed.getRgbF())
+    raise ReviewPacketError(
+        f"theme token {name} is not a closed literal, alias, or supported Qt color expression"
+    )
 
 
 def evaluate_contrast_pairs(
@@ -131,7 +180,27 @@ def evaluate_contrast_pairs(
         foreground_token = str(raw["foreground_token"])
         background_token = str(raw["background_token"])
         foreground = _resolve_theme_color(foreground_token, expressions)
-        background = _resolve_theme_color(background_token, expressions)
+        background_source = _resolve_theme_color(background_token, expressions)
+        background = background_source
+        background_underlay_token: str | None = None
+        background_underlay: str | None = None
+        if _parse_hex(background_source)[3] < 1.0:
+            raw_underlay_token = raw.get("background_underlay_token")
+            if not isinstance(raw_underlay_token, str) or not raw_underlay_token:
+                raise ReviewPacketError(
+                    f"translucent contrast background {background_token} "
+                    "requires an opaque underlay token"
+                )
+            background_underlay_token = raw_underlay_token
+            background_underlay = _resolve_theme_color(
+                background_underlay_token, expressions
+            )
+            background = _format_rgba(
+                composite_rgba(
+                    _parse_hex(background_source),
+                    _parse_hex(background_underlay),
+                )
+            )
         ratio = contrast_ratio(foreground, background)
         threshold = float(raw["threshold"])
         results.append(
@@ -141,6 +210,9 @@ def evaluate_contrast_pairs(
                 "background_token": background_token,
                 "foreground": foreground,
                 "background": background,
+                "background_source": background_source,
+                "background_underlay_token": background_underlay_token,
+                "background_underlay": background_underlay,
                 "semantic_role": raw["semantic_role"],
                 "threshold": threshold,
                 "ratio": ratio,

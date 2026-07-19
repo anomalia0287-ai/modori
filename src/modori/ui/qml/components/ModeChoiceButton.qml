@@ -22,7 +22,11 @@ Button {
 
     contentItem: Text {
         text: control.text
-        color: control.enabled ? theme.textStrong : theme.textMuted
+        color: control.enabled
+            ? control.selected || control.activeFocus
+                ? theme.workspacePrimary
+                : theme.textStrong
+            : theme.textMuted
         font: control.font
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
@@ -30,7 +34,10 @@ Button {
     }
 
     background: Rectangle {
-        color: theme.modeChoiceSurface
+        color: control.selected ? theme.workspaceSelected
+            : control.hovered || control.down || control.activeFocus
+                ? theme.workspaceHover
+                : theme.workspaceCard
         radius: theme.radiusSmall
         border.width: theme.spaceNone
 
@@ -41,7 +48,7 @@ Button {
             anchors.leftMargin: theme.spaceSm
             anchors.rightMargin: theme.spaceSm
             height: theme.borderWidthFocus
-            color: theme.lineStrong
+            color: theme.workspacePrimary
             visible: control.selected || control.hovered || control.activeFocus
         }
     }

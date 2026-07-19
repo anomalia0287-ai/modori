@@ -37,14 +37,53 @@ QtObject {
         entryCard.b,
         0.76
     )
-    readonly property color canvasCream: "#FEFDFC"
-    readonly property color surfaceCream: "#FEFDFC"
-    readonly property color surfaceRaised: "#FAF8F5"
-    readonly property color surfaceQuiet: "#FAF8F5"
-    readonly property color pearlIce: "#FCFDFE"
-    readonly property color pearlRose: "#FFFCFB"
-    readonly property color pearlLilac: "#FEFCFF"
-    readonly property color brandWordmark: "#171717"
+    readonly property color workspaceBrand: entryBrand
+    readonly property color workspaceCanvas: entryCanvas
+    readonly property color workspaceCard: entryCard
+    readonly property color workspacePrimary: entryPrimary
+    readonly property color workspaceText: entryText
+    readonly property color workspaceSelected: Qt.rgba(
+        workspacePrimary.r,
+        workspacePrimary.g,
+        workspacePrimary.b,
+        0.10
+    )
+    readonly property color workspaceHover: Qt.rgba(
+        workspacePrimary.r,
+        workspacePrimary.g,
+        workspacePrimary.b,
+        0.06
+    )
+    readonly property color workspaceDivider: Qt.rgba(
+        workspaceText.r,
+        workspaceText.g,
+        workspaceText.b,
+        0.14
+    )
+    readonly property color workspaceDividerStrong: Qt.rgba(
+        workspaceText.r,
+        workspaceText.g,
+        workspaceText.b,
+        0.28
+    )
+    readonly property color workspaceTextMuted: Qt.rgba(
+        workspaceText.r,
+        workspaceText.g,
+        workspaceText.b,
+        0.66
+    )
+    readonly property color workspacePrimaryHover: Qt.lighter(workspacePrimary, 1.08)
+    readonly property color workspacePrimaryPressed: Qt.darker(workspacePrimary, 1.18)
+    readonly property color workspaceFocus: workspacePrimary
+    readonly property color workspaceOnPrimary: workspaceCard
+    readonly property color canvasCream: workspaceCanvas
+    readonly property color surfaceCream: workspaceCard
+    readonly property color surfaceRaised: workspaceCanvas
+    readonly property color surfaceQuiet: workspaceCanvas
+    readonly property color pearlIce: workspaceCard
+    readonly property color pearlRose: workspaceCard
+    readonly property color pearlLilac: workspaceSelected
+    readonly property color brandWordmark: workspaceBrand
     readonly property color auroraGlassTop: "#AACFD3"
     readonly property color auroraGlassMiddle: "#D5E1E1"
     readonly property color auroraGlassBottom: "#E8D7DC"
@@ -65,54 +104,54 @@ QtObject {
     readonly property color footerGlassTop: "#C4D2D2"
     readonly property color footerGlassMiddle: "#D6D4D2"
     readonly property color footerGlassBottom: "#D8C5C5"
-    readonly property color glassListSurface: "#F8F2EF"
-    readonly property color glassListHoverSurface: "#F1E4DE"
-    readonly property color glassListSheen: "#FFFCFA"
-    readonly property color modeChoiceSurface: bronzeWash
-    readonly property color gridCellHoverSurface: "#FCF5F2"
-    readonly property color scrollRailSurface: "#EEEAE6"
-    readonly property color scrollThumbSurface: "#8C8580"
-    readonly property color scrollThumbActiveSurface: "#7B4F3F"
-    readonly property color bronzeDeep: "#684437"
-    readonly property color bronzeHover: "#7B4F3F"
-    readonly property color bronzeAction: "#8D5B48"
-    readonly property color bronzeFocus: "#8D5B48"
-    readonly property color bronzeWash: "#F2E7E2"
-    readonly property color focusRing: bronzeFocus
-    readonly property color semanticGlow: "#B9856E"
+    readonly property color glassListSurface: workspaceCard
+    readonly property color glassListHoverSurface: workspaceHover
+    readonly property color glassListSheen: workspaceCard
+    readonly property color modeChoiceSurface: workspaceCard
+    readonly property color gridCellHoverSurface: workspaceHover
+    readonly property color scrollRailSurface: workspaceDivider
+    readonly property color scrollThumbSurface: workspaceTextMuted
+    readonly property color scrollThumbActiveSurface: workspacePrimary
+    readonly property color bronzeDeep: workspaceBrand
+    readonly property color bronzeHover: workspacePrimaryHover
+    readonly property color bronzeAction: workspacePrimary
+    readonly property color bronzeFocus: workspaceFocus
+    readonly property color bronzeWash: workspaceSelected
+    readonly property color focusRing: workspaceFocus
+    readonly property color semanticGlow: workspacePrimary
     readonly property color transparent: "transparent"
 
     readonly property color gold: "#B98B3E"
     readonly property color orange: "#B87743"
     readonly property color transformAccent: "#A96F78"
-    readonly property color porcelainBackground: canvasCream
-    readonly property color guideSurface: surfaceQuiet
-    readonly property color subtleSurface: surfaceQuiet
-    readonly property color quietSurface: surfaceRaised
-    readonly property color popoverSurface: surfaceCream
-    readonly property color paperSurface: surfaceCream
-    readonly property color surface: surfaceCream
-    readonly property color gridColumnHeaderSurface: "#FAF8F5"
-    readonly property color gridRowHeaderSurface: "#FAF8F5"
-    readonly property color gridHeaderText: "#403633"
-    readonly property color flatBackground: canvasCream
-    readonly property color lineSubtle: "#D7B9AA"
-    readonly property color lineStrong: "#B9856E"
-    readonly property color lineGrid: "#D8D4D0"
-    readonly property color lineRail: "#D7B9AA"
-    readonly property color lineDialog: "#D7B9AA"
-    readonly property color linePopover: "#B9856E"
-    readonly property color textStrong: "#2E2927"
-    readonly property color textBody: "#514A47"
-    readonly property color textControl: "#3D3734"
-    readonly property color textTable: "#24201E"
-    readonly property color textSecondary: "#675F5B"
-    readonly property color textLevel: "#6B5C55"
-    readonly property color textMuted: "#766F6B"
-    readonly property color textSoft: "#928A85"
-    readonly property color onBrand: "#FFFFFF"
+    readonly property color porcelainBackground: workspaceCanvas
+    readonly property color guideSurface: workspaceCard
+    readonly property color subtleSurface: workspaceCanvas
+    readonly property color quietSurface: workspaceCanvas
+    readonly property color popoverSurface: workspaceCard
+    readonly property color paperSurface: workspaceCard
+    readonly property color surface: workspaceCard
+    readonly property color gridColumnHeaderSurface: workspaceCanvas
+    readonly property color gridRowHeaderSurface: workspaceCanvas
+    readonly property color gridHeaderText: workspaceText
+    readonly property color flatBackground: workspaceCanvas
+    readonly property color lineSubtle: workspaceDivider
+    readonly property color lineStrong: workspaceDividerStrong
+    readonly property color lineGrid: workspaceDivider
+    readonly property color lineRail: workspaceDivider
+    readonly property color lineDialog: workspaceDivider
+    readonly property color linePopover: workspacePrimary
+    readonly property color textStrong: workspaceText
+    readonly property color textBody: Qt.rgba(workspaceText.r, workspaceText.g, workspaceText.b, 0.82)
+    readonly property color textControl: Qt.rgba(workspaceText.r, workspaceText.g, workspaceText.b, 0.90)
+    readonly property color textTable: workspaceText
+    readonly property color textSecondary: Qt.rgba(workspaceText.r, workspaceText.g, workspaceText.b, 0.72)
+    readonly property color textLevel: Qt.rgba(workspaceText.r, workspaceText.g, workspaceText.b, 0.76)
+    readonly property color textMuted: workspaceTextMuted
+    readonly property color textSoft: Qt.rgba(workspaceText.r, workspaceText.g, workspaceText.b, 0.52)
+    readonly property color onBrand: workspaceOnPrimary
     readonly property color onBrandDanger: "#FFE6E6"
-    readonly property color selectionSurface: "#F2E7E2"
+    readonly property color selectionSurface: workspaceSelected
     readonly property color warning: "#865F1B"
     readonly property color warningSurface: "#F5E8C8"
     readonly property color danger: "#A33D4B"
@@ -186,6 +225,7 @@ QtObject {
     readonly property int pipelineCompactHeight: 68
     readonly property int resultsPanelPreferredWidth: 420
     readonly property int guideRailPreferredWidth: 260
+    readonly property int guideRailEnglishPreferredWidth: 300
     readonly property int guideRailMinimumWidth: 220
     readonly property int guideRailMaximumWidth: 360
     readonly property int dialogViewportMargin: 48

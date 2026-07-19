@@ -21,8 +21,8 @@ Item {
 
     PearlSurface {
         anchors.fill: parent
-        fillColor: theme.canvasCream
-        ambient: true
+        fillColor: theme.workspaceCanvas
+        ambient: false
         reduceEffects: root.reduceEffects
         radius: theme.spaceNone
         border.width: theme.spaceNone
@@ -32,10 +32,11 @@ Item {
         anchors.fill: parent
         spacing: theme.spaceNone
 
-        AuroraGlassSurface {
+        PearlSurface {
+            objectName: "workspaceCommandSurface"
+            fillColor: theme.workspaceCard
+            ambient: false
             reduceEffects: root.reduceEffects
-            tiffanyBloomEnabled: true
-            bottomAnchorVisible: true
             radius: theme.spaceNone
             Layout.fillWidth: true
             Layout.preferredHeight: theme.commandSurfaceHeight
@@ -48,6 +49,7 @@ Item {
 
                 BrandWordmark {
                     text: appBootstrap.text("app.title", appBootstrap.language)
+                    foregroundColor: theme.workspaceBrand
                     font.pixelSize: theme.workWordmarkSize
                     Layout.rightMargin: theme.workWordmarkCommandGap
                 }
@@ -122,6 +124,15 @@ Item {
                     onClicked: root.settingsRequested()
                 }
             }
+
+            Rectangle {
+                objectName: "workspaceCommandDivider"
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                height: theme.borderWidth
+                color: theme.workspaceDivider
+            }
         }
 
         ColumnLayout {
@@ -144,21 +155,26 @@ Item {
                         anchors.centerIn: parent
                         width: theme.borderWidth
                         height: parent.height
-                        color: theme.lineSubtle
+                        color: theme.workspaceDivider
                     }
                 }
 
                 GuideRail {
                     visible: uiController.mode === "guided" || root.researchRailOpen
                     researchOnly: uiController.mode === "standard"
-                    SplitView.preferredWidth: root.researchRailVisible ? theme.guideRailPreferredWidth : theme.spaceNone
+                    SplitView.preferredWidth: root.researchRailVisible
+                        ? appBootstrap.language === "en"
+                            ? theme.guideRailEnglishPreferredWidth
+                            : theme.guideRailPreferredWidth
+                        : theme.spaceNone
                     SplitView.minimumWidth: root.researchRailVisible ? theme.guideRailMinimumWidth : theme.spaceNone
                     SplitView.maximumWidth: root.researchRailVisible ? theme.guideRailMaximumWidth : theme.spaceNone
                 }
 
                 PearlSurface {
+                    id: centerWorkspace
                     SplitView.fillWidth: true
-                    fillColor: theme.paperSurface
+                    fillColor: theme.workspaceCard
                     radius: theme.radiusSmall
                     clip: true
 
@@ -173,30 +189,31 @@ Item {
                             Layout.preferredHeight: theme.tabHeight
                             spacing: theme.spaceNone
                             background: Rectangle {
-                                color: theme.surfaceRaised
+                                color: theme.workspaceCard
                             }
 
                             TabButton {
                                 id: dataTab
+                                objectName: "workDataTab"
                                 implicitHeight: theme.tabHeight
                                 focusPolicy: Qt.TabFocus
                                 text: appBootstrap.text("work.data_view", appBootstrap.language)
                                 Accessible.name: text
                                 contentItem: Label {
                                     text: dataTab.text
-                                    color: dataTab.checked ? theme.textStrong : theme.textSecondary
+                                    color: dataTab.checked ? theme.workspacePrimary : theme.textSecondary
                                     horizontalAlignment: Text.AlignHCenter
                                     verticalAlignment: Text.AlignVCenter
                                 }
                                 background: Rectangle {
-                                    color: dataTab.checked ? theme.surfaceCream : theme.surfaceRaised
+                                    color: dataTab.checked ? theme.workspaceSelected : theme.workspaceCard
 
                                     Rectangle {
                                         anchors.left: parent.left
                                         anchors.right: parent.right
                                         anchors.bottom: parent.bottom
                                         height: theme.borderWidthFocus
-                                        color: dataTab.activeFocus ? theme.focusRing : theme.lineStrong
+                                        color: theme.workspacePrimary
                                         visible: dataTab.checked || dataTab.activeFocus
                                     }
                                 }
@@ -204,25 +221,26 @@ Item {
 
                             TabButton {
                                 id: variableTab
+                                objectName: "workVariableTab"
                                 implicitHeight: theme.tabHeight
                                 focusPolicy: Qt.TabFocus
                                 text: appBootstrap.text("work.variable_view", appBootstrap.language)
                                 Accessible.name: text
                                 contentItem: Label {
                                     text: variableTab.text
-                                    color: variableTab.checked ? theme.textStrong : theme.textSecondary
+                                    color: variableTab.checked ? theme.workspacePrimary : theme.textSecondary
                                     horizontalAlignment: Text.AlignHCenter
                                     verticalAlignment: Text.AlignVCenter
                                 }
                                 background: Rectangle {
-                                    color: variableTab.checked ? theme.surfaceCream : theme.surfaceRaised
+                                    color: variableTab.checked ? theme.workspaceSelected : theme.workspaceCard
 
                                     Rectangle {
                                         anchors.left: parent.left
                                         anchors.right: parent.right
                                         anchors.bottom: parent.bottom
                                         height: theme.borderWidthFocus
-                                        color: variableTab.activeFocus ? theme.focusRing : theme.lineStrong
+                                        color: theme.workspacePrimary
                                         visible: variableTab.checked || variableTab.activeFocus
                                     }
                                 }
@@ -230,25 +248,26 @@ Item {
 
                             TabButton {
                                 id: transformTab
+                                objectName: "workTransformTab"
                                 implicitHeight: theme.tabHeight
                                 focusPolicy: Qt.TabFocus
                                 text: appBootstrap.text("work.transform_view", appBootstrap.language)
                                 Accessible.name: text
                                 contentItem: Label {
                                     text: transformTab.text
-                                    color: transformTab.checked ? theme.textStrong : theme.textSecondary
+                                    color: transformTab.checked ? theme.workspacePrimary : theme.textSecondary
                                     horizontalAlignment: Text.AlignHCenter
                                     verticalAlignment: Text.AlignVCenter
                                 }
                                 background: Rectangle {
-                                    color: transformTab.checked ? theme.surfaceCream : theme.surfaceRaised
+                                    color: transformTab.checked ? theme.workspaceSelected : theme.workspaceCard
 
                                     Rectangle {
                                         anchors.left: parent.left
                                         anchors.right: parent.right
                                         anchors.bottom: parent.bottom
                                         height: theme.borderWidthFocus
-                                        color: transformTab.activeFocus ? theme.focusRing : theme.lineStrong
+                                        color: theme.workspacePrimary
                                         visible: transformTab.checked || transformTab.activeFocus
                                     }
                                 }

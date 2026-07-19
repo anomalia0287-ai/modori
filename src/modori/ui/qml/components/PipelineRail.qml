@@ -3,13 +3,12 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import "../theme"
 
-AuroraGlassSurface {
+PearlSurface {
     id: root
     objectName: "pipelineRail"
 
-    surfaceTreatment: "footer"
-    tiffanyBloomEnabled: false
-    bottomAnchorVisible: false
+    fillColor: theme.workspaceCard
+    ambient: false
     radius: theme.spaceNone
 
     signal rerunRequested()
@@ -24,6 +23,16 @@ AuroraGlassSurface {
 
     Theme {
         id: theme
+    }
+
+    Rectangle {
+        objectName: "workspacePipelineTopDivider"
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
+        height: theme.borderWidthFocus
+        color: theme.workspacePrimary
+        z: 1
     }
 
     function hasText(value) {
@@ -173,7 +182,7 @@ AuroraGlassSurface {
                     ? appBootstrap.text("pipeline.rerun", appBootstrap.language)
                     : appBootstrap.text("pipeline.run", appBootstrap.language)
                 Accessible.name: text
-                variant: "glassStrong"
+                variant: "primary"
                 enabled: uiController.canRerun
                 onClicked: root.rerunRequested()
             }

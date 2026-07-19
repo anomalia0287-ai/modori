@@ -38,7 +38,7 @@ Rectangle {
         anchors.leftMargin: theme.spaceMd
         anchors.rightMargin: theme.spaceMd
         height: theme.borderWidthFocus
-        color: theme.lineStrong
+        color: theme.workspacePrimary
         visible: root.selected
     }
 

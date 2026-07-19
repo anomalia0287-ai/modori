@@ -314,7 +314,7 @@ Item {
                             : cellPointer.containsMouse
                                 ? theme.gridCellHoverSurface
                                 : theme.paperSurface
-                        border.color: isCurrentCell ? theme.lineStrong : theme.lineGrid
+                        border.color: isCurrentCell ? theme.workspacePrimary : theme.lineGrid
 
                         MouseArea {
                             id: cellPointer

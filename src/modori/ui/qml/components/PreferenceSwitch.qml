@@ -18,8 +18,8 @@ Switch {
         x: control.width - width
         y: Math.round((control.height - height) / 2)
         radius: height / 2
-        color: control.checked ? theme.bronzeAction : theme.surfaceRaised
-        border.color: control.activeFocus ? theme.focusRing : theme.lineStrong
+        color: control.checked ? theme.workspacePrimary : theme.workspaceCanvas
+        border.color: control.activeFocus ? theme.workspaceFocus : theme.workspaceDividerStrong
         border.width: control.activeFocus ? theme.borderWidthFocus : theme.borderWidth
 
         Rectangle {
@@ -30,8 +30,8 @@ Switch {
                 : theme.switchThumbInset
             y: theme.switchThumbInset
             radius: width / 2
-            color: control.checked ? theme.onBrand : theme.surfaceCream
-            border.color: control.checked ? theme.bronzeAction : theme.lineStrong
+            color: control.checked ? theme.workspaceOnPrimary : theme.workspaceCard
+            border.color: control.checked ? theme.workspacePrimary : theme.workspaceDividerStrong
             border.width: theme.borderWidth
         }
     }

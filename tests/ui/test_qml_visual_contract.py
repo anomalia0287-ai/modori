@@ -181,7 +181,7 @@ def test_passive_surfaces_are_borderless_and_selected_surfaces_use_one_edge() ->
     assert "border.width: root.outlined ? theme.borderWidth : theme.spaceNone" in surface
     assert 'objectName: "selectedSurfaceIndicator"' in surface
     assert "anchors.bottom: parent.bottom" in surface
-    assert "color: theme.lineStrong" in surface
+    assert "color: theme.workspacePrimary" in surface
     assert "visible: root.selected" in surface
 
 
@@ -191,7 +191,7 @@ def test_work_tabs_use_bottom_emphasis_without_persistent_frames() -> None:
     for tab_id in ("dataTab", "variableTab", "transformTab"):
         assert f"border.color: {tab_id}.activeFocus" not in work
     assert work.count("focusPolicy: Qt.TabFocus") == 3
-    assert work.count(": theme.lineStrong") >= 3
+    assert work.count("color: theme.workspacePrimary") >= 3
     assert work.count("anchors.bottom: parent.bottom") >= 3
 
 

@@ -1,55 +1,73 @@
-# Royal Blue Bilingual Entry — Design QA
+# Royal Blue workspace design QA
 
-## Evidence
+**Comparison Target**
 
-- Source visual truth: `C:\Users\V\AppData\Local\Temp\codex-clipboard-ed3874a9-fc06-4177-8451-abf62b4c69c3.png`
-- Implementation captures: `docs/design-audit/2026-07-19-royal-blue-entry/ko-casual.png`, `ko-pro.png`, `en-casual.png`, `en-pro.png`, `ko-focus.png`, `en-focus.png`
-- Full-view comparison: `docs/design-audit/2026-07-19-royal-blue-entry/comparison-ko-casual.png`
-- Focused right-column comparison: `docs/design-audit/2026-07-19-royal-blue-entry/comparison-right-column.png`
-- Focused mode-card comparison: `docs/design-audit/2026-07-19-royal-blue-entry/comparison-mode-cards.png`
-- Viewport: 1366 × 768 logical pixels; Windows 125% device output was normalized to 1366 × 768.
-- States: Korean/English × Casual/Pro, plus Korean and English keyboard-focus states.
-- Renderer: native Windows Qt Quick/D3D11 capture from the real `EntryScreen.qml`; the capture harness reported no QML errors.
+- Source visual truth, structure: `docs/design-audit/2026-07-17-aurora-glass-final/work-manual-top.png`
+- Source visual truth, palette: `docs/design-audit/2026-07-19-royal-blue-entry/ko-casual.png`
+- Primary implementation screenshot: `docs/design-audit/2026-07-19-royal-blue-workspace/en-casual.png`
+- Viewport: 1366 x 768 logical pixels, native Windows/D3D11 rendering
+- States: Korean and English; Casual and Pro; keyboard focus in both languages
+- State constraint: the work-screen source supplies the three-column structural truth, while the entry-screen source supplies the approved Royal Blue and ivory token truth. They are different routes and data states, so content-row identity and route-specific composition were not treated as pixel-matching targets.
 
-The 1381 × 801 structural reference was normalized to the required 1366 × 768 viewport before focused comparison. Its green palette, illustrative circles, fabricated recent-file metrics/times, and orange `Edit` annotation are not implementation targets. The written royal-blue palette, truthful-data rule, preserved routing, and no-new-feature boundary control those intentional deviations.
+**Full-view Comparison Evidence**
 
-## Findings
+- `docs/design-audit/2026-07-19-royal-blue-workspace/comparison-ko-casual.png`
+- `docs/design-audit/2026-07-19-royal-blue-workspace/comparison-ko-pro.png`
+- `docs/design-audit/2026-07-19-royal-blue-workspace/comparison-en-casual.png`
+- `docs/design-audit/2026-07-19-royal-blue-workspace/comparison-en-pro.png`
+- `docs/design-audit/2026-07-19-royal-blue-workspace/comparison-ko-focus.png`
+- `docs/design-audit/2026-07-19-royal-blue-workspace/comparison-en-focus.png`
 
-No actionable P0, P1, or P2 finding remains.
+**Focused Region Comparison Evidence**
 
-- Fonts and typography: Segoe UI renders cleanly in native Windows captures. The implementation retains Modori's uppercase, letter-spaced wordmark, uses a clear 22 px entry heading, and keeps Korean and English descriptions on one readable line without truncation.
-- Spacing and layout rhythm: the left region is exactly 37% and full-height. The right content remains within a 650 px measure; mode cards have equal height, the primary action spans the same measure, and recent rows use a stable 54 px rhythm.
-- Colors and tokens: the approved roles are exact (`#173B7A`, `#F7F3EA`, `#FFFDF8`, `#2F5DA8`, `#17233A`). Selected cards add blue border, tinted fill, and a check marker rather than relying on color alone.
-- Image and icon fidelity: settings and selected-state markers use existing real SVG assets. No placeholder illustration, emoji, handcrafted SVG, or code-drawn decorative asset replaces a source asset. The source's decorative shapes are intentionally omitted under the solid royal-blue written specification.
-- Copy and content: Casual remains explicitly experimental and states that nothing runs automatically. Recent rows display only real model labels from fixture files; no time, row count, column count, or other metadata is invented. Korean and English catalogs have identical keys.
-- Interaction and accessibility: language choices and mode cards expose radio-button semantics and checked state; all primary controls accept tab focus. The focused unselected card is distinguishable from the selected card, and locale selection persists across the active session without changing saved settings.
-- Runtime reach: live tests cover entry copy, work-screen copy, dialog titles, dynamic errors, recommendation titles/reasons, pipeline step names, result copy, and import/variable models in English.
+- Header and mode selection: `docs/design-audit/2026-07-19-royal-blue-workspace/comparison-header-mode.png`
+- Guide rail and English wrapping: `docs/design-audit/2026-07-19-royal-blue-workspace/comparison-guide-rail.png`
+- Tabs, data selection, and result surface: `docs/design-audit/2026-07-19-royal-blue-workspace/comparison-tabs-actions.png`
+- Bottom pipeline rail: `docs/design-audit/2026-07-19-royal-blue-workspace/comparison-pipeline.png`
 
-## Comparison History
+**Findings**
 
-### Iteration 1 — blocked
+- No actionable P0, P1, or P2 mismatch remains.
+- The existing three-column order, panel hierarchy, command routing, data grid, results panel, and bottom pipeline rail remain intact.
+- English Casual guidance is fully visible at 1366 x 768. `Other experimental candidates` remains on one line, while the candidate status and reason wrap without clipping.
+- Selected modes and tabs use both a Royal Blue tint and a bottom indicator. Keyboard focus on the unselected Variables tab is separately visible while the selected Data tab remains marked.
+- The bottom pastel Aurora treatment is absent. The pipeline is flat ivory with a Royal Blue top divider and primary action treatment.
 
-- [P1] English recent rows disappeared after switching languages.
-  - Evidence: the first `en-casual.png` and `en-pro.png` retained the recent-files surface but rendered no delegate rows.
-  - Cause: ListView height depended on `contentHeight`; model reevaluation during the session language change briefly collapsed the viewport to zero and prevented delegate recreation.
-  - Fix: derive the bounded viewport from the real model count (`Math.min(count, 3) * entryRecentRowHeight`) instead of transient rendered content height.
+**Required Fidelity Surfaces**
 
-### Iteration 2 — passed
+- Fonts and typography: existing Segoe UI hierarchy and uppercase MODORI wordmark are preserved. Native captures show no label truncation, accidental elision, or clipped English guidance at the target viewport.
+- Spacing and layout rhythm: the work screen retains header, guide/center/results columns, and bottom pipeline order. English guidance uses a 300 px preferred rail while Korean retains 260 px; this resolves wrapping without changing the 1366 x 768 frame or panel sequence.
+- Colors and visual tokens: the workspace maps to `#173B7A`, `#F7F3EA`, `#FFFDF8`, `#2F5DA8`, and `#17233A`. Active tabs, buttons, selections, focus, grid current-cell borders, and running/latest state treatments use Royal Blue roles. Warning and error colors remain unchanged.
+- Image quality and asset fidelity: no new bitmap, generated, inline-SVG, or placeholder artwork was introduced. Existing wordmark and icon resources remain sharp in native Windows/D3D11 captures.
+- Copy and content: Korean copy is unchanged. English retains the experimental-candidate and no-automatic-execution contract; the only density edit is `Other experimental candidates`, which preserves the action meaning without the redundant `View` prefix.
 
-- Post-fix evidence: `comparison-en-casual.png`, `comparison-en-pro.png`, `comparison-right-column.png`, and `comparison-mode-cards.png`.
-- All three real recent filenames remain visible after Korean-to-English switching.
-- Casual/Pro selection, unselected keyboard focus, language state, settings entry, and truthful recent rows are legible at 1366 × 768.
+**Primary Interactions and Runtime Checks**
 
-## Primary Interactions Checked
+- Loaded the checked-in `tests/fixtures/psych_bfi.csv` through the real `UiController` data path.
+- Switched the real session language state between Korean and English.
+- Switched the real mode state between guided/Casual and standard/Pro.
+- Applied keyboard focus to the inactive Variables tab and verified a non-color focus indicator.
+- Significant QML diagnostics were checked during capture; none were emitted. The known native-style customization message is handled with the same allowlist contract used by the runtime QML suite.
 
-- Korean ↔ English session switching updates the complete visible runtime catalog and controller-backed UI copy.
-- Casual and Pro preserve their existing `guidedRequested` / `standardRequested` routing.
-- Data open, recent-file open, and settings preserve the existing Main handlers.
-- Selected and keyboard-focused states remain separately visible.
-- No QML `ReferenceError`, `TypeError`, or component-load error was emitted during the six-state native capture.
+**Comparison History**
 
-## Follow-up Polish
+- Pass 1 finding [P2 evidence quality]: the focus-state capture targeted the already selected Data tab, so the screenshot did not visibly distinguish focus from selection.
+- Fix: changed the deterministic capture target to the inactive Variables tab while keeping Data selected.
+- Post-fix evidence: `docs/design-audit/2026-07-19-royal-blue-workspace/ko-focus.png` and `docs/design-audit/2026-07-19-royal-blue-workspace/en-focus.png` show separate Royal Blue underlines for selection and keyboard focus.
+- Pass 2 result: no remaining P0/P1/P2 visual, density, copy, or accessibility-state issue at 1366 x 768.
 
-- [P3] A future real, licensed right-chevron icon could strengthen the recent-row affordance. It is intentionally omitted now because the repository has no matching asset and the approved scope forbids inventing one.
+**Implementation Checklist**
+
+- [x] Preserve three-column work structure and route signals.
+- [x] Apply ivory canvas/cards and Royal Blue active, primary, selected, and focused states.
+- [x] Remove work-screen peach accents and bottom pastel gradient.
+- [x] Preserve warning and error semantic colors.
+- [x] Resolve English guide wrapping and candidate action clipping.
+- [x] Capture Korean/English, Casual/Pro, and keyboard-focus states.
+- [x] Compare full views and focused regions against both approved sources.
+
+**Follow-up Polish**
+
+- No P3 polish item is required for this scope.
 
 final result: passed

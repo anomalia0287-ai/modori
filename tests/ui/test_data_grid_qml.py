@@ -462,7 +462,7 @@ def test_data_grid_has_visible_current_cell_state() -> None:
     assert "property bool isCurrentCell" in qml
     assert "root.currentRow === row" in qml
     assert "root.currentColumn === column" in qml
-    assert "isCurrentCell ? theme.lineStrong : theme.lineGrid" in qml
+    assert "isCurrentCell ? theme.workspacePrimary : theme.lineGrid" in qml
 
 
 def test_data_grid_hover_is_a_subtle_surface_shift_without_value_tooltips() -> None:

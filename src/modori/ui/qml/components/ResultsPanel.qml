@@ -7,7 +7,7 @@ import "../theme"
 PearlSurface {
     id: root
 
-    fillColor: theme.surfaceCream
+    fillColor: theme.workspaceCard
     radius: theme.radiusSmall
     Accessible.name: appBootstrap.text("results.title", appBootstrap.language)
 
@@ -84,7 +84,7 @@ PearlSurface {
 
                     Label {
                         text: appBootstrap.text("results.report_preview", appBootstrap.language)
-                        color: theme.bronzeDeep
+                        color: theme.workspaceBrand
                         font.pixelSize: theme.fontSection
                         font.bold: true
                     }
@@ -143,7 +143,7 @@ PearlSurface {
                         Label {
                             text: appBootstrap.localize(uiController.lastMessage, appBootstrap.language)
                             visible: uiController.lastMessage.length > 0
-                            color: theme.bronzeDeep
+                            color: theme.workspaceBrand
                             font.bold: true
                             wrapMode: Text.WordWrap
                             Layout.fillWidth: true
@@ -271,7 +271,7 @@ PearlSurface {
                         Label {
                             text: uiController.reportPath
                             visible: uiController.reportPath.length > 0
-                            color: theme.bronzeDeep
+                            color: theme.workspaceBrand
                             font.pixelSize: theme.fontCaption
                             wrapMode: Text.WordWrap
                             Layout.fillWidth: true

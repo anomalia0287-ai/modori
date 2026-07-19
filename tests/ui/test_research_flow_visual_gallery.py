@@ -188,6 +188,58 @@ def test_exact_srgb_contrast_formula_and_alpha_composition() -> None:
     ) == pytest.approx((0.5, 0.5, 0.5, 1.0))
 
 
+def test_theme_color_resolver_closes_derived_qml_color_expressions(
+    tmp_path: Path,
+) -> None:
+    packet = _load_script(PACKET_SCRIPT, "research_flow_derived_color_contract")
+    theme = tmp_path / "DerivedTheme.qml"
+    theme.write_text(
+        """\
+import QtQuick
+
+QtObject {
+    readonly property color base: "#204080"
+    readonly property color surface: "#FFFFFF"
+    readonly property color translucent: Qt.rgba(
+        base.r,
+        base.g,
+        base.b,
+        0.5
+    )
+    readonly property color lighter: Qt.lighter(base, 1.08)
+    readonly property color darker: Qt.darker(base, 1.18)
+}
+""",
+        encoding="utf-8",
+    )
+
+    expressions = packet._theme_color_expressions(theme)
+
+    assert packet._resolve_theme_color("translucent", expressions) == "#20408080"
+    assert packet._resolve_theme_color("lighter", expressions) == "#23458A"
+    assert packet._resolve_theme_color("darker", expressions) == "#1B366C"
+
+    pair = {
+        "id": "translucent-background",
+        "foreground_token": "base",
+        "background_token": "translucent",
+        "background_underlay_token": "surface",
+        "semantic_role": "normal_text",
+        "threshold": 1.0,
+    }
+    result = packet.evaluate_contrast_pairs({"contrast_pairs": [pair]}, theme)[0]
+    assert result["background_source"] == "#20408080"
+    assert result["background_underlay"] == "#FFFFFF"
+    assert result["background"] == "#8F9FBF"
+
+    pair_without_underlay = dict(pair)
+    pair_without_underlay.pop("background_underlay_token")
+    with pytest.raises(packet.ReviewPacketError, match="requires an opaque underlay"):
+        packet.evaluate_contrast_pairs(
+            {"contrast_pairs": [pair_without_underlay]}, theme
+        )
+
+
 def test_every_declared_research_flow_contrast_pair_passes_unrounded_gate() -> None:
     packet = _load_script(PACKET_SCRIPT, "research_flow_contrast_evaluator")
     results = packet.evaluate_contrast_pairs(_manifest(), THEME_PATH)

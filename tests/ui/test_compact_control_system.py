@@ -40,7 +40,8 @@ def test_mode_selector_uses_two_equal_underlined_actions() -> None:
     assert "standardRequested" in source
     assert "property bool selected: false" in choice
     assert "control.selected || control.hovered || control.activeFocus" in choice
-    assert "color: theme.modeChoiceSurface" in choice
+    assert "control.selected ? theme.workspaceSelected" in choice
+    assert "color: theme.workspacePrimary" in choice
     assert "Accessible.role: Accessible.RadioButton" in choice
     assert "Accessible.checked: control.selected" in choice
 
@@ -89,7 +90,7 @@ def test_shared_form_controls_use_basic_style_and_common_geometry() -> None:
         assert "import QtQuick.Controls.Basic" in source
         assert re.search(rf"\b{root}\s*\{{", source)
         assert "theme.controlHeight" in source
-        assert "theme.focusRing" in source
+        assert "theme.workspaceFocus" in source
 
 
 def test_work_header_commands_rest_without_outlined_boxes() -> None:
@@ -107,7 +108,9 @@ def test_work_header_commands_rest_without_outlined_boxes() -> None:
     assert 'appBootstrap.text("research.open", appBootstrap.language)' in work
     assert "font.pixelSize: theme.workWordmarkSize" in work
     assert "Layout.rightMargin: theme.workWordmarkCommandGap" in work
-    assert "AuroraGlassSurface {" in work
+    assert "AuroraGlassSurface {" not in work
+    assert 'objectName: "workspaceCommandSurface"' in work
+    assert "fillColor: theme.workspaceCard" in work
 
 
 def test_transform_groups_reserve_space_for_titles() -> None:

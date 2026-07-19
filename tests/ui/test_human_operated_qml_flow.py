@@ -181,7 +181,10 @@ def test_guided_and_standard_modes_change_visible_work_surface() -> None:
     work = qml_text("screens/WorkScreen.qml")
 
     assert 'visible: uiController.mode === "guided" || root.researchRailOpen' in work
-    assert 'SplitView.preferredWidth: root.researchRailVisible ? theme.guideRailPreferredWidth : theme.spaceNone' in work
+    assert "SplitView.preferredWidth: root.researchRailVisible" in work
+    assert 'appBootstrap.language === "en"' in work
+    assert "theme.guideRailEnglishPreferredWidth" in work
+    assert "theme.guideRailPreferredWidth" in work
     assert 'SplitView.minimumWidth: root.researchRailVisible ? theme.guideRailMinimumWidth : theme.spaceNone' in work
     assert 'SplitView.maximumWidth: root.researchRailVisible ? theme.guideRailMaximumWidth : theme.spaceNone' in work
     assert "ModeSegment" in work

@@ -17,12 +17,12 @@ RadioButton {
         x: control.leftPadding
         y: Math.round((control.height - height) / 2)
         radius: width / 2
-        color: theme.surfaceCream
+        color: theme.workspaceCard
         border.color: control.activeFocus
-            ? theme.focusRing
+            ? theme.workspaceFocus
             : control.checked
-                ? theme.bronzeAction
-                : theme.lineStrong
+                ? theme.workspacePrimary
+                : theme.workspaceDividerStrong
         border.width: control.activeFocus ? theme.borderWidthFocus : theme.borderWidth
 
         Rectangle {
@@ -30,7 +30,7 @@ RadioButton {
             width: theme.radioDotSize
             height: theme.radioDotSize
             radius: width / 2
-            color: theme.bronzeAction
+            color: theme.workspacePrimary
             visible: control.checked
         }
     }
