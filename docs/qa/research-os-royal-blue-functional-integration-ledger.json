@@ -117,7 +117,7 @@
         "language change that appends ledger authority"
       ],
       "status": "verified",
-      "integrated_blob_oid": "1b03977472ae384854126d29953faccd1f816824",
+      "integrated_blob_oid": "adf332024cf1c528ed0e68cd6db60f887097c67c",
       "evidence": {
         "focused_tests": [
           "tests/ui/test_controller.py",
@@ -383,7 +383,7 @@
         "automatic run"
       ],
       "status": "verified",
-      "integrated_blob_oid": "9d82e48074f7eb3b9a01789bbf61b8e604be46bb",
+      "integrated_blob_oid": "c5618d1ef83932273c02dc465489bec14fc3ebe3",
       "evidence": {
         "focused_tests": [
           "tests/ui/test_recommendations.py",
@@ -421,7 +421,7 @@
         "missing-key fallback on a production Research OS state"
       ],
       "status": "verified",
-      "integrated_blob_oid": "5504c9d22ad8924589aed95d26d0feb5690449a5",
+      "integrated_blob_oid": "04d31278704311de9e3cccb04fb4e6ae5582dba0",
       "evidence": {
         "focused_tests": [
           "tests/ui/test_qml_string_catalog.py",
@@ -729,7 +729,7 @@
         "silent missing-key fallback"
       ],
       "status": "verified",
-      "integrated_blob_oid": "413ebed795d4ebf78d08cbd73cf378be95a5edb7",
+      "integrated_blob_oid": "a5d9ebbd4c2d99cfa6d38daf6ed51c7e86dba8bc",
       "evidence": {
         "focused_tests": [
           "tests/ui/test_qml_string_catalog.py"
