@@ -50,6 +50,11 @@ pair form uses the calculation engine's canonical parameter contract. They are n
 presented as part of the numeric-distribution E2E or generalized to every task or
 dataset.
 
+Result-level help is separate from selection provenance. The Cronbach alpha
+explanation appears only when an actual reliability result is present; it is not
+presented as the reason another analysis was selected or as passport-backed
+rationale.
+
 The candidate and clarification logic is deterministic. Recommendation evidence
 is labelled `EXPERIMENTAL`, candidate order is not an accuracy ranking, and no
 candidate is selected or executed automatically. The current method space has no
@@ -66,10 +71,13 @@ the user's dataset.
 On Windows, Modori can write application-owned state beneath
 `%LOCALAPPDATA%\Modori`, including caches, UI settings, recent-file paths, a local
 research-task index, and per-project SQLite decision ledgers. Recent-file storage
-is enabled by default and can be disabled in Settings. Exported reports are
-written only to a path chosen by the user. Operating-system logs, antivirus
-history, backup software, and cloud-synced folders remain outside Modori's
-control, so this is a code-path description rather than a privacy certification.
+is enabled by default and can be disabled in Settings. The current UI does not
+provide a separate report-destination picker. It writes `report.docx` to a
+`modori-output` directory next to the imported data file. If that input directory
+is synchronized by a cloud provider, the external provider may also synchronize
+the report. Operating-system logs, antivirus history, backup software, and
+cloud-synced folders remain outside Modori's control, so this is a code-path
+description rather than a privacy certification.
 
 The imported source table is read-only in the current UI. Modori does not provide
 spreadsheet-style direct cell editing. Reproducible transformations are appended as
@@ -230,10 +238,12 @@ $env:MPLCONFIGDIR = "$releaseState\matplotlib"
   --ignore=tests/ui/test_research_flow_visual_gallery.py
 ```
 
-This is the reproduction command for the final `3290 passed, 5 skipped` count bound
-to commit `b2235dabbe01258ae68be4f49bcbb974777a9578`. The visual gallery is excluded
-from that count because its unchanged 250 ms cold-render gate produced mixed timing
-observations, which are recorded separately in
+This is the reproduction command for the final `3292 passed, 5 skipped` count bound
+to source-under-test commit `42538443501b817cedd25f858224499f4a97322e`. The
+README-only child commit containing this text changes no file under `src/` or
+`tests/`; both trees remain identical to that source-under-test commit. The visual
+gallery is excluded from that count because its unchanged 250 ms cold-render gate
+produced mixed timing observations, which are recorded separately in
 [`docs/build-week/VERIFICATION.md`](docs/build-week/VERIFICATION.md).
 
 ### Broader quality gate
