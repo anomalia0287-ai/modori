@@ -64,16 +64,16 @@ Prepared visual and subtitle assets:
 | Time | Screen | Action | English narration and subtitle |
 | --- | --- | --- | --- |
 | 00:00–00:09 | Modori entry screen | Hold on the wordmark, language controls, mode cards, and local-processing line. | "Modori is a local desktop research workflow for making a limited set of statistical choices visible before calculation." |
-| 00:09–00:27 | Prepared Build Week evidence card | Show `Existing project`, the cutoff, and all five eligible extension groups on the supplied card. | "This was an existing project. During Build Week, I used Codex with GPT-5.6 to revise the Windows research surface, extend deterministic clarification and passport authority, add a variable-meaning review, and harden release evidence." |
+| 00:09–00:27 | Prepared Build Week evidence card | Show `Existing project`, the cutoff, and all five summary themes on the supplied card. | "This was an existing project. During Build Week, I used Codex with GPT-5.6 to revise the Windows research surface, extend deterministic clarification and passport authority, add a variable-meaning review, and harden release evidence." |
 | 00:27–00:39 | Same evidence card, then return to Modori | Highlight `build time, not runtime` and the owner-decision line. | "GPT-5.6 was a build-time engineering collaborator, not a runtime model. I retained the product, licensing, claim, hardware, and release decisions." |
 | 00:39–00:55 | Entry screen, then import review | Select `English`, choose `CASUAL MODE`, and click `Open data file`. Jump-cut past the entire OS file picker; resume only after selecting `%PUBLIC%\Documents\ModoriDemo\pilot-007-correlation.csv`. | "I select English and Casual Mode, then open a deterministic synthetic file with stress and sleep hours. It contains no real respondent records." |
 | 00:55–01:10 | Import review and work surface | Show the preview, confirm the import, and briefly show the 16-row, two-column table plus the source-protection notice. | "Modori previews the table before import. Source cells are read-only; transformations become recorded steps and new variables. The current runtime has no configured hosted analysis, network client, or telemetry route." |
-| 01:10–01:34 | Research OS boundary, task, and roles | Open Research OS, accept the noncausal boundary, choose linear co-movement, and assign `stress` and `sleep_hours`. | "Research OS P1 supports exactly six bounded tasks. I accept the noncausal boundary, choose linear co-movement, and bind both variable roles to this exact dataset." |
+| 01:10–01:34 | Research OS boundary, task, and roles | Open Research OS, accept the noncausal boundary, choose linear co-movement, and draft `stress` and `sleep_hours` as the two roles. | "Research OS P1 supports exactly six bounded tasks. I accept the noncausal boundary, choose linear co-movement, and draft both variable roles for this exact dataset." |
 | 01:34–01:49 | Variable Meaning Gate | Hold on both variable cards, including measurement levels and any `not recorded` definition/unit boundary, then confirm. | "Before any durable request is created, the Variable Meaning Gate shows the current labels, measurement levels, missing codes, and any definition or unit that is not recorded." |
 | 01:49–02:07 | Clarification and passport-bound candidate | Show one bounded clarification about clustering, independence, or weights, then advance to the candidate. | "After I confirm those meanings, bounded clarification records my answers. A deterministic policy can explain its question order, and the AnalysisPassport stays bound to the data and decision state." |
 | 02:07–02:29 | Candidate and configuration review | Hold on the experimental boundary, open the exact prepared configuration, confirm it, and pause while the result remains empty and Run becomes available. | "The Pearson candidate is experimental, not an accuracy ranking, and cannot run automatically. I review and confirm its exact configuration; confirmation adds no result and the separate Run action is now available." |
 | 02:29–02:44 | Separate Run action and results | Click Run, then open `Open wide table`; hold where `r = -0.995`, display-rounded `p = 0.000`, `n = 16`, and zero excluded rows are all legible. | "Only Run starts the calculation. For this synthetic file, Modori reports an association of negative point nine nine five across sixteen rows, not a causal conclusion or validated recommendation." |
-| 02:44–02:55 | Report dialog and prepared closing card | Close the wide table, open Report, select English, and hold where `Save to Word` is enabled. Do not open the OS save dialog; cut directly to the supplied closing card. | "After the result, tested Word export becomes available. The full interface is not yet completely bilingual; source, setup, tests, limitations, and current evidence are public." |
+| 02:44–02:55 | Report dialog and prepared closing card | Close the wide table, open Report, select English, and hold where `Save to Word` is enabled. Do not open the OS save dialog or imply that this correlation walkthrough saved a file; cut directly to the supplied closing card. | "Here I reach the report dialog, not a saved file. A separate automated Korean numeric-distribution E2E verifies Word export after Run. Full bilingual coverage is not established." |
 
 The closing card must contain only:
 
@@ -117,8 +117,9 @@ Owner retained product and release decisions.
 - [ ] Voiceover is audible throughout and covers Modori, Codex, and GPT-5.6.
 - [ ] English subtitles match the approved narration.
 - [ ] The video shows a working import, Variable Meaning Gate, Research OS flow,
-      configuration confirmation with no result, separate Run action, result, and Word
-      export—not only slides.
+      configuration confirmation with no result, separate Run action, result, and the
+      report dialog—not only slides. It does not claim that correlation Word-file
+      creation was manually completed.
 - [ ] Only the synthetic demo fixture is visible.
 - [ ] The app was launched with the fresh isolated state above; no recovered Research
       OS task or recent-file history changes the flow.

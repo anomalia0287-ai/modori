@@ -20,7 +20,7 @@ Modori previews the table before import. Source cells are read-only; transformat
 
 6
 00:01:10,000 --> 00:01:34,000
-Research OS P1 supports exactly six bounded tasks. I accept the noncausal boundary, choose linear co-movement, and bind both variable roles to this exact dataset.
+Research OS P1 supports exactly six bounded tasks. I accept the noncausal boundary, choose linear co-movement, and draft both variable roles for this exact dataset.
 
 7
 00:01:34,000 --> 00:01:49,000
@@ -40,4 +40,4 @@ Only Run starts the calculation. For this synthetic file, Modori reports an asso
 
 11
 00:02:44,000 --> 00:02:55,000
-After the result, tested Word export becomes available. The full interface is not yet completely bilingual; source, setup, tests, limitations, and current evidence are public.
+Here I reach the report dialog, not a saved file. A separate automated Korean numeric-distribution E2E verifies Word export after Run. Full bilingual coverage is not established.

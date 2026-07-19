@@ -16,12 +16,19 @@ or a local package smoke is not silently promoted to a broader release claim.
 | Sealed source-release baseline | `616955232d91aa322da66cb21a8865ec686ba87f` |
 | Functional-usability candidate | `b368cdcf208d04509717826bc6b0ab7e7b72ba7e` |
 | Local two-parent integration | `4260ed862a74fee094b9a94c42ffe95fd7fe4c64` |
+| Final source-under-test / P0 functional-freeze parent | `b2235dabbe01258ae68be4f49bcbb974777a9578` |
 | Audited public default HEAD | `0413059b993ae5bb28190907badb7733d94f3f64` |
 | Target OS | Windows 11 x64 |
 | Target Python | CPython 3.12.10 |
 | Dependency constraints | `constraints/build-week-windows-py312.txt` |
 | Full-gate R reference runtime | R 4.5.3 (`2026-03-11 ucrt`) |
 | Public binary | none |
+
+The documentation-only audit-correction child that contains this record changes
+README and Build Week evidence documents only. Its `src/` and `tests/` trees are
+tree-equivalent to `b2235dabbe01258ae68be4f49bcbb974777a9578`. Final test counts and
+existing package hashes remain attributed to `b223`; no source, test, wheel, or
+one-folder artifact was rebuilt for the documentation correction.
 
 ## Initial baseline observation
 
@@ -155,12 +162,13 @@ compileall: passed
 source launch smoke: passed
 ```
 
-The visual matrix passed structural, localization, privacy, response, and image-
-digest checks, but cold `state_render_ms` was load-sensitive. Independent observations
-included roughly 200–217 ms passes and roughly 292–303 ms failures against the
-unchanged 250 ms threshold; the broader recorded range was 209.77–306.15 ms. This is
-not a stable performance characterization and is not recorded as a pass. Neither the
-threshold nor the measurement code was relaxed.
+The broader candidate-bound visual matrix at `b368cdc` passed structural,
+localization, privacy, response, and image-digest checks, but cold `state_render_ms`
+was load-sensitive. Independent observations included roughly 200–217 ms passes and
+roughly 292–303 ms failures against the unchanged 250 ms threshold; the broader
+recorded range was 209.77–306.15 ms. This is not a stable performance
+characterization and is not recorded as a pass. Neither the threshold nor the
+measurement code was relaxed.
 
 The release-side work was first preserved at `6169552`. A local `--no-ff --no-commit`
 merge then reported exactly the two predicted conflicts. Both were resolved by meaning
@@ -267,6 +275,7 @@ final-release results.
 | --- | --- | --- |
 | Integrated release gate | merge-tree evidence in `docs/qa/research-os-release-integration-evidence.md` | full source/package gate passed for that integration tree |
 | Functional-usability candidate | `b368cdcf208d04509717826bc6b0ab7e7b72ba7e` | `3289 passed, 5 skipped`; Ruff, compileall, and source launch passed; cold render not stably characterized |
+| Pre-final slow-statistics selection | pre-final release tree; not `b223` | `4 passed, 3301 deselected in 28.05s`; historical only and not a final-tree result |
 | B4-R development-PC office kit | `989d5c5829e3d3de69ebda0f4fc88e6f76d16112` | `3233 passed, 13 skipped`; 300 sealed mutations rejected; three independent kit builds byte-identical |
 | B4-R kit archive | SHA-256 `6f567b327ad53c68eff5f27623e494c1273f9a424e11896e99c5d9f5a0bb8d43` | recorded candidate for a later B5 measurement |
 | B5 low-cost HP laptop | none | pending; no pass claimed |
@@ -275,19 +284,20 @@ final-release results.
 
 | Gate | Required evidence | Status |
 | --- | --- | --- |
-| Final local wheel metadata | `modori-0.1.0-py3-none-any.whl`; 651,811 bytes; SHA-256 `42e8bc3fa5eb3edbebef3e76ac64d7f800def8fce15d658d42ffa0507572580a`; Metadata 2.4; normalized current README body; `GPL-3.0-only`; LICENSE member | passed; not a public artifact |
+| Final local wheel metadata (`b223` artifact) | `modori-0.1.0-py3-none-any.whl`; 651,811 bytes; SHA-256 `42e8bc3fa5eb3edbebef3e76ac64d7f800def8fce15d658d42ffa0507572580a`; Metadata 2.4; normalized `b223` README body; `GPL-3.0-only`; LICENSE member | passed for `b223`; not rebuilt for the documentation-only child; not a public artifact |
 | Judge engine smoke | copied synthetic input; exit 0; top-level `ok: true`; all generated files remained below ignored judge state | passed in 5.5s |
 | Judge public-data smoke | exit 0 and top-level `ok: true` | passed in 11.9s |
 | Judge Research OS cohort | four documented files, isolated `LOCALAPPDATA` and temp | `114 passed in 17.79s` |
 | Compile / Ruff / Bandit / source launch / pip check | exit 0 without ignored failures | passed; Ruff reported `All checks passed!`, launch reported `launch-smoke-ok`, and pip reported no broken requirements |
-| Final release-tree non-gallery pytest | pinned R 4.5.3, isolated state, normal Windows permissions | `3290 passed, 5 skipped in 425.65s` |
-| Visual gallery | unchanged 250 ms gate plus structural and privacy contract | one representative pass in 42.53s; stable cold performance **not established** |
-| PyInstaller check and local build | PyInstaller 6.21.0, Windows 11, CPython 3.12.10 | passed; launcher 31,469,559 bytes, SHA-256 `0d468f4923cfaa6e0c92cd5a9ab69a1b80741bb70f6142695ff3762613ef35ab`; one-folder 4,491 files / 625,437,998 bytes |
-| Packaged launch / engine / public-data smokes | isolated local package state, all exit 0 | passed: `package-launch-smoke-ok` in 7.51s, `package-engine-smoke-ok` in 23.12s, `package-public-data-smoke-ok` in 4.14s |
-| Separately marked slow statistics | pinned R 4.5.3; all selected checks execute | `4 passed, 3301 deselected in 28.05s` |
+| Final release-tree non-gallery pytest (`b223`) | pinned R 4.5.3, isolated state, normal Windows permissions | `3290 passed, 5 skipped in 425.65s` |
+| Final representative visual-gallery recheck | one 30-item gallery contract under normal Windows permissions; unchanged 250 ms gate | `1 passed in 42.53s`; single-run p95 241.961 ms and maximum 304.838 ms; this is separate from the broader candidate-bound matrix and does **not** establish stable cold performance |
+| PyInstaller check and local build (`b223` artifact) | PyInstaller 6.21.0, Windows 11, CPython 3.12.10 | passed; launcher 31,469,559 bytes, SHA-256 `0d468f4923cfaa6e0c92cd5a9ab69a1b80741bb70f6142695ff3762613ef35ab`; one-folder 4,491 files / 625,437,998 bytes |
+| Packaged launch / engine / public-data smokes (`b223` package) | isolated local package state, all exit 0 | passed: `package-launch-smoke-ok` in 7.51s, `package-engine-smoke-ok` in 23.12s, `package-public-data-smoke-ok` in 4.14s |
+| Independently rerun slow statistics (`b223`) | exact `b223` extracted with `git archive`; pinned R 4.5.3; isolated state; normal Windows permissions | `4 passed, 3302 deselected in 43.91s`; exit code `0` |
 | Documentation links, SRT/SVG syntax, claim scan, whitespace, Git state | no blocking defect | passed: 15 release files privacy-scanned; 14 local links valid; two SVGs valid XML; 11-cue SRT ends at 2:55; generated outputs untracked |
 
-The full command uses explicit R and isolated state, temp, cache, and Matplotlib paths:
+The exact reproduction command for the final `b223` non-gallery count uses explicit R
+and isolated state, temp, cache, and Matplotlib paths:
 
 ```powershell
 $releaseState = (New-Item -ItemType Directory -Force .tmp\final-release-state).FullName
@@ -305,11 +315,17 @@ $env:MODORI_CACHE_DIR = "$releaseState\cache"
 $env:MODORI_SETTINGS_PATH = "$releaseState\settings.json"
 $env:MPLCONFIGDIR = "$releaseState\matplotlib"
 
-.\.tmp\build-week-venv\Scripts\python.exe scripts\quality_gate.py `
-  --with-package-check `
-  --with-package-build `
-  --with-packaged-launch `
-  --with-slow-stats
+.\.tmp\build-week-venv\Scripts\python.exe -m pytest -q -p no:cacheprovider `
+  --ignore=tests/ui/test_research_flow_visual_gallery.py
+```
+
+That command reproduces the reported non-gallery scope. By contrast,
+`scripts/quality_gate.py` invokes the full pytest suite without this exclusion, so a
+quality-gate run includes the visual gallery and is **not** the reproduction command
+for `3290 passed, 5 skipped`. The exact-`b223` independent slow-statistics audit used:
+
+```powershell
+.\.tmp\build-week-venv\Scripts\python.exe scripts\slow_stats_gate.py
 ```
 
 Known PyInstaller warnings from the final local rebuild are retained:

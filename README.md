@@ -36,13 +36,19 @@ labels, measurement levels, value labels, missing codes, storage types, and the 
 that conceptual definitions or units are not recorded when they are unavailable.
 The user must explicitly confirm that dataset-bound review.
 
-An automated actual-QML novice E2E closed three submission-critical boundaries:
-imported data now keeps Research OS bound to the current pipeline; Research OS correlation
-preparations use the calculation engine's canonical validation contract; and Word
-export is available only after a completed separate Run. Changing reviewed variable
-metadata invalidates confirmation, blocks Run, and requires an explicit replan. The
-test covers one complete Korean numeric-distribution path; it does not generalize
-that result to every task or dataset.
+An automated actual-QML novice E2E covers one Korean numeric-distribution path:
+import, variable-metadata and meaning review, configuration confirmation without a
+calculation, a separate Run, Word export, metadata drift, a blocked rerun, and an
+explicit replan. That test verifies current-pipeline authority and export timing for
+this bounded path; it does not cover the correlation candidate.
+
+Correlation evidence is separate. The canonical passport-to-step handoff in
+`tests/test_research_flow_handoff.py:206-246`, the `CorrelationStep` coverage in
+`tests/test_correlation_step.py` and `tests/test_step_input_validation.py`, and the
+recovered-candidate manual Windows walkthrough show that the Research OS correlation
+pair form uses the calculation engine's canonical parameter contract. They are not
+presented as part of the numeric-distribution E2E or generalized to every task or
+dataset.
 
 The candidate and clarification logic is deterministic. Recommendation evidence
 is labelled `EXPERIMENTAL`, candidate order is not an accuracy ranking, and no
@@ -142,8 +148,10 @@ For a GUI walkthrough:
 8. review the experimental Pearson candidate and open its prepared configuration;
 9. confirm the method, roles, missing-data policy, and noncausal boundary, observing
    that confirmation itself produces no result; and
-10. start the calculation with the separately enabled Run action, then use the report
-    surface to export Word only after the completed result exists.
+10. start the calculation with the separately enabled Run action, then open the report
+    surface. This manual correlation walkthrough reached the dialog but did not save a
+    file; the automated Korean numeric-distribution E2E separately verifies Word-file
+    creation after a completed Run.
 
 For this fixture, the packaged-app audit displayed Pearson `r = -0.995` after
 rounding, `p = 0.000` after display rounding, `n = 16`, and zero excluded rows.
@@ -155,8 +163,9 @@ The demo packet uses the same fixture and is kept in
 
 ## Judge smoke path
 
-These commands do not require R and avoid changing user data. They write only
-under the repository's ignored `.tmp` directory.
+These commands do not require R and avoid changing user data. Generated state and
+caches remain in the repository's ignored `.tmp`, `.test-tmp`, `matplotlib-cache`,
+and Python cache directories.
 
 ```powershell
 $judgeState = (New-Item -ItemType Directory -Force .tmp\judge-smoke).FullName
@@ -195,7 +204,7 @@ Copy-Item `
 Success is an exit code of `0`; the two JSON files must contain top-level
 `"ok": true` values. This is a bounded judge path, not the complete release gate.
 
-## Full local verification
+## Reproduce the final non-gallery release count
 
 The full suite contains independent Base R reference anchors. The final release
 environment uses R 4.5.3, matching the committed factorial-reference metadata;
@@ -217,6 +226,21 @@ $env:MODORI_CACHE_DIR = "$releaseState\cache"
 $env:MODORI_SETTINGS_PATH = "$releaseState\settings.json"
 $env:MPLCONFIGDIR = "$releaseState\matplotlib"
 
+.\.venv\Scripts\python.exe -m pytest -q -p no:cacheprovider `
+  --ignore=tests/ui/test_research_flow_visual_gallery.py
+```
+
+This is the reproduction command for the final `3290 passed, 5 skipped` count bound
+to commit `b2235dabbe01258ae68be4f49bcbb974777a9578`. The visual gallery is excluded
+from that count because its unchanged 250 ms cold-render gate produced mixed timing
+observations, which are recorded separately in
+[`docs/build-week/VERIFICATION.md`](docs/build-week/VERIFICATION.md).
+
+### Broader quality gate
+
+The convenience quality gate can run the wider local checks:
+
+```powershell
 .\.venv\Scripts\python.exe scripts\quality_gate.py `
   --with-package-check `
   --with-package-build `
@@ -224,12 +248,11 @@ $env:MPLCONFIGDIR = "$releaseState\matplotlib"
   --with-slow-stats
 ```
 
-This runs bytecode compilation, Ruff, Bandit, the source launch smoke, the full
-pytest suite, dependency checks, a local PyInstaller build, packaged launch,
-packaged engine and public-data smokes, and the separately marked slow statistical
-checks. Missing R is not treated as statistical reference evidence. The fresh
-Build Week result and exact environment are recorded in
-[`docs/build-week/VERIFICATION.md`](docs/build-week/VERIFICATION.md).
+This runs bytecode compilation, Ruff, Bandit, the source launch smoke, the full pytest
+suite **including** the visual gallery, dependency checks, a local PyInstaller build,
+packaged launch, packaged engine and public-data smokes, and the separately marked
+slow statistical checks. It is not the reproduction command for the final non-gallery
+count above. Missing R is not treated as statistical reference evidence.
 
 ## Optional local Windows package
 

@@ -215,7 +215,7 @@ video.
 | 4 | Variable Meaning Gate with both selected roles | **Confirm recorded meaning.** Modori displays dataset-bound metadata before the first durable request and marks an unavailable definition or unit as not recorded. | Do not imply that Modori inferred semantic meaning |
 | 5 | Clarification/rationale or passport state | **Make the decision auditable.** Deterministic clarification and the AnalysisPassport preserve rationale and exact dataset authority. | Do not imply correctness or expert validation |
 | 6 | Candidate/preparation card with experimental and no-auto-run wording | **Review before calculation.** The Pearson candidate is experimental, is not an accuracy rank, and cannot run automatically. | Badge, roles, boundary, and empty result state legible after confirmation |
-| 7 | Result and Word report surface after the separate Run action | **Run separately, interpret narrowly.** The result summarizes association; Word export follows the completed Run and does not establish causality or recommendation validity. | Result visible; no real data, personal export path, or superiority claim |
+| 7 | Correlation result and report dialog after the separate Run action | **Run separately, interpret narrowly.** This manual walkthrough reached the report dialog; a separate automated Korean numeric-distribution E2E verified Word-file creation after Run. Neither path establishes causality or recommendation validity. | Result and dialog visible; do not imply that the correlation walkthrough saved a file; no real data, personal export path, or superiority claim |
 
 Optional eighth image: a plain repository evidence collage showing the top-level
 README, `BUILD_WEEK_DELTA.md`, and `VERIFICATION.md`. Do not use a test-terminal image

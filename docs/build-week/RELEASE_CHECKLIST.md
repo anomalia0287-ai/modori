@@ -58,12 +58,18 @@ Fable-edited story to this lane as soon as it is available; repository evidence 
       separate the wrong-R, sandbox-TEMP, timeout, and real localization outcomes
       without relaxing any threshold.
 - [x] Run the corrected final non-gallery suite with explicit R 4.5.3, the local
-      PyInstaller build, all three packaged smokes, and slow statistical checks.
+      PyInstaller build, and all three packaged smokes on the source-under-test later
+      frozen as `b2235dabbe01258ae68be4f49bcbb974777a9578`.
+- [x] Reattribute `4 passed, 3301 deselected in 28.05s` to the pre-final tree and
+      record the independent exact-`b223` slow-statistics result:
+      `4 passed, 3302 deselected in 43.91s`, exit code `0`.
+- [x] Document the exact non-gallery pytest command separately from
+      `scripts/quality_gate.py`, whose full pytest invocation includes the gallery.
 - [x] Record exact exit codes, test counts, durations, artifact size, SHA-256,
       warnings, skips, and the non-stable visual boundary in `VERIFICATION.md`.
 - [x] Run final documentation-link, prohibited-claim, whitespace, and Git-state audit.
-- [x] Commit the release artifacts and final verification record locally in the same
-      atomic closure represented by this checklist state.
+- [x] Preserve `b223` as the immutable functional freeze and commit this minimal
+      documentation-only audit correction as its direct child.
 
 ## Public repository plan
 
