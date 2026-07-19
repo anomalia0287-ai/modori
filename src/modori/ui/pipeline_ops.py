@@ -337,6 +337,10 @@ class PipelineOperations:
         )
 
     def export_report(self, options: ReportExportOptions) -> Path:
+        if self._report_step() is None:
+            research_os_path = self._export_research_os_report(options)
+            if research_os_path is not None:
+                return research_os_path
         self._apply_report_export_options(options)
         analysis_objects = self.analysis_objects()
         if "report" not in analysis_objects and self._pipeline is not None:
@@ -348,6 +352,65 @@ class PipelineOperations:
         if docx_path is None:
             raise RuntimeError("ReportStep did not produce a docx path")
         return Path(docx_path)
+
+    def _export_research_os_report(
+        self,
+        options: ReportExportOptions,
+    ) -> Path | None:
+        """Render an explicit post-run report without changing the sealed step chain."""
+
+        if options.selection_origin != "research_os_assisted":
+            return None
+        if self._pipeline is None or not hasattr(self._pipeline, "add"):
+            raise RuntimeError("Research OS report requires an editable pipeline")
+        analysis_steps = [
+            step
+            for step in self.steps()
+            if bool(getattr(step, "produces_analysis", False))
+            and self._step_type(step) != "report.apa"
+        ]
+        if len(analysis_steps) != 1:
+            raise RuntimeError(
+                "Research OS report requires exactly one confirmed analysis step"
+            )
+        analysis_step = analysis_steps[0]
+        analysis_params = self._step_params(analysis_step)
+        result_key = self._analysis_result_key(analysis_step, analysis_params)
+        if result_key not in self.analysis_objects():
+            raise RuntimeError(
+                "Research OS report requires a completed explicit analysis run"
+            )
+
+        report_step = self._report_step_for_analysis(
+            analysis_step,
+            analysis_params,
+        )
+        report_params = self._step_params(report_step)
+        report_params.update(
+            {
+                "include": (
+                    [result_key]
+                    if self._include_key_enabled(result_key, options)
+                    else []
+                ),
+                "language": options.language,
+                "include_figures": bool(options.include_figures),
+                "selection_origin": options.selection_origin,
+            }
+        )
+        report_step.params = report_params
+        snapshot = self._snapshot_pipeline_state()
+        try:
+            self._pipeline.add(report_step)
+            self._pipeline.recompute(dirty_from=self._step_id(report_step))
+            report = self.analysis_objects().get("report")
+            docx_path = getattr(report, "docx_path", None)
+            if docx_path is None:
+                raise RuntimeError("ReportStep did not produce a docx path")
+            output_path = Path(docx_path)
+        finally:
+            self._restore_pipeline_state(snapshot)
+        return output_path
 
     @staticmethod
     def _kind_for_result(result_id: str) -> str | None:

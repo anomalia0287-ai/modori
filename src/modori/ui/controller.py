@@ -74,7 +74,7 @@ def _worker_boundaries(
         pipeline_version_provider=lambda: owner.pipeline_version
     )
     preparation_editor = ResearchPreparationEditor(
-        owner._services.pipeline_ops,
+        pipeline_ops_provider=lambda: owner._services.pipeline_ops,
         version_provider=lambda: owner.pipeline_version,
         current_dataset_fingerprint=runtime.current_dataset_fingerprint,
         commit_pipeline_change=lambda preparation: _commit_research_preparation(

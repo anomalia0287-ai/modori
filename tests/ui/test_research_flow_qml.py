@@ -53,7 +53,12 @@ def _model_for(state: str) -> dict[str, object]:
     model = _base_model(state)
     if state == "idle":
         model["primaryAction"] = _action("start", "연구과업 시작")
-    elif state in {"fingerprinting", "committing", "handoff_preflight"}:
+    elif state in {
+        "fingerprinting",
+        "meaning_reviewing",
+        "committing",
+        "handoff_preflight",
+    }:
         model["stageText"] = "데이터 버전을 확인하는 중"
         model["primaryAction"] = _action("cancel", "중단")
     elif state == "intake_causal":
@@ -69,6 +74,42 @@ def _model_for(state: str) -> dict[str, object]:
         model["primaryAction"] = _action("select_profile", "연구과업 선택")
     elif state == "intake_roles":
         model["primaryAction"] = _action("submit_roles", "변수 역할 확인")
+    elif state == "variable_meaning_review":
+        model["primaryAction"] = _action("confirm_meanings", "변수 의미와 역할 확인")
+        model["secondaryActions"] = [_action("back", "돌아가기")]
+        model["meaningReview"] = {
+            "visibleReviewDigest": "abcdef012345",
+            "profileId": "independent_two_group_mean",
+            "rows": [
+                {
+                    "role": "outcome",
+                    "variableId": "score",
+                    "label": "인지 점수",
+                    "measure": "scale",
+                    "valueLabels": [],
+                    "missingCodes": ["99"],
+                    "storageDtype": "float64",
+                    "evidenceSource": "current_dataset_metadata",
+                    "conceptDefinitionStatus": "not_recorded",
+                    "unitStatus": "not_recorded",
+                },
+                {
+                    "role": "group",
+                    "variableId": "arm",
+                    "label": "연구 집단",
+                    "measure": "nominal",
+                    "valueLabels": [
+                        {"value": "0", "label": "비교"},
+                        {"value": "1", "label": "중재"},
+                    ],
+                    "missingCodes": [],
+                    "storageDtype": "int64",
+                    "evidenceSource": "current_dataset_metadata",
+                    "conceptDefinitionStatus": "not_recorded",
+                    "unitStatus": "not_recorded",
+                },
+            ],
+        }
     elif state == "clarify_ready":
         model["primaryAction"] = _action("answer", "답변 기록")
         model["secondaryActions"] = [
@@ -173,6 +214,7 @@ class FakeResearchFlow(QObject):
     def busy(self) -> bool:
         return self._model["state"] in {
             "fingerprinting",
+            "meaning_reviewing",
             "committing",
             "handoff_preflight",
         }
@@ -220,6 +262,10 @@ class FakeResearchFlow(QObject):
     @Slot("QVariantMap", result=bool)
     def submitRoles(self, roles: object) -> bool:
         return self._record("submit_roles", roles)
+
+    @Slot(result=bool)
+    def confirmVariableMeanings(self) -> bool:
+        return self._record("confirm_meanings")
 
     @Slot(str, "QVariantList", result=bool)
     def answer(self, option_id: str, variable_ids: object) -> bool:
@@ -296,6 +342,8 @@ def _load_panel(controller: QObject) -> tuple[QQmlEngine, QObject]:
         ("causal_scope_notice", "researchStaticBoundary"),
         ("intake_profile", "researchProfileChoices"),
         ("intake_roles", "researchRoleForm"),
+        ("meaning_reviewing", "researchBusyStage"),
+        ("variable_meaning_review", "researchVariableMeaningReview"),
         ("clarify_ready", "researchQuestionCard"),
         ("candidate_ready", "researchCandidateCard"),
         ("preparation_blocked", "researchCandidateCard"),
@@ -337,6 +385,8 @@ def test_all_closed_states_load_without_significant_qml_runtime_warnings() -> No
         "causal_scope_notice",
         "intake_profile",
         "intake_roles",
+        "meaning_reviewing",
+        "variable_meaning_review",
         "clarify_ready",
         "candidate_ready",
         "preparation_blocked",
@@ -406,6 +456,48 @@ def test_panel_dispatches_only_typed_controller_commands() -> None:
             Q_ARG("QVariant", "route"),
         )
         assert controller.calls == [("causal_yes", None)]
+    finally:
+        panel.deleteLater()
+        _app().processEvents()
+        del engine
+
+
+def test_variable_meaning_gate_renders_bound_metadata_and_confirms_explicitly() -> None:
+    controller = FakeResearchFlow(_model_for("variable_meaning_review"))
+    engine, panel = _load_panel(controller)
+    try:
+        review = panel.findChild(QObject, "researchVariableMeaningReview")
+        assert review is not None
+        assert review.property("visible") is True
+        assert review.property("rowCount") == 2
+        assert review.property("conceptDefinitionUnknown") is True
+        assert QMetaObject.invokeMethod(panel, "confirmMeaningReview")
+        assert controller.calls == [("confirm_meanings", None)]
+    finally:
+        panel.deleteLater()
+        _app().processEvents()
+        del engine
+
+
+def test_variable_meaning_gate_uses_the_english_catalog_without_fallback() -> None:
+    from modori.ui.strings_en import UI_STRINGS_EN
+
+    controller = FakeResearchFlow(_model_for("variable_meaning_review"))
+    engine, panel = _load_panel(controller)
+    try:
+        assert engine._bootstrap.setLanguage("en") is True
+        _app().processEvents()
+        texts = {
+            str(child.property("text"))
+            for child in panel.findChildren(QObject)
+            if child.property("text") is not None
+        }
+        assert UI_STRINGS_EN["research.meaning.boundary"] in texts
+        assert (
+            engine._bootstrap.text("research.meaning.role.outcome", "en")
+            == UI_STRINGS_EN["research.meaning.role.outcome"]
+        )
+        assert not any(text.startswith("research.meaning.") for text in texts)
     finally:
         panel.deleteLater()
         _app().processEvents()
@@ -516,12 +608,12 @@ def test_real_controller_receives_ordered_role_draft_from_qml() -> None:
         _app().processEvents()
         assert submit.property("enabled") is True
         assert QMetaObject.invokeMethod(panel, "submitRoleDraft")
-        assert controller.stateModel["state"] == "committing"
+        assert controller.stateModel["state"] == "meaning_reviewing"
         assert len(worker.submissions) == 1
 
         worker.execute()
         call_name, payload = runtime.calls[-1]
-        assert call_name == "commit_initial"
+        assert call_name == "review_variable_meanings"
         assert payload["roles"].repeated_measure_order == (
             "before_score",
             "after_score",

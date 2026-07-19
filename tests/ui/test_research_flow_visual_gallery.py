@@ -78,7 +78,7 @@ def test_gallery_manifest_freezes_the_approved_matrix_before_capture() -> None:
     assert isinstance(items, list)
     assert isinstance(fixtures, dict)
     ids = [item["id"] for item in items]
-    assert len(ids) == len(set(ids)) == 29
+    assert len(ids) == len(set(ids)) == 30
     required_fields = {
         "id",
         "capture_kind",
@@ -117,6 +117,7 @@ def test_gallery_manifest_freezes_the_approved_matrix_before_capture() -> None:
         "replan_required",
         "abstain_ready",
         "causal_scope_notice",
+        "variable_meaning_review",
         "prepare_review",
         "confirmed",
     } <= states
@@ -290,7 +291,7 @@ def test_full_matrix_renders_the_production_component_contract(
     )
     assert gallery["schema_id"] == "modori.research-flow.rendered-gallery"
     assert gallery["source_commit"]
-    assert len(gallery["items"]) == 29
+    assert len(gallery["items"]) == 30
     assert {item["scale_factor"] for item in gallery["items"]} == {
         1.0,
         1.25,
@@ -306,6 +307,7 @@ def test_full_matrix_renders_the_production_component_contract(
         assert item["missing_present_regions"] == []
         assert item["unexpected_visible_regions"] == []
         assert item["property_mismatches"] == []
+        assert item["catalog_misses"] == []
         assert item["horizontal_overflow_sources"] == [], item
         assert item["horizontal_overflow"] is False
         if sys.platform == "win32":

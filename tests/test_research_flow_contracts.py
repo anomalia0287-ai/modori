@@ -57,6 +57,8 @@ def test_research_flow_states_are_closed_and_route_ready_is_reserved() -> None:
         "intake_blocked",
         "intake_profile",
         "intake_roles",
+        "meaning_reviewing",
+        "variable_meaning_review",
         "scope_boundary",
         "committing",
         "clarify_ready",

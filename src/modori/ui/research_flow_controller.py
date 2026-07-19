@@ -39,6 +39,8 @@ from modori.research_flow import (
     TaskSessionConflictError,
     TaskSessionIntegrityError,
     TaskSessionUnavailableError,
+    VariableMeaningReview,
+    build_variable_meaning_review,
     fingerprint_dataset,
     map_passport_to_step,
     preflight_mapped_step,
@@ -101,6 +103,8 @@ class _ResearchFlowRuntime(Protocol):
     def start(self, **kwargs: object) -> "ResearchFlowViews": ...
 
     def commit_initial(self, **kwargs: object) -> "ResearchFlowViews": ...
+
+    def review_variable_meanings(self, **kwargs: object) -> "ResearchFlowViews": ...
 
     def commit_causal_boundary(self, **kwargs: object) -> "ResearchFlowViews": ...
 
@@ -254,6 +258,7 @@ class ResearchFlowViews:
     guided: ResearchFlowView
     standard: ResearchFlowView
     preparation: PassportBoundPreparation | None = None
+    meaning_review: VariableMeaningReview | None = None
 
     def __post_init__(self) -> None:
         if self.guided.mode is not ControllerMode.GUIDED:
@@ -271,6 +276,12 @@ class ResearchFlowViews:
                 raise ResearchFlowControllerError(
                     "only a ready preparation may enter the controller"
                 )
+        if self.meaning_review is not None:
+            if not isinstance(self.meaning_review, VariableMeaningReview):
+                raise ResearchFlowControllerError(
+                    "meaning_review must be a sealed VariableMeaningReview"
+                )
+            self.meaning_review.__post_init__()
         comparable = (
             "state",
             "language",
@@ -284,6 +295,15 @@ class ResearchFlowViews:
                 raise ResearchFlowControllerError(
                     f"view authority differs across modes: {field_name}"
                 )
+        meaning_state = ResearchFlowState.VARIABLE_MEANING_REVIEW
+        if self.standard.state is meaning_state and self.meaning_review is None:
+            raise ResearchFlowControllerError(
+                "variable_meaning_review requires an exact sealed review"
+            )
+        if self.meaning_review is not None and self.standard.state is not meaning_state:
+            raise ResearchFlowControllerError(
+                "meaning review authority requires variable_meaning_review"
+            )
         guided_question = self.guided.question
         standard_question = self.standard.question
         if (guided_question is None) != (standard_question is None):
@@ -335,6 +355,7 @@ def _transient_views(
     state: ResearchFlowState,
     *,
     language: Language,
+    meaning_review: VariableMeaningReview | None = None,
 ) -> ResearchFlowViews:
     return ResearchFlowViews(
         guided=present_transient_state(
@@ -347,6 +368,7 @@ def _transient_views(
             mode=ControllerMode.STANDARD,
             language=language,
         ),
+        meaning_review=meaning_review,
     )
 
 
@@ -781,6 +803,7 @@ class ResearchFlowRuntime:
         *,
         profile: P1TaskProfile,
         roles: P1RoleBindings,
+        meaning_review: VariableMeaningReview,
         pipeline_version: int,
         cancel_event: Event,
     ) -> ResearchFlowViews:
@@ -791,21 +814,41 @@ class ResearchFlowRuntime:
                 raise ResearchFlowControllerError(
                     "initial intake must use closed P1 values"
                 )
+            if not isinstance(meaning_review, VariableMeaningReview):
+                raise ResearchFlowControllerError(
+                    "initial intake requires one sealed meaning review"
+                )
             snapshot, identity = self._fresh_context(
                 pipeline_version=pipeline_version,
                 cancel_event=cancel_event,
             )
             if cancel_event.is_set():
                 raise FingerprintCancelled("initial intake was cancelled")
+            current_review = build_variable_meaning_review(
+                snapshot.dataset,
+                dataset_fingerprint=identity.dataset_fingerprint,
+                pipeline_version=pipeline_version,
+                profile=profile,
+                roles=roles,
+            )
+            if current_review != meaning_review:
+                raise ResearchFlowStaleError(
+                    "confirmed variable meanings no longer match current data"
+                )
             handle = self._ensure_handle(identity)
+            initial_event_id = self._initial_event_id_factory()
             request = build_p1_request(
                 P1IntakeDraft(profile=profile, roles=roles),
                 task_project_id=handle.record.task_project_id,
-                initial_event_id=self._initial_event_id_factory(),
+                initial_event_id=initial_event_id,
                 dataset_fingerprint=identity.dataset_fingerprint,
                 source_schema_fingerprint=identity.source_schema_fingerprint,
                 available_variable_ids=identity.variable_ids,
                 language=self._language,
+                role_confirmation_refs=(
+                    initial_event_id,
+                    meaning_review.provenance_ref,
+                ),
             )
             record = self._coordinator.commit_initial(handle, request)
             self._record = record
@@ -827,6 +870,51 @@ class ResearchFlowRuntime:
             LiveResearchFlowConflictError,
             LiveResearchFlowUnavailableError,
             LiveResearchFlowIntegrityError,
+            ValueError,
+        ) as exc:
+            return self._typed_error(exc)
+
+    def review_variable_meanings(
+        self,
+        *,
+        profile: P1TaskProfile,
+        roles: P1RoleBindings,
+        pipeline_version: int,
+        cancel_event: Event,
+    ) -> ResearchFlowViews:
+        """Build a dataset-bound review without allocating storage or a ledger."""
+
+        try:
+            if not isinstance(profile, P1TaskProfile) or not isinstance(
+                roles, P1RoleBindings
+            ):
+                raise ResearchFlowControllerError(
+                    "meaning review must use closed P1 values"
+                )
+            snapshot, identity = self._fresh_context(
+                pipeline_version=pipeline_version,
+                cancel_event=cancel_event,
+            )
+            if cancel_event.is_set():
+                raise FingerprintCancelled("variable meaning review was cancelled")
+            review = build_variable_meaning_review(
+                snapshot.dataset,
+                dataset_fingerprint=identity.dataset_fingerprint,
+                pipeline_version=pipeline_version,
+                profile=profile,
+                roles=roles,
+            )
+            return _transient_views(
+                ResearchFlowState.VARIABLE_MEANING_REVIEW,
+                language=self._language,
+                meaning_review=review,
+            )
+        except (
+            FingerprintCancelled,
+            FingerprintContractError,
+            ResearchFlowControllerError,
+            ResearchFlowPipelineError,
+            ResearchFlowStaleError,
             ValueError,
         ) as exc:
             return self._typed_error(exc)
@@ -1257,6 +1345,7 @@ class ResearchFlowController(QObject):
         self._cancel_event: Event | None = None
         self._previous_views = self._views
         self._selected_profile: P1TaskProfile | None = None
+        self._pending_roles: P1RoleBindings | None = None
         self._preparation_editor = preparation_editor
         self._confirmation_published = confirmation_published or (lambda: None)
         self._preparation_review: PreparationReview | None = None
@@ -1269,6 +1358,37 @@ class ResearchFlowController(QObject):
     @Property("QVariantMap", notify=stateChanged)
     def stateModel(self) -> dict[str, object]:
         model = _view_model(self.current_view)
+        meaning_review = self._views.meaning_review
+        if (
+            meaning_review is not None
+            and self.current_view.state is ResearchFlowState.VARIABLE_MEANING_REVIEW
+        ):
+            model["meaningReview"] = {
+                "visibleReviewDigest": (
+                    meaning_review.review_digest[:12]
+                    if self._mode is ControllerMode.STANDARD
+                    else ""
+                ),
+                "profileId": meaning_review.profile_id,
+                "rows": [
+                    {
+                        "role": row.role,
+                        "variableId": row.variable_id,
+                        "label": row.label or "",
+                        "measure": row.measure,
+                        "valueLabels": [
+                            {"value": value, "label": label}
+                            for value, label in row.value_labels
+                        ],
+                        "missingCodes": list(row.missing_codes),
+                        "storageDtype": row.storage_dtype,
+                        "evidenceSource": row.evidence_source,
+                        "conceptDefinitionStatus": (row.concept_definition_status),
+                        "unitStatus": row.unit_status,
+                    }
+                    for row in meaning_review.rows
+                ],
+            }
         review = self._preparation_review
         if review is not None and self.current_view.state in {
             ResearchFlowState.PREPARE_REVIEW,
@@ -1382,6 +1502,9 @@ class ResearchFlowController(QObject):
     @Slot(result=bool)
     def back(self) -> bool:
         state = self.current_view.state
+        if state is ResearchFlowState.VARIABLE_MEANING_REVIEW:
+            self._pending_roles = None
+            return self._publish_transient(ResearchFlowState.INTAKE_ROLES)
         if state in {
             ResearchFlowState.CAUSAL_SCOPE_NOTICE,
             ResearchFlowState.INTAKE_BLOCKED,
@@ -1444,11 +1567,38 @@ class ResearchFlowController(QObject):
         if roles is None:
             return False
         profile = self._selected_profile
+        self._pending_roles = roles
+        submitted = self._submit_runtime(
+            ResearchFlowState.MEANING_REVIEWING,
+            lambda version, cancel_event: self._runtime.review_variable_meanings(
+                profile=profile,
+                roles=roles,
+                pipeline_version=version,
+                cancel_event=cancel_event,
+            ),
+        )
+        if not submitted:
+            self._pending_roles = None
+        return submitted
+
+    @Slot(result=bool)
+    def confirmVariableMeanings(self) -> bool:
+        review = self._views.meaning_review
+        profile = self._selected_profile
+        roles = self._pending_roles
+        if (
+            self.current_view.state is not ResearchFlowState.VARIABLE_MEANING_REVIEW
+            or review is None
+            or profile is None
+            or roles is None
+        ):
+            return False
         return self._submit_runtime(
             ResearchFlowState.COMMITTING,
             lambda version, cancel_event: self._runtime.commit_initial(
                 profile=profile,
                 roles=roles,
+                meaning_review=review,
                 pipeline_version=version,
                 cancel_event=cancel_event,
             ),
@@ -1617,6 +1767,7 @@ class ResearchFlowController(QObject):
             return False
         self._cancel_event.set()
         self._busy = False
+        self._pending_roles = None
         durable_states = {
             ResearchFlowState.CLARIFY_READY,
             ResearchFlowState.CANDIDATE_READY,
@@ -1698,6 +1849,12 @@ class ResearchFlowController(QObject):
                 )
                 if translated is None:
                     return False
+            elif state is ResearchFlowState.VARIABLE_MEANING_REVIEW:
+                translated = _transient_views(
+                    state,
+                    language=adopted,
+                    meaning_review=self._views.meaning_review,
+                )
             else:
                 translated = _transient_views(state, language=adopted)
         except (ValueError, ResearchFlowControllerError):
@@ -1708,6 +1865,7 @@ class ResearchFlowController(QObject):
             guided=translated.guided,
             standard=translated.standard,
             preparation=self._views.preparation,
+            meaning_review=self._views.meaning_review,
         )
         self.stateChanged.emit()
         return True
@@ -1735,6 +1893,8 @@ class ResearchFlowController(QObject):
         self._runtime.note_pipeline_version(version)
         self._busy = False
         self._preparation_review = None
+        self._selected_profile = None
+        self._pending_roles = None
         if was_idle:
             return
         self._views = _transient_views(
@@ -1779,9 +1939,14 @@ class ResearchFlowController(QObject):
                 self._views = payload
                 if payload.standard.state is not ResearchFlowState.CANDIDATE_READY:
                     self._preparation_review = None
+            if payload.standard.state is not ResearchFlowState.VARIABLE_MEANING_REVIEW:
+                self._pending_roles = None
+                self._selected_profile = None
         else:
             self._views = _transient_views(
                 ResearchFlowState.FAILURE,
                 language=self._language,
             )
+            self._pending_roles = None
+            self._selected_profile = None
         self.stateChanged.emit()

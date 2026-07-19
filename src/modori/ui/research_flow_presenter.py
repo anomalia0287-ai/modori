@@ -57,6 +57,7 @@ class ResearchUiCommand(str, Enum):
     BACK = "back"
     SELECT_PROFILE = "select_profile"
     SUBMIT_ROLES = "submit_roles"
+    CONFIRM_MEANINGS = "confirm_meanings"
     ANSWER = "answer"
     ANSWER_NOT_SURE = "answer_not_sure"
     RETRACT = "retract"
@@ -356,6 +357,7 @@ _ACTION_COPY_KEYS = MappingProxyType(
         ResearchUiCommand.BACK: "action.back",
         ResearchUiCommand.SELECT_PROFILE: "action.select_profile",
         ResearchUiCommand.SUBMIT_ROLES: "action.submit_roles",
+        ResearchUiCommand.CONFIRM_MEANINGS: "action.confirm_meanings",
         ResearchUiCommand.ANSWER: "action.answer",
         ResearchUiCommand.ANSWER_NOT_SURE: "action.answer_not_sure",
         ResearchUiCommand.RETRACT: "action.retract",
@@ -959,6 +961,16 @@ _TRANSIENT_COPY = MappingProxyType(
             ResearchUiCommand.SUBMIT_ROLES,
             None,
         ),
+        ResearchFlowState.MEANING_REVIEWING: (
+            "badge.local",
+            ResearchUiCommand.CANCEL,
+            "busy.meaning_reviewing",
+        ),
+        ResearchFlowState.VARIABLE_MEANING_REVIEW: (
+            "badge.local",
+            ResearchUiCommand.CONFIRM_MEANINGS,
+            None,
+        ),
         ResearchFlowState.COMMITTING: (
             "badge.local",
             ResearchUiCommand.CANCEL,
@@ -1027,6 +1039,8 @@ def present_transient_state(
             _action(ResearchUiCommand.CAUSAL_YES, language),
             _action(ResearchUiCommand.CAUSAL_NOT_SURE, language),
         )
+    elif state is ResearchFlowState.VARIABLE_MEANING_REVIEW:
+        secondary = (_action(ResearchUiCommand.BACK, language),)
     return _base_view(
         state=state,
         mode=mode,

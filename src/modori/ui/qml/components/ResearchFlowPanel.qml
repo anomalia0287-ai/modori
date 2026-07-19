@@ -23,6 +23,7 @@ ColumnLayout {
     readonly property var secondaryActions: root.stateModel.secondaryActions || []
     readonly property var question: root.stateModel.question || ({})
     readonly property var candidate: root.stateModel.candidate || ({})
+    readonly property var meaningReview: root.stateModel.meaningReview || ({})
     readonly property var preparationReview: root.stateModel.preparationReview || ({})
     readonly property var profileIds: [
         "numeric_distribution",
@@ -48,6 +49,8 @@ ColumnLayout {
             "intake_blocked",
             "intake_profile",
             "intake_roles",
+            "meaning_reviewing",
+            "variable_meaning_review",
             "scope_boundary",
             "committing",
             "clarify_ready",
@@ -70,6 +73,7 @@ ColumnLayout {
 
     function isBusyState(value) {
         return value === "fingerprinting"
+            || value === "meaning_reviewing"
             || value === "committing"
             || value === "handoff_preflight"
     }
@@ -100,6 +104,7 @@ ColumnLayout {
             var command = String(action.command)
             return command !== "select_profile"
                 && command !== "submit_roles"
+                && command !== "confirm_meanings"
                 && command !== "answer"
                 && command !== "answer_not_sure"
                 && command !== "prepare"
@@ -275,6 +280,84 @@ ColumnLayout {
             return false
         }
         return root.controller.confirm()
+    }
+
+    function confirmMeaningReview() {
+        if (!root.controller || root.flowState !== "variable_meaning_review") {
+            return false
+        }
+        return root.controller.confirmVariableMeanings()
+    }
+
+    function meaningRoleLabel(role) {
+        if (String(role) === "outcome") {
+            return appBootstrap.text("research.meaning.role.outcome", appBootstrap.language)
+        }
+        if (String(role) === "group") {
+            return appBootstrap.text("research.meaning.role.group", appBootstrap.language)
+        }
+        if (String(role) === "focal_predictor") {
+            return appBootstrap.text("research.meaning.role.focal_predictor", appBootstrap.language)
+        }
+        if (String(role) === "before") {
+            return appBootstrap.text("research.meaning.role.before", appBootstrap.language)
+        }
+        if (String(role) === "after") {
+            return appBootstrap.text("research.meaning.role.after", appBootstrap.language)
+        }
+        return String(role)
+    }
+
+    function meaningMeasureLabel(measure) {
+        if (String(measure) === "nominal") {
+            return appBootstrap.text("research.meaning.measure.nominal", appBootstrap.language)
+        }
+        if (String(measure) === "ordinal") {
+            return appBootstrap.text("research.meaning.measure.ordinal", appBootstrap.language)
+        }
+        if (String(measure) === "scale") {
+            return appBootstrap.text("research.meaning.measure.scale", appBootstrap.language)
+        }
+        return String(measure)
+    }
+
+    function meaningValueLabels(rows) {
+        var values = []
+        var source = rows || []
+        for (var index = 0; index < source.length; index += 1) {
+            values.push(String(source[index].value) + " = " + String(source[index].label))
+        }
+        return values.length > 0
+            ? values.join(", ")
+            : appBootstrap.text("research.meaning.none", appBootstrap.language)
+    }
+
+    function meaningCodes(values) {
+        var source = values || []
+        return source.length > 0
+            ? source.join(", ")
+            : appBootstrap.text("research.meaning.none", appBootstrap.language)
+    }
+
+    function meaningDetail(label, value) {
+        return String(label) + ": " + String(value)
+    }
+
+    function meaningDisplayLabel(value) {
+        return String(value || "").length > 0
+            ? String(value)
+            : appBootstrap.text("research.meaning.not_recorded", appBootstrap.language)
+    }
+
+    function hasUnrecordedMeaning(rows) {
+        var source = rows || []
+        for (var index = 0; index < source.length; index += 1) {
+            if (String(source[index].conceptDefinitionStatus) === "not_recorded"
+                    || String(source[index].unitStatus) === "not_recorded") {
+                return true
+            }
+        }
+        return false
     }
 
     ColumnLayout {
@@ -549,6 +632,129 @@ ColumnLayout {
             }
         }
 
+        PearlSurface {
+            objectName: "researchVariableMeaningReview"
+            property int rowCount: (root.meaningReview.rows || []).length
+            property bool conceptDefinitionUnknown: root.hasUnrecordedMeaning(
+                root.meaningReview.rows
+            )
+            visible: root.flowState === "variable_meaning_review"
+            Layout.fillWidth: true
+            Layout.preferredHeight: visible
+                ? meaningReviewLayout.implicitHeight + theme.spaceContent * 2
+                : theme.spaceNone
+            fillColor: theme.surfaceCream
+            outlined: true
+            Accessible.name: appBootstrap.text("research.meaning.accessible", appBootstrap.language)
+            Accessible.role: Accessible.Grouping
+
+            ColumnLayout {
+                id: meaningReviewLayout
+                anchors.fill: parent
+                anchors.margins: theme.spaceContent
+                spacing: theme.spaceMd
+
+                Label {
+                    text: appBootstrap.text("research.meaning.boundary", appBootstrap.language)
+                    color: theme.warning
+                    font.bold: true
+                    wrapMode: Text.WordWrap
+                    Layout.fillWidth: true
+                }
+
+                Repeater {
+                    model: root.meaningReview.rows || []
+
+                    PearlSurface {
+                        required property var modelData
+                        Layout.fillWidth: true
+                        implicitHeight: meaningRowLayout.implicitHeight
+                            + theme.spaceContent * 2
+                        fillColor: theme.pearlIce
+                        outlined: true
+
+                        ColumnLayout {
+                            id: meaningRowLayout
+                            anchors.fill: parent
+                            anchors.margins: theme.spaceContent
+                            spacing: theme.spaceXs
+
+                            Label {
+                                text: root.meaningRoleLabel(modelData.role)
+                                    + " · " + String(modelData.variableId)
+                                color: theme.bronzeDeep
+                                font.bold: true
+                                wrapMode: Text.WordWrap
+                                Layout.fillWidth: true
+                            }
+
+                            Label {
+                                text: root.meaningDetail(appBootstrap.text("research.meaning.label", appBootstrap.language), root.meaningDisplayLabel(modelData.label))
+                                color: theme.textBody
+                                wrapMode: Text.WordWrap
+                                Layout.fillWidth: true
+                            }
+
+                            Label {
+                                text: root.meaningDetail(appBootstrap.text("research.meaning.measure", appBootstrap.language), root.meaningMeasureLabel(modelData.measure))
+                                color: theme.textBody
+                                wrapMode: Text.WordWrap
+                                Layout.fillWidth: true
+                            }
+
+                            Label {
+                                text: root.meaningDetail(appBootstrap.text("research.meaning.value_labels", appBootstrap.language), root.meaningValueLabels(modelData.valueLabels))
+                                color: theme.textBody
+                                wrapMode: Text.WordWrap
+                                Layout.fillWidth: true
+                            }
+
+                            Label {
+                                text: root.meaningDetail(appBootstrap.text("research.meaning.missing_codes", appBootstrap.language), root.meaningCodes(modelData.missingCodes))
+                                color: theme.textBody
+                                wrapMode: Text.WordWrap
+                                Layout.fillWidth: true
+                            }
+
+                            Label {
+                                text: root.meaningDetail(appBootstrap.text("research.meaning.definition_unit", appBootstrap.language), appBootstrap.text("research.meaning.not_recorded", appBootstrap.language))
+                                color: theme.warning
+                                wrapMode: Text.WordWrap
+                                Layout.fillWidth: true
+                            }
+
+                            Label {
+                                text: root.meaningDetail(appBootstrap.text("research.meaning.dtype", appBootstrap.language), modelData.storageDtype)
+                                color: theme.textSecondary
+                                visible: root.proMode
+                                wrapMode: Text.WordWrap
+                                Layout.fillWidth: true
+                            }
+                        }
+                    }
+                }
+
+                Label {
+                    text: root.meaningDetail(appBootstrap.text("research.meaning.digest", appBootstrap.language), root.meaningReview.visibleReviewDigest)
+                    color: theme.textSecondary
+                    visible: root.proMode
+                    wrapMode: Text.WordWrap
+                    Layout.fillWidth: true
+                }
+
+                AppButton {
+                    objectName: "researchMeaningConfirm"
+                    text: root.primaryAction ? String(root.primaryAction.label) : ""
+                    Accessible.name: text
+                    Accessible.description: appBootstrap.text("research.meaning.boundary", appBootstrap.language)
+                    variant: "primary"
+                    enabled: root.flowState === "variable_meaning_review"
+                    Layout.fillWidth: true
+                    onClicked: root.confirmMeaningReview()
+                }
+            }
+        }
+
         ResearchQuestionCard {
             objectName: "researchQuestionCard"
             visible: root.flowState === "clarify_ready"
@@ -686,7 +892,10 @@ ColumnLayout {
                     required property var modelData
                     text: String(modelData.label)
                     Accessible.name: text
-                    variant: index === 0 ? "primary" : "quiet"
+                    variant: root.primaryAction
+                        && String(modelData.command)
+                            === String(root.primaryAction.command)
+                        ? "primary" : "quiet"
                     enabled: Boolean(modelData.enabled)
                     Layout.fillWidth: true
                     onClicked: root.invokeCommand(String(modelData.command))

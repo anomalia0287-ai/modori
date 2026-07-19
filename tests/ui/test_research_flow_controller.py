@@ -9,6 +9,7 @@ from threading import Event
 
 import pandas as pd
 import pytest
+from docx import Document
 
 from modori.core import Dataset, Measure, Pipeline, StepResult, Variable
 from modori.research_flow import (
@@ -23,10 +24,12 @@ from modori.research_flow import (
     StaticBoundary,
     TaskSessionIntegrityError,
     TaskSessionUnavailableError,
+    VariableMeaningReview,
+    build_variable_meaning_review,
     preflight_mapped_step,
 )
 from modori.research_os import Language
-from modori.ui.contracts import ControllerMode
+from modori.ui.contracts import ControllerMode, ReportExportOptions
 from modori.ui.controller import UiController
 from modori.ui.controller_services import UiControllerServices
 from modori.ui.research_flow_controller import (
@@ -55,7 +58,11 @@ from modori.research_os import P1RoleBindings, P1TaskProfile
 from modori.ui.research_flow_presenter import present_durable_record
 
 
-def _transient_views(state: ResearchFlowState) -> ResearchFlowViews:
+def _transient_views(
+    state: ResearchFlowState,
+    *,
+    meaning_review: VariableMeaningReview | None = None,
+) -> ResearchFlowViews:
     return ResearchFlowViews(
         guided=present_transient_state(
             state,
@@ -67,6 +74,7 @@ def _transient_views(state: ResearchFlowState) -> ResearchFlowViews:
             mode=ControllerMode.STANDARD,
             language=Language.KO,
         ),
+        meaning_review=meaning_review,
     )
 
 
@@ -135,6 +143,7 @@ class FakeRuntime:
         self.adopted_languages: list[Language] = []
         self.presentation_calls: list[tuple[Language, int]] = []
         self.presentation_result: ResearchFlowViews | None = None
+        self.meaning_result: ResearchFlowViews | None = None
 
     def adopt_language(self, language: Language) -> None:
         self.adopted_languages.append(language)
@@ -161,6 +170,10 @@ class FakeRuntime:
     def commit_initial(self, **kwargs: object) -> ResearchFlowViews:
         self.calls.append(("commit_initial", kwargs))
         return self.start_result
+
+    def review_variable_meanings(self, **kwargs: object) -> ResearchFlowViews:
+        self.calls.append(("review_variable_meanings", kwargs))
+        return self.meaning_result or self.start_result
 
     def commit_causal_boundary(self, **kwargs: object) -> ResearchFlowViews:
         self.calls.append(("commit_causal_boundary", kwargs))
@@ -285,7 +298,9 @@ def test_start_acknowledges_under_100ms_and_defers_all_runtime_work() -> None:
     assert controller.stateModel["state"] == "intake_causal"
 
 
-def test_language_change_re_presents_durable_candidate_without_runtime_transition() -> None:
+def test_language_change_re_presents_durable_candidate_without_runtime_transition() -> (
+    None
+):
     korean = _candidate_views(Language.KO)
     english = _candidate_views(Language.EN)
     runtime = FakeRuntime(korean)
@@ -494,11 +509,28 @@ def test_only_explicit_causal_record_schedules_persistent_work() -> None:
     worker.finish(payload)
 
 
-def test_profile_and_roles_are_tentative_until_one_explicit_commit() -> None:
+def test_profile_roles_and_meanings_remain_tentative_until_explicit_confirmation() -> (
+    None
+):
     runtime = FakeRuntime(_transient_views(ResearchFlowState.FAILURE))
     worker = ControllableWorker()
     controller = _controller(runtime, worker, [6])
     controller._views = _transient_views(ResearchFlowState.INTAKE_PROFILE)
+    roles = P1RoleBindings(
+        outcome=("outcome",),
+        focal_predictor=("group",),
+    )
+    review = build_variable_meaning_review(
+        _small_dataset(),
+        dataset_fingerprint="a" * 64,
+        pipeline_version=6,
+        profile=P1TaskProfile.LINEAR_CO_MOVEMENT,
+        roles=roles,
+    )
+    runtime.meaning_result = _transient_views(
+        ResearchFlowState.VARIABLE_MEANING_REVIEW,
+        meaning_review=review,
+    )
 
     assert controller.selectProfile("linear_co_movement") is True
     assert controller.current_view.state is ResearchFlowState.INTAKE_ROLES
@@ -507,17 +539,44 @@ def test_profile_and_roles_are_tentative_until_one_explicit_commit() -> None:
         controller.submitRoles(
             {
                 "outcome": ["outcome"],
-                "focal_predictor": ["predictor"],
+                "focal_predictor": ["group"],
             }
         )
         is True
     )
-    assert controller.current_view.state is ResearchFlowState.COMMITTING
+    assert controller.current_view.state is ResearchFlowState.MEANING_REVIEWING
+    assert len(worker.submissions) == 1
+    assert runtime.calls == []
+
+    worker.finish(worker.execute())
+
+    assert runtime.calls[0][0] == "review_variable_meanings"
+    assert runtime.calls[0][1]["profile"] is P1TaskProfile.LINEAR_CO_MOVEMENT
+    assert controller.current_view.state is ResearchFlowState.VARIABLE_MEANING_REVIEW
+    assert controller.stateModel["meaningReview"]["rows"][0]["variableId"] == (
+        "outcome"
+    )
     assert len(worker.submissions) == 1
 
+    assert controller.back() is True
+    assert controller.current_view.state is ResearchFlowState.INTAKE_ROLES
+    assert len(worker.submissions) == 1
+    assert [name for name, _kwargs in runtime.calls] == ["review_variable_meanings"]
+
+    assert controller.submitRoles(
+        {
+            "outcome": ["outcome"],
+            "focal_predictor": ["group"],
+        }
+    )
+    worker.finish(worker.execute())
+    assert controller.confirmVariableMeanings() is True
+    assert controller.current_view.state is ResearchFlowState.COMMITTING
+    assert len(worker.submissions) == 3
+
     worker.execute()
-    assert runtime.calls[0][0] == "commit_initial"
-    assert runtime.calls[0][1]["profile"] is P1TaskProfile.LINEAR_CO_MOVEMENT
+    assert runtime.calls[-1][0] == "commit_initial"
+    assert runtime.calls[-1][1]["meaning_review"] == review
 
 
 def test_cancel_before_publication_is_immediate_and_later_commit_can_recover() -> None:
@@ -989,9 +1048,38 @@ def test_real_runtime_commits_then_recovers_multi_round_candidate(
     assert started.standard.state is ResearchFlowState.INTAKE_CAUSAL
     assert not (tmp_path / "local-app-data" / "Modori").exists()
 
+    meaning_views = runtime.review_variable_meanings(
+        profile=P1TaskProfile.NUMERIC_DISTRIBUTION,
+        roles=P1RoleBindings(outcome=("outcome",)),
+        pipeline_version=1,
+        cancel_event=Event(),
+    )
+    assert meaning_views.standard.state is ResearchFlowState.VARIABLE_MEANING_REVIEW
+    assert meaning_views.meaning_review is not None
+    assert not (tmp_path / "local-app-data" / "Modori").exists()
+
+    stale_review = build_variable_meaning_review(
+        dataset,
+        dataset_fingerprint=meaning_views.meaning_review.dataset_fingerprint,
+        pipeline_version=2,
+        profile=P1TaskProfile.NUMERIC_DISTRIBUTION,
+        roles=P1RoleBindings(outcome=("outcome",)),
+    )
+    rejected = runtime.commit_initial(
+        profile=P1TaskProfile.NUMERIC_DISTRIBUTION,
+        roles=P1RoleBindings(outcome=("outcome",)),
+        meaning_review=stale_review,
+        pipeline_version=1,
+        cancel_event=Event(),
+    )
+    assert rejected.standard.state is ResearchFlowState.REPLAN_REQUIRED
+    assert runtime._handle is None
+    assert not (tmp_path / "local-app-data" / "Modori").exists()
+
     current = runtime.commit_initial(
         profile=P1TaskProfile.NUMERIC_DISTRIBUTION,
         roles=P1RoleBindings(outcome=("outcome",)),
+        meaning_review=meaning_views.meaning_review,
         pipeline_version=1,
         cancel_event=Event(),
     )
@@ -1029,6 +1117,13 @@ def test_real_runtime_commits_then_recovers_multi_round_candidate(
     assert current.standard.candidate is not None
     assert current.standard.primary_action is not None
     assert current.standard.primary_action.command is ResearchUiCommand.PREPARE
+    record = runtime._record
+    assert record is not None
+    role_fact = record.request.estimand.target_roles[0].variable_ids
+    assert role_fact.provenance_refs == (
+        "event:initial:1",
+        meaning_views.meaning_review.provenance_ref,
+    )
 
     recovered = runtime.start(pipeline_version=1, cancel_event=Event())
     assert recovered.standard.decision_identity_digest == (
@@ -1309,6 +1404,101 @@ def test_ui_controller_commits_research_os_provenance_once_and_manual_edit_clear
     assert flow.current_view.state is ResearchFlowState.REPLAN_REQUIRED
 
 
+def test_imported_pipeline_can_confirm_research_preparation_without_running(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv(
+        "LOCALAPPDATA",
+        str((tmp_path / "local-app-data").resolve()),
+    )
+    data_path = tmp_path / "score.csv"
+    data_path.write_text(
+        "score\n" + "\n".join(str(value) for value in range(1, 11)) + "\n",
+        encoding="utf-8",
+    )
+    worker = ControllableWorker()
+    host = UiController(worker=worker)
+
+    assert host.previewDataFilePath(str(data_path)) is True
+    assert host.confirmPendingImport() is True
+    assert host.updateVariableMetadata(
+        "score",
+        {"label": "인지 점수", "measure": "scale"},
+    ).ok
+
+    flow = host.researchFlow
+    assert isinstance(flow, ResearchFlowController)
+    assert flow.start() is True
+    worker.finish(worker.execute())
+    assert flow.chooseCausalNo() is True
+    assert flow.selectProfile("numeric_distribution") is True
+    assert (
+        flow.submitRoles(
+            {
+                "outcome": ["score"],
+                "group": [],
+                "focal_predictor": [],
+                "repeated_measure_order": [],
+            }
+        )
+        is True
+    )
+    worker.finish(worker.execute())
+    assert flow.current_view.state is ResearchFlowState.VARIABLE_MEANING_REVIEW
+    assert flow.stateModel["meaningReview"]["rows"][0]["label"] == "인지 점수"
+    assert flow.confirmVariableMeanings() is True
+    worker.finish(worker.execute())
+    for option_id in ("variables", "independent", "variables"):
+        assert flow.answer(option_id, []) is True
+        worker.finish(worker.execute())
+    assert flow.current_view.state is ResearchFlowState.CANDIDATE_READY
+
+    assert flow.prepare() is True
+    worker.finish(worker.execute())
+    assert flow.current_view.state is ResearchFlowState.PREPARE_REVIEW
+    submissions_before_confirm = len(worker.submissions)
+
+    assert flow.confirm() is True
+
+    assert flow.current_view.state is ResearchFlowState.CONFIRMED
+    assert len(worker.submissions) == submissions_before_confirm
+    assert [step.step_type for step in host.pipeline.steps] == [
+        "import.table",
+        "data.variable_metadata_patch",
+        "stats.descriptives_table1",
+    ]
+    assert host.resultsModel == []
+    assert host.selectionProvenance == "research_os_assisted"
+
+    submissions_before_early_export = len(worker.submissions)
+    early_export = host.exportReport(
+        ReportExportOptions(language="ko", include_figures=False)
+    )
+    assert early_export.ok is False
+    assert len(worker.submissions) == submissions_before_early_export
+
+    run = host.rerun()
+    assert run.ok is True
+    worker.finish(worker.execute())
+    assert [result.result_id for result in host.resultsModel] == ["descriptives_table1"]
+    steps_before_export = list(host.pipeline.steps)
+
+    exported = host.exportReport(
+        ReportExportOptions(language="ko", include_figures=False)
+    )
+
+    assert exported.ok is True
+    report_path = Path(exported.result_ids[0])
+    assert report_path.is_file()
+    report_text = "\n".join(
+        paragraph.text for paragraph in Document(report_path).paragraphs
+    )
+    assert "Research OS" in report_text
+    assert "추천 타당성을 보증하지 않습니다" in report_text
+    assert host.pipeline.steps == steps_before_export
+
+
 class SimulatedRuntimeCrash(RuntimeError):
     pass
 
@@ -1359,10 +1549,18 @@ def test_reopen_publishes_pending_and_only_explicit_resume_commits_passport(
         language=Language.KO,
     )
     interrupted.start(pipeline_version=1, cancel_event=Event())
+    meaning_views = interrupted.review_variable_meanings(
+        profile=P1TaskProfile.NUMERIC_DISTRIBUTION,
+        roles=P1RoleBindings(outcome=("outcome",)),
+        pipeline_version=1,
+        cancel_event=Event(),
+    )
+    assert meaning_views.meaning_review is not None
     with pytest.raises(SimulatedRuntimeCrash, match="after_request_initialize"):
         interrupted.commit_initial(
             profile=P1TaskProfile.NUMERIC_DISTRIBUTION,
             roles=P1RoleBindings(outcome=("outcome",)),
+            meaning_review=meaning_views.meaning_review,
             pipeline_version=1,
             cancel_event=Event(),
         )
