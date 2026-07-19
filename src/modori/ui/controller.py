@@ -21,6 +21,11 @@ from modori.ui.controller_services import UiControllerServices
 from modori.ui.data_transform_controller import DataTransformControllerMixin
 from modori.ui.import_layout_controller import ImportLayoutControllerMixin
 from modori.ui.importing import review_rows
+from modori.ui.localization import localize_message
+from modori.ui.localization_controller import (
+    UiLocalizationControllerMixin,
+    localized_step_chain,
+)
 from modori.value_clustering import unification_suggestions
 from modori.value_inventory import value_recode_inventory
 from modori.ui.patches import PatchValidationError, parse_step_patch
@@ -43,33 +48,6 @@ from modori.ui.settings import UiSettingsStore
 from modori.ui.worker import EngineJobResult, SerializedEngineWorker
 
 
-_STEP_TITLE_LABELS_KO = {
-    "Import data": "데이터 가져오기",
-    "Import regression data": "회귀 데이터 가져오기",
-    "Reverse-code negative items": "역문항 역코딩",
-    "Reverse-code items": "역코딩",
-    "Compose job satisfaction": "직무만족 척도 만들기",
-    "Compose scale score": "척도 점수 만들기",
-    "Unify value variants": "값 표기 통일",
-    "Map categorical values": "범주 값 매핑",
-    "Descriptives Table 1": "기술통계",
-    "Reliability": "척도 신뢰도",
-    "Compare groups": "집단 비교",
-    "Multiple linear regression": "다중회귀",
-    "Frequency and crosstab": "빈도·교차표",
-    "Correlation": "상관관계",
-    "One-way ANOVA": "일원분산분석",
-    "Kruskal-Wallis test": "Kruskal-Wallis 검정",
-    "ANCOVA": "공분산분석",
-    "Factor/PCA": "요인/PCA",
-    "Repeated-measures ANOVA": "반복측정 분산분석",
-    "Friedman test": "Friedman 검정",
-    "Mediation": "매개분석",
-    "Moderated mediation": "조절된 매개분석",
-    "APA report": "APA 보고서",
-    "Regression report": "회귀 보고서",
-}
-
 _RECONFIRMATION_ERROR_CODE = "experimental_confirmation_required"
 _RECONFIRMATION_RUN_MESSAGE = (
     "변경된 데이터 구성을 다시 확인하거나 분석 방법을 직접 구성해 주세요."
@@ -77,34 +55,6 @@ _RECONFIRMATION_RUN_MESSAGE = (
 _RECONFIRMATION_REPORT_MESSAGE = (
     "변경된 데이터 구성을 다시 확인한 뒤 보고서를 저장해 주세요."
 )
-
-
-class _CurrentPipelineOperations:
-    """Resolve pipeline operations after an imported pipeline replaces the initial one."""
-
-    def __init__(self, provider: Callable[[], PipelineOperations]) -> None:
-        self._provider = provider
-
-    def current_dataset(self) -> object | None:
-        return self._provider().current_dataset()
-
-    def replace_research_os_analysis_step(
-        self,
-        preparation: PassportBoundPreparation,
-        *,
-        commit_pipeline_change: Callable[[PassportBoundPreparation], int],
-    ) -> tuple[str, int]:
-        return self._provider().replace_research_os_analysis_step(
-            preparation,
-            commit_pipeline_change=commit_pipeline_change,
-        )
-
-
-def _localized_step_title(title: str) -> str:
-    metadata_prefix = "Edit metadata: "
-    if title.startswith(metadata_prefix):
-        return f"변수 정보 수정: {title.removeprefix(metadata_prefix)}"
-    return _STEP_TITLE_LABELS_KO.get(title, title)
 
 
 def export_report_from_pipeline(
@@ -124,7 +74,7 @@ def _worker_boundaries(
         pipeline_version_provider=lambda: owner.pipeline_version
     )
     preparation_editor = ResearchPreparationEditor(
-        _CurrentPipelineOperations(lambda: owner._services.pipeline_ops),
+        pipeline_ops_provider=lambda: owner._services.pipeline_ops,
         version_provider=lambda: owner.pipeline_version,
         current_dataset_fingerprint=runtime.current_dataset_fingerprint,
         commit_pipeline_change=lambda preparation: _commit_research_preparation(
@@ -167,6 +117,7 @@ def _commit_research_preparation(
 
 class UiController(
     QObject,
+    UiLocalizationControllerMixin,
     RecommendationControllerMixin,
     AnalysisSelectionControllerMixin,
     DataTransformControllerMixin,
@@ -203,6 +154,7 @@ class UiController(
             reduce_effects_override=reduce_effects,
         )
         self._mode = "standard"
+        self._ui_language = "ko"
         self._last_error = ""
         self._last_message = ""
         self._result_state = UiResultState()
@@ -305,7 +257,10 @@ class UiController(
 
     @Property("QVariantList", notify=stateChanged)
     def importReviewRows(self) -> list:
-        return review_rows(self._services.import_flow.table_preview)
+        return review_rows(
+            self._services.import_flow.table_preview,
+            language=self._ui_language,
+        )
 
     @Property("QVariantList", notify=stateChanged)
     def importColumnRows(self) -> list:
@@ -328,11 +283,7 @@ class UiController(
 
     @Property(str, notify=stateChanged)
     def stepChainDisplayText(self) -> str:
-        return " → ".join(
-            _localized_step_title(title.strip())
-            for title in self._pipeline_state.step_chain_text.split(" → ")
-            if title.strip()
-        )
+        return localized_step_chain(self._pipeline_state.step_chain_text, "ko")
 
     @Property(str, notify=stateChanged)
     def recentFilesText(self) -> str:
@@ -610,7 +561,7 @@ class UiController(
     def explainPlainText(self, entity_key: str, language: str) -> str:
         result = self.explain(entity_key, language)
         if not result.ok:
-            return result.message_ko
+            return localize_message(result.message_ko, language)
         return self._services.explanation_presenter.plain_text(
             title=result.title,
             content=result.content,
@@ -621,7 +572,7 @@ class UiController(
     def explainRichText(self, entity_key: str, language: str) -> str:
         result = self.explain(entity_key, language)
         if not result.ok:
-            return result.message_ko
+            return localize_message(result.message_ko, language)
         return self._services.explanation_presenter.rich_text(
             title=str(result.title),
             content=result.content,
@@ -651,6 +602,7 @@ class UiController(
         previous_chart_paths, chart_paths = self._result_state.bind_payload(
             result.payload,
             self._services.result_binding_presenter,
+            language=self._ui_language,
         )
         self.resultsModel = self._result_state.results_model
         self._services.result_binding_presenter.cleanup_obsolete_chart_files(
@@ -709,7 +661,7 @@ class UiController(
         current_dataset = self._services.pipeline_ops.current_dataset()
         if current_dataset is None:
             return
-        models = models_for_dataset(current_dataset)
+        models = models_for_dataset(current_dataset, language=self._ui_language)
         self._data_model = models.data_model
         self._variable_model = models.variable_model
         self._data_view_notice = models.notice

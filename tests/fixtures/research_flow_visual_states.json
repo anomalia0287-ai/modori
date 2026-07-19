@@ -191,6 +191,7 @@
       "id": "latest-badge",
       "foreground_token": "bronzeAction",
       "background_token": "bronzeWash",
+      "background_underlay_token": "surfaceCream",
       "semantic_role": "normal_text",
       "states": ["candidate_ready"],
       "modes": ["guided", "standard"],
@@ -200,6 +201,7 @@
       "id": "running-badge",
       "foreground_token": "bronzeDeep",
       "background_token": "pearlLilac",
+      "background_underlay_token": "surfaceCream",
       "semantic_role": "normal_text",
       "states": ["fingerprinting", "committing", "handoff_preflight"],
       "modes": ["guided", "standard"],
@@ -693,6 +695,59 @@
         "evidenceRows": []
       }
     },
+    "variable_meaning_review_ko": {
+      "kind": "panel",
+      "state_model": {
+        "state": "variable_meaning_review",
+        "mode": "standard",
+        "language": "ko",
+        "title": "변수 의미와 역할을 확인합니다",
+        "body": "표시된 메타데이터를 확인하고 기록되지 않은 의미는 추정하지 않습니다.",
+        "stageText": "",
+        "badgeText": "로컬 Research OS",
+        "primaryAction": {"command": "confirm_meanings", "label": "변수 의미와 역할 확인", "enabled": true},
+        "secondaryActions": [
+          {"command": "back", "label": "돌아가기", "enabled": true}
+        ],
+        "options": [],
+        "question": null,
+        "candidate": null,
+        "evidenceRows": [],
+        "meaningReview": {
+          "visibleReviewDigest": "abcdef012345",
+          "profileId": "independent_two_group_mean",
+          "rows": [
+            {
+              "role": "outcome",
+              "variableId": "synthetic_score",
+              "label": "합성 웰빙 지표",
+              "measure": "scale",
+              "valueLabels": [],
+              "missingCodes": ["99"],
+              "storageDtype": "float64",
+              "evidenceSource": "current_dataset_metadata",
+              "conceptDefinitionStatus": "not_recorded",
+              "unitStatus": "not_recorded"
+            },
+            {
+              "role": "group",
+              "variableId": "synthetic_group",
+              "label": "합성 조건 분류",
+              "measure": "nominal",
+              "valueLabels": [
+                {"value": "0", "label": "비교"},
+                {"value": "1", "label": "중재"}
+              ],
+              "missingCodes": [],
+              "storageDtype": "int64",
+              "evidenceSource": "current_dataset_metadata",
+              "conceptDefinitionStatus": "not_recorded",
+              "unitStatus": "not_recorded"
+            }
+          ]
+        }
+      }
+    },
     "prepare_review_ko": {
       "kind": "panel",
       "state_model": {
@@ -772,6 +827,7 @@
     {"id": "stale-replan-en", "capture_kind": "panel", "state_id": "replan_required", "locale": "en", "mode": "standard", "interaction_state": null, "viewport": "reference", "scale_factor": 1.0, "reduce_effects": false, "fixture_id": "replan_required_en", "expected_present": ["researchStatusPanel"], "expected_absent": ["researchQuestionCard", "researchCandidateCard"], "expected_properties": {}},
     {"id": "recorded-abstention-ko", "capture_kind": "panel", "state_id": "abstain_ready", "locale": "ko", "mode": "guided", "interaction_state": null, "viewport": "minimum", "scale_factor": 1.0, "reduce_effects": false, "fixture_id": "abstain_ready_ko", "expected_present": ["researchStatusPanel"], "expected_absent": ["researchQuestionCard", "researchCandidateCard"], "expected_properties": {}},
     {"id": "causal-scope-notice-en", "capture_kind": "panel", "state_id": "causal_scope_notice", "locale": "en", "mode": "guided", "interaction_state": null, "viewport": "minimum", "scale_factor": 1.0, "reduce_effects": false, "fixture_id": "causal_scope_notice_en", "expected_present": ["researchStaticBoundary"], "expected_absent": ["researchQuestionCard", "researchCandidateCard"], "expected_properties": {}},
+    {"id": "variable-meaning-review-ko", "capture_kind": "panel", "state_id": "variable_meaning_review", "locale": "ko", "mode": "standard", "interaction_state": null, "viewport": "reference", "scale_factor": 1.0, "reduce_effects": false, "fixture_id": "variable_meaning_review_ko", "expected_present": ["researchVariableMeaningReview"], "expected_absent": ["researchQuestionCard", "researchCandidateCard"], "expected_properties": {"researchVariableMeaningReview.rowCount": 2, "researchVariableMeaningReview.conceptDefinitionUnknown": true}},
     {"id": "prepare-review-ko", "capture_kind": "panel", "state_id": "prepare_review", "locale": "ko", "mode": "standard", "interaction_state": null, "viewport": "reference", "scale_factor": 1.0, "reduce_effects": false, "fixture_id": "prepare_review_ko", "expected_present": ["researchPreparationReview"], "expected_absent": ["researchQuestionCard", "researchCandidateCard"], "expected_properties": {}},
     {"id": "confirmed-en", "capture_kind": "panel", "state_id": "confirmed", "locale": "en", "mode": "standard", "interaction_state": null, "viewport": "reference", "scale_factor": 1.0, "reduce_effects": true, "fixture_id": "confirmed_en", "expected_present": ["researchPreparationReview"], "expected_absent": ["researchQuestionCard", "researchCandidateCard"], "expected_properties": {}},
     {"id": "legacy-disclosure-collapsed", "capture_kind": "work_shell", "state_id": "idle", "locale": "ko", "mode": "guided", "interaction_state": "collapsed", "viewport": "minimum", "scale_factor": 1.0, "reduce_effects": false, "fixture_id": "shell_idle_ko", "expected_present": ["guideRail", "researchFlowPanel"], "expected_absent": [], "expected_properties": {"guideRail.showLegacyCandidates": false}},

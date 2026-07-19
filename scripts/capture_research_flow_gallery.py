@@ -14,6 +14,9 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
+SRC_ROOT = ROOT / "src"
+if str(SRC_ROOT) not in sys.path:
+    sys.path.insert(0, str(SRC_ROOT))
 DEFAULT_MANIFEST = ROOT / "tests/fixtures/research_flow_visual_states.json"
 DEFAULT_OUTPUT = ROOT / ".visual-qa/research-flow"
 
@@ -201,20 +204,33 @@ def _render_item(
     from PySide6.QtTest import QTest
 
     from modori.ui.strings import UI_STRINGS_KO
+    from modori.ui.strings_en import UI_STRINGS_EN
 
     class GalleryBootstrap(QObject):
         def __init__(self, locale: str, overrides: Mapping[str, object]) -> None:
             super().__init__()
             self._locale = locale
             self._overrides = overrides
+            self.catalog_misses: set[str] = set()
+
+        @Property(str, constant=True)
+        def language(self) -> str:
+            return self._locale
 
         @Slot(str, result=str)
-        def text(self, key: str) -> str:
-            if self._locale == "en":
+        @Slot(str, str, result=str)
+        def text(self, key: str, language: str = "") -> str:
+            selected = language if language in {"ko", "en"} else self._locale
+            if selected == "en":
                 value = self._overrides.get(key)
                 if isinstance(value, str):
                     return value
-            return UI_STRINGS_KO.get(key, key)
+            catalog = UI_STRINGS_EN if selected == "en" else UI_STRINGS_KO
+            value = catalog.get(key)
+            if value is None:
+                self.catalog_misses.add(key)
+                return key
+            return value
 
         @Slot(str, result=bool)
         def copyText(self, _text: str) -> bool:
@@ -235,6 +251,7 @@ def _render_item(
         def busy(self) -> bool:
             return self._model.get("state") in {
                 "fingerprinting",
+                "meaning_reviewing",
                 "committing",
                 "handoff_preflight",
             }
@@ -288,6 +305,10 @@ def _render_item(
 
         @Slot(result=bool)
         def confirm(self) -> bool:
+            return self._accept()
+
+        @Slot(result=bool)
+        def confirmVariableMeanings(self) -> bool:
             return self._accept()
 
         @Slot(str, result=bool)
@@ -647,6 +668,7 @@ Rectangle {
                 "missing_present_regions": missing_present,
                 "unexpected_visible_regions": unexpected_visible,
                 "property_mismatches": property_mismatches,
+                "catalog_misses": sorted(bootstrap.catalog_misses),
                 "horizontal_overflow": bool(horizontal_overflow_sources),
                 "horizontal_overflow_sources": horizontal_overflow_sources,
                 "render_ms": round(elapsed_ms, 3),

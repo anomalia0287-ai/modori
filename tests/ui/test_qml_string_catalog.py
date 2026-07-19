@@ -11,7 +11,10 @@ USER_VISIBLE_PROPERTY = re.compile(
     r"\b(text|placeholderText|title|Accessible\.name)\s*:\s*(?P<expression>.+)$"
 )
 STRING_LITERAL = re.compile(r'"(?P<value>[^"]*[A-Za-z가-힣][^"]*)"')
-CATALOG_CALL = re.compile(r'appBootstrap\.text\("(?P<key>[^"]+)"\)')
+CATALOG_CALL = re.compile(
+    r'appBootstrap\.text\("(?P<key>[^"]+)",\s*appBootstrap\.language\)'
+)
+NON_REACTIVE_CATALOG_CALL = re.compile(r'appBootstrap\.text\("[^"]+"\)')
 CATALOG_MODEL_KEY = re.compile(r'"label"\s*:\s*"(?P<key>guide\.[^"]+)"')
 COMPARISON_LITERAL = re.compile(r'(===|!==|==|!=)\s*"[^"]*"')
 QSTR_LITERAL = re.compile(r'qsTr\("(?P<value>[^"]*[A-Za-z가-힣][^"]*)"\)')
@@ -45,6 +48,16 @@ def test_qml_static_user_visible_strings_use_catalog() -> None:
             raw_literals = _raw_user_visible_literals(line)
             if raw_literals:
                 violations.append(f"{path}:{line_number}:{', '.join(raw_literals)}")
+
+    assert violations == []
+
+
+def test_qml_catalog_bindings_observe_session_language() -> None:
+    violations: list[str] = []
+    for path in sorted(QML_ROOT.rglob("*.qml")):
+        source = path.read_text(encoding="utf-8")
+        if NON_REACTIVE_CATALOG_CALL.search(source):
+            violations.append(str(path))
 
     assert violations == []
 

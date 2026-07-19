@@ -8,7 +8,7 @@ Dialog {
     id: root
 
     objectName: "reportExportDialog"
-    title: appBootstrap.text("dialog.report.title")
+    title: appBootstrap.text("dialog.report.title", appBootstrap.language)
     modal: true
     standardButtons: Dialog.NoButton
     parent: Overlay.overlay
@@ -18,7 +18,7 @@ Dialog {
     height: Math.min(parent.height - theme.dialogViewportMargin * 2, theme.reportDialogHeight)
     padding: theme.spaceXl
 
-    property string selectedLanguage: "ko"
+    property string selectedLanguage: appBootstrap.language
 
     background: PearlSurface {
         ambient: true
@@ -44,7 +44,7 @@ Dialog {
         spacing: theme.spaceMd
 
         Label {
-            text: appBootstrap.text("dialog.report.description")
+            text: appBootstrap.text("dialog.report.description", appBootstrap.language)
             color: theme.textBody
             wrapMode: Text.WordWrap
             Layout.fillWidth: true
@@ -62,7 +62,7 @@ Dialog {
                 spacing: theme.spaceSm
 
                 Label {
-                    text: appBootstrap.text("dialog.report.language")
+                    text: appBootstrap.text("dialog.report.language", appBootstrap.language)
                     color: theme.textStrong
                     font.bold: true
                     Layout.fillWidth: true
@@ -73,14 +73,15 @@ Dialog {
                     spacing: theme.spaceGridColumn
 
                     AppRadioButton {
-                        text: appBootstrap.text("dialog.report.language.ko")
-                        checked: true
+                        text: appBootstrap.text("dialog.report.language.ko", appBootstrap.language)
+                        checked: root.selectedLanguage === "ko"
                         ButtonGroup.group: languageGroup
                         onClicked: root.selectedLanguage = "ko"
                     }
 
                     AppRadioButton {
-                        text: appBootstrap.text("dialog.report.language.en")
+                        text: appBootstrap.text("dialog.report.language.en", appBootstrap.language)
+                        checked: root.selectedLanguage === "en"
                         ButtonGroup.group: languageGroup
                         onClicked: root.selectedLanguage = "en"
                     }
@@ -104,7 +105,7 @@ Dialog {
                 spacing: theme.spaceSm
 
                 Label {
-                    text: appBootstrap.text("dialog.report.sections")
+                    text: appBootstrap.text("dialog.report.sections", appBootstrap.language)
                     color: theme.textStrong
                     font.bold: true
                     Layout.fillWidth: true
@@ -118,56 +119,56 @@ Dialog {
 
                     AppCheckBox {
                         id: includeDescriptives
-                        text: appBootstrap.text("dialog.report.include_descriptives")
+                        text: appBootstrap.text("dialog.report.include_descriptives", appBootstrap.language)
                         checked: true
                         Layout.fillWidth: true
                     }
 
                     AppCheckBox {
                         id: includeReliability
-                        text: appBootstrap.text("dialog.report.include_reliability")
+                        text: appBootstrap.text("dialog.report.include_reliability", appBootstrap.language)
                         checked: true
                         Layout.fillWidth: true
                     }
 
                     AppCheckBox {
                         id: includeComparison
-                        text: appBootstrap.text("dialog.report.include_comparison")
+                        text: appBootstrap.text("dialog.report.include_comparison", appBootstrap.language)
                         checked: true
                         Layout.fillWidth: true
                     }
 
                     AppCheckBox {
                         id: includeAssociation
-                        text: appBootstrap.text("dialog.report.include_association")
+                        text: appBootstrap.text("dialog.report.include_association", appBootstrap.language)
                         checked: true
                         Layout.fillWidth: true
                     }
 
                     AppCheckBox {
                         id: includeGroupModels
-                        text: appBootstrap.text("dialog.report.include_group_models")
+                        text: appBootstrap.text("dialog.report.include_group_models", appBootstrap.language)
                         checked: true
                         Layout.fillWidth: true
                     }
 
                     AppCheckBox {
                         id: includeDimensionReduction
-                        text: appBootstrap.text("dialog.report.include_dimension_reduction")
+                        text: appBootstrap.text("dialog.report.include_dimension_reduction", appBootstrap.language)
                         checked: true
                         Layout.fillWidth: true
                     }
 
                     AppCheckBox {
                         id: includeRegression
-                        text: appBootstrap.text("dialog.report.include_regression")
+                        text: appBootstrap.text("dialog.report.include_regression", appBootstrap.language)
                         checked: true
                         Layout.fillWidth: true
                     }
 
                     AppCheckBox {
                         id: includeFigures
-                        text: appBootstrap.text("dialog.report.include_figures")
+                        text: appBootstrap.text("dialog.report.include_figures", appBootstrap.language)
                         checked: true
                         Layout.fillWidth: true
                     }
@@ -176,7 +177,8 @@ Dialog {
         }
 
         Label {
-            text: appBootstrap.text("results.error_prefix") + uiController.lastError
+            text: appBootstrap.text("results.error_prefix", appBootstrap.language)
+                + appBootstrap.localize(uiController.lastError, appBootstrap.language)
             visible: uiController.lastError.length > 0
             color: theme.danger
             font.bold: true
@@ -185,7 +187,7 @@ Dialog {
         }
 
         Label {
-            text: appBootstrap.text("boundary.reconfirmation_required")
+            text: appBootstrap.text("boundary.reconfirmation_required", appBootstrap.language)
             Accessible.name: text
             visible: uiController.selectionConfirmationRequired
             color: theme.warning
@@ -197,7 +199,7 @@ Dialog {
         Label {
             text: uiController.reportPath
             visible: uiController.reportPath.length > 0
-            color: theme.bronzeDeep
+            color: theme.workspaceBrand
             wrapMode: Text.WordWrap
             Layout.fillWidth: true
         }
@@ -210,14 +212,14 @@ Dialog {
             }
 
             AppButton {
-                text: appBootstrap.text("settings.close")
+                text: appBootstrap.text("settings.close", appBootstrap.language)
                 Accessible.name: text
                 variant: "quiet"
                 onClicked: root.close()
             }
 
             AppButton {
-                text: appBootstrap.text("dialog.report.export_word")
+                text: appBootstrap.text("dialog.report.export_word", appBootstrap.language)
                 Accessible.name: text
                 variant: "primary"
                 semanticLight: enabled

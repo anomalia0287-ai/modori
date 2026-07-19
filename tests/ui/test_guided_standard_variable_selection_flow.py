@@ -159,16 +159,20 @@ def test_guide_rail_shows_recommendations_without_auto_running() -> None:
     guide = Path("src/modori/ui/qml/components/GuideRail.qml").read_text(encoding="utf-8")
 
     assert "ScrollView" in guide
-    assert 'appBootstrap.text("guide.experimental_status")' in guide
-    assert 'appBootstrap.text("guide.order_disclaimer")' in guide
+    assert 'appBootstrap.text("guide.experimental_status", appBootstrap.language)' in guide
+    assert 'appBootstrap.text("guide.order_disclaimer", appBootstrap.language)' in guide
     assert "uiController.recommendationTitle" in guide
     assert "uiController.recommendationReason" in guide
     assert "uiController.recommendationAlternativesText" not in guide
     assert "uiController.recommendationCount" in guide
-    assert "uiController.recommendationCandidateTitleAt(index)" in guide
+    assert (
+        "uiController.recommendationCandidateTitleAtFor(index, appBootstrap.language)"
+        in guide
+    )
     assert "uiController.selectRecommendationAt" in guide
-    assert 'appBootstrap.text("guide.candidate_list")' in guide
-    assert 'appBootstrap.text("guide.manual_selection")' in guide
+    assert 'appBootstrap.text("guide.candidate_list", appBootstrap.language)' in guide
+    assert 'appBootstrap.text("guide.other_recommendations", appBootstrap.language)' in guide
+    assert 'appBootstrap.text("guide.manual_selection", appBootstrap.language)' in guide
     assert "uiController.runPreparedRecommendationNow()" not in guide
     assert "uiController.runPreparedRecommendation()" not in guide
     assert "uiController.applySelectedRecommendation" not in guide

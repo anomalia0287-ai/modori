@@ -47,6 +47,12 @@ from modori.research_flow.task_session import (
     TaskSessionIntegrityError,
     TaskSessionUnavailableError,
 )
+from modori.research_flow.variable_meaning import (
+    VariableMeaningReview,
+    VariableMeaningReviewError,
+    VariableMeaningRow,
+    build_variable_meaning_review,
+)
 
 __all__ = [
     "FINGERPRINT_CONTRACT_ID",
@@ -85,6 +91,10 @@ __all__ = [
     "TaskSessionError",
     "TaskSessionIntegrityError",
     "TaskSessionUnavailableError",
+    "VariableMeaningReview",
+    "VariableMeaningReviewError",
+    "VariableMeaningRow",
+    "build_variable_meaning_review",
     "fingerprint_dataset",
     "map_passport_to_step",
     "preflight_mapped_step",

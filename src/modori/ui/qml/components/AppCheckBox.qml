@@ -18,13 +18,13 @@ CheckBox {
         y: Math.round((control.height - height) / 2)
         radius: theme.checkboxRadius
         color: control.checkState === Qt.Unchecked
-            ? theme.surfaceCream
-            : theme.bronzeAction
+            ? theme.workspaceCard
+            : theme.workspacePrimary
         border.color: control.activeFocus
-            ? theme.focusRing
+            ? theme.workspaceFocus
             : control.checkState === Qt.Unchecked
-                ? theme.lineStrong
-                : theme.bronzeAction
+                ? theme.workspaceDividerStrong
+                : theme.workspacePrimary
         border.width: control.activeFocus ? theme.borderWidthFocus : theme.borderWidth
 
         Image {

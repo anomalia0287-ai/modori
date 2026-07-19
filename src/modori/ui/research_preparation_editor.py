@@ -165,13 +165,31 @@ class ResearchPreparationEditor:
 
     def __init__(
         self,
-        pipeline_ops: object,
+        pipeline_ops: object | None = None,
         *,
+        pipeline_ops_provider: Callable[[], object] | None = None,
         version_provider: Callable[[], int],
         current_dataset_fingerprint: Callable[[], str | None],
         commit_pipeline_change: Callable[[PassportBoundPreparation], int],
     ) -> None:
-        if not hasattr(pipeline_ops, "replace_research_os_analysis_step"):
+        if (pipeline_ops is None) == (pipeline_ops_provider is None):
+            raise ResearchPreparationError(
+                "provide exactly one pipeline operations source"
+            )
+        if pipeline_ops_provider is None:
+            def fixed_pipeline_ops_provider() -> object | None:
+                return pipeline_ops
+
+            pipeline_ops_provider = fixed_pipeline_ops_provider
+        if not callable(pipeline_ops_provider):
+            raise ResearchPreparationError(
+                "pipeline operations provider must be callable"
+            )
+        self._pipeline_ops_provider = pipeline_ops_provider
+        if not hasattr(
+            self._current_pipeline_ops(),
+            "replace_research_os_analysis_step",
+        ):
             raise ResearchPreparationError(
                 "pipeline operations lack Research OS confirmation"
             )
@@ -182,10 +200,22 @@ class ResearchPreparationEditor:
         ):
             if not callable(value):
                 raise ResearchPreparationError(f"{name} must be callable")
-        self._pipeline_ops = pipeline_ops
         self._current_pipeline_version = version_provider
         self._current_dataset_fingerprint = current_dataset_fingerprint
         self._commit_pipeline_change = commit_pipeline_change
+
+    def _current_pipeline_ops(self) -> object:
+        try:
+            pipeline_ops = self._pipeline_ops_provider()
+        except Exception as exc:
+            raise ResearchPreparationError(
+                "pipeline operations are unavailable"
+            ) from exc
+        if not hasattr(pipeline_ops, "replace_research_os_analysis_step"):
+            raise ResearchPreparationError(
+                "pipeline operations lack Research OS confirmation"
+            )
+        return pipeline_ops
 
     def review(
         self,
@@ -230,6 +260,7 @@ class ResearchPreparationEditor:
                     "research_preparation_stale",
                     current_version,
                 )
+            pipeline_ops = self._current_pipeline_ops()
             mapping = PassportStepMapping.create(
                 passport_artifact_id=preparation.passport_artifact_id,
                 passport_digest=preparation.passport_digest,
@@ -240,7 +271,7 @@ class ResearchPreparationEditor:
             )
             preflight = preflight_mapped_step(
                 mapping,
-                self._pipeline_ops.current_dataset(),
+                pipeline_ops.current_dataset(),
                 captured_pipeline_version=current_version,
                 current_pipeline_version=self._current_pipeline_version,
             )
@@ -274,7 +305,7 @@ class ResearchPreparationEditor:
                     )
                 return committed
 
-            committed_result = self._pipeline_ops.replace_research_os_analysis_step(
+            committed_result = pipeline_ops.replace_research_os_analysis_step(
                 preparation,
                 commit_pipeline_change=commit_exact,
             )

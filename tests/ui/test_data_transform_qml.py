@@ -55,3 +55,12 @@ def test_variable_table_exposes_label_and_missing_code_controls() -> None:
     assert "variable.label_placeholder" in variable_table
     assert "variable.missing_codes_placeholder" in variable_table
     assert "uiController.updateVariableMetadataFromText" in variable_table
+
+
+def test_variable_editor_clears_the_work_tab_divider() -> None:
+    variable_table = qml_text("components/VariableTable.qml")
+    primary_row = variable_table[
+        variable_table.index("RowLayout {") : variable_table.index("AppTextField {")
+    ]
+
+    assert "Layout.topMargin: theme.spaceSm" in primary_row

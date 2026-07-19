@@ -12,6 +12,7 @@ from modori.table_io import (
     read_schema,
 )
 from modori.ui.importing import ImportPreviewService
+from modori.ui.localization import localize_message
 
 
 class UiImportFlow:
@@ -25,6 +26,22 @@ class UiImportFlow:
         self.drop_duplicate_rows = False
         self.source_columns: tuple[str, ...] = ()
         self.import_selection: dict[str, object] | None = None
+        self.language = "ko"
+        self._preview_error_ko = ""
+
+    def set_language(self, language: str) -> bool:
+        selected = "en" if language == "en" else "ko" if language == "ko" else ""
+        if not selected:
+            return False
+        self.language = selected
+        if self.table_preview is not None:
+            self.preview_text = self._preview_service.format_preview(
+                self.table_preview,
+                language=selected,
+            )
+        elif self._preview_error_ko:
+            self.preview_text = localize_message(self._preview_error_ko, selected)
+        return True
 
     def preview(
         self,
@@ -100,6 +117,12 @@ class UiImportFlow:
             self.drop_duplicate_rows = bool(drop_duplicate_rows)
             self.source_columns = schema.columns if schema is not None else ()
             self.import_selection = _selection_payload(selection) if selection is not None else None
+            self._preview_error_ko = ""
+            if self.table_preview is not None:
+                self.preview_text = self._preview_service.format_preview(
+                    self.table_preview,
+                    language=self.language,
+                )
         else:
             self._record_preview_failure(
                 preview.text,
@@ -123,7 +146,7 @@ class UiImportFlow:
 
     def require_pending_path(self) -> Path | None:
         if self.pending_path is None:
-            self.preview_text = "가져올 파일이 선택되지 않았습니다."
+            self._set_preview_error("가져올 파일이 선택되지 않았습니다.")
             return None
         if self.table_preview is None:
             return None
@@ -131,9 +154,13 @@ class UiImportFlow:
 
     def require_pending_file_path(self) -> Path | None:
         if self.pending_path is None:
-            self.preview_text = "가져올 파일이 선택되지 않았습니다."
+            self._set_preview_error("가져올 파일이 선택되지 않았습니다.")
             return None
         return self.pending_path
+
+    def _set_preview_error(self, message_ko: str) -> None:
+        self._preview_error_ko = message_ko
+        self.preview_text = localize_message(message_ko, self.language)
 
     def _record_preview_failure(
         self,
@@ -145,7 +172,7 @@ class UiImportFlow:
         schema: TableSchema | None = None,
         selection: ImportSelection | None = None,
     ) -> None:
-        self.preview_text = message
+        self._set_preview_error(message)
         self.pending_path = previous_pending_path if layout is not None else pending_path
         self.table_preview = None
         self.table_layout = None

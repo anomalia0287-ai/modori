@@ -133,7 +133,7 @@ class ImportLayoutControllerMixin:
         preview = import_flow.table_preview
         if preview is None:
             return False
-        models = models_for_table_preview(preview)
+        models = models_for_table_preview(preview, language=self._ui_language)
         self._data_model = models.data_model
         self._variable_model = models.variable_model
         self._data_view_notice = models.notice

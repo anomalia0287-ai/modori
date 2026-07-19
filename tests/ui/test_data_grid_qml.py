@@ -252,9 +252,9 @@ def test_data_grid_exposes_scrollbars_and_viewport_position() -> None:
     assert 'objectName: "dataGridVerticalScrollBar"' in qml
     for token in ("topRow", "bottomRow", "leftColumn", "rightColumn", "rows", "columns"):
         assert token in qml
-    assert 'appBootstrap.text("data.grid_rows")' in qml
-    assert 'appBootstrap.text("data.grid_columns")' in qml
-    assert 'appBootstrap.text("data.grid_extent_separator")' in qml
+    assert 'appBootstrap.text("data.grid_rows", appBootstrap.language)' in qml
+    assert 'appBootstrap.text("data.grid_columns", appBootstrap.language)' in qml
+    assert 'appBootstrap.text("data.grid_extent_separator", appBootstrap.language)' in qml
 
 
 def test_data_grid_contains_motion_and_places_basic_scrollbars_outside_cells() -> None:
@@ -462,7 +462,7 @@ def test_data_grid_has_visible_current_cell_state() -> None:
     assert "property bool isCurrentCell" in qml
     assert "root.currentRow === row" in qml
     assert "root.currentColumn === column" in qml
-    assert "isCurrentCell ? theme.lineStrong : theme.lineGrid" in qml
+    assert "isCurrentCell ? theme.workspacePrimary : theme.lineGrid" in qml
 
 
 def test_data_grid_hover_is_a_subtle_surface_shift_without_value_tooltips() -> None:

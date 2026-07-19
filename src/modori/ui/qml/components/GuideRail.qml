@@ -79,12 +79,12 @@ PearlSurface {
 
     function reviewText(requirement) {
         if (requirement === "configuration_required") {
-            return appBootstrap.text("guide.review_configuration_required")
+            return appBootstrap.text("guide.review_configuration_required", appBootstrap.language)
         }
         if (requirement === "heightened_review") {
-            return appBootstrap.text("guide.review_heightened")
+            return appBootstrap.text("guide.review_heightened", appBootstrap.language)
         }
-        return appBootstrap.text("guide.review_standard")
+        return appBootstrap.text("guide.review_standard", appBootstrap.language)
     }
 
     function selectedRecommendationText(key) {
@@ -101,19 +101,19 @@ PearlSurface {
                 "ko"
             )
         } catch (error) {
-            return appBootstrap.text("guide.explanation_unavailable")
+            return appBootstrap.text("guide.explanation_unavailable", appBootstrap.language)
         }
     }
 
     function candidateReviewSuffix(index) {
         var requirement = uiController.recommendationCandidateReviewRequirementAt(index)
         if (requirement === "configuration_required") {
-            return appBootstrap.text("guide.review_configuration_required")
+            return appBootstrap.text("guide.review_configuration_required", appBootstrap.language)
         }
         if (requirement === "heightened_review") {
-            return appBootstrap.text("guide.review_heightened")
+            return appBootstrap.text("guide.review_heightened", appBootstrap.language)
         }
-        return appBootstrap.text("guide.candidate_label")
+        return appBootstrap.text("guide.candidate_label", appBootstrap.language)
     }
 
     function clearSelectionFields() {
@@ -533,9 +533,9 @@ PearlSurface {
         spacing: theme.spaceSm
 
         Label {
-            text: appBootstrap.text("guide.title")
+            text: appBootstrap.text("guide.title", appBootstrap.language)
             font.bold: true
-            color: theme.bronzeDeep
+            color: theme.workspaceBrand
             Layout.fillWidth: true
         }
 
@@ -545,11 +545,11 @@ PearlSurface {
 
             StateBadge {
                 state: "empty"
-                label: appBootstrap.text("guide.experimental_badge")
+                label: appBootstrap.text("guide.experimental_badge", appBootstrap.language)
             }
 
             Label {
-                text: appBootstrap.text("guide.experimental_status")
+                text: appBootstrap.text("guide.experimental_status", appBootstrap.language)
                 color: theme.textBody
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
@@ -585,7 +585,7 @@ PearlSurface {
                 spacing: theme.spaceSm
 
                 Label {
-                    text: appBootstrap.text("research.legacy.title")
+                    text: appBootstrap.text("research.legacy.title", appBootstrap.language)
                     color: theme.bronzeDeep
                     font.bold: true
                     wrapMode: Text.WordWrap
@@ -593,7 +593,7 @@ PearlSurface {
                 }
 
                 Label {
-                    text: appBootstrap.text("research.legacy.experimental_status")
+                    text: appBootstrap.text("research.legacy.experimental_status", appBootstrap.language)
                     color: theme.textBody
                     wrapMode: Text.WordWrap
                     Layout.fillWidth: true
@@ -601,8 +601,8 @@ PearlSurface {
 
                 AppButton {
                     text: root.showLegacyCandidates
-                        ? appBootstrap.text("research.legacy.collapse")
-                        : appBootstrap.text("research.legacy.expand")
+                        ? appBootstrap.text("research.legacy.collapse", appBootstrap.language)
+                        : appBootstrap.text("research.legacy.expand", appBootstrap.language)
                     Accessible.name: text
                     variant: "glass"
                     selected: root.showLegacyCandidates
@@ -611,7 +611,7 @@ PearlSurface {
                 }
 
                 AppButton {
-                    text: appBootstrap.text("research.direct_manual")
+                    text: appBootstrap.text("research.direct_manual", appBootstrap.language)
                     Accessible.name: text
                     variant: "quiet"
                     enabled: root.canEditSelection
@@ -624,7 +624,7 @@ PearlSurface {
             }
 
             Label {
-                text: appBootstrap.text("research.direct_available")
+                text: appBootstrap.text("research.direct_available", appBootstrap.language)
                 visible: root.researchOnly
                 color: theme.textSecondary
                 wrapMode: Text.WordWrap
@@ -638,21 +638,21 @@ PearlSurface {
                 spacing: theme.spaceMd
 
             Label {
-                text: appBootstrap.text("guide.order_disclaimer")
+                text: appBootstrap.text("guide.order_disclaimer", appBootstrap.language)
                 color: theme.textControl
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
             }
 
             Label {
-                text: appBootstrap.text("guide.candidate_list")
+                text: appBootstrap.text("guide.candidate_list", appBootstrap.language)
                 font.bold: true
                 color: theme.bronzeDeep
                 Layout.fillWidth: true
             }
 
             Label {
-                text: appBootstrap.text("guide.no_recommendation")
+                text: appBootstrap.text("guide.no_recommendation", appBootstrap.language)
                 visible: uiController.recommendationCount === 0
                 color: theme.textControl
                 wrapMode: Text.WordWrap
@@ -663,7 +663,7 @@ PearlSurface {
                 visible: uiController.recommendationTitle.length > 0
                 Layout.fillWidth: true
                 Layout.preferredHeight: candidateContent.implicitHeight + theme.spaceContent * 2
-                fillColor: theme.surfaceCream
+                fillColor: theme.workspaceCard
 
                 ColumnLayout {
                     id: candidateContent
@@ -672,16 +672,16 @@ PearlSurface {
                     spacing: theme.spaceSm
 
                     Label {
-                        text: appBootstrap.text("guide.default_recommendation")
+                        text: appBootstrap.text("guide.default_recommendation", appBootstrap.language)
                         font.bold: true
-                        color: theme.bronzeDeep
+                        color: theme.workspaceBrand
                         Layout.fillWidth: true
                     }
 
                     Label {
-                        text: uiController.recommendationTitle.length > 0
-                            ? uiController.recommendationTitle
-                            : appBootstrap.text("guide.no_recommendation")
+                        text: uiController.recommendationTitleFor(appBootstrap.language).length > 0
+                            ? uiController.recommendationTitleFor(appBootstrap.language)
+                            : appBootstrap.text("guide.no_recommendation", appBootstrap.language)
                         color: theme.textStrong
                         font.bold: true
                         wrapMode: Text.WordWrap
@@ -689,9 +689,9 @@ PearlSurface {
                     }
 
                     Label {
-                        text: appBootstrap.text("guide.reason") + ": "
-                            + uiController.recommendationReason
-                        visible: uiController.recommendationReason.length > 0
+                        text: appBootstrap.text("guide.reason", appBootstrap.language) + ": "
+                            + uiController.recommendationReasonFor(appBootstrap.language)
+                        visible: uiController.recommendationReasonFor(appBootstrap.language).length > 0
                         color: theme.textBody
                         wrapMode: Text.WordWrap
                         Layout.fillWidth: true
@@ -700,9 +700,9 @@ PearlSurface {
                     AppButton {
                         id: prepareCandidateButton
                         objectName: "guidePrepareCandidateButton"
-                        text: appBootstrap.text("guide.prepare_candidate")
+                        text: appBootstrap.text("guide.prepare_candidate", appBootstrap.language)
                         Accessible.name: text
-                        Accessible.description: appBootstrap.text("guide.prepare_review")
+                        Accessible.description: appBootstrap.text("guide.prepare_review", appBootstrap.language)
                         variant: "primary"
                         enabled: root.canEditSelection
                             && root.recommendationAvailable
@@ -712,7 +712,7 @@ PearlSurface {
                     }
 
                     Label {
-                        text: appBootstrap.text("guide.form_unavailable")
+                        text: appBootstrap.text("guide.form_unavailable", appBootstrap.language)
                         visible: root.recommendationAvailable && !root.canPrepareCandidate()
                         color: theme.warning
                         wrapMode: Text.WordWrap
@@ -722,7 +722,7 @@ PearlSurface {
             }
 
             AppButton {
-                text: appBootstrap.text("guide.other_recommendations")
+                text: appBootstrap.text("guide.other_recommendations", appBootstrap.language)
                 Accessible.name: text
                 variant: "glass"
                 selected: root.showOtherRecommendations
@@ -741,7 +741,7 @@ PearlSurface {
 
                 AppButton {
                     required property int index
-                    text: uiController.recommendationCandidateTitleAt(index)
+                    text: uiController.recommendationCandidateTitleAtFor(index, appBootstrap.language)
                         + " · " + root.candidateReviewSuffix(index)
                     Accessible.name: text
                     variant: "glass"
@@ -757,7 +757,7 @@ PearlSurface {
             }
 
             AppButton {
-                text: appBootstrap.text("guide.manual_selection")
+                text: appBootstrap.text("guide.manual_selection", appBootstrap.language)
                 Accessible.name: text
                 variant: "glass"
                 selected: root.manualIntentPickerVisible
@@ -767,7 +767,7 @@ PearlSurface {
             }
 
             Label {
-                text: appBootstrap.text("guide.review_state")
+                text: appBootstrap.text("guide.review_state", appBootstrap.language)
                 color: theme.textStrong
                 font.bold: true
                 visible: root.manualSelectionMode
@@ -781,7 +781,7 @@ PearlSurface {
                 spacing: theme.spaceXs
 
                 AppButton {
-                    text: appBootstrap.text("guide.descriptives")
+                    text: appBootstrap.text("guide.descriptives", appBootstrap.language)
                     Accessible.name: text
                     variant: "glass"
                     selected: root.selectedIntent === "descriptives"
@@ -793,7 +793,7 @@ PearlSurface {
                 }
 
                 AppButton {
-                    text: appBootstrap.text("guide.reliability")
+                    text: appBootstrap.text("guide.reliability", appBootstrap.language)
                     Accessible.name: text
                     variant: "glass"
                     selected: root.selectedIntent === "reliability"
@@ -805,7 +805,7 @@ PearlSurface {
                 }
 
                 AppButton {
-                    text: appBootstrap.text("guide.frequency_crosstab")
+                    text: appBootstrap.text("guide.frequency_crosstab", appBootstrap.language)
                     Accessible.name: text
                     variant: "glass"
                     selected: root.selectedIntent === "frequency_crosstab"
@@ -817,7 +817,7 @@ PearlSurface {
                 }
 
                 AppButton {
-                    text: appBootstrap.text("guide.correlation")
+                    text: appBootstrap.text("guide.correlation", appBootstrap.language)
                     Accessible.name: text
                     variant: "glass"
                     selected: root.selectedIntent === "correlation"
@@ -829,7 +829,7 @@ PearlSurface {
                 }
 
                 AppButton {
-                    text: appBootstrap.text("guide.factor_pca")
+                    text: appBootstrap.text("guide.factor_pca", appBootstrap.language)
                     Accessible.name: text
                     variant: "glass"
                     selected: root.selectedIntent === "factor_pca"
@@ -841,7 +841,7 @@ PearlSurface {
                 }
 
                 AppButton {
-                    text: appBootstrap.text("guide.comparison")
+                    text: appBootstrap.text("guide.comparison", appBootstrap.language)
                     Accessible.name: text
                     variant: "glass"
                     selected: root.selectedIntent === "comparison"
@@ -853,7 +853,7 @@ PearlSurface {
                 }
 
                 AppButton {
-                    text: appBootstrap.text("guide.anova_oneway")
+                    text: appBootstrap.text("guide.anova_oneway", appBootstrap.language)
                     Accessible.name: text
                     variant: "glass"
                     selected: root.selectedIntent === "anova_oneway"
@@ -865,7 +865,7 @@ PearlSurface {
                 }
 
                 AppButton {
-                    text: appBootstrap.text("guide.kruskal_wallis")
+                    text: appBootstrap.text("guide.kruskal_wallis", appBootstrap.language)
                     Accessible.name: text
                     variant: "glass"
                     selected: root.selectedIntent === "kruskal_wallis"
@@ -877,7 +877,7 @@ PearlSurface {
                 }
 
                 AppButton {
-                    text: appBootstrap.text("guide.ancova")
+                    text: appBootstrap.text("guide.ancova", appBootstrap.language)
                     Accessible.name: text
                     variant: "glass"
                     selected: root.selectedIntent === "ancova"
@@ -889,7 +889,7 @@ PearlSurface {
                 }
 
                 AppButton {
-                    text: appBootstrap.text("guide.regression")
+                    text: appBootstrap.text("guide.regression", appBootstrap.language)
                     Accessible.name: text
                     variant: "glass"
                     selected: root.selectedIntent === "regression"
@@ -924,7 +924,7 @@ PearlSurface {
 
             AppButton {
                 objectName: "guideFactorialIntentButton"
-                text: appBootstrap.text("guide.anova_factorial")
+                text: appBootstrap.text("guide.anova_factorial", appBootstrap.language)
                 Accessible.name: text
                 variant: "secondary"
                 visible: root.manualIntentPickerVisible
@@ -934,7 +934,7 @@ PearlSurface {
             }
 
             Label {
-                text: appBootstrap.text("guide.review_state") + ": "
+                text: appBootstrap.text("guide.review_state", appBootstrap.language) + ": "
                     + root.reviewText(uiController.preparedRecommendationReviewRequirement)
                 visible: root.experimentalPreparation
                 color: theme.warning
@@ -947,8 +947,8 @@ PearlSurface {
                 id: reliabilityItemsField
                 visible: root.manualSelectionMode && root.selectedIntent === "reliability"
                 Layout.fillWidth: true
-                placeholderText: appBootstrap.text("guide.items_placeholder")
-                Accessible.name: appBootstrap.text("guide.items_accessible")
+                placeholderText: appBootstrap.text("guide.items_placeholder", appBootstrap.language)
+                Accessible.name: appBootstrap.text("guide.items_accessible", appBootstrap.language)
                 selectByMouse: true
                 onTextEdited: root.invalidateExperimentalConfirmation()
             }
@@ -960,12 +960,12 @@ PearlSurface {
                 Layout.fillWidth: true
                 placeholderText: root.selectedIntent === "repeated_measures_anova"
                     || root.selectedIntent === "friedman"
-                    ? appBootstrap.text("guide.measures_placeholder")
-                    : appBootstrap.text("guide.variables_placeholder")
+                    ? appBootstrap.text("guide.measures_placeholder", appBootstrap.language)
+                    : appBootstrap.text("guide.variables_placeholder", appBootstrap.language)
                 Accessible.name: root.selectedIntent === "repeated_measures_anova"
                     || root.selectedIntent === "friedman"
-                    ? appBootstrap.text("guide.measures_accessible")
-                    : appBootstrap.text("guide.variables_accessible")
+                    ? appBootstrap.text("guide.measures_accessible", appBootstrap.language)
+                    : appBootstrap.text("guide.variables_accessible", appBootstrap.language)
                 selectByMouse: true
                 onTextEdited: root.invalidateExperimentalConfirmation()
             }
@@ -979,9 +979,9 @@ PearlSurface {
                         || root.selectedIntent === "logistic_regression")
                 Layout.fillWidth: true
                 placeholderText: root.selectedIntent === "regression"
-                    ? appBootstrap.text("guide.dependent_placeholder")
-                    : appBootstrap.text("guide.outcome_placeholder")
-                Accessible.name: appBootstrap.text("guide.outcome_accessible")
+                    ? appBootstrap.text("guide.dependent_placeholder", appBootstrap.language)
+                    : appBootstrap.text("guide.outcome_placeholder", appBootstrap.language)
+                Accessible.name: appBootstrap.text("guide.outcome_accessible", appBootstrap.language)
                 selectByMouse: true
                 onTextChanged: root.refreshLogisticOutcomeRows()
                 onTextEdited: root.invalidateExperimentalConfirmation()
@@ -993,8 +993,8 @@ PearlSurface {
                     && (root.isOutcomeGroupIntent(root.selectedIntent)
                         || root.selectedIntent === "descriptives")
                 Layout.fillWidth: true
-                placeholderText: appBootstrap.text("guide.group_placeholder")
-                Accessible.name: appBootstrap.text("guide.group_accessible")
+                placeholderText: appBootstrap.text("guide.group_placeholder", appBootstrap.language)
+                Accessible.name: appBootstrap.text("guide.group_accessible", appBootstrap.language)
                 selectByMouse: true
                 onTextEdited: root.invalidateExperimentalConfirmation()
             }
@@ -1005,8 +1005,8 @@ PearlSurface {
                     && (root.selectedIntent === "ancova"
                         || root.isMediationIntent(root.selectedIntent))
                 Layout.fillWidth: true
-                placeholderText: appBootstrap.text("guide.covariates_placeholder")
-                Accessible.name: appBootstrap.text("guide.covariates_accessible")
+                placeholderText: appBootstrap.text("guide.covariates_placeholder", appBootstrap.language)
+                Accessible.name: appBootstrap.text("guide.covariates_accessible", appBootstrap.language)
                 selectByMouse: true
                 onTextEdited: root.invalidateExperimentalConfirmation()
             }
@@ -1018,8 +1018,8 @@ PearlSurface {
                     && (root.selectedIntent === "regression"
                         || root.selectedIntent === "logistic_regression")
                 Layout.fillWidth: true
-                placeholderText: appBootstrap.text("guide.predictors_placeholder")
-                Accessible.name: appBootstrap.text("guide.predictors_accessible")
+                placeholderText: appBootstrap.text("guide.predictors_placeholder", appBootstrap.language)
+                Accessible.name: appBootstrap.text("guide.predictors_accessible", appBootstrap.language)
                 selectByMouse: true
                 onTextChanged: root.refreshLogisticReferenceRows()
                 onTextEdited: root.invalidateExperimentalConfirmation()
@@ -1029,8 +1029,8 @@ PearlSurface {
                 id: xKeyField
                 visible: root.manualSelectionMode && root.isMediationIntent(root.selectedIntent)
                 Layout.fillWidth: true
-                placeholderText: appBootstrap.text("guide.x_placeholder")
-                Accessible.name: appBootstrap.text("guide.x_accessible")
+                placeholderText: appBootstrap.text("guide.x_placeholder", appBootstrap.language)
+                Accessible.name: appBootstrap.text("guide.x_accessible", appBootstrap.language)
                 selectByMouse: true
                 onTextEdited: root.invalidateExperimentalConfirmation()
             }
@@ -1039,8 +1039,8 @@ PearlSurface {
                 id: mediatorKeyField
                 visible: root.manualSelectionMode && root.isMediationIntent(root.selectedIntent)
                 Layout.fillWidth: true
-                placeholderText: appBootstrap.text("guide.mediator_placeholder")
-                Accessible.name: appBootstrap.text("guide.mediator_accessible")
+                placeholderText: appBootstrap.text("guide.mediator_placeholder", appBootstrap.language)
+                Accessible.name: appBootstrap.text("guide.mediator_accessible", appBootstrap.language)
                 selectByMouse: true
                 onTextEdited: root.invalidateExperimentalConfirmation()
             }
@@ -1050,8 +1050,8 @@ PearlSurface {
                 visible: root.manualSelectionMode
                     && root.selectedIntent === "moderated_mediation"
                 Layout.fillWidth: true
-                placeholderText: appBootstrap.text("guide.moderator_placeholder")
-                Accessible.name: appBootstrap.text("guide.moderator_accessible")
+                placeholderText: appBootstrap.text("guide.moderator_placeholder", appBootstrap.language)
+                Accessible.name: appBootstrap.text("guide.moderator_accessible", appBootstrap.language)
                 selectByMouse: true
                 onTextEdited: root.invalidateExperimentalConfirmation()
             }
@@ -1060,8 +1060,8 @@ PearlSurface {
                 id: yKeyField
                 visible: root.manualSelectionMode && root.isMediationIntent(root.selectedIntent)
                 Layout.fillWidth: true
-                placeholderText: appBootstrap.text("guide.y_placeholder")
-                Accessible.name: appBootstrap.text("guide.y_accessible")
+                placeholderText: appBootstrap.text("guide.y_placeholder", appBootstrap.language)
+                Accessible.name: appBootstrap.text("guide.y_accessible", appBootstrap.language)
                 selectByMouse: true
                 onTextEdited: root.invalidateExperimentalConfirmation()
             }
@@ -1074,8 +1074,8 @@ PearlSurface {
                 currentIndex: -1
                 displayText: currentIndex >= 0
                     ? "Model " + currentText
-                    : appBootstrap.text("guide.moderated_model")
-                Accessible.name: appBootstrap.text("guide.moderated_model")
+                    : appBootstrap.text("guide.moderated_model", appBootstrap.language)
+                Accessible.name: appBootstrap.text("guide.moderated_model", appBootstrap.language)
                 Layout.fillWidth: true
                 onActivated: root.invalidateExperimentalConfirmation()
             }
@@ -1090,8 +1090,8 @@ PearlSurface {
                 currentIndex: -1
                 displayText: currentIndex >= 0
                     ? currentText
-                    : appBootstrap.text("guide.factorial_outcome")
-                Accessible.name: appBootstrap.text("guide.factorial_outcome")
+                    : appBootstrap.text("guide.factorial_outcome", appBootstrap.language)
+                Accessible.name: appBootstrap.text("guide.factorial_outcome", appBootstrap.language)
                 Layout.fillWidth: true
                 onModelChanged: currentIndex = -1
                 onActivated: root.invalidateExperimentalConfirmation()
@@ -1107,8 +1107,8 @@ PearlSurface {
                 currentIndex: -1
                 displayText: currentIndex >= 0
                     ? currentText
-                    : appBootstrap.text("guide.factorial_factor_a")
-                Accessible.name: appBootstrap.text("guide.factorial_factor_a")
+                    : appBootstrap.text("guide.factorial_factor_a", appBootstrap.language)
+                Accessible.name: appBootstrap.text("guide.factorial_factor_a", appBootstrap.language)
                 Layout.fillWidth: true
                 onCurrentValueChanged: root.refreshFactorialFactorALevelRows()
                 onModelChanged: currentIndex = -1
@@ -1125,8 +1125,8 @@ PearlSurface {
                 currentIndex: -1
                 displayText: currentIndex >= 0
                     ? currentText
-                    : appBootstrap.text("guide.factorial_factor_b")
-                Accessible.name: appBootstrap.text("guide.factorial_factor_b")
+                    : appBootstrap.text("guide.factorial_factor_b", appBootstrap.language)
+                Accessible.name: appBootstrap.text("guide.factorial_factor_b", appBootstrap.language)
                 Layout.fillWidth: true
                 onCurrentValueChanged: root.refreshFactorialFactorBLevelRows()
                 onModelChanged: currentIndex = -1
@@ -1135,7 +1135,7 @@ PearlSurface {
 
             Label {
                 objectName: "guideFactorialFactorALevels"
-                text: appBootstrap.text("guide.factorial_levels_a") + ": "
+                text: appBootstrap.text("guide.factorial_levels_a", appBootstrap.language) + ": "
                     + root.factorialLevelLabels(root.factorialFactorALevelRows)
                 visible: root.manualSelectionMode && root.selectedIntent === "anova_factorial"
                 color: theme.textControl
@@ -1145,7 +1145,7 @@ PearlSurface {
 
             Label {
                 objectName: "guideFactorialFactorBLevels"
-                text: appBootstrap.text("guide.factorial_levels_b") + ": "
+                text: appBootstrap.text("guide.factorial_levels_b", appBootstrap.language) + ": "
                     + root.factorialLevelLabels(root.factorialFactorBLevelRows)
                 visible: root.manualSelectionMode && root.selectedIntent === "anova_factorial"
                 color: theme.textControl
@@ -1154,7 +1154,7 @@ PearlSurface {
             }
 
             Label {
-                text: appBootstrap.text("guide.logistic_event")
+                text: appBootstrap.text("guide.logistic_event", appBootstrap.language)
                 visible: root.manualSelectionMode
                     && root.selectedIntent === "logistic_regression"
                 color: theme.textControl
@@ -1172,7 +1172,7 @@ PearlSurface {
                 textRole: "label"
                 valueRole: "token"
                 currentIndex: -1
-                Accessible.name: appBootstrap.text("guide.logistic_event_accessible")
+                Accessible.name: appBootstrap.text("guide.logistic_event_accessible", appBootstrap.language)
                 Layout.fillWidth: true
                 onModelChanged: currentIndex = -1
                 onActivated: root.invalidateExperimentalConfirmation()
@@ -1195,7 +1195,7 @@ PearlSurface {
 
                     Label {
                         text: referenceDelegate.variableKey + " · "
-                            + appBootstrap.text("guide.logistic_reference")
+                            + appBootstrap.text("guide.logistic_reference", appBootstrap.language)
                         color: theme.textControl
                         Layout.fillWidth: true
                     }
@@ -1207,7 +1207,7 @@ PearlSurface {
                         valueRole: "token"
                         currentIndex: -1
                         Accessible.name: referenceDelegate.variableKey + " "
-                            + appBootstrap.text("guide.logistic_reference_accessible")
+                            + appBootstrap.text("guide.logistic_reference_accessible", appBootstrap.language)
                         Layout.fillWidth: true
                         onModelChanged: currentIndex = -1
                         onActivated: root.invalidateExperimentalConfirmation()
@@ -1218,9 +1218,9 @@ PearlSurface {
             AppCheckBox {
                 id: reviewConfirmation
                 objectName: "guideExperimentalConfirmation"
-                text: appBootstrap.text("guide.confirm_review")
+                text: appBootstrap.text("guide.confirm_review", appBootstrap.language)
                 Accessible.name: text
-                Accessible.description: appBootstrap.text("guide.confirm_candidate")
+                Accessible.description: appBootstrap.text("guide.confirm_candidate", appBootstrap.language)
                 visible: root.candidateAssistedReview || root.experimentalPreparation
                 checked: root.experimentalPreparation
                     ? uiController.experimentalRecommendationConfirmed
@@ -1244,7 +1244,7 @@ PearlSurface {
             }
 
             Label {
-                text: appBootstrap.text("guide.review_required")
+                text: appBootstrap.text("guide.review_required", appBootstrap.language)
                 visible: reviewConfirmation.visible
                     && (!root.reviewConfirmed
                         || (root.experimentalPreparation
@@ -1256,10 +1256,12 @@ PearlSurface {
 
             AppButton {
                 objectName: "guideRunManualButton"
-                text: appBootstrap.text("guide.run_manual")
+                text: root.candidateAssistedReview
+                    ? appBootstrap.text("guide.run_reviewed", appBootstrap.language)
+                    : appBootstrap.text("guide.run_manual", appBootstrap.language)
                 Accessible.name: text
                 Accessible.description: root.candidateAssistedReview
-                    ? appBootstrap.text("guide.run_reviewed")
+                    ? appBootstrap.text("guide.run_reviewed", appBootstrap.language)
                     : ""
                 variant: "primary"
                 semanticLight: enabled

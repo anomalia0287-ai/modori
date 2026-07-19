@@ -20,7 +20,7 @@ def test_results_panel_and_report_dialog_display_command_feedback() -> None:
     dialog = qml_text("dialogs/ReportExportDialog.qml")
 
     assert "visible: uiController.lastMessage.length > 0" in results
-    assert "text: uiController.lastMessage" in results
+    assert "appBootstrap.localize(uiController.lastMessage, appBootstrap.language)" in results
     assert "uiController.lastError" in dialog
     assert "visible: uiController.lastError.length > 0" in dialog
 

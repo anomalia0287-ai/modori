@@ -3,13 +3,12 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import "../theme"
 
-AuroraGlassSurface {
+PearlSurface {
     id: root
     objectName: "pipelineRail"
 
-    surfaceTreatment: "footer"
-    tiffanyBloomEnabled: false
-    bottomAnchorVisible: false
+    fillColor: theme.workspaceCard
+    ambient: false
     radius: theme.spaceNone
 
     signal rerunRequested()
@@ -24,6 +23,16 @@ AuroraGlassSurface {
 
     Theme {
         id: theme
+    }
+
+    Rectangle {
+        objectName: "workspacePipelineTopDivider"
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
+        height: theme.borderWidthFocus
+        color: theme.workspacePrimary
+        z: 1
     }
 
     function hasText(value) {
@@ -153,8 +162,8 @@ AuroraGlassSurface {
 
             Label {
                 text: uiController.selectionConfirmationRequired
-                    ? appBootstrap.text("boundary.reconfirmation_required")
-                    : uiController.stepChainDisplayText
+                    ? appBootstrap.text("boundary.reconfirmation_required", appBootstrap.language)
+                    : uiController.stepChainDisplayTextFor(appBootstrap.language)
                 Accessible.name: text
                 Accessible.description: uiController.stepChainText
                 color: uiController.selectionConfirmationRequired
@@ -170,10 +179,10 @@ AuroraGlassSurface {
 
             AppButton {
                 text: uiController.resultSummary.length > 0
-                    ? appBootstrap.text("pipeline.rerun")
-                    : appBootstrap.text("pipeline.run")
+                    ? appBootstrap.text("pipeline.rerun", appBootstrap.language)
+                    : appBootstrap.text("pipeline.run", appBootstrap.language)
                 Accessible.name: text
-                variant: "glassStrong"
+                variant: "primary"
                 enabled: uiController.canRerun
                 onClicked: root.rerunRequested()
             }
@@ -190,7 +199,7 @@ AuroraGlassSurface {
                 spacing: theme.spaceSm
 
                 Label {
-                    text: appBootstrap.text("pipeline.analysis_type")
+                    text: appBootstrap.text("pipeline.analysis_type", appBootstrap.language)
                     color: theme.textStrong
                     font.bold: true
                 }
@@ -198,20 +207,20 @@ AuroraGlassSurface {
                 AppComboBox {
                     id: analysisType
                     model: [
-                        appBootstrap.text("guide.reliability"),
-                        appBootstrap.text("guide.descriptives"),
-                        appBootstrap.text("guide.frequency_crosstab"),
-                        appBootstrap.text("guide.correlation"),
-                        appBootstrap.text("guide.factor_pca"),
-                        appBootstrap.text("guide.comparison"),
-                        appBootstrap.text("guide.anova_oneway"),
-                        appBootstrap.text("guide.anova_factorial"),
-                        appBootstrap.text("guide.kruskal_wallis"),
-                        appBootstrap.text("guide.ancova"),
-                        appBootstrap.text("guide.regression"),
-                        appBootstrap.text("guide.logistic_regression")
+                        appBootstrap.text("guide.reliability", appBootstrap.language),
+                        appBootstrap.text("guide.descriptives", appBootstrap.language),
+                        appBootstrap.text("guide.frequency_crosstab", appBootstrap.language),
+                        appBootstrap.text("guide.correlation", appBootstrap.language),
+                        appBootstrap.text("guide.factor_pca", appBootstrap.language),
+                        appBootstrap.text("guide.comparison", appBootstrap.language),
+                        appBootstrap.text("guide.anova_oneway", appBootstrap.language),
+                        appBootstrap.text("guide.anova_factorial", appBootstrap.language),
+                        appBootstrap.text("guide.kruskal_wallis", appBootstrap.language),
+                        appBootstrap.text("guide.ancova", appBootstrap.language),
+                        appBootstrap.text("guide.regression", appBootstrap.language),
+                        appBootstrap.text("guide.logistic_regression", appBootstrap.language)
                     ]
-                    Accessible.name: appBootstrap.text("pipeline.analysis_type")
+                    Accessible.name: appBootstrap.text("pipeline.analysis_type", appBootstrap.language)
                     Layout.preferredWidth: theme.fieldWidthMedium
                 }
 
@@ -230,14 +239,14 @@ AuroraGlassSurface {
 
                     AppTextField {
                         id: reliabilityItemsField
-                        placeholderText: appBootstrap.text("pipeline.items_placeholder")
-                        Accessible.name: appBootstrap.text("pipeline.items_accessible")
+                        placeholderText: appBootstrap.text("pipeline.items_placeholder", appBootstrap.language)
+                        Accessible.name: appBootstrap.text("pipeline.items_accessible", appBootstrap.language)
                         selectByMouse: true
                         Layout.fillWidth: true
                     }
 
                     AppButton {
-                        text: appBootstrap.text("pipeline.apply_reliability")
+                        text: appBootstrap.text("pipeline.apply_reliability", appBootstrap.language)
                         Accessible.name: text
                         enabled: root.canEditSelection && root.hasText(reliabilityItemsField.text)
                         onClicked: uiController.configureReliabilityFromText(reliabilityItemsField.text)
@@ -249,22 +258,22 @@ AuroraGlassSurface {
 
                     AppTextField {
                         id: descriptivesVariablesField
-                        placeholderText: appBootstrap.text("pipeline.variables_placeholder")
-                        Accessible.name: appBootstrap.text("pipeline.variables_accessible")
+                        placeholderText: appBootstrap.text("pipeline.variables_placeholder", appBootstrap.language)
+                        Accessible.name: appBootstrap.text("pipeline.variables_accessible", appBootstrap.language)
                         selectByMouse: true
                         Layout.fillWidth: true
                     }
 
                     AppTextField {
                         id: descriptivesGroupField
-                        placeholderText: appBootstrap.text("pipeline.group_placeholder")
-                        Accessible.name: appBootstrap.text("pipeline.group_accessible")
+                        placeholderText: appBootstrap.text("pipeline.group_placeholder", appBootstrap.language)
+                        Accessible.name: appBootstrap.text("pipeline.group_accessible", appBootstrap.language)
                         selectByMouse: true
                         Layout.preferredWidth: theme.fieldWidthSmall
                     }
 
                     AppButton {
-                        text: appBootstrap.text("pipeline.apply_descriptives")
+                        text: appBootstrap.text("pipeline.apply_descriptives", appBootstrap.language)
                         Accessible.name: text
                         enabled: root.canEditSelection && root.hasText(descriptivesVariablesField.text)
                         onClicked: uiController.configureDescriptivesFromText(
@@ -279,14 +288,14 @@ AuroraGlassSurface {
 
                     AppTextField {
                         id: frequencyVariablesField
-                        placeholderText: appBootstrap.text("pipeline.variables_placeholder")
-                        Accessible.name: appBootstrap.text("pipeline.variables_accessible")
+                        placeholderText: appBootstrap.text("pipeline.variables_placeholder", appBootstrap.language)
+                        Accessible.name: appBootstrap.text("pipeline.variables_accessible", appBootstrap.language)
                         selectByMouse: true
                         Layout.fillWidth: true
                     }
 
                     AppButton {
-                        text: appBootstrap.text("pipeline.apply_frequency_crosstab")
+                        text: appBootstrap.text("pipeline.apply_frequency_crosstab", appBootstrap.language)
                         Accessible.name: text
                         enabled: root.canEditSelection && root.hasText(frequencyVariablesField.text)
                         onClicked: uiController.configureFrequencyCrosstabFromText(frequencyVariablesField.text)
@@ -298,14 +307,14 @@ AuroraGlassSurface {
 
                     AppTextField {
                         id: correlationVariablesField
-                        placeholderText: appBootstrap.text("pipeline.variables_placeholder")
-                        Accessible.name: appBootstrap.text("pipeline.variables_accessible")
+                        placeholderText: appBootstrap.text("pipeline.variables_placeholder", appBootstrap.language)
+                        Accessible.name: appBootstrap.text("pipeline.variables_accessible", appBootstrap.language)
                         selectByMouse: true
                         Layout.fillWidth: true
                     }
 
                     AppButton {
-                        text: appBootstrap.text("pipeline.apply_correlation")
+                        text: appBootstrap.text("pipeline.apply_correlation", appBootstrap.language)
                         Accessible.name: text
                         enabled: root.canEditSelection && root.hasText(correlationVariablesField.text)
                         onClicked: uiController.configureCorrelationFromText(correlationVariablesField.text)
@@ -317,14 +326,14 @@ AuroraGlassSurface {
 
                     AppTextField {
                         id: factorPcaVariablesField
-                        placeholderText: appBootstrap.text("pipeline.variables_placeholder")
-                        Accessible.name: appBootstrap.text("pipeline.variables_accessible")
+                        placeholderText: appBootstrap.text("pipeline.variables_placeholder", appBootstrap.language)
+                        Accessible.name: appBootstrap.text("pipeline.variables_accessible", appBootstrap.language)
                         selectByMouse: true
                         Layout.fillWidth: true
                     }
 
                     AppButton {
-                        text: appBootstrap.text("pipeline.apply_factor_pca")
+                        text: appBootstrap.text("pipeline.apply_factor_pca", appBootstrap.language)
                         Accessible.name: text
                         enabled: root.canEditSelection && root.hasText(factorPcaVariablesField.text)
                         onClicked: uiController.configureFactorPcaFromText(factorPcaVariablesField.text)
@@ -336,22 +345,22 @@ AuroraGlassSurface {
 
                     AppTextField {
                         id: comparisonOutcomeField
-                        placeholderText: appBootstrap.text("pipeline.outcome_placeholder")
-                        Accessible.name: appBootstrap.text("pipeline.outcome_accessible")
+                        placeholderText: appBootstrap.text("pipeline.outcome_placeholder", appBootstrap.language)
+                        Accessible.name: appBootstrap.text("pipeline.outcome_accessible", appBootstrap.language)
                         selectByMouse: true
                         Layout.fillWidth: true
                     }
 
                     AppTextField {
                         id: comparisonGroupField
-                        placeholderText: appBootstrap.text("pipeline.group_placeholder")
-                        Accessible.name: appBootstrap.text("pipeline.group_accessible")
+                        placeholderText: appBootstrap.text("pipeline.group_placeholder", appBootstrap.language)
+                        Accessible.name: appBootstrap.text("pipeline.group_accessible", appBootstrap.language)
                         selectByMouse: true
                         Layout.fillWidth: true
                     }
 
                     AppButton {
-                        text: appBootstrap.text("pipeline.apply_comparison")
+                        text: appBootstrap.text("pipeline.apply_comparison", appBootstrap.language)
                         Accessible.name: text
                         enabled: root.canEditSelection && root.hasText(comparisonOutcomeField.text) && root.hasText(comparisonGroupField.text)
                         onClicked: uiController.configureComparisonFromText(
@@ -366,22 +375,22 @@ AuroraGlassSurface {
 
                     AppTextField {
                         id: anovaOutcomeField
-                        placeholderText: appBootstrap.text("pipeline.outcome_placeholder")
-                        Accessible.name: appBootstrap.text("pipeline.outcome_accessible")
+                        placeholderText: appBootstrap.text("pipeline.outcome_placeholder", appBootstrap.language)
+                        Accessible.name: appBootstrap.text("pipeline.outcome_accessible", appBootstrap.language)
                         selectByMouse: true
                         Layout.fillWidth: true
                     }
 
                     AppTextField {
                         id: anovaGroupField
-                        placeholderText: appBootstrap.text("pipeline.group_placeholder")
-                        Accessible.name: appBootstrap.text("pipeline.group_accessible")
+                        placeholderText: appBootstrap.text("pipeline.group_placeholder", appBootstrap.language)
+                        Accessible.name: appBootstrap.text("pipeline.group_accessible", appBootstrap.language)
                         selectByMouse: true
                         Layout.fillWidth: true
                     }
 
                     AppButton {
-                        text: appBootstrap.text("pipeline.apply_anova_oneway")
+                        text: appBootstrap.text("pipeline.apply_anova_oneway", appBootstrap.language)
                         Accessible.name: text
                         enabled: root.canEditSelection && root.hasText(anovaOutcomeField.text) && root.hasText(anovaGroupField.text)
                         onClicked: uiController.configureAnovaOneWayFromText(
@@ -406,8 +415,8 @@ AuroraGlassSurface {
                             currentIndex: -1
                             displayText: currentIndex >= 0
                                 ? currentText
-                                : appBootstrap.text("pipeline.factorial_outcome")
-                            Accessible.name: appBootstrap.text("pipeline.factorial_outcome")
+                                : appBootstrap.text("pipeline.factorial_outcome", appBootstrap.language)
+                            Accessible.name: appBootstrap.text("pipeline.factorial_outcome", appBootstrap.language)
                             Layout.fillWidth: true
                             onModelChanged: currentIndex = -1
                         }
@@ -421,8 +430,8 @@ AuroraGlassSurface {
                             currentIndex: -1
                             displayText: currentIndex >= 0
                                 ? currentText
-                                : appBootstrap.text("pipeline.factorial_factor_a")
-                            Accessible.name: appBootstrap.text("pipeline.factorial_factor_a")
+                                : appBootstrap.text("pipeline.factorial_factor_a", appBootstrap.language)
+                            Accessible.name: appBootstrap.text("pipeline.factorial_factor_a", appBootstrap.language)
                             Layout.fillWidth: true
                             onCurrentValueChanged: root.refreshFactorialFactorALevelRows()
                             onModelChanged: currentIndex = -1
@@ -437,8 +446,8 @@ AuroraGlassSurface {
                             currentIndex: -1
                             displayText: currentIndex >= 0
                                 ? currentText
-                                : appBootstrap.text("pipeline.factorial_factor_b")
-                            Accessible.name: appBootstrap.text("pipeline.factorial_factor_b")
+                                : appBootstrap.text("pipeline.factorial_factor_b", appBootstrap.language)
+                            Accessible.name: appBootstrap.text("pipeline.factorial_factor_b", appBootstrap.language)
                             Layout.fillWidth: true
                             onCurrentValueChanged: root.refreshFactorialFactorBLevelRows()
                             onModelChanged: currentIndex = -1
@@ -446,7 +455,7 @@ AuroraGlassSurface {
 
                         AppButton {
                             objectName: "pipelineApplyFactorialButton"
-                            text: appBootstrap.text("pipeline.apply_anova_factorial")
+                            text: appBootstrap.text("pipeline.apply_anova_factorial", appBootstrap.language)
                             Accessible.name: text
                             enabled: root.canApplyFactorial()
                             onClicked: root.applyFactorial()
@@ -458,7 +467,7 @@ AuroraGlassSurface {
 
                         Label {
                             objectName: "pipelineFactorialFactorALevels"
-                            text: appBootstrap.text("pipeline.factorial_levels_a")
+                            text: appBootstrap.text("pipeline.factorial_levels_a", appBootstrap.language)
                                 + ": "
                                 + root.factorialLevelLabels(root.factorialFactorALevelRows)
                             color: theme.textControl
@@ -468,7 +477,7 @@ AuroraGlassSurface {
 
                         Label {
                             objectName: "pipelineFactorialFactorBLevels"
-                            text: appBootstrap.text("pipeline.factorial_levels_b")
+                            text: appBootstrap.text("pipeline.factorial_levels_b", appBootstrap.language)
                                 + ": "
                                 + root.factorialLevelLabels(root.factorialFactorBLevelRows)
                             color: theme.textControl
@@ -483,22 +492,22 @@ AuroraGlassSurface {
 
                     AppTextField {
                         id: kruskalDependentField
-                        placeholderText: appBootstrap.text("pipeline.dependent_placeholder")
-                        Accessible.name: appBootstrap.text("pipeline.dependent_accessible")
+                        placeholderText: appBootstrap.text("pipeline.dependent_placeholder", appBootstrap.language)
+                        Accessible.name: appBootstrap.text("pipeline.dependent_accessible", appBootstrap.language)
                         selectByMouse: true
                         Layout.fillWidth: true
                     }
 
                     AppTextField {
                         id: kruskalGroupField
-                        placeholderText: appBootstrap.text("pipeline.group_placeholder")
-                        Accessible.name: appBootstrap.text("pipeline.group_accessible")
+                        placeholderText: appBootstrap.text("pipeline.group_placeholder", appBootstrap.language)
+                        Accessible.name: appBootstrap.text("pipeline.group_accessible", appBootstrap.language)
                         selectByMouse: true
                         Layout.fillWidth: true
                     }
 
                     AppButton {
-                        text: appBootstrap.text("pipeline.apply_kruskal_wallis")
+                        text: appBootstrap.text("pipeline.apply_kruskal_wallis", appBootstrap.language)
                         Accessible.name: text
                         enabled: root.canEditSelection && root.hasText(kruskalDependentField.text) && root.hasText(kruskalGroupField.text)
                         onClicked: uiController.configureKruskalWallisFromText(
@@ -513,30 +522,30 @@ AuroraGlassSurface {
 
                     AppTextField {
                         id: ancovaOutcomeField
-                        placeholderText: appBootstrap.text("pipeline.outcome_placeholder")
-                        Accessible.name: appBootstrap.text("pipeline.outcome_accessible")
+                        placeholderText: appBootstrap.text("pipeline.outcome_placeholder", appBootstrap.language)
+                        Accessible.name: appBootstrap.text("pipeline.outcome_accessible", appBootstrap.language)
                         selectByMouse: true
                         Layout.fillWidth: true
                     }
 
                     AppTextField {
                         id: ancovaGroupField
-                        placeholderText: appBootstrap.text("pipeline.group_placeholder")
-                        Accessible.name: appBootstrap.text("pipeline.group_accessible")
+                        placeholderText: appBootstrap.text("pipeline.group_placeholder", appBootstrap.language)
+                        Accessible.name: appBootstrap.text("pipeline.group_accessible", appBootstrap.language)
                         selectByMouse: true
                         Layout.fillWidth: true
                     }
 
                     AppTextField {
                         id: ancovaCovariatesField
-                        placeholderText: appBootstrap.text("pipeline.covariates_placeholder")
-                        Accessible.name: appBootstrap.text("pipeline.covariates_accessible")
+                        placeholderText: appBootstrap.text("pipeline.covariates_placeholder", appBootstrap.language)
+                        Accessible.name: appBootstrap.text("pipeline.covariates_accessible", appBootstrap.language)
                         selectByMouse: true
                         Layout.fillWidth: true
                     }
 
                     AppButton {
-                        text: appBootstrap.text("pipeline.apply_ancova")
+                        text: appBootstrap.text("pipeline.apply_ancova", appBootstrap.language)
                         Accessible.name: text
                         enabled: root.canEditSelection && root.hasText(ancovaOutcomeField.text) && root.hasText(ancovaGroupField.text) && root.hasText(ancovaCovariatesField.text)
                         onClicked: uiController.configureAncovaFromText(
@@ -552,22 +561,22 @@ AuroraGlassSurface {
 
                     AppTextField {
                         id: regressionOutcomeField
-                        placeholderText: appBootstrap.text("pipeline.dependent_placeholder")
-                        Accessible.name: appBootstrap.text("pipeline.dependent_accessible")
+                        placeholderText: appBootstrap.text("pipeline.dependent_placeholder", appBootstrap.language)
+                        Accessible.name: appBootstrap.text("pipeline.dependent_accessible", appBootstrap.language)
                         selectByMouse: true
                         Layout.fillWidth: true
                     }
 
                     AppTextField {
                         id: regressionPredictorsField
-                        placeholderText: appBootstrap.text("pipeline.predictors_placeholder")
-                        Accessible.name: appBootstrap.text("pipeline.predictors_accessible")
+                        placeholderText: appBootstrap.text("pipeline.predictors_placeholder", appBootstrap.language)
+                        Accessible.name: appBootstrap.text("pipeline.predictors_accessible", appBootstrap.language)
                         selectByMouse: true
                         Layout.fillWidth: true
                     }
 
                     AppButton {
-                        text: appBootstrap.text("pipeline.apply_regression")
+                        text: appBootstrap.text("pipeline.apply_regression", appBootstrap.language)
                         Accessible.name: text
                         enabled: root.canEditSelection && root.hasText(regressionOutcomeField.text) && root.hasText(regressionPredictorsField.text)
                         onClicked: uiController.configureRegressionFromText(
@@ -583,8 +592,8 @@ AuroraGlassSurface {
             AppTextField {
                 id: logisticOutcomeField
                 objectName: "pipelineLogisticOutcomeField"
-                placeholderText: appBootstrap.text("pipeline.outcome_placeholder")
-                Accessible.name: appBootstrap.text("pipeline.outcome_accessible")
+                placeholderText: appBootstrap.text("pipeline.outcome_placeholder", appBootstrap.language)
+                Accessible.name: appBootstrap.text("pipeline.outcome_accessible", appBootstrap.language)
                 Layout.fillWidth: true
                 selectByMouse: true
                 onTextChanged: root.refreshLogisticOutcomeRows()
@@ -593,8 +602,8 @@ AuroraGlassSurface {
             AppTextField {
                 id: logisticPredictorsField
                 objectName: "pipelineLogisticPredictorsField"
-                placeholderText: appBootstrap.text("pipeline.predictors_placeholder")
-                Accessible.name: appBootstrap.text("pipeline.predictors_accessible")
+                placeholderText: appBootstrap.text("pipeline.predictors_placeholder", appBootstrap.language)
+                Accessible.name: appBootstrap.text("pipeline.predictors_accessible", appBootstrap.language)
                 Layout.fillWidth: true
                 selectByMouse: true
                 onTextChanged: root.refreshLogisticReferenceRows()
@@ -609,14 +618,14 @@ AuroraGlassSurface {
                 textRole: "label"
                 valueRole: "token"
                 currentIndex: -1
-                Accessible.name: appBootstrap.text("pipeline.logistic_event_accessible")
+                Accessible.name: appBootstrap.text("pipeline.logistic_event_accessible", appBootstrap.language)
                 onModelChanged: currentIndex = -1
             }
 
             Label {
                 text: logisticEventCombo.currentIndex >= 0
-                    ? appBootstrap.text("pipeline.logistic_event") + ": " + logisticEventCombo.currentText
-                    : appBootstrap.text("pipeline.logistic_event")
+                    ? appBootstrap.text("pipeline.logistic_event", appBootstrap.language) + ": " + logisticEventCombo.currentText
+                    : appBootstrap.text("pipeline.logistic_event", appBootstrap.language)
                 color: logisticEventCombo.currentIndex >= 0 ? theme.bronzeDeep : theme.textControl
                 Layout.fillWidth: true
                 wrapMode: Text.WordWrap
@@ -638,7 +647,7 @@ AuroraGlassSurface {
                     spacing: theme.spaceXs
 
                     Label {
-                        text: referenceDelegate.variableKey + " · " + appBootstrap.text("pipeline.logistic_reference")
+                        text: referenceDelegate.variableKey + " · " + appBootstrap.text("pipeline.logistic_reference", appBootstrap.language)
                         color: theme.textControl
                         width: referenceDelegate.width
                         wrapMode: Text.WordWrap
@@ -652,7 +661,7 @@ AuroraGlassSurface {
                         textRole: "label"
                         valueRole: "token"
                         currentIndex: -1
-                        Accessible.name: referenceDelegate.variableKey + " " + appBootstrap.text("pipeline.logistic_reference_accessible")
+                        Accessible.name: referenceDelegate.variableKey + " " + appBootstrap.text("pipeline.logistic_reference_accessible", appBootstrap.language)
                         onModelChanged: currentIndex = -1
                     }
                 }
@@ -660,7 +669,7 @@ AuroraGlassSurface {
 
             AppButton {
                 objectName: "pipelineApplyLogisticButton"
-                text: appBootstrap.text("pipeline.apply_logistic_regression")
+                text: appBootstrap.text("pipeline.apply_logistic_regression", appBootstrap.language)
                 Accessible.name: text
                 enabled: root.canApplyLogistic()
                 onClicked: root.applyLogistic()

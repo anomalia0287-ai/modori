@@ -21,14 +21,18 @@ def theme_literal_colors() -> dict[str, str]:
     }
 
 
-def test_theme_uses_approved_ivory_aurora_and_rose_bronze_values() -> None:
+def test_theme_uses_approved_royal_blue_ivory_and_supported_aurora_values() -> None:
     colors = theme_literal_colors()
+    source = THEME_PATH.read_text(encoding="utf-8")
 
-    assert colors["canvasCream"] == "#FEFDFC"
-    assert colors["surfaceCream"] == "#FEFDFC"
-    assert colors["surfaceRaised"] == "#FAF8F5"
-    assert colors["surfaceQuiet"] == "#FAF8F5"
-    assert colors["brandWordmark"] == "#171717"
+    assert colors["entryBrand"] == "#173B7A"
+    assert colors["entryCanvas"] == "#F7F3EA"
+    assert colors["entryCard"] == "#FFFDF8"
+    assert colors["entryPrimary"] == "#2F5DA8"
+    assert colors["entryText"] == "#17233A"
+    assert "readonly property color canvasCream: workspaceCanvas" in source
+    assert "readonly property color surfaceCream: workspaceCard" in source
+    assert "readonly property color brandWordmark: workspaceBrand" in source
     assert colors["auroraGlassTop"] == "#AACFD3"
     assert colors["auroraGlassMiddle"] == "#D5E1E1"
     assert colors["auroraGlassBottom"] == "#E8D7DC"
@@ -41,19 +45,19 @@ def test_theme_uses_approved_ivory_aurora_and_rose_bronze_values() -> None:
     assert colors["auroraRoseBloom"] == "#E1BEC5"
     assert colors["auroraGlassVeil"] == "#FFFFFF"
     assert "headerTiffany" not in colors
-    assert colors["lineStrong"] == "#B9856E"
-    assert colors["lineSubtle"] == "#D7B9AA"
-    assert colors["lineGrid"] == "#D8D4D0"
-    assert colors["scrollRailSurface"] == "#EEEAE6"
-    assert colors["scrollThumbSurface"] == "#8C8580"
-    assert colors["scrollThumbActiveSurface"] == colors["bronzeHover"]
+    assert "readonly property color lineStrong: workspaceDividerStrong" in source
+    assert "readonly property color lineSubtle: workspaceDivider" in source
+    assert "readonly property color lineGrid: workspaceDivider" in source
+    assert "readonly property color scrollRailSurface: workspaceDivider" in source
+    assert "readonly property color scrollThumbSurface: workspaceTextMuted" in source
+    assert "readonly property color scrollThumbActiveSurface: workspacePrimary" in source
 
 
 def test_pure_white_is_not_used_as_an_application_or_scroll_surface() -> None:
     colors = theme_literal_colors()
     pure_white_roles = {name for name, value in colors.items() if value == "#FFFFFF"}
 
-    assert pure_white_roles == {"auroraGlassVeil", "onBrand"}
+    assert pure_white_roles == {"auroraGlassVeil"}
 
 
 def test_wordmark_is_black_uppercase_gothic_and_letter_spaced() -> None:
@@ -65,7 +69,8 @@ def test_wordmark_is_black_uppercase_gothic_and_letter_spaced() -> None:
     assert "font.capitalization: Font.AllUppercase" in wordmark
     assert "font.letterSpacing: theme.brandLetterSpacing" in wordmark
     assert "font.weight: Font.DemiBold" in wordmark
-    assert "color: theme.brandWordmark" in wordmark
+    assert "property color foregroundColor: theme.brandWordmark" in wordmark
+    assert "color: root.foregroundColor" in wordmark
     assert "Accessible.name: text" in wordmark
     assert "Theme {" in wordmark
 
@@ -78,31 +83,34 @@ def test_entry_work_and_splash_reuse_brand_wordmark() -> None:
     ):
         source = qml_text(relative)
         assert "BrandWordmark {" in source
-        assert 'appBootstrap.text("app.title")' in source
+        assert 'appBootstrap.text("app.title", appBootstrap.language)' in source
 
 
-def test_work_header_and_entry_brand_region_use_aurora_glass() -> None:
+def test_work_header_and_entry_use_the_approved_royal_blue_ivory_system() -> None:
     work = qml_text("screens/WorkScreen.qml")
     entry = qml_text("screens/EntryScreen.qml")
     results = qml_text("components/ResultsPanel.qml")
     pipeline = qml_text("components/PipelineRail.qml")
 
-    assert "AuroraGlassSurface {" in work
+    assert "AuroraGlassSurface {" not in work
+    assert 'objectName: "workspaceCommandSurface"' in work
     assert "reduceEffects: root.reduceEffects" in work
-    assert "tiffanyBloomEnabled: true" in work
-    assert "bottomAnchorVisible: true" in work
-    assert "fillColor: theme.headerTiffany" not in work
+    assert "fillColor: theme.workspaceCard" in work
+    assert "foregroundColor: theme.workspaceBrand" in work
+    assert 'objectName: "workspaceCommandDivider"' in work
     assert "Layout.rightMargin: theme.workWordmarkCommandGap" in work
-    assert 'objectName: "entryStartSurface"' in entry
+    assert 'objectName: "entryBrandPanel"' in entry
     assert "anchors.fill: parent" in entry
     assert "anchors.centerIn: parent" not in entry
-    assert entry.count("AuroraGlassSurface {") == 1
-    assert "Layout.preferredWidth: theme.entryBrandRegionWidth" in entry
-    assert "anchors.margins: theme.entryBrandPanelPadding" in entry
-    assert 'objectName: "entryTaskSurface"' in entry
-    assert 'variant: "glass"' in entry[entry.index("id: recentFilesScroll"):]
-    assert "fillColor: theme.surfaceCream" in results
-    assert 'surfaceTreatment: "footer"' in pipeline
+    assert "AuroraGlassSurface" not in entry
+    assert "width: Math.round(parent.width * theme.entryBrandRatio)" in entry
+    assert "color: theme.entryBrand" in entry
+    assert "color: theme.entryCanvas" in entry
+    assert 'objectName: "entryTaskPanel"' in entry
+    assert "model: uiController.recentFilesModel" in entry
+    assert "fillColor: theme.workspaceCard" in results
+    assert 'objectName: "workspacePipelineTopDivider"' in pipeline
+    assert "AuroraGlassSurface" not in pipeline
 
 
 def test_shared_aurora_surface_is_static_and_tiffany_is_removable() -> None:
@@ -127,11 +135,7 @@ def test_aurora_surface_is_used_only_in_approved_regions() -> None:
         if "AuroraGlassSurface {" in path.read_text(encoding="utf-8"):
             users.append(str(path.relative_to(QML_ROOT)).replace("\\", "/"))
 
-    assert users == [
-        "components/PipelineRail.qml",
-        "screens/EntryScreen.qml",
-        "screens/WorkScreen.qml",
-    ]
+    assert users == []
 
 
 def test_scrollbar_uses_visible_fills_without_an_extra_outline() -> None:

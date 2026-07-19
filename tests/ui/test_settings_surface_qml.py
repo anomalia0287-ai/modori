@@ -19,7 +19,7 @@ def test_settings_entry_is_functional_on_entry_and_work_screens() -> None:
         assert "signal settingsRequested()" in source
         assert "AppIconButton" in source
         assert "root.settingsRequested()" in source
-        assert 'appBootstrap.text("settings.title")' in source
+        assert 'appBootstrap.text("settings.title", appBootstrap.language)' in source
 
 
 def test_settings_sheet_owns_existing_persistent_preferences() -> None:

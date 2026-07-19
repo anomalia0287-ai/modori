@@ -33,21 +33,24 @@ Button {
         }
         if (control.variant === "primary") {
             if (control.down) {
-                return theme.bronzeDeep
+                return theme.workspacePrimaryPressed
             }
-            return control.hovered ? theme.bronzeHover : theme.bronzeAction
+            return control.hovered ? theme.workspacePrimaryHover : theme.workspacePrimary
         }
         if (control.variant === "quiet" || control.glassVariant) {
-            return control.hovered || control.down ? theme.selectionSurface : theme.transparent
+            if (control.selected) {
+                return theme.workspaceSelected
+            }
+            return control.hovered || control.down ? theme.workspaceHover : theme.transparent
         }
-        return control.hovered || control.down ? theme.selectionSurface : theme.surfaceRaised
+        return control.hovered || control.down ? theme.workspaceHover : theme.workspaceCard
     }
 
     function foregroundColor() {
         if (!control.enabled) {
             return theme.textMuted
         }
-        return control.variant === "primary" ? theme.onBrand : theme.textStrong
+        return control.variant === "primary" ? theme.workspaceOnPrimary : theme.textStrong
     }
 
     contentItem: Text {
@@ -79,26 +82,30 @@ Button {
                 GradientStop {
                     position: 0.0
                     color: control.strongGlassVariant
-                        ? theme.glassListSheen
+                        ? theme.workspaceSelected
                         : control.selected || control.hovered || control.down
-                            ? theme.glassListHoverSurface
-                            : theme.glassListSheen
+                            ? control.selected
+                                ? theme.workspaceSelected
+                                : theme.workspaceHover
+                            : theme.workspaceCard
                 }
 
                 GradientStop {
                     position: 0.52
                     color: control.strongGlassVariant
-                        ? theme.bronzeWash
+                        ? theme.workspaceSelected
                         : control.selected || control.hovered || control.down
-                            ? theme.glassListHoverSurface
-                            : theme.glassListSurface
+                            ? control.selected
+                                ? theme.workspaceSelected
+                                : theme.workspaceHover
+                            : theme.workspaceCard
                 }
 
                 GradientStop {
                     position: 1.0
                     color: control.strongGlassVariant
-                        ? theme.lineSubtle
-                        : theme.glassListSurface
+                        ? theme.workspaceSelected
+                        : theme.workspaceCard
                 }
             }
         }
@@ -111,7 +118,7 @@ Button {
             anchors.leftMargin: theme.spaceSm
             anchors.rightMargin: theme.spaceSm
             height: theme.borderWidth
-            color: theme.lineSubtle
+            color: theme.workspaceDivider
             visible: control.glassVariant
         }
 
@@ -122,7 +129,7 @@ Button {
             anchors.leftMargin: theme.spaceSm
             anchors.rightMargin: theme.spaceSm
             height: theme.borderWidthFocus
-            color: theme.lineStrong
+            color: theme.workspacePrimary
             visible: (control.selected || control.semanticLight || control.strongGlassVariant)
                 && control.enabled
                 && !control.activeFocus

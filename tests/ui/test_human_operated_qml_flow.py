@@ -44,7 +44,7 @@ def test_entry_recent_files_are_clickable_and_open_existing_sessions() -> None:
     entry = qml_text("screens/EntryScreen.qml")
 
     assert "signal recentFileRequested(int index)" in entry
-    assert "Repeater" in entry
+    assert "ListView" in entry
     assert "model: uiController.recentFilesModel" in entry
     assert "recentFilesText.split" not in entry
     assert "root.recentFileRequested(index)" in entry
@@ -53,14 +53,23 @@ def test_entry_recent_files_are_clickable_and_open_existing_sessions() -> None:
     assert 'root.currentScreen = "work"' in main
 
 
-def test_entry_mode_buttons_transition_to_work_screen_when_mode_is_selected() -> None:
+def test_entry_mode_buttons_select_mode_without_entering_work_screen() -> None:
     main = qml_text("Main.qml")
 
-    assert "onGuidedRequested: {" in main
-    assert 'uiController.chooseMode("guided")' in main
+    guided_handler = main[
+        main.index("onGuidedRequested:") : main.index("onStandardRequested:")
+    ]
+    standard_handler = main[
+        main.index("onStandardRequested:") : main.index("onOpenDataRequested:")
+    ]
+
+    assert 'uiController.chooseMode("guided")' in guided_handler
+    assert 'root.currentScreen = "work"' not in guided_handler
+    assert 'uiController.chooseMode("standard")' in standard_handler
+    assert 'root.currentScreen = "work"' not in standard_handler
+    assert "onOpenDataRequested: dataFileDialog.open()" in main
+    assert "uiController.confirmPendingImport" in main
     assert 'root.currentScreen = "work"' in main
-    assert "onStandardRequested: {" in main
-    assert 'uiController.chooseMode("standard")' in main
 
 
 def test_work_qml_wires_rerun_results_explain_and_report() -> None:
@@ -181,7 +190,10 @@ def test_guided_and_standard_modes_change_visible_work_surface() -> None:
     work = qml_text("screens/WorkScreen.qml")
 
     assert 'visible: uiController.mode === "guided" || root.researchRailOpen' in work
-    assert 'SplitView.preferredWidth: root.researchRailVisible ? theme.guideRailPreferredWidth : theme.spaceNone' in work
+    assert "SplitView.preferredWidth: root.researchRailVisible" in work
+    assert 'appBootstrap.language === "en"' in work
+    assert "theme.guideRailEnglishPreferredWidth" in work
+    assert "theme.guideRailPreferredWidth" in work
     assert 'SplitView.minimumWidth: root.researchRailVisible ? theme.guideRailMinimumWidth : theme.spaceNone' in work
     assert 'SplitView.maximumWidth: root.researchRailVisible ? theme.guideRailMaximumWidth : theme.spaceNone' in work
     assert "ModeSegment" in work

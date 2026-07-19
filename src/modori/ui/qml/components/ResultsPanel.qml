@@ -7,9 +7,9 @@ import "../theme"
 PearlSurface {
     id: root
 
-    fillColor: theme.surfaceCream
+    fillColor: theme.workspaceCard
     radius: theme.radiusSmall
-    Accessible.name: appBootstrap.text("results.title")
+    Accessible.name: appBootstrap.text("results.title", appBootstrap.language)
 
     Theme {
         id: theme
@@ -49,18 +49,18 @@ PearlSurface {
 
     function stateLabel() {
         if (uiController.lastError.length > 0) {
-            return appBootstrap.text("results.error_prefix").trim()
+            return appBootstrap.text("results.error_prefix", appBootstrap.language).trim()
         }
         if (uiController.status === "running") {
-            return appBootstrap.text("results.running")
+            return appBootstrap.text("results.running", appBootstrap.language)
         }
         if (uiController.stale && root.hasResults()) {
-            return appBootstrap.text("results.stale")
+            return appBootstrap.text("results.stale", appBootstrap.language)
         }
         if (root.hasResults()) {
-            return appBootstrap.text("results.latest")
+            return appBootstrap.text("results.latest", appBootstrap.language)
         }
-        return appBootstrap.text("results.empty")
+        return appBootstrap.text("results.empty", appBootstrap.language)
     }
 
     ColumnLayout {
@@ -83,8 +83,8 @@ PearlSurface {
                     spacing: theme.spaceSm
 
                     Label {
-                        text: appBootstrap.text("results.report_preview")
-                        color: theme.bronzeDeep
+                        text: appBootstrap.text("results.report_preview", appBootstrap.language)
+                        color: theme.workspaceBrand
                         font.pixelSize: theme.fontSection
                         font.bold: true
                     }
@@ -100,7 +100,7 @@ PearlSurface {
                     }
 
                     AppButton {
-                        text: appBootstrap.text("dialog.report.export_word")
+                        text: appBootstrap.text("dialog.report.export_word", appBootstrap.language)
                         Accessible.name: text
                         variant: enabled ? "primary" : "secondary"
                         semanticLight: enabled
@@ -122,7 +122,7 @@ PearlSurface {
                         spacing: theme.spaceMd
 
                         Label {
-                            text: appBootstrap.text("results.stale")
+                            text: appBootstrap.text("results.stale", appBootstrap.language)
                             visible: uiController.stale && root.hasResults()
                             color: theme.warning
                             font.bold: true
@@ -131,7 +131,8 @@ PearlSurface {
                         }
 
                         Label {
-                            text: appBootstrap.text("results.error_prefix") + uiController.lastError
+                            text: appBootstrap.text("results.error_prefix", appBootstrap.language)
+                                + appBootstrap.localize(uiController.lastError, appBootstrap.language)
                             visible: uiController.lastError.length > 0
                             color: theme.danger
                             font.bold: true
@@ -140,9 +141,9 @@ PearlSurface {
                         }
 
                         Label {
-                            text: uiController.lastMessage
+                            text: appBootstrap.localize(uiController.lastMessage, appBootstrap.language)
                             visible: uiController.lastMessage.length > 0
-                            color: theme.bronzeDeep
+                            color: theme.workspaceBrand
                             font.bold: true
                             wrapMode: Text.WordWrap
                             Layout.fillWidth: true
@@ -151,7 +152,7 @@ PearlSurface {
                         Label {
                             text: uiController.resultSummary.length > 0
                                 ? uiController.resultSummary
-                                : appBootstrap.text("results.empty_message")
+                                : appBootstrap.text("results.empty_message", appBootstrap.language)
                             color: theme.textBody
                             font.pixelSize: theme.fontBody
                             lineHeight: theme.resultSummaryLineHeight
@@ -176,7 +177,7 @@ PearlSurface {
                                     spacing: theme.spaceSm
 
                                     Label {
-                                        text: appBootstrap.text("results.table")
+                                        text: appBootstrap.text("results.table", appBootstrap.language)
                                         color: theme.textMuted
                                         font.pixelSize: theme.fontCaption
                                         font.italic: true
@@ -187,7 +188,7 @@ PearlSurface {
                                     }
 
                                     AppButton {
-                                        text: appBootstrap.text("results.view_wide")
+                                        text: appBootstrap.text("results.view_wide", appBootstrap.language)
                                         Accessible.name: text
                                         variant: "quiet"
                                         visible: uiController.resultTableText.length > 0
@@ -233,7 +234,7 @@ PearlSurface {
                                 spacing: theme.spaceSm
 
                                 Label {
-                                    text: appBootstrap.text("results.figure")
+                                    text: appBootstrap.text("results.figure", appBootstrap.language)
                                     color: theme.textMuted
                                     font.pixelSize: theme.fontCaption
                                     font.italic: true
@@ -250,7 +251,7 @@ PearlSurface {
                         }
 
                         Label {
-                            text: appBootstrap.text("results.notes") + ": " + uiController.resultNotesText
+                            text: appBootstrap.text("results.notes", appBootstrap.language) + ": " + uiController.resultNotesText
                             visible: uiController.resultNotesText.length > 0
                             color: theme.warning
                             font.pixelSize: theme.fontCaption
@@ -259,7 +260,7 @@ PearlSurface {
                         }
 
                         Label {
-                            text: appBootstrap.text("results.path") + ": " + uiController.chartPathsText
+                            text: appBootstrap.text("results.path", appBootstrap.language) + ": " + uiController.chartPathsText
                             visible: uiController.chartPathsText.length > 0
                             color: theme.textSoft
                             font.pixelSize: theme.fontCaption
@@ -270,7 +271,7 @@ PearlSurface {
                         Label {
                             text: uiController.reportPath
                             visible: uiController.reportPath.length > 0
-                            color: theme.bronzeDeep
+                            color: theme.workspaceBrand
                             font.pixelSize: theme.fontCaption
                             wrapMode: Text.WordWrap
                             Layout.fillWidth: true
@@ -283,14 +284,14 @@ PearlSurface {
                     spacing: theme.spaceSm
 
                     AppButton {
-                        text: appBootstrap.text("results.why_this_test")
+                        text: appBootstrap.text("results.why_this_test", appBootstrap.language)
                         Accessible.name: text
                         variant: "quiet"
                         visible: uiController.explainModeEnabled
                         onClicked: {
                             explainPopover.bodyText = uiController.explainRichText(
                                 "ui.result.cronbach_alpha",
-                                "ko"
+                                appBootstrap.language
                             )
                             explainPopover.open()
                         }

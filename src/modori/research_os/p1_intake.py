@@ -313,8 +313,20 @@ def _validate_roles(
 def _target_roles(
     draft: P1IntakeDraft,
     definition: _ProfileDefinition,
+    *,
+    role_confirmation_refs: tuple[str, ...] | None = None,
 ) -> tuple[TargetRoleBinding, ...]:
     profile_ref = f"intake:profile:{draft.profile.value}"
+    validated_refs: tuple[str, ...] | None = None
+    if role_confirmation_refs is not None:
+        if not isinstance(role_confirmation_refs, tuple) or not role_confirmation_refs:
+            raise P1IntakeError("role_confirmation_refs must be a non-empty tuple")
+        validated_refs = tuple(
+            _require_reference(reference, field="role_confirmation_refs")
+            for reference in role_confirmation_refs
+        )
+        if len(set(validated_refs)) != len(validated_refs):
+            raise P1IntakeError("role_confirmation_refs cannot contain duplicates")
     roles = draft.roles
     if definition.role_shape == "outcome_many":
         bindings = ((TargetRole.OUTCOME, roles.outcome),)
@@ -339,7 +351,11 @@ def _target_roles(
             role=role,
             variable_ids=Fact.user_confirmed(
                 variable_ids,
-                provenance_refs=(f"{profile_ref}:role:{role.value}",),
+                provenance_refs=(
+                    validated_refs
+                    if validated_refs is not None
+                    else (f"{profile_ref}:role:{role.value}",)
+                ),
             ),
         )
         for role, variable_ids in bindings
@@ -389,6 +405,7 @@ def build_p1_request(
     source_schema_fingerprint: str,
     available_variable_ids: tuple[str, ...],
     language: Language,
+    role_confirmation_refs: tuple[str, ...] | None = None,
 ) -> ResearchRequest:
     """Build only the exact noncausal request named by an approved profile card."""
 
@@ -452,7 +469,11 @@ def build_p1_request(
         ),
         target_population=_unknown("estimand.target_population"),
         unit_of_analysis=_unknown("estimand.unit_of_analysis"),
-        target_roles=_target_roles(draft, definition),
+        target_roles=_target_roles(
+            draft,
+            definition,
+            role_confirmation_refs=role_confirmation_refs,
+        ),
         contrast=(
             Fact.not_applicable(reason_code="p1_profile_has_no_contrast")
             if definition.contrast is None

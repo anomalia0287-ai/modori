@@ -16,17 +16,17 @@ Item {
     }
 
     function methodValue(label) {
-        if (label === appBootstrap.text("transform.method_sum")) {
+        if (label === appBootstrap.text("transform.method_sum", appBootstrap.language)) {
             return "sum"
         }
         return "mean"
     }
 
     function policyValue(label) {
-        if (label === appBootstrap.text("transform.policy_conservative")) {
+        if (label === appBootstrap.text("transform.policy_conservative", appBootstrap.language)) {
             return "conservative"
         }
-        if (label === appBootstrap.text("transform.policy_custom")) {
+        if (label === appBootstrap.text("transform.policy_custom", appBootstrap.language)) {
             return "custom"
         }
         return "survey"
@@ -46,10 +46,10 @@ Item {
 
     function recodePreviewText(entry, newValue, toMissing) {
         if (toMissing) {
-            return entry.count + appBootstrap.text("transform.map_preview_missing")
+            return entry.count + appBootstrap.text("transform.map_preview_missing", appBootstrap.language)
         }
         if (root.hasText(newValue)) {
-            return entry.count + appBootstrap.text("transform.map_preview_to") + newValue
+            return entry.count + appBootstrap.text("transform.map_preview_to", appBootstrap.language) + newValue
         }
         return ""
     }
@@ -58,13 +58,13 @@ Item {
         var rowCount = root.recodeRowsPayload().length
         var hasFreeformRules = root.hasText(recodeRules.text) || root.hasText(recodeMissing.text)
         if (rowCount > 0 && hasFreeformRules) {
-            return rowCount + appBootstrap.text("transform.map_summary_rows_with_text")
+            return rowCount + appBootstrap.text("transform.map_summary_rows_with_text", appBootstrap.language)
         }
         if (rowCount > 0) {
-            return rowCount + appBootstrap.text("transform.map_summary_rows")
+            return rowCount + appBootstrap.text("transform.map_summary_rows", appBootstrap.language)
         }
         if (hasFreeformRules) {
-            return appBootstrap.text("transform.map_summary_text")
+            return appBootstrap.text("transform.map_summary_text", appBootstrap.language)
         }
         return ""
     }
@@ -95,7 +95,7 @@ Item {
             spacing: theme.spaceMd
 
             Label {
-                text: appBootstrap.text("transform.source_protected")
+                text: appBootstrap.text("transform.source_protected", appBootstrap.language)
                 color: theme.textSecondary
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
@@ -105,7 +105,7 @@ Item {
             }
 
             AppGroupBox {
-                title: appBootstrap.text("transform.unify_title")
+                title: appBootstrap.text("transform.unify_title", appBootstrap.language)
                 Layout.fillWidth: true
                 Layout.leftMargin: theme.spaceMd
                 Layout.rightMargin: theme.spaceMd
@@ -138,9 +138,9 @@ Item {
                             }
 
                             AppButton {
-                                text: appBootstrap.text("transform.unify_apply")
+                                text: appBootstrap.text("transform.unify_apply", appBootstrap.language)
                                 enabled: root.canEditTransform
-                                Accessible.name: appBootstrap.text("transform.unify_apply")
+                                Accessible.name: appBootstrap.text("transform.unify_apply", appBootstrap.language)
                                 onClicked: uiController.applyValueUnification(modelData.column)
                             }
                         }
@@ -149,7 +149,7 @@ Item {
             }
 
             AppGroupBox {
-                title: appBootstrap.text("transform.map_title")
+                title: appBootstrap.text("transform.map_title", appBootstrap.language)
                 Layout.fillWidth: true
                 Layout.leftMargin: theme.spaceMd
                 Layout.rightMargin: theme.spaceMd
@@ -163,7 +163,7 @@ Item {
                     columnSpacing: theme.spaceGridColumn
 
                     Label {
-                        text: appBootstrap.text("transform.map_column")
+                        text: appBootstrap.text("transform.map_column", appBootstrap.language)
                         color: theme.textControl
                     }
 
@@ -171,7 +171,7 @@ Item {
                         id: recodeColumn
                         model: uiController.valueRecodeInventory
                         textRole: "column"
-                        Accessible.name: appBootstrap.text("transform.map_column")
+                        Accessible.name: appBootstrap.text("transform.map_column", appBootstrap.language)
                         Layout.fillWidth: true
 
                         delegate: ItemDelegate {
@@ -182,7 +182,7 @@ Item {
                     }
 
                     Label {
-                        text: appBootstrap.text("transform.map_values")
+                        text: appBootstrap.text("transform.map_values", appBootstrap.language)
                         color: theme.textControl
                     }
 
@@ -219,8 +219,8 @@ Item {
                                     AppTextField {
                                         id: recodeNewValue
                                         text: modelData.new_value ? modelData.new_value : ""
-                                        placeholderText: appBootstrap.text("transform.map_new_value")
-                                        Accessible.name: appBootstrap.text("transform.map_new_value")
+                                        placeholderText: appBootstrap.text("transform.map_new_value", appBootstrap.language)
+                                        Accessible.name: appBootstrap.text("transform.map_new_value", appBootstrap.language)
                                         enabled: !recodeToMissing.checked
                                         Layout.preferredWidth: theme.fieldWidthSmall
                                         selectByMouse: true
@@ -229,8 +229,8 @@ Item {
                                     AppCheckBox {
                                         id: recodeToMissing
                                         checked: Boolean(modelData.to_missing)
-                                        text: appBootstrap.text("transform.map_to_missing")
-                                        Accessible.name: appBootstrap.text("transform.map_to_missing")
+                                        text: appBootstrap.text("transform.map_to_missing", appBootstrap.language)
+                                        Accessible.name: appBootstrap.text("transform.map_to_missing", appBootstrap.language)
                                     }
                                 }
 
@@ -263,14 +263,14 @@ Item {
                     }
 
                     Label {
-                        text: appBootstrap.text("transform.map_rules")
+                        text: appBootstrap.text("transform.map_rules", appBootstrap.language)
                         color: theme.textControl
                     }
 
                     TextArea {
                         id: recodeRules
-                        placeholderText: appBootstrap.text("transform.map_rules_placeholder")
-                        Accessible.name: appBootstrap.text("transform.map_rules")
+                        placeholderText: appBootstrap.text("transform.map_rules_placeholder", appBootstrap.language)
+                        Accessible.name: appBootstrap.text("transform.map_rules", appBootstrap.language)
                         Layout.fillWidth: true
                         Layout.preferredHeight: theme.fieldWidthTiny
                         selectByMouse: true
@@ -278,20 +278,20 @@ Item {
                     }
 
                     Label {
-                        text: appBootstrap.text("transform.map_missing")
+                        text: appBootstrap.text("transform.map_missing", appBootstrap.language)
                         color: theme.textControl
                     }
 
                     AppTextField {
                         id: recodeMissing
-                        placeholderText: appBootstrap.text("transform.map_missing_placeholder")
-                        Accessible.name: appBootstrap.text("transform.map_missing")
+                        placeholderText: appBootstrap.text("transform.map_missing_placeholder", appBootstrap.language)
+                        Accessible.name: appBootstrap.text("transform.map_missing", appBootstrap.language)
                         Layout.fillWidth: true
                         selectByMouse: true
                     }
 
                     Label {
-                        text: appBootstrap.text("transform.map_suffix")
+                        text: appBootstrap.text("transform.map_suffix", appBootstrap.language)
                         color: theme.textControl
                     }
 
@@ -299,8 +299,8 @@ Item {
                         id: recodeSuffix
                         text: root.selectedRecodeEntry() && root.selectedRecodeEntry().suffix
                             ? root.selectedRecodeEntry().suffix
-                            : appBootstrap.text("transform.map_suffix_default")
-                        Accessible.name: appBootstrap.text("transform.map_suffix")
+                            : appBootstrap.text("transform.map_suffix_default", appBootstrap.language)
+                        Accessible.name: appBootstrap.text("transform.map_suffix", appBootstrap.language)
                         Layout.fillWidth: true
                         selectByMouse: true
                     }
@@ -308,8 +308,8 @@ Item {
                     Item {}
 
                     AppButton {
-                        text: appBootstrap.text("transform.map_apply")
-                        Accessible.name: appBootstrap.text("transform.map_apply")
+                        text: appBootstrap.text("transform.map_apply", appBootstrap.language)
+                        Accessible.name: appBootstrap.text("transform.map_apply", appBootstrap.language)
                         enabled: root.canEditTransform
                             && root.selectedRecodeEntry()
                             && root.selectedRecodeEntry().eligible
@@ -328,7 +328,7 @@ Item {
             }
 
             AppGroupBox {
-                title: appBootstrap.text("transform.reverse_title")
+                title: appBootstrap.text("transform.reverse_title", appBootstrap.language)
                 Layout.fillWidth: true
                 Layout.leftMargin: theme.spaceMd
                 Layout.rightMargin: theme.spaceMd
@@ -341,20 +341,20 @@ Item {
                     columnSpacing: theme.spaceGridColumn
 
                     Label {
-                        text: appBootstrap.text("transform.reverse_columns")
+                        text: appBootstrap.text("transform.reverse_columns", appBootstrap.language)
                         color: theme.textControl
                     }
 
                     AppTextField {
                         id: reverseColumns
-                        placeholderText: appBootstrap.text("transform.reverse_columns_placeholder")
-                        Accessible.name: appBootstrap.text("transform.reverse_columns")
+                        placeholderText: appBootstrap.text("transform.reverse_columns_placeholder", appBootstrap.language)
+                        Accessible.name: appBootstrap.text("transform.reverse_columns", appBootstrap.language)
                         Layout.fillWidth: true
                         selectByMouse: true
                     }
 
                     Label {
-                        text: appBootstrap.text("transform.scale_min")
+                        text: appBootstrap.text("transform.scale_min", appBootstrap.language)
                         color: theme.textControl
                     }
 
@@ -363,11 +363,11 @@ Item {
                         from: -999
                         to: 999
                         value: 1
-                        Accessible.name: appBootstrap.text("transform.scale_min")
+                        Accessible.name: appBootstrap.text("transform.scale_min", appBootstrap.language)
                     }
 
                     Label {
-                        text: appBootstrap.text("transform.scale_max")
+                        text: appBootstrap.text("transform.scale_max", appBootstrap.language)
                         color: theme.textControl
                     }
 
@@ -376,19 +376,19 @@ Item {
                         from: -999
                         to: 999
                         value: 5
-                        Accessible.name: appBootstrap.text("transform.scale_max")
+                        Accessible.name: appBootstrap.text("transform.scale_max", appBootstrap.language)
                     }
 
                     Label {
-                        text: appBootstrap.text("transform.reverse_suffix")
+                        text: appBootstrap.text("transform.reverse_suffix", appBootstrap.language)
                         color: theme.textControl
                     }
 
                     AppTextField {
                         id: reverseSuffix
-                        text: appBootstrap.text("transform.reverse_suffix_placeholder")
-                        placeholderText: appBootstrap.text("transform.reverse_suffix_placeholder")
-                        Accessible.name: appBootstrap.text("transform.reverse_suffix")
+                        text: appBootstrap.text("transform.reverse_suffix_placeholder", appBootstrap.language)
+                        placeholderText: appBootstrap.text("transform.reverse_suffix_placeholder", appBootstrap.language)
+                        Accessible.name: appBootstrap.text("transform.reverse_suffix", appBootstrap.language)
                         Layout.fillWidth: true
                         selectByMouse: true
                     }
@@ -396,8 +396,8 @@ Item {
                     Item {}
 
                     AppButton {
-                        text: appBootstrap.text("transform.apply_reverse")
-                        Accessible.name: appBootstrap.text("transform.apply_reverse")
+                        text: appBootstrap.text("transform.apply_reverse", appBootstrap.language)
+                        Accessible.name: appBootstrap.text("transform.apply_reverse", appBootstrap.language)
                         enabled: root.canEditTransform && root.hasText(reverseColumns.text)
                         onClicked: uiController.reverseCodeFromText(
                             reverseColumns.text,
@@ -410,7 +410,7 @@ Item {
             }
 
             AppGroupBox {
-                title: appBootstrap.text("transform.scale_title")
+                title: appBootstrap.text("transform.scale_title", appBootstrap.language)
                 Layout.fillWidth: true
                 Layout.leftMargin: theme.spaceMd
                 Layout.rightMargin: theme.spaceMd
@@ -424,62 +424,62 @@ Item {
                     columnSpacing: theme.spaceGridColumn
 
                     Label {
-                        text: appBootstrap.text("transform.scale_items")
+                        text: appBootstrap.text("transform.scale_items", appBootstrap.language)
                         color: theme.textControl
                     }
 
                     AppTextField {
                         id: scaleItems
-                        placeholderText: appBootstrap.text("transform.scale_items_placeholder")
-                        Accessible.name: appBootstrap.text("transform.scale_items")
+                        placeholderText: appBootstrap.text("transform.scale_items_placeholder", appBootstrap.language)
+                        Accessible.name: appBootstrap.text("transform.scale_items", appBootstrap.language)
                         Layout.fillWidth: true
                         selectByMouse: true
                     }
 
                     Label {
-                        text: appBootstrap.text("transform.scale_name")
+                        text: appBootstrap.text("transform.scale_name", appBootstrap.language)
                         color: theme.textControl
                     }
 
                     AppTextField {
                         id: scaleName
-                        placeholderText: appBootstrap.text("transform.scale_name_placeholder")
-                        Accessible.name: appBootstrap.text("transform.scale_name")
+                        placeholderText: appBootstrap.text("transform.scale_name_placeholder", appBootstrap.language)
+                        Accessible.name: appBootstrap.text("transform.scale_name", appBootstrap.language)
                         Layout.fillWidth: true
                         selectByMouse: true
                     }
 
                     Label {
-                        text: appBootstrap.text("transform.scale_method")
+                        text: appBootstrap.text("transform.scale_method", appBootstrap.language)
                         color: theme.textControl
                     }
 
                     AppComboBox {
                         id: scaleMethod
                         model: [
-                            appBootstrap.text("transform.method_mean"),
-                            appBootstrap.text("transform.method_sum")
+                            appBootstrap.text("transform.method_mean", appBootstrap.language),
+                            appBootstrap.text("transform.method_sum", appBootstrap.language)
                         ]
-                        Accessible.name: appBootstrap.text("transform.scale_method")
+                        Accessible.name: appBootstrap.text("transform.scale_method", appBootstrap.language)
                     }
 
                     Label {
-                        text: appBootstrap.text("transform.scale_policy")
+                        text: appBootstrap.text("transform.scale_policy", appBootstrap.language)
                         color: theme.textControl
                     }
 
                     AppComboBox {
                         id: scalePolicy
                         model: [
-                            appBootstrap.text("transform.policy_survey"),
-                            appBootstrap.text("transform.policy_conservative"),
-                            appBootstrap.text("transform.policy_custom")
+                            appBootstrap.text("transform.policy_survey", appBootstrap.language),
+                            appBootstrap.text("transform.policy_conservative", appBootstrap.language),
+                            appBootstrap.text("transform.policy_custom", appBootstrap.language)
                         ]
-                        Accessible.name: appBootstrap.text("transform.scale_policy")
+                        Accessible.name: appBootstrap.text("transform.scale_policy", appBootstrap.language)
                     }
 
                     Label {
-                        text: appBootstrap.text("transform.min_valid")
+                        text: appBootstrap.text("transform.min_valid", appBootstrap.language)
                         color: theme.textControl
                     }
 
@@ -488,14 +488,14 @@ Item {
                         from: 1
                         to: 100
                         value: 80
-                        Accessible.name: appBootstrap.text("transform.min_valid")
+                        Accessible.name: appBootstrap.text("transform.min_valid", appBootstrap.language)
                     }
 
                     Item {}
 
                     AppButton {
-                        text: appBootstrap.text("transform.apply_scale")
-                        Accessible.name: appBootstrap.text("transform.apply_scale")
+                        text: appBootstrap.text("transform.apply_scale", appBootstrap.language)
+                        Accessible.name: appBootstrap.text("transform.apply_scale", appBootstrap.language)
                         enabled: root.canEditTransform && root.hasText(scaleItems.text) && root.hasText(scaleName.text)
                         onClicked: uiController.scaleScoreFromText(
                             scaleItems.text,

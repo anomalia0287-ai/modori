@@ -1,85 +1,73 @@
-# Aurora Glass design QA
+# Royal Blue workspace design QA
 
-## Comparison target
+**Comparison Target**
 
-- Source visual truth:
-  - `C:\Users\V\AppData\Local\Temp\codex-clipboard-71c07cee-f829-4ee3-aa87-0700ba657126.png` — owner-marked entry-screen card treatment to replace with a full-bleed composition.
-  - `C:\Users\V\AppData\Local\Temp\codex-clipboard-1375dea1-dbb9-4c7d-b95e-4027ce065b84.png` — owner-marked manual-analysis list whose two-column treatment and missing separation were rejected.
-  - `C:\Users\V\AppData\Local\Temp\codex-clipboard-fb2ec486-be5b-4721-a417-ba950b998b7e.png` — owner-marked import dialog and scrollbar state.
-  - `docs/superpowers/handoffs/2026-07-16-modori-owner-directives-and-visual-polish-handoff.md` — consolidated owner directives, exact copy, semantic-state, spacing, color, and interaction requirements.
-  - `docs/superpowers/specs/2026-07-16-aurora-glass-brand-header-design.md` — approved Aurora Glass design contract.
-- Rendered implementation:
-  - `docs/design-audit/2026-07-17-aurora-glass-final/entry.png`
-  - `docs/design-audit/2026-07-17-aurora-glass-final/work-manual-top.png`
-  - `docs/design-audit/2026-07-17-aurora-glass-final/import-dialog.png`
-  - `docs/design-audit/2026-07-17-aurora-glass-final/import-dialog-scrolled.png`
-  - `docs/design-audit/2026-07-17-aurora-glass-final/loading.png`
-- Viewport: 1180 × 760 logical pixels on Windows at 125% device scaling; native captures are 1475 × 950 physical pixels.
-- State: entry; guided work screen with imported `psych_bfi.csv`; manual analysis selection expanded; import preview at top and scrolled; transient loading overlay.
+- Source visual truth, structure: `docs/design-audit/2026-07-17-aurora-glass-final/work-manual-top.png`
+- Source visual truth, palette: `docs/design-audit/2026-07-19-royal-blue-entry/ko-casual.png`
+- Primary implementation screenshot: `docs/design-audit/2026-07-19-royal-blue-workspace/en-casual.png`
+- Viewport: 1366 x 768 logical pixels, native Windows/D3D11 rendering
+- States: Korean and English; Casual and Pro; keyboard focus in both languages
+- State constraint: the work-screen source supplies the three-column structural truth, while the entry-screen source supplies the approved Royal Blue and ivory token truth. They are different routes and data states, so content-row identity and route-specific composition were not treated as pixel-matching targets.
 
-The owner screenshots are iterative issue references rather than one exact pixel mock. The comparison therefore treats the approved written design contract as authoritative and uses the screenshots to verify that each rejected treatment is absent. Physical screenshot dimensions vary slightly, so the boards normalize each image without claiming pixel-for-pixel equivalence.
+**Full-view Comparison Evidence**
 
-## Full-view comparison evidence
+- `docs/design-audit/2026-07-19-royal-blue-workspace/comparison-ko-casual.png`
+- `docs/design-audit/2026-07-19-royal-blue-workspace/comparison-ko-pro.png`
+- `docs/design-audit/2026-07-19-royal-blue-workspace/comparison-en-casual.png`
+- `docs/design-audit/2026-07-19-royal-blue-workspace/comparison-en-pro.png`
+- `docs/design-audit/2026-07-19-royal-blue-workspace/comparison-ko-focus.png`
+- `docs/design-audit/2026-07-19-royal-blue-workspace/comparison-en-focus.png`
 
-- `docs/design-audit/2026-07-17-aurora-glass-final/comparison-entry.png`
-  - The former centered card is replaced by a true edge-to-edge two-region entry screen.
-  - The left brand region carries the restrained aurora surface; the right remains a toned white work surface.
-  - `MODORI` is black, uppercase, Gothic, and tracked; the approved two-line welcome copy replaces the former data-locality headline.
-  - `CASUAL MODE` and `PRO MODE` have equal scale and pale rose surfaces, with selection expressed by a bottom bronze line rather than a filled dominant button.
-- `docs/design-audit/2026-07-17-aurora-glass-final/comparison-import-dialog.png`
-  - The dialog uses one consistent radius on every corner.
-  - Scroll rails have no separate outline; darker neutral thumbs remain visible against a near-white rail.
-  - Controls, checkboxes, and the primary action use the bronze family rather than the retired green state color.
+**Focused Region Comparison Evidence**
 
-## Focused region comparison evidence
+- Header and mode selection: `docs/design-audit/2026-07-19-royal-blue-workspace/comparison-header-mode.png`
+- Guide rail and English wrapping: `docs/design-audit/2026-07-19-royal-blue-workspace/comparison-guide-rail.png`
+- Tabs, data selection, and result surface: `docs/design-audit/2026-07-19-royal-blue-workspace/comparison-tabs-actions.png`
+- Bottom pipeline rail: `docs/design-audit/2026-07-19-royal-blue-workspace/comparison-pipeline.png`
 
-- `docs/design-audit/2026-07-17-aurora-glass-final/comparison-manual-list.png`
-  - The former two-column text cloud is replaced by a single scan path.
-  - Each analysis option occupies its own quiet-glass row and is separated by a thin bronze divider.
-  - All ten labels are exposed in the QML accessibility tree; the focused capture shows the first five, and runtime scrolling exposes the remaining five.
-- `docs/design-audit/2026-07-17-aurora-glass-final/import-dialog-scrolled.png`
-  - The import-column scrollbar moved from visual position `0.0000` to `0.6588` and exposes the final variables (`gender`, `education`, `age`).
-- `docs/design-audit/2026-07-17-aurora-glass-final/loading.png`
-  - The blocking state is clearly legible as `로딩 중` over a restrained dim layer, with no decorative animation required when reduced effects are enabled.
-
-## Required fidelity surfaces
-
-- Fonts and typography: `Segoe UI` is retained for Korean and interface copy. The brand wordmark uses uppercase capitalization, demi-bold weight, and 2.4px tracking. Hierarchy is compact; no oversized navigation text or clipped manual-analysis label remains in the accessible contract.
-- Spacing and layout rhythm: the work wordmark-to-command gap is 40px; header actions remain compact; mode actions have equal minimum width; the entry screen is full bleed; guide, grid, result, and pipeline regions align without floating nested cards.
-- Colors and visual tokens: the final system uses toned white/ivory surfaces, `#B9856E` for logo-adjacent emphasis and selected boundaries, and `#D7B9AA` for quiet dividers. Green interaction emphasis is removed. The aurora is constrained to header, entry brand region, and footer glass rather than spread across every panel.
-- Image quality and asset fidelity: no photographic, generated, or placeholder image asset is part of the approved interface. Aurora and glass are native QML surfaces, not substitutes for a missing source image. The existing gear icon remains crisp and aligned.
-- Copy and content: entry copy is exactly `통계 작업을 위한 선택,\n모도리에 오신 것을 환영합니다.` Mode labels are `CASUAL MODE` and `PRO MODE`. The experimental-candidate boundary language is retained. Loading copy is exactly `로딩 중`.
-
-## States, behavior, and accessibility
-
-- Verified entry-to-work navigation, mode switching, manual-list expansion, manual-list scrolling, data-grid selection surface, import preview, import-list scrolling, and loading overlay.
-- Data-grid hover is a subtle surface shift; repeated value tooltips are removed.
-- Mode controls expose radio-button semantics, names, and checked state. Manual analysis rows expose full accessible names. Existing mandatory review confirmation remains a checkbox.
-- Focus/selected states use the bronze lower indicator. Reduced-effects mode removes optional motion while keeping loading feedback visible.
-- Import scrollbar runtime evidence: rail height tracks its scroll view and `visualPosition` changes with content position.
-
-## Findings
+**Findings**
 
 - No actionable P0, P1, or P2 mismatch remains.
-- P3 follow-up: the aurora balance can still be tuned after owner inspection without changing hierarchy, interaction semantics, or component geometry.
+- The existing three-column order, panel hierarchy, command routing, data grid, results panel, and bottom pipeline rail remain intact.
+- English Casual guidance is fully visible at 1366 x 768. `Other experimental candidates` remains on one line, while the candidate status and reason wrap without clipping.
+- Selected modes and tabs use both a Royal Blue tint and a bottom indicator. Keyboard focus on the unselected Variables tab is separately visible while the selected Data tab remains marked.
+- The bottom pastel Aurora treatment is absent. The pipeline is flat ivory with a Royal Blue top divider and primary action treatment.
 
-## Comparison history
+**Required Fidelity Surfaces**
 
-1. Earlier owner evidence showed a floating entry card, green emphasis, dense four-sided borders, an unseparated two-column manual list, old scrollbar rails, repeated data-cell hover content, and no unified loading state.
-2. The implementation replaced those treatments with full-bleed entry composition, bronze semantic emphasis, one-direction dividers, single-column glass rows, borderless scrollbar rails, subtle data-cell hover, and a localized loading overlay.
-3. Native Windows QML captures at the target logical viewport were placed beside the owner references in the three comparison boards above. No new P0/P1/P2 issue was found.
-4. The import scrollbar was then moved programmatically through its real attached QML object; the revised capture confirmed the thumb and content moved together from top to lower content.
+- Fonts and typography: existing Segoe UI hierarchy and uppercase MODORI wordmark are preserved. Native captures show no label truncation, accidental elision, or clipped English guidance at the target viewport.
+- Spacing and layout rhythm: the work screen retains header, guide/center/results columns, and bottom pipeline order. English guidance uses a 300 px preferred rail while Korean retains 260 px; this resolves wrapping without changing the 1366 x 768 frame or panel sequence.
+- Colors and visual tokens: the workspace maps to `#173B7A`, `#F7F3EA`, `#FFFDF8`, `#2F5DA8`, and `#17233A`. Active tabs, buttons, selections, focus, grid current-cell borders, and running/latest state treatments use Royal Blue roles. Warning and error colors remain unchanged.
+- Image quality and asset fidelity: no new bitmap, generated, inline-SVG, or placeholder artwork was introduced. Existing wordmark and icon resources remain sharp in native Windows/D3D11 captures.
+- Copy and content: Korean copy is unchanged. English retains the experimental-candidate and no-automatic-execution contract; the only density edit is `Other experimental candidates`, which preserves the action meaning without the redundant `View` prefix.
 
-## Implementation checklist
+**Primary Interactions and Runtime Checks**
 
-- [x] Full-bleed entry screen and restrained aurora brand region.
-- [x] Aurora header, black tracked `MODORI`, 40px command separation, settings entry point.
-- [x] Equal `CASUAL MODE` / `PRO MODE` controls with bronze lower-line state.
-- [x] Bronze semantic states and toned-white/ivory hierarchy; no green interaction emphasis.
-- [x] Ten manual-analysis rows with glass separation and working rail scroll.
-- [x] Import dialog radii, borderless rails, visible thumb, and verified movement.
-- [x] Data-grid hover without repeated value tooltip.
-- [x] Strong-glass footer execution action.
-- [x] Localized loading overlay and reduced-motion behavior.
+- Loaded the checked-in `tests/fixtures/psych_bfi.csv` through the real `UiController` data path.
+- Switched the real session language state between Korean and English.
+- Switched the real mode state between guided/Casual and standard/Pro.
+- Applied keyboard focus to the inactive Variables tab and verified a non-color focus indicator.
+- Significant QML diagnostics were checked during capture; none were emitted. The known native-style customization message is handled with the same allowlist contract used by the runtime QML suite.
+
+**Comparison History**
+
+- Pass 1 finding [P2 evidence quality]: the focus-state capture targeted the already selected Data tab, so the screenshot did not visibly distinguish focus from selection.
+- Fix: changed the deterministic capture target to the inactive Variables tab while keeping Data selected.
+- Post-fix evidence: `docs/design-audit/2026-07-19-royal-blue-workspace/ko-focus.png` and `docs/design-audit/2026-07-19-royal-blue-workspace/en-focus.png` show separate Royal Blue underlines for selection and keyboard focus.
+- Pass 2 result: no remaining P0/P1/P2 visual, density, copy, or accessibility-state issue at 1366 x 768.
+
+**Implementation Checklist**
+
+- [x] Preserve three-column work structure and route signals.
+- [x] Apply ivory canvas/cards and Royal Blue active, primary, selected, and focused states.
+- [x] Remove work-screen peach accents and bottom pastel gradient.
+- [x] Preserve warning and error semantic colors.
+- [x] Resolve English guide wrapping and candidate action clipping.
+- [x] Capture Korean/English, Casual/Pro, and keyboard-focus states.
+- [x] Compare full views and focused regions against both approved sources.
+
+**Follow-up Polish**
+
+- No P3 polish item is required for this scope.
 
 final result: passed

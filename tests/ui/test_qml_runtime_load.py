@@ -24,6 +24,7 @@ from modori.knowledge import LibraryLoadError
 from modori.ui.controller import UiController
 from modori.ui.explanation_service import ExplanationService
 from modori.ui.resources import root_qml_path
+from modori.ui.settings import UiSettingsStore
 
 from tests.ui.test_end_to_end_ui_flow import write_reference_csv
 
@@ -521,9 +522,14 @@ def test_reliability_recommendation_prefills_items_before_confirmation() -> None
         del engine
 
 
-def test_reliability_prefill_survives_unavailable_explanation_library() -> None:
+def test_reliability_prefill_survives_unavailable_explanation_library(
+    tmp_path: Path,
+) -> None:
     data_path = Path("tests/fixtures/psych_bfi.csv").resolve()
-    controller = UiController(reduce_effects=False)
+    controller = UiController(
+        reduce_effects=False,
+        settings_store=UiSettingsStore(tmp_path / "settings.json"),
+    )
 
     def unavailable_library():
         raise LibraryLoadError("library omitted from package")

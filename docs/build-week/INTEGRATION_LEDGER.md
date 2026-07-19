@@ -88,3 +88,25 @@ pass. No threshold will be changed for submission.
    merge identity and result.
 6. Do not push or change the public default branch until the final local candidate and
    exact external execution plan have been reported.
+
+## Execution record
+
+- Seal commit: `616955232d91aa322da66cb21a8865ec686ba87f`.
+- Seal-stage whitespace check: clean.
+- Seal baseline: `54 passed in 17.67s` for the two affected test modules.
+- Local merge source: `b368cdcf208d04509717826bc6b0ab7e7b72ba7e` with
+  `--no-ff --no-commit`.
+- Actual conflict set: exactly `src/modori/ui/controller.py` and
+  `tests/ui/test_research_flow_controller.py`; no unexpected path conflict occurred.
+- Controller resolution: removed `_CurrentPipelineOperations` and retained
+  `pipeline_ops_provider=lambda: owner._services.pipeline_ops`.
+- Test resolution: removed the narrower replaced-pipeline regression and retained
+  `test_imported_pipeline_can_confirm_research_preparation_without_running`.
+- Post-resolution comparison: both resolved files are identical to the corresponding
+  files at `b368cdcf208d04509717826bc6b0ab7e7b72ba7e`.
+- Pre-commit integration cohort: `57 passed in 11.31s` for
+  `test_run_validation.py`, `test_research_flow_controller.py`, and
+  `test_research_os_novice_e2e.py`.
+
+The merge commit identity is recorded in the final-source verification update after
+the two-parent commit exists.

@@ -8,7 +8,7 @@ Dialog {
     id: root
 
     objectName: "importDialog"
-    title: appBootstrap.text("dialog.import.title")
+    title: appBootstrap.text("dialog.import.title", appBootstrap.language)
     modal: true
     standardButtons: Dialog.NoButton
     parent: Overlay.overlay
@@ -69,10 +69,10 @@ Dialog {
     }
 
     function columnCountText() {
-        return appBootstrap.text("dialog.import.columns_count")
-            + appBootstrap.text("dialog.import.columns_count_separator")
+        return appBootstrap.text("dialog.import.columns_count", appBootstrap.language)
+            + appBootstrap.text("dialog.import.columns_count_separator", appBootstrap.language)
             + root.includedColumnNames.length
-            + appBootstrap.text("dialog.import.columns_count_total_separator")
+            + appBootstrap.text("dialog.import.columns_count_total_separator", appBootstrap.language)
             + uiController.importColumnRows.length
     }
 
@@ -126,7 +126,7 @@ Dialog {
                 spacing: theme.spaceSm
 
                 Label {
-                    text: appBootstrap.text("dialog.import.preview_accessible")
+                    text: appBootstrap.text("dialog.import.preview_accessible", appBootstrap.language)
                     color: theme.textStrong
                     font.bold: true
                     Layout.fillWidth: true
@@ -147,7 +147,7 @@ Dialog {
                         readOnly: true
                         selectByMouse: true
                         wrapMode: TextEdit.Wrap
-                        Accessible.name: appBootstrap.text("dialog.import.preview_accessible")
+                        Accessible.name: appBootstrap.text("dialog.import.preview_accessible", appBootstrap.language)
                         background: Rectangle {
                             color: theme.surfaceRaised
                             border.width: theme.spaceNone
@@ -162,7 +162,7 @@ Dialog {
                     visible: uiController.importReviewRows.length > 0
 
                     Label {
-                        text: appBootstrap.text("dialog.import.review_title")
+                        text: appBootstrap.text("dialog.import.review_title", appBootstrap.language)
                         color: theme.textStrong
                         font.bold: true
                     }
@@ -183,7 +183,7 @@ Dialog {
                             id: reviewColumn
                             width: parent.width
                             spacing: theme.importReviewRowSpacing
-                            Accessible.name: appBootstrap.text("dialog.import.review_accessible")
+                            Accessible.name: appBootstrap.text("dialog.import.review_accessible", appBootstrap.language)
 
                             Repeater {
                                 model: uiController.importReviewRows
@@ -250,7 +250,7 @@ Dialog {
                         Layout.fillWidth: true
 
                         Label {
-                            text: appBootstrap.text("dialog.import.columns_title")
+                            text: appBootstrap.text("dialog.import.columns_title", appBootstrap.language)
                             color: theme.textStrong
                             font.bold: true
                             Layout.fillWidth: true
@@ -269,12 +269,12 @@ Dialog {
                         AppTextField {
                             id: columnSearch
                             Layout.fillWidth: true
-                            placeholderText: appBootstrap.text("dialog.import.columns_search")
-                            Accessible.name: appBootstrap.text("dialog.import.columns_search")
+                            placeholderText: appBootstrap.text("dialog.import.columns_search", appBootstrap.language)
+                            Accessible.name: appBootstrap.text("dialog.import.columns_search", appBootstrap.language)
                         }
 
                         AppButton {
-                            text: appBootstrap.text("dialog.import.columns_reset")
+                            text: appBootstrap.text("dialog.import.columns_reset", appBootstrap.language)
                             Accessible.name: text
                             variant: "quiet"
                             onClicked: root.includeAllColumns()
@@ -295,7 +295,7 @@ Dialog {
                             id: columnList
                             width: parent.width
                             spacing: theme.importReviewRowSpacing
-                            Accessible.name: appBootstrap.text("dialog.import.columns_title")
+                            Accessible.name: appBootstrap.text("dialog.import.columns_title", appBootstrap.language)
 
                             Repeater {
                                 model: uiController.importColumnRows
@@ -316,15 +316,15 @@ Dialog {
                     Label {
                         Layout.fillWidth: true
                         visible: root.includedColumnNames.length === 0
-                        text: appBootstrap.text("dialog.import.columns_empty")
+                        text: appBootstrap.text("dialog.import.columns_empty", appBootstrap.language)
                         color: theme.danger
                         wrapMode: Text.WordWrap
                     }
 
                     AppButton {
                         text: root.settingsExpanded
-                            ? appBootstrap.text("dialog.import.settings_collapse")
-                            : appBootstrap.text("dialog.import.settings")
+                            ? appBootstrap.text("dialog.import.settings_collapse", appBootstrap.language)
+                            : appBootstrap.text("dialog.import.settings", appBootstrap.language)
                         Accessible.name: text
                         variant: "quiet"
                         Layout.fillWidth: true
@@ -352,7 +352,7 @@ Dialog {
                                 spacing: theme.spaceSm
 
                                 AppCheckBox {
-                                    text: appBootstrap.text("dialog.import.preserve_metadata")
+                                    text: appBootstrap.text("dialog.import.preserve_metadata", appBootstrap.language)
                                     checked: true
                                     enabled: false
                                     Accessible.name: text
@@ -360,7 +360,7 @@ Dialog {
                                 }
 
                                 Label {
-                                    text: appBootstrap.text("dialog.import.preserve_metadata_detail")
+                                    text: appBootstrap.text("dialog.import.preserve_metadata_detail", appBootstrap.language)
                                     color: theme.textMuted
                                     wrapMode: Text.WordWrap
                                     Layout.fillWidth: true
@@ -368,7 +368,7 @@ Dialog {
 
                                 AppCheckBox {
                                     id: dropAggregateRows
-                                    text: appBootstrap.text("dialog.import.drop_aggregate_rows")
+                                    text: appBootstrap.text("dialog.import.drop_aggregate_rows", appBootstrap.language)
                                     checked: false
                                     Accessible.name: text
                                     Layout.fillWidth: true
@@ -376,7 +376,7 @@ Dialog {
 
                                 AppCheckBox {
                                     id: dropDuplicateRows
-                                    text: appBootstrap.text("dialog.import.drop_duplicate_rows")
+                                    text: appBootstrap.text("dialog.import.drop_duplicate_rows", appBootstrap.language)
                                     checked: false
                                     Accessible.name: text
                                     Layout.fillWidth: true
@@ -389,18 +389,18 @@ Dialog {
                                     rowSpacing: theme.spaceXs
 
                                     Label {
-                                        text: appBootstrap.text("dialog.import.sheet_name")
+                                        text: appBootstrap.text("dialog.import.sheet_name", appBootstrap.language)
                                     }
 
                                     AppTextField {
                                         id: sheetName
                                         Layout.fillWidth: true
-                                        placeholderText: appBootstrap.text("dialog.import.sheet_name")
-                                        Accessible.name: appBootstrap.text("dialog.import.sheet_name")
+                                        placeholderText: appBootstrap.text("dialog.import.sheet_name", appBootstrap.language)
+                                        Accessible.name: appBootstrap.text("dialog.import.sheet_name", appBootstrap.language)
                                     }
 
                                     Label {
-                                        text: appBootstrap.text("dialog.import.header_row")
+                                        text: appBootstrap.text("dialog.import.header_row", appBootstrap.language)
                                     }
 
                                     AppSpinBox {
@@ -409,11 +409,11 @@ Dialog {
                                         to: 999
                                         value: 1
                                         editable: true
-                                        Accessible.name: appBootstrap.text("dialog.import.header_row")
+                                        Accessible.name: appBootstrap.text("dialog.import.header_row", appBootstrap.language)
                                     }
 
                                     Label {
-                                        text: appBootstrap.text("dialog.import.header_rows")
+                                        text: appBootstrap.text("dialog.import.header_rows", appBootstrap.language)
                                     }
 
                                     AppSpinBox {
@@ -422,11 +422,11 @@ Dialog {
                                         to: 3
                                         value: 1
                                         editable: true
-                                        Accessible.name: appBootstrap.text("dialog.import.header_rows")
+                                        Accessible.name: appBootstrap.text("dialog.import.header_rows", appBootstrap.language)
                                     }
 
                                     Label {
-                                        text: appBootstrap.text("dialog.import.data_start_row")
+                                        text: appBootstrap.text("dialog.import.data_start_row", appBootstrap.language)
                                     }
 
                                     AppSpinBox {
@@ -435,11 +435,11 @@ Dialog {
                                         to: 999
                                         value: 2
                                         editable: true
-                                        Accessible.name: appBootstrap.text("dialog.import.data_start_row")
+                                        Accessible.name: appBootstrap.text("dialog.import.data_start_row", appBootstrap.language)
                                     }
 
                                     AppButton {
-                                        text: appBootstrap.text("dialog.import.refresh_preview")
+                                        text: appBootstrap.text("dialog.import.refresh_preview", appBootstrap.language)
                                         Accessible.name: text
                                         variant: "secondary"
                                         Layout.columnSpan: 2
@@ -470,14 +470,14 @@ Dialog {
             }
 
             AppButton {
-                text: appBootstrap.text("dialog.import.cancel")
+                text: appBootstrap.text("dialog.import.cancel", appBootstrap.language)
                 Accessible.name: text
                 variant: "quiet"
                 onClicked: root.close()
             }
 
             AppButton {
-                text: appBootstrap.text("dialog.import.confirm")
+                text: appBootstrap.text("dialog.import.confirm", appBootstrap.language)
                 Accessible.name: text
                 variant: "primary"
                 semanticLight: enabled

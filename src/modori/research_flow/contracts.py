@@ -32,6 +32,8 @@ class ResearchFlowState(str, Enum):
     INTAKE_BLOCKED = "intake_blocked"
     INTAKE_PROFILE = "intake_profile"
     INTAKE_ROLES = "intake_roles"
+    MEANING_REVIEWING = "meaning_reviewing"
+    VARIABLE_MEANING_REVIEW = "variable_meaning_review"
     SCOPE_BOUNDARY = "scope_boundary"
     COMMITTING = "committing"
     CLARIFY_READY = "clarify_ready"

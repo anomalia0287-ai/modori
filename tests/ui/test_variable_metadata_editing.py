@@ -349,9 +349,9 @@ def test_variable_table_exposes_measure_editing_action() -> None:
 
     assert "variable.measure_edit" in qml
     assert "uiController.changeVariableMeasure" in qml
-    assert 'appBootstrap.text("variable.measure_nominal")' in qml
-    assert 'appBootstrap.text("variable.measure_ordinal")' in qml
-    assert 'appBootstrap.text("variable.measure_scale")' in qml
+    assert 'appBootstrap.text("variable.measure_nominal", appBootstrap.language)' in qml
+    assert 'appBootstrap.text("variable.measure_ordinal", appBootstrap.language)' in qml
+    assert 'appBootstrap.text("variable.measure_scale", appBootstrap.language)' in qml
     assert "root.measureValue(measureBox.currentIndex)" in qml
     assert 'model: ["nominal", "ordinal", "scale"]' not in qml
     assert qml.count("AppButton {") >= 2

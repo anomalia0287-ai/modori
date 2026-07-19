@@ -79,7 +79,7 @@ def test_import_corrections_are_progressively_disclosed() -> None:
     dialog = qml_text("dialogs/ImportDialog.qml")
 
     assert "property bool settingsExpanded" in dialog
-    assert 'appBootstrap.text("dialog.import.settings")' in dialog
+    assert 'appBootstrap.text("dialog.import.settings", appBootstrap.language)' in dialog
     assert "visible: root.settingsExpanded" in dialog
     assert "dialog.import.preserve_metadata_detail" in dialog
 

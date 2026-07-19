@@ -22,7 +22,7 @@ PearlSurface {
     fillColor: theme.surfaceCream
     outlined: true
     implicitHeight: candidateLayout.implicitHeight + theme.spaceContent * 2
-    Accessible.name: root.candidate.capabilityLabel || appBootstrap.text("research.experimental")
+    Accessible.name: root.candidate.capabilityLabel || appBootstrap.text("research.experimental", appBootstrap.language)
     Accessible.role: Accessible.Grouping
 
     ColumnLayout {
@@ -39,7 +39,7 @@ PearlSurface {
                 state: root.preparationBlocked ? "stale" : "latest"
                 label: root.badgeLabel.length > 0
                     ? root.badgeLabel
-                    : appBootstrap.text("research.experimental")
+                    : appBootstrap.text("research.experimental", appBootstrap.language)
             }
 
             Label {
@@ -52,7 +52,7 @@ PearlSurface {
         }
 
         Label {
-            text: appBootstrap.text("research.candidate.review_state") + ": "
+            text: appBootstrap.text("research.candidate.review_state", appBootstrap.language) + ": "
                 + String(root.candidate.reviewStatus || "")
             color: root.preparationBlocked ? theme.warning : theme.textBody
             font.bold: true
@@ -61,7 +61,7 @@ PearlSurface {
         }
 
         Label {
-            text: appBootstrap.text("research.candidate.claim") + ": "
+            text: appBootstrap.text("research.candidate.claim", appBootstrap.language) + ": "
                 + String(root.candidate.claimBoundary || "")
             color: theme.textBody
             wrapMode: Text.WordWrap
@@ -70,7 +70,7 @@ PearlSurface {
 
         Label {
             text: String(root.candidate.persistentBoundary
-                || appBootstrap.text("research.no_auto_run"))
+                || appBootstrap.text("research.no_auto_run", appBootstrap.language))
             color: theme.warning
             wrapMode: Text.WordWrap
             font.bold: true
@@ -78,7 +78,7 @@ PearlSurface {
         }
 
         Label {
-            text: appBootstrap.text("research.candidate.method") + ": "
+            text: appBootstrap.text("research.candidate.method", appBootstrap.language) + ": "
                 + String(root.candidate.methodLabel || "")
             color: theme.textBody
             wrapMode: Text.WordWrap
@@ -92,7 +92,7 @@ PearlSurface {
             spacing: theme.spaceXs
 
             Label {
-                text: appBootstrap.text("research.candidate.roles")
+                text: appBootstrap.text("research.candidate.roles", appBootstrap.language)
                 color: theme.bronzeDeep
                 font.bold: true
                 Layout.fillWidth: true
@@ -112,7 +112,7 @@ PearlSurface {
         }
 
         Label {
-            text: appBootstrap.text("research.candidate.passport") + ": "
+            text: appBootstrap.text("research.candidate.passport", appBootstrap.language) + ": "
                 + root.visiblePassportDigest
             color: theme.textSecondary
             visible: root.proMode && root.visiblePassportDigest.length > 0
@@ -125,7 +125,7 @@ PearlSurface {
             spacing: theme.spaceXs
 
             Label {
-                text: appBootstrap.text("research.candidate.evidence")
+                text: appBootstrap.text("research.candidate.evidence", appBootstrap.language)
                 color: theme.bronzeDeep
                 font.bold: true
                 Layout.fillWidth: true
@@ -147,7 +147,7 @@ PearlSurface {
         AppButton {
             text: root.prepareLabel
             Accessible.name: text
-            Accessible.description: appBootstrap.text("research.no_auto_run")
+            Accessible.description: appBootstrap.text("research.no_auto_run", appBootstrap.language)
             variant: "primary"
             enabled: !root.preparationBlocked
             visible: !root.preparationBlocked

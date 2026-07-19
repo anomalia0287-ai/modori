@@ -83,6 +83,57 @@ def _request(profile: P1TaskProfile) -> ResearchRequest:
     )
 
 
+def test_explicit_role_confirmation_refs_bind_every_target_role() -> None:
+    meaning_ref = f"variable-meaning-review:v1:{'c' * 64}"
+
+    request = build_p1_request(
+        P1IntakeDraft(
+            profile=P1TaskProfile.INDEPENDENT_TWO_GROUP_MEAN,
+            roles=_roles(P1TaskProfile.INDEPENDENT_TWO_GROUP_MEAN),
+        ),
+        task_project_id=TASK_PROJECT_ID,
+        initial_event_id=INITIAL_EVENT_ID,
+        dataset_fingerprint=DATASET_FINGERPRINT,
+        source_schema_fingerprint=SOURCE_SCHEMA_FINGERPRINT,
+        available_variable_ids=VARIABLES,
+        language=Language.KO,
+        role_confirmation_refs=(INITIAL_EVENT_ID, meaning_ref),
+    )
+
+    assert request.estimand.target_roles
+    assert all(
+        binding.variable_ids.provenance_refs == (INITIAL_EVENT_ID, meaning_ref)
+        for binding in request.estimand.target_roles
+    )
+
+
+@pytest.mark.parametrize(
+    "refs",
+    (
+        (),
+        ("not a closed reference",),
+        (INITIAL_EVENT_ID, INITIAL_EVENT_ID),
+    ),
+)
+def test_explicit_role_confirmation_refs_fail_closed(
+    refs: tuple[str, ...],
+) -> None:
+    with pytest.raises(P1IntakeError):
+        build_p1_request(
+            P1IntakeDraft(
+                profile=P1TaskProfile.NUMERIC_DISTRIBUTION,
+                roles=_roles(P1TaskProfile.NUMERIC_DISTRIBUTION),
+            ),
+            task_project_id=TASK_PROJECT_ID,
+            initial_event_id=INITIAL_EVENT_ID,
+            dataset_fingerprint=DATASET_FINGERPRINT,
+            source_schema_fingerprint=SOURCE_SCHEMA_FINGERPRINT,
+            available_variable_ids=VARIABLES,
+            language=Language.KO,
+            role_confirmation_refs=refs,
+        )
+
+
 PROFILE_FACTS = (
     (
         P1TaskProfile.NUMERIC_DISTRIBUTION,
@@ -267,8 +318,7 @@ def test_profile_roles_have_exact_cardinality_order_and_user_authority(
 ) -> None:
     request = _request(profile)
     roles = {
-        binding.role: binding.variable_ids
-        for binding in request.estimand.target_roles
+        binding.role: binding.variable_ids for binding in request.estimand.target_roles
     }
     assert all(fact.state is FactState.USER_CONFIRMED for fact in roles.values())
 
@@ -301,7 +351,9 @@ def test_profile_roles_have_exact_cardinality_order_and_user_authority(
         assert request.study.repeated_measure_order.state is FactState.UNKNOWN
 
 
-def test_intake_contracts_are_frozen_closed_and_have_no_causal_or_design_role_input() -> None:
+def test_intake_contracts_are_frozen_closed_and_have_no_causal_or_design_role_input() -> (
+    None
+):
     roles = P1RoleBindings(outcome=("outcome",))
     draft = P1IntakeDraft(
         profile=P1TaskProfile.NUMERIC_DISTRIBUTION,
@@ -375,7 +427,9 @@ def test_wrong_cardinality_undeclared_and_duplicate_roles_fail_closed(
         )
 
 
-def test_wrong_types_unavailable_variables_and_ambiguous_identities_fail_closed() -> None:
+def test_wrong_types_unavailable_variables_and_ambiguous_identities_fail_closed() -> (
+    None
+):
     with pytest.raises(P1IntakeError, match="profile"):
         P1IntakeDraft(  # type: ignore[arg-type]
             profile="numeric_distribution",
@@ -628,8 +682,7 @@ def test_explicit_none_transition_is_not_the_same_as_an_omitted_study_role() -> 
     )
     assert resolved.passport.clarify is not None
     assert (
-        resolved.passport.clarify.clarification_ref.fact_address
-        == "study.role.cluster"
+        resolved.passport.clarify.clarification_ref.fact_address == "study.role.cluster"
     )
 
     answer = _answer_selected(
@@ -783,7 +836,9 @@ def _advance_safe(request: ResearchRequest, rounds: int) -> ResearchRequest:
     return request
 
 
-def test_declared_fact_budget_and_empty_role_authority_mutations_change_result() -> None:
+def test_declared_fact_budget_and_empty_role_authority_mutations_change_result() -> (
+    None
+):
     base = _advance_safe(_request(P1TaskProfile.NUMERIC_DISTRIBUTION), 3)
     service = ResearchOsService()
     assert service.resolve(base).action is PrimaryAction.RECOMMEND_LOCAL

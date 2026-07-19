@@ -8,6 +8,8 @@ from pathlib import Path
 AUDITED_FILE_OPERATION_FILES = {
     "scripts/build_installer.py",
     "scripts/build_office_live_research_os_kit.py",
+    "scripts/capture_entry_states.py",
+    "scripts/capture_work_states.py",
     "scripts/installer_contract.py",
     "scripts/installer_smoke.py",
     "scripts/live_research_os_office_benchmark.py",

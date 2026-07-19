@@ -10,7 +10,7 @@ import "theme"
 ApplicationWindow {
     id: root
     visible: true
-    title: appBootstrap.text("app.title")
+    title: appBootstrap.text("app.title", appBootstrap.language)
 
     property bool reduceEffects: uiController.reduceEffects
     property string currentScreen: "splash"
@@ -73,16 +73,8 @@ ApplicationWindow {
             }
         }
 
-        onGuidedRequested: {
-            if (uiController.chooseMode("guided")) {
-                root.currentScreen = "work"
-            }
-        }
-        onStandardRequested: {
-            if (uiController.chooseMode("standard")) {
-                root.currentScreen = "work"
-            }
-        }
+        onGuidedRequested: uiController.chooseMode("guided")
+        onStandardRequested: uiController.chooseMode("standard")
         onOpenDataRequested: dataFileDialog.open()
         onSettingsRequested: settingsDialog.open()
         onRecentFileRequested: {
@@ -116,7 +108,7 @@ ApplicationWindow {
 
     Window {
         id: dataSheetWindow
-        title: appBootstrap.text("work.data_sheet_window")
+        title: appBootstrap.text("work.data_sheet_window", appBootstrap.language)
         width: theme.detachedSheetWidth
         height: theme.detachedSheetHeight
         visible: false
@@ -126,7 +118,7 @@ ApplicationWindow {
             spacing: theme.spaceNone
 
             Label {
-                text: appBootstrap.text("transform.source_protected")
+                text: appBootstrap.text("transform.source_protected", appBootstrap.language)
                 color: theme.textSecondary
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
@@ -141,7 +133,7 @@ ApplicationWindow {
                 reduceEffects: root.reduceEffects
                 cellWidth: theme.tableCellWidth
                 cellHeight: theme.tableCellHeight
-                emptyText: appBootstrap.text("data.grid_empty")
+                emptyText: appBootstrap.text("data.grid_empty", appBootstrap.language)
                 Layout.fillWidth: true
                 Layout.fillHeight: true
             }
@@ -175,7 +167,7 @@ ApplicationWindow {
 
     FileDialog {
         id: dataFileDialog
-        title: appBootstrap.text("entry.open_data")
+        title: appBootstrap.text("entry.open_data", appBootstrap.language)
         nameFilters: ["Data files (*.csv *.xlsx *.xls *.sav)"]
         onAccepted: {
             var selectedPath = selectedFile.toString()

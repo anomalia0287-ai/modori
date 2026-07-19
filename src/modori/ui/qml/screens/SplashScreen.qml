@@ -26,13 +26,13 @@ Basic.Pane {
         spacing: theme.spaceMd
 
         BrandWordmark {
-            text: appBootstrap.text("app.title")
+            text: appBootstrap.text("app.title", appBootstrap.language)
             font.pixelSize: theme.fontSplashTitle
             Layout.alignment: Qt.AlignHCenter
         }
 
         Basic.Label {
-            text: appBootstrap.text("splash.subtitle")
+            text: appBootstrap.text("splash.subtitle", appBootstrap.language)
             color: theme.textBody
             font.pixelSize: theme.fontSplashSubtitle
             Layout.alignment: Qt.AlignHCenter
@@ -85,7 +85,7 @@ Basic.Pane {
         }
 
         Basic.Label {
-            text: appBootstrap.text("privacy.local")
+            text: appBootstrap.text("privacy.local", appBootstrap.language)
             color: theme.textMuted
             font.pixelSize: theme.fontCaption
             opacity: theme.opacityPrivacy

@@ -120,7 +120,7 @@ def test_no_hidden_rerun_calls_in_import_or_recommendation_selection() -> None:
     manual_run_calls = controller_method_calls(
         qml_object_block(
             guide,
-            'text: appBootstrap.text("guide.run_manual")',
+            'objectName: "guideRunManualButton"',
         )
     )
     assert "rerunNow" in manual_run_calls
