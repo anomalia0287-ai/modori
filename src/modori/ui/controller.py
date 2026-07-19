@@ -79,6 +79,27 @@ _RECONFIRMATION_REPORT_MESSAGE = (
 )
 
 
+class _CurrentPipelineOperations:
+    """Resolve pipeline operations after an imported pipeline replaces the initial one."""
+
+    def __init__(self, provider: Callable[[], PipelineOperations]) -> None:
+        self._provider = provider
+
+    def current_dataset(self) -> object | None:
+        return self._provider().current_dataset()
+
+    def replace_research_os_analysis_step(
+        self,
+        preparation: PassportBoundPreparation,
+        *,
+        commit_pipeline_change: Callable[[PassportBoundPreparation], int],
+    ) -> tuple[str, int]:
+        return self._provider().replace_research_os_analysis_step(
+            preparation,
+            commit_pipeline_change=commit_pipeline_change,
+        )
+
+
 def _localized_step_title(title: str) -> str:
     metadata_prefix = "Edit metadata: "
     if title.startswith(metadata_prefix):
@@ -103,7 +124,7 @@ def _worker_boundaries(
         pipeline_version_provider=lambda: owner.pipeline_version
     )
     preparation_editor = ResearchPreparationEditor(
-        owner._services.pipeline_ops,
+        _CurrentPipelineOperations(lambda: owner._services.pipeline_ops),
         version_provider=lambda: owner.pipeline_version,
         current_dataset_fingerprint=runtime.current_dataset_fingerprint,
         commit_pipeline_change=lambda preparation: _commit_research_preparation(

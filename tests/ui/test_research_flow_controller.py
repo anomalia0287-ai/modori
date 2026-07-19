@@ -1251,6 +1251,57 @@ def test_ui_controller_commits_research_os_provenance_once_and_manual_edit_clear
     assert flow.current_view.state is ResearchFlowState.REPLAN_REQUIRED
 
 
+def test_ui_controller_confirms_against_replaced_import_pipeline(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    profile = P1TaskProfile.LINEAR_CO_MOVEMENT
+    preparation = _ready_preparation(profile, version=1)
+    candidate_base = _candidate_views()
+    review_base = _transient_views(ResearchFlowState.PREPARE_REVIEW)
+    candidate = ResearchFlowViews(
+        guided=candidate_base.guided,
+        standard=candidate_base.standard,
+        preparation=preparation,
+    )
+    review = ResearchFlowViews(
+        guided=review_base.guided,
+        standard=review_base.standard,
+        preparation=preparation,
+    )
+    runtime = FakeRuntime(
+        review,
+        dataset_fingerprint=preparation.dataset_fingerprint,
+    )
+    monkeypatch.setattr(
+        UiControllerServices,
+        "build_research_flow_runtime",
+        lambda self, *, pipeline_version_provider: runtime,
+    )
+    worker = ControllableWorker()
+    initial_pipeline = Pipeline(_valid_dataset(profile))
+    imported_pipeline = Pipeline(_valid_dataset(profile))
+    host = UiController(pipeline=initial_pipeline, worker=worker)
+
+    host.pipeline = imported_pipeline
+    host._services.replace_pipeline(imported_pipeline)
+    host._pipeline_state.mark_pipeline_replaced(host._services.pipeline_ops)
+    host.stepsModel = host._pipeline_state.steps_model
+    flow = host.researchFlow
+    assert isinstance(flow, ResearchFlowController)
+    flow._views = candidate
+
+    assert flow.prepare() is True
+    worker.finish(worker.execute())
+    assert flow.confirm() is True
+
+    assert host.canRerun is True
+    assert initial_pipeline.steps == []
+    assert len(imported_pipeline.steps) == 1
+    assert imported_pipeline.steps[0].id == "correlation"
+    assert host.pipeline_version == 2
+    assert flow.current_view.state is ResearchFlowState.CONFIRMED
+
+
 class SimulatedRuntimeCrash(RuntimeError):
     pass
 
