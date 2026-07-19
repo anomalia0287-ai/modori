@@ -375,7 +375,20 @@ def test_qml_routes_dynamic_copy_through_active_session_language() -> None:
     assert 'stepChainDisplayTextFor(appBootstrap.language)' in pipeline
     assert 'appBootstrap.localize(uiController.lastError, appBootstrap.language)' in results
     assert 'appBootstrap.localize(uiController.lastMessage, appBootstrap.language)' in results
+    assert 'objectName: "cronbachAlphaExplanationButton"' in results
+    assert 'appBootstrap.text("results.explain_cronbach_alpha"' in results
+    assert 'appBootstrap.text("results.why_this_test"' not in results
+    assert re.search(
+        r"visible:\s*uiController\.explainModeEnabled\s*"
+        r"&&\s*uiController\.canExplainCronbachAlphaResult",
+        results,
+    )
     assert '"ui.result.cronbach_alpha",\n                                appBootstrap.language' in results
+    english = _english_strings()
+    assert UI_STRINGS_KO["results.explain_cronbach_alpha"] == "Cronbach 알파 설명"
+    assert english["results.explain_cronbach_alpha"] == "Explain Cronbach's alpha"
+    assert "선택" not in UI_STRINGS_KO["settings.explain_detail"]
+    assert "selected" not in english["settings.explain_detail"].lower()
     assert 'property string selectedLanguage: appBootstrap.language' in report
     assert 'checked: root.selectedLanguage === "ko"' in report
     assert 'checked: root.selectedLanguage === "en"' in report

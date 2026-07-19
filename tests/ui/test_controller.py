@@ -135,6 +135,48 @@ def test_controller_applies_latest_worker_result() -> None:
     assert controller.stale is False
 
 
+def test_cronbach_explanation_gate_requires_a_reliability_display_result() -> None:
+    from dataclasses import replace
+
+    from modori.ui.controller import UiController
+    from modori.ui.worker import EngineJobResult
+
+    controller = UiController(pipeline=FakePipeline())
+    property_index = controller.metaObject().indexOfProperty(
+        "canExplainCronbachAlphaResult"
+    )
+
+    assert property_index >= 0
+    assert controller.metaObject().property(property_index).typeName() == "bool"
+    assert controller.canExplainCronbachAlphaResult is False
+
+    correlation = replace(
+        valid_display_result(),
+        result_id="correlation",
+        kind="correlation",
+    )
+    assert controller.apply_worker_result(
+        EngineJobResult(
+            run_id=0,
+            pipeline_version=0,
+            ok=True,
+            payload=[correlation],
+        )
+    )
+    assert controller.canExplainCronbachAlphaResult is False
+
+    reliability = valid_display_result()
+    assert controller.apply_worker_result(
+        EngineJobResult(
+            run_id=0,
+            pipeline_version=0,
+            ok=True,
+            payload=[reliability],
+        )
+    )
+    assert controller.canExplainCronbachAlphaResult is True
+
+
 def test_worker_success_with_empty_payload_becomes_result_display_error() -> None:
     from modori.ui.controller import UiController
     from modori.ui.worker import EngineJobResult

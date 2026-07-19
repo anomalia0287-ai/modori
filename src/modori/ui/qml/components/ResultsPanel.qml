@@ -284,10 +284,12 @@ PearlSurface {
                     spacing: theme.spaceSm
 
                     AppButton {
-                        text: appBootstrap.text("results.why_this_test", appBootstrap.language)
+                        objectName: "cronbachAlphaExplanationButton"
+                        text: appBootstrap.text("results.explain_cronbach_alpha", appBootstrap.language)
                         Accessible.name: text
                         variant: "quiet"
                         visible: uiController.explainModeEnabled
+                            && uiController.canExplainCronbachAlphaResult
                         onClicked: {
                             explainPopover.bodyText = uiController.explainRichText(
                                 "ui.result.cronbach_alpha",

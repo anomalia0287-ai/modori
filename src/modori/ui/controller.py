@@ -13,6 +13,7 @@ from modori.ui.analysis_selection_controller import AnalysisSelectionControllerM
 from modori.ui.contracts import (
     CommandResult,
     ControllerMode,
+    DisplayResult,
     ExplainResult,
     ImportOptions,
     ReportExportOptions,
@@ -193,6 +194,13 @@ class UiController(
     @Property(bool, notify=stateChanged)
     def explainModeEnabled(self) -> bool:
         return self._session.explain_mode_enabled
+
+    @Property(bool, notify=stateChanged)
+    def canExplainCronbachAlphaResult(self) -> bool:
+        return any(
+            isinstance(result, DisplayResult) and result.kind == "reliability"
+            for result in self._result_state.results_model
+        )
 
     @Property(str, notify=stateChanged)
     def status(self) -> str:

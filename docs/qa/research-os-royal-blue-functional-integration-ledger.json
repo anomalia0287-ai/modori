@@ -110,17 +110,22 @@
         "shared worker",
         "passport-bound preparation",
         "localized models/results",
-        "Research OS language re-presentation"
+        "Research OS language re-presentation",
+        "Cronbach help bound to reliability DisplayResult",
+        "empty and non-reliability result help fails closed"
       ],
       "forbidden": [
         "automatic run",
-        "language change that appends ledger authority"
+        "language change that appends ledger authority",
+        "Cronbach help on empty or non-reliability results",
+        "generic selection-rationale inference from results or provenance"
       ],
       "status": "verified",
-      "integrated_blob_oid": "adf332024cf1c528ed0e68cd6db60f887097c67c",
+      "integrated_blob_oid": "eec243d1a004bbf97bec28c8875f0744e001fa57",
       "evidence": {
         "focused_tests": [
           "tests/ui/test_controller.py",
+          "tests/ui/test_qml_runtime_load.py",
           "tests/ui/test_research_flow_controller.py",
           "tests/ui/test_session_localization.py"
         ],
@@ -128,11 +133,15 @@
           "focused-test presence: shared worker",
           "focused-test presence: passport-bound preparation",
           "focused-test presence: localized models/results",
-          "focused-test presence: Research OS language re-presentation"
+          "focused-test presence: Research OS language re-presentation",
+          "focused-test presence: typed reliability DisplayResult gate for Cronbach help",
+          "actual-QML runtime presence: Cronbach help visible only for reliability results in explain mode"
         ],
         "absence_checks": [
           "focused-test absence: automatic run",
-          "focused-test absence: language change that appends ledger authority"
+          "focused-test absence: language change that appends ledger authority",
+          "focused-test absence: Cronbach help for empty or non-reliability results",
+          "focused-test absence: generic selection-rationale inference"
         ]
       }
     },
@@ -415,13 +424,16 @@
       "required": [
         "all live Research OS keys",
         "Royal Blue entry keys",
-        "English key parity through strings_en"
+        "English key parity through strings_en",
+        "exact bilingual Cronbach alpha result-explanation label",
+        "explain setting promises only supported result explanations"
       ],
       "forbidden": [
-        "missing-key fallback on a production Research OS state"
+        "missing-key fallback on a production Research OS state",
+        "unsupported selection-rationale promise"
       ],
       "status": "verified",
-      "integrated_blob_oid": "04d31278704311de9e3cccb04fb4e6ae5582dba0",
+      "integrated_blob_oid": "6ef310cfe8a15952d4aa147de9d1bd687f3bd7d5",
       "evidence": {
         "focused_tests": [
           "tests/ui/test_qml_string_catalog.py",
@@ -430,10 +442,13 @@
         "presence_checks": [
           "focused-test presence: all live Research OS keys",
           "focused-test presence: Royal Blue entry keys",
-          "focused-test presence: English key parity through strings_en"
+          "focused-test presence: English key parity through strings_en",
+          "focused-test presence: exact bilingual Cronbach alpha result-explanation label",
+          "focused-test presence: explain setting limited to supported result explanations"
         ],
         "absence_checks": [
-          "focused-test absence: missing-key fallback on a production Research OS state"
+          "focused-test absence: missing-key fallback on a production Research OS state",
+          "focused-test absence: unsupported selection-rationale promise"
         ]
       }
     },
