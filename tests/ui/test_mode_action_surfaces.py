@@ -14,7 +14,7 @@ def test_work_header_has_data_analysis_report_surfaces() -> None:
     assert "uiController.rerunNow" in work
     assert "enabled: uiController.canRerun" in work
     assert "uiController.resultSummary.length > 0" in work
-    assert 'appBootstrap.text("work.analysis_run")' in work
+    assert 'appBootstrap.text("work.analysis_run", appBootstrap.language)' in work
 
 
 def test_work_shell_uses_mode_segment_and_no_preference_checkboxes() -> None:
@@ -39,8 +39,8 @@ def test_production_guide_is_experimental_and_has_no_combined_run_call() -> None
     guide = qml_text("components/GuideRail.qml")
     strings = Path("src/modori/ui/strings.py").read_text(encoding="utf-8")
 
-    assert 'appBootstrap.text("guide.experimental_status")' in guide
-    assert 'appBootstrap.text("guide.prepare_review")' in guide
+    assert 'appBootstrap.text("guide.experimental_status", appBootstrap.language)' in guide
+    assert 'appBootstrap.text("guide.prepare_review", appBootstrap.language)' in guide
     assert "uiController.runPreparedRecommendationNow" not in guide
     assert "uiController.applySelectedRecommendation" not in guide
     assert "recommendationLevel" not in guide
@@ -56,7 +56,7 @@ def test_candidate_assisted_run_requires_visible_confirmation() -> None:
 
     assert "candidateAssistedReview" in guide
     assert "reviewConfirmed" in guide
-    assert 'appBootstrap.text("guide.confirm_review")' in guide
+    assert 'appBootstrap.text("guide.confirm_review", appBootstrap.language)' in guide
     assert "enabled: root.canRunReviewedSelection()" in guide
     assert "id: reviewConfirmation" in guide
     assert "contentItem: Label" in guide
@@ -81,8 +81,8 @@ def test_experimental_status_stays_outside_the_scrolling_form() -> None:
     scroll_start = guide.index("ScrollView {")
 
     assert guide.index("id: guideHeader") < scroll_start
-    assert 'appBootstrap.text("guide.experimental_status")' in guide[:scroll_start]
-    assert 'appBootstrap.text("guide.experimental_status")' not in guide[scroll_start:]
+    assert 'appBootstrap.text("guide.experimental_status", appBootstrap.language)' in guide[:scroll_start]
+    assert 'appBootstrap.text("guide.experimental_status", appBootstrap.language)' not in guide[scroll_start:]
 
 
 def test_guide_has_explicit_fail_closed_reset_and_provenance_calls() -> None:
@@ -113,7 +113,7 @@ def test_unsupported_candidate_copy_does_not_promise_an_unavailable_action() -> 
     guide = qml_text("components/GuideRail.qml")
     strings = Path("src/modori/ui/strings.py").read_text(encoding="utf-8")
 
-    assert 'appBootstrap.text("guide.form_unavailable")' in guide
+    assert 'appBootstrap.text("guide.form_unavailable", appBootstrap.language)' in guide
     assert "이 후보는 아직 안내 화면에서 구성할 수 없습니다." in strings
 
 
@@ -137,8 +137,8 @@ def test_pipeline_shows_only_selected_direct_analysis_form() -> None:
     assert 'visible: uiController.mode === "standard"' in rail
     assert "ComboBox" in rail
     assert "StackLayout" in rail
-    assert 'appBootstrap.text("pipeline.analysis_type")' in rail
-    assert 'appBootstrap.text("pipeline.run")' in rail
+    assert 'appBootstrap.text("pipeline.analysis_type", appBootstrap.language)' in rail
+    assert 'appBootstrap.text("pipeline.run", appBootstrap.language)' in rail
 
 
 def test_work_tabs_use_cream_surfaces_with_rose_bronze_selection() -> None:
@@ -155,16 +155,16 @@ def test_all_repeated_guide_choices_use_glass_rows_with_one_edge_selection() -> 
     guide = qml_text("components/GuideRail.qml")
     candidate_start = guide.index(
         "Repeater {",
-        guide.index('appBootstrap.text("guide.other_recommendations")'),
+        guide.index('appBootstrap.text("guide.other_recommendations", appBootstrap.language)'),
     )
-    candidate_end = guide.index('appBootstrap.text("guide.manual_selection")')
+    candidate_end = guide.index('appBootstrap.text("guide.manual_selection", appBootstrap.language)')
     candidate_section = guide[candidate_start:candidate_end]
     manual_start = guide.index('id: manualIntentList')
     manual_end = guide.index('id: reliabilityItemsField')
     manual_section = guide[manual_start:manual_end]
 
     assert 'variant: "glass"' in candidate_section
-    assert 'variant: "glass"' in guide[guide.index('appBootstrap.text("guide.other_recommendations")'):candidate_start]
+    assert 'variant: "glass"' in guide[guide.index('appBootstrap.text("guide.other_recommendations", appBootstrap.language)'):candidate_start]
     assert 'variant: "glass"' in guide[candidate_end:manual_start]
     assert "Flow {" not in manual_section
     assert manual_section.count('variant: "glass"') == 10
@@ -186,8 +186,8 @@ def test_final_mode_entry_loading_and_footer_copy_contract() -> None:
         "통계 작업을 위한 선택,\n모도리에 오신 것을 환영합니다."
     )
     assert UI_STRINGS_KO["loading.calculating"] == "로딩 중"
-    assert entry.count("ModeChoiceButton {") == 2
-    assert 'variant: "glass"' in entry[entry.index("id: recentFilesScroll"):]
+    assert entry.count("EntryModeCard {") == 2
+    assert "model: uiController.recentFilesModel" in entry
     assert 'variant: "glassStrong"' in pipeline
 
 

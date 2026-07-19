@@ -53,7 +53,7 @@ def test_results_offer_wide_detail_without_parsing_table_text() -> None:
     detail = qml_text("dialogs/ResultDetailDialog.qml")
 
     assert "ResultDetailDialog" in results
-    assert 'appBootstrap.text("results.view_wide")' in results
+    assert 'appBootstrap.text("results.view_wide", appBootstrap.language)' in results
     assert "uiController.resultTableText" in detail
     assert "TextEdit.NoWrap" in detail
     assert "Canvas" not in detail
@@ -96,9 +96,9 @@ def test_results_panel_uses_report_preview_surface_and_theme_tokens() -> None:
     assert 'objectName: "resultStateBadge"' in results
     assert 'objectName: "resultTableFrame"' in results
     assert 'objectName: "resultChartFigure"' in results
-    assert 'appBootstrap.text("results.report_preview")' in results
-    assert 'appBootstrap.text("results.latest")' in results
-    assert 'appBootstrap.text("results.empty_message")' in results
+    assert 'appBootstrap.text("results.report_preview", appBootstrap.language)' in results
+    assert 'appBootstrap.text("results.latest", appBootstrap.language)' in results
+    assert 'appBootstrap.text("results.empty_message", appBootstrap.language)' in results
     assert "theme.paperSurface" in results
     assert "theme.lineSubtle" in results
 
@@ -194,10 +194,10 @@ def test_report_dialog_exposes_expanded_analysis_family_filters() -> None:
         "includeFigures",
     ]
     expected_strings = [
-        'appBootstrap.text("dialog.report.include_descriptives")',
-        'appBootstrap.text("dialog.report.include_association")',
-        'appBootstrap.text("dialog.report.include_group_models")',
-        'appBootstrap.text("dialog.report.include_dimension_reduction")',
+        'appBootstrap.text("dialog.report.include_descriptives", appBootstrap.language)',
+        'appBootstrap.text("dialog.report.include_association", appBootstrap.language)',
+        'appBootstrap.text("dialog.report.include_group_models", appBootstrap.language)',
+        'appBootstrap.text("dialog.report.include_dimension_reduction", appBootstrap.language)',
     ]
 
     for expected_id in expected_ids:
@@ -211,4 +211,4 @@ def test_report_export_keeps_independent_choices_as_checkboxes() -> None:
 
     assert "PearlSurface" in report
     assert report.count("CheckBox") >= 8
-    assert 'appBootstrap.text("dialog.report.export_word")' in report
+    assert 'appBootstrap.text("dialog.report.export_word", appBootstrap.language)' in report

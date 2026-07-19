@@ -20,6 +20,7 @@ from modori.research_flow import (
     ResearchFlowState,
     ResearchTaskSessionStore,
     SourceSchemaDescriptor,
+    StaticBoundary,
     TaskSessionIntegrityError,
     TaskSessionUnavailableError,
     preflight_mapped_step,
@@ -69,7 +70,7 @@ def _transient_views(state: ResearchFlowState) -> ResearchFlowViews:
     )
 
 
-def _candidate_views() -> ResearchFlowViews:
+def _candidate_views(language: Language = Language.KO) -> ResearchFlowViews:
     record = _terminal_record(P1TaskProfile.LINEAR_CO_MOVEMENT)
     preflight = _preflight(record)
     labels = _labels(record)
@@ -77,14 +78,14 @@ def _candidate_views() -> ResearchFlowViews:
         guided=present_durable_record(
             record,
             mode=ControllerMode.GUIDED,
-            language=Language.KO,
+            language=language,
             preflight=preflight,
             variable_labels=labels,
         ),
         standard=present_durable_record(
             record,
             mode=ControllerMode.STANDARD,
-            language=Language.KO,
+            language=language,
             preflight=preflight,
             variable_labels=labels,
         ),
@@ -131,6 +132,21 @@ class FakeRuntime:
         self.dataset_fingerprint = dataset_fingerprint
         self.calls: list[tuple[str, dict[str, object]]] = []
         self.noted_versions: list[int] = []
+        self.adopted_languages: list[Language] = []
+        self.presentation_calls: list[tuple[Language, int]] = []
+        self.presentation_result: ResearchFlowViews | None = None
+
+    def adopt_language(self, language: Language) -> None:
+        self.adopted_languages.append(language)
+
+    def present_current(
+        self,
+        *,
+        language: Language,
+        pipeline_version: int,
+    ) -> ResearchFlowViews | None:
+        self.presentation_calls.append((language, pipeline_version))
+        return self.presentation_result
 
     def note_pipeline_version(self, pipeline_version: int) -> None:
         self.noted_versions.append(pipeline_version)
@@ -267,6 +283,48 @@ def test_start_acknowledges_under_100ms_and_defers_all_runtime_work() -> None:
     assert controller.busy is False
     assert controller.current_view.state is ResearchFlowState.INTAKE_CAUSAL
     assert controller.stateModel["state"] == "intake_causal"
+
+
+def test_language_change_re_presents_durable_candidate_without_runtime_transition() -> None:
+    korean = _candidate_views(Language.KO)
+    english = _candidate_views(Language.EN)
+    runtime = FakeRuntime(korean)
+    runtime.presentation_result = english
+    worker = ControllableWorker()
+    version = [7]
+    controller = _controller(runtime, worker, version)
+    controller._views = korean
+    original_digest = controller.stateModel["visiblePassportDigest"]
+
+    assert controller.adoptLanguage("en") is True
+
+    assert controller.stateModel["language"] == "en"
+    assert controller.stateModel["state"] == "candidate_ready"
+    assert controller.stateModel["visiblePassportDigest"] == original_digest
+    assert runtime.adopted_languages == [Language.EN]
+    assert runtime.presentation_calls == [(Language.EN, 7)]
+    assert runtime.calls == []
+    assert worker.submissions == []
+
+
+def test_language_change_preserves_write_free_static_boundary_actions() -> None:
+    runtime = FakeRuntime(_transient_views(ResearchFlowState.INTAKE_CAUSAL))
+    worker = ControllableWorker()
+    version = [7]
+    controller = _controller(runtime, worker, version)
+    assert controller._publish_static(StaticBoundary.CAUSAL_SCOPE_NOTICE) is True
+    original = dict(controller.stateModel)
+
+    assert controller.adoptLanguage("en") is True
+
+    translated = controller.stateModel
+    assert translated["language"] == "en"
+    assert translated["state"] == original["state"] == "causal_scope_notice"
+    assert translated["primaryAction"]["command"] == "causal_record"
+    assert translated["secondaryActions"][0]["command"] == "back"
+    assert translated["title"] != original["title"]
+    assert runtime.calls == []
+    assert worker.submissions == []
     assert "decisionIdentityDigest" not in controller.stateModel
 
 

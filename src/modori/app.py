@@ -14,25 +14,52 @@ from modori.cache import cache_dir
 from modori.public_data_smoke import run_public_data_import_smoke
 from modori.ui.contracts import ImportOptions
 from modori.ui.controller import UiController
+from modori.ui.localization import localize_message
 from modori.ui.resources import root_qml_path
 from modori.ui.strings import UI_STRINGS_KO
+from modori.ui.strings_en import UI_STRINGS_EN
 from modori.v1_statistics_smoke import v1_statistics_smoke_payload
 
 
 class AppBootstrap(QObject):
+    languageChanged = Signal()
     reduceEffectsChanged = Signal()
 
     def __init__(self) -> None:
         super().__init__()
+        self._language = "ko"
         self._reduce_effects = os.environ.get("MODORI_REDUCE_EFFECTS") == "1"
+
+    @Property(str, notify=languageChanged)
+    def language(self) -> str:
+        return self._language
+
+    @Slot(str, result=bool)
+    def setLanguage(self, language: str) -> bool:
+        normalized = str(language).lower()
+        if normalized not in {"ko", "en"}:
+            return False
+        if normalized != self._language:
+            self._language = normalized
+            self.languageChanged.emit()
+        return True
 
     @Property(bool, notify=reduceEffectsChanged)
     def reduceEffects(self) -> bool:
         return self._reduce_effects
 
     @Slot(str, result=str)
-    def text(self, key: str) -> str:
-        return UI_STRINGS_KO.get(key, key)
+    @Slot(str, str, result=str)
+    def text(self, key: str, language: str = "") -> str:
+        selected = language if language in {"ko", "en"} else self._language
+        catalog = UI_STRINGS_EN if selected == "en" else UI_STRINGS_KO
+        return catalog.get(key, key)
+
+    @Slot(str, result=str)
+    @Slot(str, str, result=str)
+    def localize(self, message: str, language: str = "") -> str:
+        selected = language if language in {"ko", "en"} else self._language
+        return localize_message(message, selected)
 
     @Slot(str, result=bool)
     def copyText(self, text: str) -> bool:
@@ -56,6 +83,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     engine = QQmlApplicationEngine()
     bootstrap = AppBootstrap()
     controller = UiController(reduce_effects=True if bootstrap.reduceEffects else None)
+    bootstrap.languageChanged.connect(
+        lambda: controller.setUiLanguage(bootstrap.language)
+    )
     engine.rootContext().setContextProperty("appBootstrap", bootstrap)
     engine.rootContext().setContextProperty("uiController", controller)
     engine.load(QUrl.fromLocalFile(str(root_qml_path())))

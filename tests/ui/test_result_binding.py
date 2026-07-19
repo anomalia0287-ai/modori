@@ -36,6 +36,12 @@ def test_result_binding_formats_summary_tables_notes_and_chart_paths() -> None:
     assert binding.notes_text == "그림: 그림 파일을 찾을 수 없습니다"
     assert binding.chart_paths_text == "C:/tmp/chart.png"
 
+    english = presenter.bind([result], language="en")
+
+    assert english.summary_text == "Comparison\nEnglish sentence"
+    assert english.table_text == "Table 1\n값\tp\n1.23\t.04"
+    assert english.notes_text == "Figure: Figure file could not be found"
+
 
 def test_factorial_result_kind_has_bilingual_product_titles(
     monkeypatch: pytest.MonkeyPatch,

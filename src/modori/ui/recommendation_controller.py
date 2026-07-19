@@ -9,6 +9,136 @@ from modori.recommendations import (
 )
 
 
+_RECOMMENDATION_EMPTY_EN = (
+    "No analysis candidate can be recommended safely. Select the variables directly."
+)
+_RECOMMENDATION_CAUTION_EN = (
+    "Only candidates that need extra caution were found. Review them before selecting one."
+)
+
+
+def _candidate_title_en(candidate: object) -> str:
+    kind = str(getattr(candidate, "kind", ""))
+    variables = list(getattr(candidate, "variable_keys", []) or [])
+    items = list(getattr(candidate, "item_keys", []) or [])
+    outcome = str(getattr(candidate, "outcome_key", "") or "")
+    group = str(getattr(candidate, "group_key", "") or "")
+    predictors = list(getattr(candidate, "predictor_keys", []) or [])
+    factor_a = str(getattr(candidate, "factor_a_key", "") or "")
+    factor_b = str(getattr(candidate, "factor_b_key", "") or "")
+
+    if kind == "descriptives":
+        return "Descriptives Table 1"
+    if kind == "reliability":
+        extent = f": {items[0]}–{items[-1]}" if items else ""
+        return f"Reliability analysis{extent}"
+    if kind == "comparison":
+        extent = f": {outcome} by {group}" if outcome and group else ""
+        return f"Group comparison{extent}"
+    if kind == "regression":
+        predictor_text = ", ".join(predictors)
+        extent = f": {predictor_text} → {outcome}" if predictor_text and outcome else ""
+        return f"Regression candidate{extent}"
+    if kind == "logistic_regression":
+        extent = f": {outcome}" if outcome else ""
+        return f"Logistic regression candidate{extent}"
+    if kind == "frequency_crosstab":
+        return "Frequency/crosstab candidate"
+    if kind == "correlation":
+        return "Correlation candidate"
+    if kind == "anova_oneway":
+        extent = f": {outcome} by {group}" if outcome and group else ""
+        return f"One-way ANOVA candidate{extent}"
+    if kind == "anova_factorial":
+        extent = (
+            f": {outcome} by {factor_a} × {factor_b}"
+            if outcome and factor_a and factor_b
+            else ""
+        )
+        return f"Two-factor Type III ANOVA candidate{extent}"
+    if kind == "kruskal_wallis":
+        extent = f": {outcome} by {group}" if outcome and group else ""
+        return f"Kruskal–Wallis candidate{extent}"
+    if kind == "ancova":
+        extent = f": {outcome} by {group}" if outcome and group else ""
+        return f"ANCOVA candidate{extent}"
+    if kind == "factor_pca":
+        return "Factor/PCA candidate"
+    if kind == "repeated_measures_anova":
+        extent = f": {variables[0]}–{variables[-1]}" if variables else ""
+        return f"Repeated-measures ANOVA candidate{extent}"
+    if kind == "friedman":
+        extent = f": {variables[0]}–{variables[-1]}" if variables else ""
+        return f"Friedman test candidate{extent}"
+    if kind == "mediation":
+        return "Mediation candidate"
+    if kind == "moderated_mediation":
+        return "Moderated mediation candidate"
+    return str(getattr(candidate, "title_ko", "") or "")
+
+
+def _candidate_reason_en(candidate: object) -> str:
+    kind = str(getattr(candidate, "kind", ""))
+    variables = list(getattr(candidate, "variable_keys", []) or [])
+    items = list(getattr(candidate, "item_keys", []) or [])
+    outcome = str(getattr(candidate, "outcome_key", "") or "")
+    group = str(getattr(candidate, "group_key", "") or "")
+    predictors = list(getattr(candidate, "predictor_keys", []) or [])
+    factor_a = str(getattr(candidate, "factor_a_key", "") or "")
+    factor_b = str(getattr(candidate, "factor_b_key", "") or "")
+
+    if kind == "reliability":
+        return (
+            f"{len(items)} survey items share a naming pattern. "
+            "Confirm the construct and item direction before adding the analysis."
+        )
+    if kind in {"comparison", "anova_oneway", "kruskal_wallis"}:
+        return (
+            f"{group} is a grouping candidate and {outcome} is a numeric outcome "
+            "candidate. Confirm both roles before adding the analysis."
+        )
+    if kind == "ancova":
+        covariates = ", ".join(predictors)
+        return (
+            f"{group} is a grouping candidate, {outcome} is an outcome candidate, "
+            f"and {covariates or 'the selected variables'} may be covariates. "
+            "Confirm every role before adding the analysis."
+        )
+    if kind == "regression":
+        predictor_text = ", ".join(predictors) or "The selected variable"
+        return (
+            f"{predictor_text} may be used as a predictor for {outcome or 'the outcome'}, "
+            "but the research intent must be confirmed first."
+        )
+    if kind == "logistic_regression":
+        predictor_text = ", ".join(predictors) or "The selected variables"
+        return (
+            f"{outcome or 'The selected outcome'} is a binary outcome candidate and "
+            f"{predictor_text} may be predictors. Confirm the event, reference categories, "
+            "and every variable role before adding the analysis."
+        )
+    if kind == "anova_factorial":
+        return (
+            f"{outcome or 'The selected outcome'} is an outcome candidate, while "
+            f"{factor_a or 'Factor A'} and {factor_b or 'Factor B'} fill the two factor roles. "
+            "Confirm the roles, levels, and interaction interpretation before adding the analysis."
+        )
+    if kind in {"mediation", "moderated_mediation"}:
+        return "The variable names suggest this model, but the research model must be confirmed first."
+    if kind in {"repeated_measures_anova", "friedman"}:
+        return (
+            "Three or more similarly named variables may represent repeated measures. "
+            "Confirm their order and design before adding the analysis."
+        )
+    count = len(variables)
+    if count:
+        return (
+            f"{count} variables meet the initial eligibility checks. "
+            "Review their roles before adding the analysis."
+        )
+    return "This is an experimental candidate. Review it before adding the analysis."
+
+
 def empty_recommendation_state() -> RecommendationState:
     return RecommendationState(
         candidates=[],
@@ -31,6 +161,28 @@ class RecommendationControllerMixin:
         if candidate is None:
             return self._recommendation_state.message_ko
         return candidate.reason_ko
+
+    @Slot(str, result=str)
+    def recommendationTitleFor(self, language: str) -> str:
+        candidate = self._recommendation_state.selected_candidate
+        if candidate is None:
+            return ""
+        if str(language).lower() == "en":
+            return _candidate_title_en(candidate)
+        return candidate.title_ko
+
+    @Slot(str, result=str)
+    def recommendationReasonFor(self, language: str) -> str:
+        candidate = self._recommendation_state.selected_candidate
+        if candidate is not None:
+            if str(language).lower() == "en":
+                return _candidate_reason_en(candidate)
+            return candidate.reason_ko
+        if str(language).lower() != "en":
+            return self._recommendation_state.message_ko
+        if "주의" in self._recommendation_state.message_ko:
+            return _RECOMMENDATION_CAUTION_EN
+        return _RECOMMENDATION_EMPTY_EN if self._recommendation_state.message_ko else ""
 
     @Property(int, notify=recommendationStateChanged)
     def recommendationCount(self) -> int:
@@ -221,6 +373,24 @@ class RecommendationControllerMixin:
         if index < 0 or index >= len(self._recommendation_state.candidates):
             return ""
         return self._recommendation_state.candidates[index].title_ko
+
+    @Slot(int, str, result=str)
+    def recommendationCandidateTitleAtFor(self, index: int, language: str) -> str:
+        if index < 0 or index >= len(self._recommendation_state.candidates):
+            return ""
+        candidate = self._recommendation_state.candidates[index]
+        if str(language).lower() == "en":
+            return _candidate_title_en(candidate)
+        return candidate.title_ko
+
+    @Slot(int, str, result=str)
+    def recommendationCandidateTitleAtFor(self, index: int, language: str) -> str:
+        if index < 0 or index >= len(self._recommendation_state.candidates):
+            return ""
+        candidate = self._recommendation_state.candidates[index]
+        if str(language).lower() == "en":
+            return _candidate_title_en(candidate)
+        return candidate.title_ko
 
     @Slot(int, result=str)
     def recommendationCandidateReviewRequirementAt(self, index: int) -> str:

@@ -104,7 +104,7 @@ def test_work_header_commands_rest_without_outlined_boxes() -> None:
     assert "border.width: control.activeFocus ? theme.borderWidthFocus : theme.spaceNone" in button
     assert "border.width: control.activeFocus ? theme.borderWidthFocus : theme.spaceNone" in icon_button
     assert work.count("compact: true") == 5
-    assert 'appBootstrap.text("research.open")' in work
+    assert 'appBootstrap.text("research.open", appBootstrap.language)' in work
     assert "font.pixelSize: theme.workWordmarkSize" in work
     assert "Layout.rightMargin: theme.workWordmarkCommandGap" in work
     assert "AuroraGlassSurface {" in work

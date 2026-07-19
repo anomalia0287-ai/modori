@@ -8,7 +8,7 @@ Dialog {
     id: root
 
     objectName: "settingsDialog"
-    title: appBootstrap.text("settings.title")
+    title: appBootstrap.text("settings.title", appBootstrap.language)
     modal: true
     standardButtons: Dialog.NoButton
     parent: Overlay.overlay
@@ -27,15 +27,15 @@ Dialog {
         spacing: theme.spaceLg
 
         Label {
-            text: appBootstrap.text("settings.description")
+            text: appBootstrap.text("settings.description", appBootstrap.language)
             color: theme.textBody
             wrapMode: Text.WordWrap
             Layout.fillWidth: true
         }
 
         PreferenceSwitch {
-            text: appBootstrap.text("settings.explain")
-            detailText: appBootstrap.text("settings.explain_detail")
+            text: appBootstrap.text("settings.explain", appBootstrap.language)
+            detailText: appBootstrap.text("settings.explain_detail", appBootstrap.language)
             checked: uiController.explainModeEnabled
             Accessible.name: text
             Layout.fillWidth: true
@@ -43,8 +43,8 @@ Dialog {
         }
 
         PreferenceSwitch {
-            text: appBootstrap.text("settings.reduce_effects")
-            detailText: appBootstrap.text("settings.reduce_effects_detail")
+            text: appBootstrap.text("settings.reduce_effects", appBootstrap.language)
+            detailText: appBootstrap.text("settings.reduce_effects_detail", appBootstrap.language)
             checked: uiController.reduceEffects
             Accessible.name: text
             Layout.fillWidth: true
@@ -52,8 +52,8 @@ Dialog {
         }
 
         PreferenceSwitch {
-            text: appBootstrap.text("settings.recent_files")
-            detailText: appBootstrap.text("settings.recent_files_detail")
+            text: appBootstrap.text("settings.recent_files", appBootstrap.language)
+            detailText: appBootstrap.text("settings.recent_files_detail", appBootstrap.language)
             checked: uiController.recentFilesEnabled
             Accessible.name: text
             Layout.fillWidth: true
@@ -68,7 +68,7 @@ Dialog {
             }
 
             AppButton {
-                text: appBootstrap.text("settings.close")
+                text: appBootstrap.text("settings.close", appBootstrap.language)
                 Accessible.name: text
                 variant: "quiet"
                 onClicked: root.close()

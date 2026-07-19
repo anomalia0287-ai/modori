@@ -10,7 +10,7 @@ Item {
     property int cellWidth: theme.tableCellWidth
     property int cellHeight: theme.tableCellHeight
     property string selectedKey: ""
-    property string emptyText: appBootstrap.text("data.grid_empty")
+    property string emptyText: appBootstrap.text("data.grid_empty", appBootstrap.language)
     property int currentRow: 0
     property int currentColumn: 0
     property bool reduceEffects: false
@@ -39,10 +39,10 @@ Item {
         if (body.rows <= 0 || body.columns <= 0) {
             return root.emptyText
         }
-        return appBootstrap.text("data.grid_rows") + " "
+        return appBootstrap.text("data.grid_rows", appBootstrap.language) + " "
             + oneBased(body.topRow) + "-" + oneBased(body.bottomRow) + " / " + body.rows
-            + appBootstrap.text("data.grid_extent_separator")
-            + appBootstrap.text("data.grid_columns") + " "
+            + appBootstrap.text("data.grid_extent_separator", appBootstrap.language)
+            + appBootstrap.text("data.grid_columns", appBootstrap.language) + " "
             + oneBased(body.leftColumn) + "-" + oneBased(body.rightColumn) + " / " + body.columns
     }
 

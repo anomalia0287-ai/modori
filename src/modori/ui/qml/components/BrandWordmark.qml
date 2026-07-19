@@ -4,7 +4,9 @@ import "../theme"
 Text {
     id: root
 
-    color: theme.brandWordmark
+    property color foregroundColor: theme.brandWordmark
+
+    color: root.foregroundColor
     font.family: theme.brandFontFamily
     font.pixelSize: theme.fontSubtitle
     font.weight: Font.DemiBold

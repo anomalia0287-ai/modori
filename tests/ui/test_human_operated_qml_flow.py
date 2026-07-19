@@ -44,7 +44,7 @@ def test_entry_recent_files_are_clickable_and_open_existing_sessions() -> None:
     entry = qml_text("screens/EntryScreen.qml")
 
     assert "signal recentFileRequested(int index)" in entry
-    assert "Repeater" in entry
+    assert "ListView" in entry
     assert "model: uiController.recentFilesModel" in entry
     assert "recentFilesText.split" not in entry
     assert "root.recentFileRequested(index)" in entry

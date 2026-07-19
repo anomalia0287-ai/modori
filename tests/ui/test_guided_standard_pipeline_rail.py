@@ -57,7 +57,7 @@ def test_work_header_exposes_guided_standard_controls() -> None:
     assert 'uiController.chooseMode("guided")' in work
     assert 'uiController.chooseMode("standard")' in work
     assert "signal settingsRequested()" in work
-    assert 'appBootstrap.text("settings.title")' in work
+    assert 'appBootstrap.text("settings.title", appBootstrap.language)' in work
     assert "root.settingsRequested()" in work
 
 

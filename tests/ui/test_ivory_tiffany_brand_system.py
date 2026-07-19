@@ -65,7 +65,8 @@ def test_wordmark_is_black_uppercase_gothic_and_letter_spaced() -> None:
     assert "font.capitalization: Font.AllUppercase" in wordmark
     assert "font.letterSpacing: theme.brandLetterSpacing" in wordmark
     assert "font.weight: Font.DemiBold" in wordmark
-    assert "color: theme.brandWordmark" in wordmark
+    assert "property color foregroundColor: theme.brandWordmark" in wordmark
+    assert "color: root.foregroundColor" in wordmark
     assert "Accessible.name: text" in wordmark
     assert "Theme {" in wordmark
 
@@ -78,10 +79,10 @@ def test_entry_work_and_splash_reuse_brand_wordmark() -> None:
     ):
         source = qml_text(relative)
         assert "BrandWordmark {" in source
-        assert 'appBootstrap.text("app.title")' in source
+        assert 'appBootstrap.text("app.title", appBootstrap.language)' in source
 
 
-def test_work_header_and_entry_brand_region_use_aurora_glass() -> None:
+def test_work_header_keeps_aurora_and_entry_uses_approved_royal_blue_split() -> None:
     work = qml_text("screens/WorkScreen.qml")
     entry = qml_text("screens/EntryScreen.qml")
     results = qml_text("components/ResultsPanel.qml")
@@ -93,14 +94,15 @@ def test_work_header_and_entry_brand_region_use_aurora_glass() -> None:
     assert "bottomAnchorVisible: true" in work
     assert "fillColor: theme.headerTiffany" not in work
     assert "Layout.rightMargin: theme.workWordmarkCommandGap" in work
-    assert 'objectName: "entryStartSurface"' in entry
+    assert 'objectName: "entryBrandPanel"' in entry
     assert "anchors.fill: parent" in entry
     assert "anchors.centerIn: parent" not in entry
-    assert entry.count("AuroraGlassSurface {") == 1
-    assert "Layout.preferredWidth: theme.entryBrandRegionWidth" in entry
-    assert "anchors.margins: theme.entryBrandPanelPadding" in entry
-    assert 'objectName: "entryTaskSurface"' in entry
-    assert 'variant: "glass"' in entry[entry.index("id: recentFilesScroll"):]
+    assert "AuroraGlassSurface" not in entry
+    assert "width: Math.round(parent.width * theme.entryBrandRatio)" in entry
+    assert "color: theme.entryBrand" in entry
+    assert "color: theme.entryCanvas" in entry
+    assert 'objectName: "entryTaskPanel"' in entry
+    assert "model: uiController.recentFilesModel" in entry
     assert "fillColor: theme.surfaceCream" in results
     assert 'surfaceTreatment: "footer"' in pipeline
 
@@ -129,7 +131,6 @@ def test_aurora_surface_is_used_only_in_approved_regions() -> None:
 
     assert users == [
         "components/PipelineRail.qml",
-        "screens/EntryScreen.qml",
         "screens/WorkScreen.qml",
     ]
 

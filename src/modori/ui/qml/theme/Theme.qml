@@ -1,6 +1,42 @@
 import QtQuick
 
 QtObject {
+    readonly property color entryBrand: "#173B7A"
+    readonly property color entryCanvas: "#F7F3EA"
+    readonly property color entryCard: "#FFFDF8"
+    readonly property color entryPrimary: "#2F5DA8"
+    readonly property color entryText: "#17233A"
+    readonly property color entryCardSelected: Qt.rgba(
+        entryPrimary.r,
+        entryPrimary.g,
+        entryPrimary.b,
+        0.10
+    )
+    readonly property color entryCardHover: Qt.rgba(
+        entryPrimary.r,
+        entryPrimary.g,
+        entryPrimary.b,
+        0.06
+    )
+    readonly property color entryDivider: Qt.rgba(
+        entryText.r,
+        entryText.g,
+        entryText.b,
+        0.14
+    )
+    readonly property color entryTextMuted: Qt.rgba(
+        entryText.r,
+        entryText.g,
+        entryText.b,
+        0.66
+    )
+    readonly property color entryOnBrand: entryCard
+    readonly property color entryOnBrandMuted: Qt.rgba(
+        entryCard.r,
+        entryCard.g,
+        entryCard.b,
+        0.76
+    )
     readonly property color canvasCream: "#FEFDFC"
     readonly property color surfaceCream: "#FEFDFC"
     readonly property color surfaceRaised: "#FAF8F5"
@@ -127,6 +163,13 @@ QtObject {
     readonly property int entryBrandRegionWidth: 430
     readonly property int entryBrandPanelPadding: 32
     readonly property int entryColumnGap: 36
+    readonly property int entryContentMaxWidth: 650
+    readonly property int entryContentTopMargin: 112
+    readonly property int entryModeCardHeight: 82
+    readonly property int entryPrimaryActionHeight: 52
+    readonly property int entryRecentRowHeight: 54
+    readonly property int entryRightHorizontalPadding: 64
+    readonly property int entryTopActionMargin: 28
     readonly property int workOuterMargin: 12
     readonly property int detachedSheetWidth: 980
     readonly property int detachedSheetHeight: 640
@@ -225,4 +268,6 @@ QtObject {
     readonly property real opacityDisabled: 0.46
     readonly property real stateBorderAlpha: 0.25
     readonly property real resultSummaryLineHeight: 1.18
+    readonly property real entryPromiseLineHeight: 1.35
+    readonly property real entryBrandRatio: 0.37
 }

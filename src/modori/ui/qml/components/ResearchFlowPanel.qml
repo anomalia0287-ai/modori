@@ -36,7 +36,7 @@ ColumnLayout {
 
     spacing: theme.spaceMd
     implicitHeight: content.visible ? content.implicitHeight : theme.spaceNone
-    Accessible.name: appBootstrap.text("research.panel.accessible")
+    Accessible.name: appBootstrap.text("research.panel.accessible", appBootstrap.language)
     Accessible.role: Accessible.Grouping
 
     function isSupportedState(value) {
@@ -160,44 +160,44 @@ ColumnLayout {
 
     function profileTitle(profileId) {
         if (profileId === "numeric_distribution") {
-            return appBootstrap.text("research.profile.numeric_distribution.title")
+            return appBootstrap.text("research.profile.numeric_distribution.title", appBootstrap.language)
         }
         if (profileId === "category_frequency") {
-            return appBootstrap.text("research.profile.category_frequency.title")
+            return appBootstrap.text("research.profile.category_frequency.title", appBootstrap.language)
         }
         if (profileId === "independent_two_group_mean") {
-            return appBootstrap.text("research.profile.independent_two_group_mean.title")
+            return appBootstrap.text("research.profile.independent_two_group_mean.title", appBootstrap.language)
         }
         if (profileId === "paired_two_time_mean_change") {
-            return appBootstrap.text("research.profile.paired_two_time_mean_change.title")
+            return appBootstrap.text("research.profile.paired_two_time_mean_change.title", appBootstrap.language)
         }
         if (profileId === "linear_co_movement") {
-            return appBootstrap.text("research.profile.linear_co_movement.title")
+            return appBootstrap.text("research.profile.linear_co_movement.title", appBootstrap.language)
         }
         if (profileId === "rank_co_movement") {
-            return appBootstrap.text("research.profile.rank_co_movement.title")
+            return appBootstrap.text("research.profile.rank_co_movement.title", appBootstrap.language)
         }
         return ""
     }
 
     function profileBody(profileId) {
         if (profileId === "numeric_distribution") {
-            return appBootstrap.text("research.profile.numeric_distribution.body")
+            return appBootstrap.text("research.profile.numeric_distribution.body", appBootstrap.language)
         }
         if (profileId === "category_frequency") {
-            return appBootstrap.text("research.profile.category_frequency.body")
+            return appBootstrap.text("research.profile.category_frequency.body", appBootstrap.language)
         }
         if (profileId === "independent_two_group_mean") {
-            return appBootstrap.text("research.profile.independent_two_group_mean.body")
+            return appBootstrap.text("research.profile.independent_two_group_mean.body", appBootstrap.language)
         }
         if (profileId === "paired_two_time_mean_change") {
-            return appBootstrap.text("research.profile.paired_two_time_mean_change.body")
+            return appBootstrap.text("research.profile.paired_two_time_mean_change.body", appBootstrap.language)
         }
         if (profileId === "linear_co_movement") {
-            return appBootstrap.text("research.profile.linear_co_movement.body")
+            return appBootstrap.text("research.profile.linear_co_movement.body", appBootstrap.language)
         }
         if (profileId === "rank_co_movement") {
-            return appBootstrap.text("research.profile.rank_co_movement.body")
+            return appBootstrap.text("research.profile.rank_co_movement.body", appBootstrap.language)
         }
         return ""
     }
@@ -299,7 +299,7 @@ ColumnLayout {
             Label {
                 id: researchPanelTitle
                 objectName: "researchPanelTitle"
-                text: appBootstrap.text("research.panel.title")
+                text: appBootstrap.text("research.panel.title", appBootstrap.language)
                 color: theme.bronzeDeep
                 font.pixelSize: theme.fontTitle
                 font.bold: true
@@ -355,7 +355,7 @@ ColumnLayout {
                 id: transformationCopy
                 anchors.fill: parent
                 anchors.margins: theme.spaceContent
-                text: appBootstrap.text("research.transformation_first")
+                text: appBootstrap.text("research.transformation_first", appBootstrap.language)
                 color: theme.textBody
                 wrapMode: Text.WordWrap
             }
@@ -452,7 +452,7 @@ ColumnLayout {
             }
 
             AppButton {
-                text: appBootstrap.text("research.profile.none")
+                text: appBootstrap.text("research.profile.none", appBootstrap.language)
                 Accessible.name: text
                 variant: "quiet"
                 Layout.fillWidth: true
@@ -471,7 +471,7 @@ ColumnLayout {
             spacing: theme.spaceSm
 
             Label {
-                text: appBootstrap.text("research.roles.instructions")
+                text: appBootstrap.text("research.roles.instructions", appBootstrap.language)
                 color: theme.textBody
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
@@ -482,8 +482,8 @@ ColumnLayout {
                 objectName: "researchRoleOutcome"
                 visible: root.selectedProfileId !== "paired_two_time_mean_change"
                 Layout.fillWidth: true
-                placeholderText: appBootstrap.text("research.roles.outcome")
-                Accessible.name: appBootstrap.text("research.roles.outcome")
+                placeholderText: appBootstrap.text("research.roles.outcome", appBootstrap.language)
+                Accessible.name: appBootstrap.text("research.roles.outcome", appBootstrap.language)
                 selectByMouse: true
             }
 
@@ -492,8 +492,8 @@ ColumnLayout {
                 objectName: "researchRoleGroup"
                 visible: root.selectedProfileId === "independent_two_group_mean"
                 Layout.fillWidth: true
-                placeholderText: appBootstrap.text("research.roles.group")
-                Accessible.name: appBootstrap.text("research.roles.group")
+                placeholderText: appBootstrap.text("research.roles.group", appBootstrap.language)
+                Accessible.name: appBootstrap.text("research.roles.group", appBootstrap.language)
                 selectByMouse: true
             }
 
@@ -503,8 +503,8 @@ ColumnLayout {
                 visible: root.selectedProfileId === "linear_co_movement"
                     || root.selectedProfileId === "rank_co_movement"
                 Layout.fillWidth: true
-                placeholderText: appBootstrap.text("research.roles.predictor")
-                Accessible.name: appBootstrap.text("research.roles.predictor")
+                placeholderText: appBootstrap.text("research.roles.predictor", appBootstrap.language)
+                Accessible.name: appBootstrap.text("research.roles.predictor", appBootstrap.language)
                 selectByMouse: true
             }
 
@@ -513,8 +513,8 @@ ColumnLayout {
                 objectName: "researchRoleBefore"
                 visible: root.selectedProfileId === "paired_two_time_mean_change"
                 Layout.fillWidth: true
-                placeholderText: appBootstrap.text("research.roles.before")
-                Accessible.name: appBootstrap.text("research.roles.before")
+                placeholderText: appBootstrap.text("research.roles.before", appBootstrap.language)
+                Accessible.name: appBootstrap.text("research.roles.before", appBootstrap.language)
                 selectByMouse: true
             }
 
@@ -523,13 +523,13 @@ ColumnLayout {
                 objectName: "researchRoleAfter"
                 visible: root.selectedProfileId === "paired_two_time_mean_change"
                 Layout.fillWidth: true
-                placeholderText: appBootstrap.text("research.roles.after")
-                Accessible.name: appBootstrap.text("research.roles.after")
+                placeholderText: appBootstrap.text("research.roles.after", appBootstrap.language)
+                Accessible.name: appBootstrap.text("research.roles.after", appBootstrap.language)
                 selectByMouse: true
             }
 
             Label {
-                text: appBootstrap.text("research.roles.required")
+                text: appBootstrap.text("research.roles.required", appBootstrap.language)
                 color: theme.warning
                 wrapMode: Text.WordWrap
                 visible: !root.roleDraftValid()
@@ -540,7 +540,7 @@ ColumnLayout {
                 objectName: "researchRoleSubmit"
                 text: root.primaryAction
                     ? String(root.primaryAction.label)
-                    : appBootstrap.text("research.roles.required")
+                    : appBootstrap.text("research.roles.required", appBootstrap.language)
                 Accessible.name: text
                 variant: "primary"
                 enabled: root.roleDraftValid()
@@ -604,11 +604,11 @@ ColumnLayout {
 
                     StateBadge {
                         state: root.flowState === "confirmed" ? "latest" : "running"
-                        label: appBootstrap.text("research.experimental")
+                        label: appBootstrap.text("research.experimental", appBootstrap.language)
                     }
 
                     Label {
-                        text: appBootstrap.text("research.no_auto_run")
+                        text: appBootstrap.text("research.no_auto_run", appBootstrap.language)
                         color: theme.warning
                         font.bold: true
                         wrapMode: Text.WordWrap
@@ -617,7 +617,7 @@ ColumnLayout {
                 }
 
                 Label {
-                    text: appBootstrap.text("research.preparation.settings")
+                    text: appBootstrap.text("research.preparation.settings", appBootstrap.language)
                     color: theme.bronzeDeep
                     font.bold: true
                     Layout.fillWidth: true
@@ -636,7 +636,7 @@ ColumnLayout {
                 }
 
                 Label {
-                    text: appBootstrap.text("research.preparation.step") + ": "
+                    text: appBootstrap.text("research.preparation.step", appBootstrap.language) + ": "
                         + String(root.preparationReview.stepType || "")
                     color: theme.textSecondary
                     visible: root.proMode
@@ -645,7 +645,7 @@ ColumnLayout {
                 }
 
                 Label {
-                    text: appBootstrap.text("research.preparation.digest") + ": "
+                    text: appBootstrap.text("research.preparation.digest", appBootstrap.language) + ": "
                         + String(root.preparationReview.visiblePreparationDigest || "")
                     color: theme.textSecondary
                     visible: root.proMode
@@ -653,9 +653,9 @@ ColumnLayout {
                 }
 
                 AppButton {
-                    text: appBootstrap.text("research.confirm")
+                    text: appBootstrap.text("research.confirm", appBootstrap.language)
                     Accessible.name: text
-                    Accessible.description: appBootstrap.text("research.no_auto_run")
+                    Accessible.description: appBootstrap.text("research.no_auto_run", appBootstrap.language)
                     variant: "primary"
                     visible: root.flowState === "prepare_review"
                     enabled: visible
@@ -664,7 +664,7 @@ ColumnLayout {
                 }
 
                 Label {
-                    text: appBootstrap.text("research.confirmed_run_hint")
+                    text: appBootstrap.text("research.confirmed_run_hint", appBootstrap.language)
                     color: theme.textBody
                     wrapMode: Text.WordWrap
                     visible: root.flowState === "confirmed"
@@ -695,7 +695,7 @@ ColumnLayout {
         }
 
         Label {
-            text: appBootstrap.text("research.direct_available")
+            text: appBootstrap.text("research.direct_available", appBootstrap.language)
             color: theme.textSecondary
             wrapMode: Text.WordWrap
             Layout.fillWidth: true

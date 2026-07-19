@@ -72,20 +72,21 @@ def test_reusable_visual_components_are_real_qml_controls() -> None:
         assert "MouseArea" not in source
 
 
-def test_entry_uses_one_ambient_pearl_surface_and_structured_actions() -> None:
+def test_entry_uses_full_bleed_royal_blue_surface_and_structured_actions() -> None:
     entry = qml_text("screens/EntryScreen.qml")
 
-    assert "PearlSurface" in entry
-    assert 'objectName: "entryStartSurface"' in entry
-    assert 'appBootstrap.text("entry.promise")' in entry
-    assert "AppButton" in entry
-    assert "model.display" in entry
+    assert 'objectName: "entryBrandPanel"' in entry
+    assert "color: theme.entryBrand" in entry
+    assert "color: theme.entryCanvas" in entry
+    assert 'appBootstrap.text("entry.promise", appBootstrap.language)' in entry
+    assert entry.count("EntryModeCard {") == 2
+    assert "model: uiController.recentFilesModel" in entry
     assert "gradient: Gradient" not in entry
 
 
 def test_recent_file_rows_are_width_bounded_and_middle_elided() -> None:
     entry = qml_text("screens/EntryScreen.qml")
 
-    assert "contentWidth: availableWidth" in entry
-    assert "width: recentFilesScroll.availableWidth" in entry
-    assert "textElide: Text.ElideMiddle" in entry
+    assert "width: ListView.view.width" in entry
+    assert "elide: Text.ElideMiddle" in entry
+    assert "clip: true" in entry

@@ -5,7 +5,7 @@ import "../theme"
 
 Item {
     id: root
-    property string editPolicyText: appBootstrap.text("data.edit_policy")
+    property string editPolicyText: appBootstrap.text("data.edit_policy", appBootstrap.language)
 
     Theme {
         id: theme
@@ -16,7 +16,7 @@ Item {
         spacing: theme.spaceNone
 
         Label {
-            text: appBootstrap.text("transform.source_protected")
+            text: appBootstrap.text("transform.source_protected", appBootstrap.language)
             color: theme.textSecondary
             wrapMode: Text.WordWrap
             Layout.fillWidth: true
@@ -43,7 +43,7 @@ Item {
             reduceEffects: uiController.reduceEffects
             cellWidth: theme.tableCellWidth
             cellHeight: theme.tableCellHeight
-            emptyText: appBootstrap.text("data.grid_empty")
+            emptyText: appBootstrap.text("data.grid_empty", appBootstrap.language)
             ToolTip.text: root.editPolicyText
             Layout.fillWidth: true
             Layout.fillHeight: true

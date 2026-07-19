@@ -47,22 +47,22 @@ Item {
                 spacing: theme.spaceHeaderGap
 
                 BrandWordmark {
-                    text: appBootstrap.text("app.title")
+                    text: appBootstrap.text("app.title", appBootstrap.language)
                     font.pixelSize: theme.workWordmarkSize
                     Layout.rightMargin: theme.workWordmarkCommandGap
                 }
 
                 AppButton {
-                    text: appBootstrap.text("work.data")
-                    Accessible.name: appBootstrap.text("work.data_menu")
+                    text: appBootstrap.text("work.data", appBootstrap.language)
+                    Accessible.name: appBootstrap.text("work.data_menu", appBootstrap.language)
                     variant: "quiet"
                     compact: true
                     onClicked: root.openDataRequested()
                 }
 
                 AppButton {
-                    text: appBootstrap.text("work.data_sheet_window")
-                    Accessible.name: appBootstrap.text("work.data_sheet_window")
+                    text: appBootstrap.text("work.data_sheet_window", appBootstrap.language)
+                    Accessible.name: appBootstrap.text("work.data_sheet_window", appBootstrap.language)
                     variant: "quiet"
                     compact: true
                     enabled: uiController.status !== "empty" && uiController.status !== "running"
@@ -71,13 +71,13 @@ Item {
 
                 AppButton {
                     text: uiController.selectionConfirmationRequired
-                        ? appBootstrap.text("work.reconfirmation_required")
+                        ? appBootstrap.text("work.reconfirmation_required", appBootstrap.language)
                         : uiController.resultSummary.length > 0
-                            ? appBootstrap.text("work.analysis")
-                            : appBootstrap.text("work.analysis_run")
+                            ? appBootstrap.text("work.analysis", appBootstrap.language)
+                            : appBootstrap.text("work.analysis_run", appBootstrap.language)
                     Accessible.name: text
                     Accessible.description: uiController.selectionConfirmationRequired
-                        ? appBootstrap.text("boundary.reconfirmation_required")
+                        ? appBootstrap.text("boundary.reconfirmation_required", appBootstrap.language)
                         : ""
                     variant: "quiet"
                     compact: true
@@ -87,10 +87,10 @@ Item {
 
                 AppButton {
                     text: root.researchRailOpen
-                        ? appBootstrap.text("research.close")
-                        : appBootstrap.text("research.open")
+                        ? appBootstrap.text("research.close", appBootstrap.language)
+                        : appBootstrap.text("research.open", appBootstrap.language)
                     Accessible.name: text
-                    Accessible.description: appBootstrap.text("research.no_auto_run")
+                    Accessible.description: appBootstrap.text("research.no_auto_run", appBootstrap.language)
                     variant: "quiet"
                     compact: true
                     selected: root.researchRailOpen
@@ -99,8 +99,8 @@ Item {
                 }
 
                 AppButton {
-                    text: appBootstrap.text("work.report")
-                    Accessible.name: appBootstrap.text("work.report_menu")
+                    text: appBootstrap.text("work.report", appBootstrap.language)
+                    Accessible.name: appBootstrap.text("work.report_menu", appBootstrap.language)
                     variant: "quiet"
                     compact: true
                     semanticLight: enabled
@@ -117,8 +117,8 @@ Item {
                 }
 
                 AppIconButton {
-                    toolTipText: appBootstrap.text("settings.title")
-                    Accessible.name: appBootstrap.text("settings.title")
+                    toolTipText: appBootstrap.text("settings.title", appBootstrap.language)
+                    Accessible.name: appBootstrap.text("settings.title", appBootstrap.language)
                     onClicked: root.settingsRequested()
                 }
             }
@@ -180,7 +180,7 @@ Item {
                                 id: dataTab
                                 implicitHeight: theme.tabHeight
                                 focusPolicy: Qt.TabFocus
-                                text: appBootstrap.text("work.data_view")
+                                text: appBootstrap.text("work.data_view", appBootstrap.language)
                                 Accessible.name: text
                                 contentItem: Label {
                                     text: dataTab.text
@@ -206,7 +206,7 @@ Item {
                                 id: variableTab
                                 implicitHeight: theme.tabHeight
                                 focusPolicy: Qt.TabFocus
-                                text: appBootstrap.text("work.variable_view")
+                                text: appBootstrap.text("work.variable_view", appBootstrap.language)
                                 Accessible.name: text
                                 contentItem: Label {
                                     text: variableTab.text
@@ -232,7 +232,7 @@ Item {
                                 id: transformTab
                                 implicitHeight: theme.tabHeight
                                 focusPolicy: Qt.TabFocus
-                                text: appBootstrap.text("work.transform_view")
+                                text: appBootstrap.text("work.transform_view", appBootstrap.language)
                                 Accessible.name: text
                                 contentItem: Label {
                                     text: transformTab.text

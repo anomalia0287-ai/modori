@@ -26,7 +26,7 @@ Popup {
         spacing: theme.spaceGridColumn
 
         Label {
-            text: appBootstrap.text("explain.title")
+            text: appBootstrap.text("explain.title", appBootstrap.language)
             font.bold: true
             color: theme.bronzeDeep
         }
@@ -44,8 +44,8 @@ Popup {
         }
 
         AppButton {
-            text: appBootstrap.text("explain.close")
-            Accessible.name: appBootstrap.text("explain.close_accessible")
+            text: appBootstrap.text("explain.close", appBootstrap.language)
+            Accessible.name: appBootstrap.text("explain.close_accessible", appBootstrap.language)
             Layout.alignment: Qt.AlignRight
             onClicked: root.close()
         }

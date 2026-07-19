@@ -18,6 +18,25 @@ def test_import_preview_service_returns_variable_summary(tmp_path) -> None:
     assert "score" in preview.text
 
 
+def test_import_preview_service_formats_existing_structure_in_english(tmp_path) -> None:
+    data_path = tmp_path / "survey.csv"
+    pd.DataFrame({"group": [1, 2], "score": [3.5, None]}).to_csv(
+        data_path,
+        index=False,
+    )
+
+    preview = ImportPreviewService().preview(data_path, language="en")
+
+    assert preview.ok is True
+    assert "File: survey.csv" in preview.text
+    assert "Previewed data: 2 rows · 2 variables" in preview.text
+    assert "Preview:" in preview.text
+    assert "Inference:" in preview.text
+    assert "Sample rows" in preview.text
+    assert "(missing)" in preview.text
+    assert not any(token in preview.text for token in ("파일:", "미리보기:", "추론:"))
+
+
 def test_import_preview_service_surfaces_xlsx_source_context_and_sample(tmp_path) -> None:
     data_path = tmp_path / "survey.xlsx"
     with pd.ExcelWriter(data_path) as writer:
@@ -143,6 +162,14 @@ def test_review_rows_label_skipped_header_and_data_rows(tmp_path) -> None:
     assert rows[0]["row_number"] == 1
     assert rows[1]["cells"] == "지역 | 인구"
     assert rows[2]["cells"] == "종로구 | 100"
+
+    english_rows = review_rows(preview.table_preview, language="en")
+    assert [entry["role_label"] for entry in english_rows] == [
+        "Skipped",
+        "Header",
+        "Data",
+        "Data",
+    ]
 
 
 def test_review_rows_are_empty_without_inference_report() -> None:

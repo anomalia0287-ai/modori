@@ -8,7 +8,7 @@ Dialog {
     id: root
 
     objectName: "resultDetailDialog"
-    title: appBootstrap.text("results.detail_title")
+    title: appBootstrap.text("results.detail_title", appBootstrap.language)
     modal: true
     standardButtons: Dialog.NoButton
     parent: Overlay.overlay
@@ -57,7 +57,7 @@ Dialog {
                 wrapMode: TextEdit.NoWrap
                 font.family: "Consolas"
                 font.pixelSize: theme.fontBody
-                Accessible.name: appBootstrap.text("results.detail_title")
+                Accessible.name: appBootstrap.text("results.detail_title", appBootstrap.language)
                 background: Rectangle {
                     color: theme.surfaceCream
                     border.color: theme.lineDialog
@@ -74,7 +74,7 @@ Dialog {
             }
 
             AppButton {
-                text: appBootstrap.text("settings.close")
+                text: appBootstrap.text("settings.close", appBootstrap.language)
                 Accessible.name: text
                 variant: "quiet"
                 onClicked: root.close()

@@ -252,9 +252,9 @@ def test_data_grid_exposes_scrollbars_and_viewport_position() -> None:
     assert 'objectName: "dataGridVerticalScrollBar"' in qml
     for token in ("topRow", "bottomRow", "leftColumn", "rightColumn", "rows", "columns"):
         assert token in qml
-    assert 'appBootstrap.text("data.grid_rows")' in qml
-    assert 'appBootstrap.text("data.grid_columns")' in qml
-    assert 'appBootstrap.text("data.grid_extent_separator")' in qml
+    assert 'appBootstrap.text("data.grid_rows", appBootstrap.language)' in qml
+    assert 'appBootstrap.text("data.grid_columns", appBootstrap.language)' in qml
+    assert 'appBootstrap.text("data.grid_extent_separator", appBootstrap.language)' in qml
 
 
 def test_data_grid_contains_motion_and_places_basic_scrollbars_outside_cells() -> None:

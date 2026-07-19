@@ -85,6 +85,15 @@ class ResearchFlowStaleError(RuntimeError):
 
 
 class _ResearchFlowRuntime(Protocol):
+    def adopt_language(self, language: Language) -> None: ...
+
+    def present_current(
+        self,
+        *,
+        language: Language,
+        pipeline_version: int,
+    ) -> "ResearchFlowViews | None": ...
+
     def note_pipeline_version(self, pipeline_version: int) -> None: ...
 
     def current_dataset_fingerprint(self) -> str | None: ...
@@ -485,6 +494,42 @@ class ResearchFlowRuntime:
         self._snapshot: ResearchFlowPipelineSnapshot | None = None
         self._handle: object | None = None
         self._record: DurableFlowRecord | None = None
+
+    def adopt_language(self, language: Language) -> None:
+        if language not in {Language.KO, Language.EN}:
+            raise ResearchFlowControllerError("language must be Korean or English")
+        self._language = language
+
+    def present_current(
+        self,
+        *,
+        language: Language,
+        pipeline_version: int,
+    ) -> ResearchFlowViews | None:
+        if language not in {Language.KO, Language.EN}:
+            raise ResearchFlowControllerError("language must be Korean or English")
+        record = self._record
+        identity = self._identity
+        snapshot = self._snapshot
+        if (
+            record is None
+            or identity is None
+            or snapshot is None
+            or identity.pipeline_version != pipeline_version
+            or not self._pipeline_is_current(pipeline_version)
+        ):
+            return None
+        previous = self._language
+        self._language = language
+        try:
+            return self._record_views(
+                record,
+                identity=identity,
+                snapshot=snapshot,
+                pipeline_version=pipeline_version,
+            )
+        finally:
+            self._language = previous
 
     def note_pipeline_version(self, pipeline_version: int) -> None:
         if type(pipeline_version) is not int or pipeline_version < 0:
@@ -1617,6 +1662,55 @@ class ResearchFlowController(QObject):
         self._discard_pending_confirmation()
         self._mode = adopted
         self.stateChanged.emit()
+
+    @Slot(str, result=bool)
+    def adoptLanguage(self, language: str) -> bool:
+        try:
+            adopted = Language(language)
+        except (ValueError, ResearchFlowControllerError):
+            return False
+        if adopted is self._language:
+            return True
+        state = self.current_view.state
+        static_boundaries = {
+            ResearchFlowState.CAUSAL_SCOPE_NOTICE: StaticBoundary.CAUSAL_SCOPE_NOTICE,
+            ResearchFlowState.INTAKE_BLOCKED: StaticBoundary.CAUSAL_INTENT_UNKNOWN,
+            ResearchFlowState.SCOPE_BOUNDARY: StaticBoundary.SCOPE_BOUNDARY,
+        }
+        durable_states = {
+            ResearchFlowState.CLARIFY_READY,
+            ResearchFlowState.CANDIDATE_READY,
+            ResearchFlowState.PREPARATION_BLOCKED,
+            ResearchFlowState.ABSTAIN_READY,
+            ResearchFlowState.RECOVERY_PENDING,
+            ResearchFlowState.RETRACTED,
+        }
+        try:
+            if state in static_boundaries:
+                translated = _static_views(
+                    static_boundaries[state],
+                    language=adopted,
+                )
+            elif state in durable_states:
+                translated = self._runtime.present_current(
+                    language=adopted,
+                    pipeline_version=self._pipeline_version_provider(),
+                )
+                if translated is None:
+                    return False
+            else:
+                translated = _transient_views(state, language=adopted)
+        except (ValueError, ResearchFlowControllerError):
+            return False
+        self._runtime.adopt_language(adopted)
+        self._language = adopted
+        self._views = ResearchFlowViews(
+            guided=translated.guided,
+            standard=translated.standard,
+            preparation=self._views.preparation,
+        )
+        self.stateChanged.emit()
+        return True
 
     def _discard_pending_confirmation(self) -> None:
         if (

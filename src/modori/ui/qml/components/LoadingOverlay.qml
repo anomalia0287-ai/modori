@@ -9,7 +9,7 @@ Rectangle {
     property bool reduceEffects: false
 
     color: theme.brandScrim
-    Accessible.name: appBootstrap.text("loading.calculating")
+    Accessible.name: appBootstrap.text("loading.calculating", appBootstrap.language)
 
     Theme {
         id: theme
@@ -26,7 +26,7 @@ Rectangle {
         }
 
         Label {
-            text: appBootstrap.text("loading.calculating")
+            text: appBootstrap.text("loading.calculating", appBootstrap.language)
             color: theme.onBrand
             font.pixelSize: theme.fontOverlay
             font.bold: true

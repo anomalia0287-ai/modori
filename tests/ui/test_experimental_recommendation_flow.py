@@ -276,9 +276,9 @@ def test_guide_uses_explicit_experimental_confirmation_flow() -> None:
         encoding="utf-8"
     )
 
-    assert 'appBootstrap.text("guide.experimental_status")' in source
-    assert 'appBootstrap.text("guide.order_disclaimer")' in source
-    assert 'appBootstrap.text("guide.confirm_candidate")' in source
+    assert 'appBootstrap.text("guide.experimental_status", appBootstrap.language)' in source
+    assert 'appBootstrap.text("guide.order_disclaimer", appBootstrap.language)' in source
+    assert 'appBootstrap.text("guide.confirm_candidate", appBootstrap.language)' in source
     assert "uiController.prepareSelectedRecommendationNow()" in source
     assert "uiController.setExperimentalRecommendationConfirmed" in source
     assert "uiController.experimentalRecommendationConfirmed" in source
@@ -287,7 +287,7 @@ def test_guide_uses_explicit_experimental_confirmation_flow() -> None:
     assert "uiController.preparedRecommendationText(" not in source
     assert "function explanationTextForIntent(intent)" in source
     assert "root.guideNote = root.explanationTextForIntent(root.selectedIntent)" in source
-    assert 'appBootstrap.text("guide.explanation_unavailable")' in source
+    assert 'appBootstrap.text("guide.explanation_unavailable", appBootstrap.language)' in source
     assert "uiController.markCurrentSelectionExperimental" in source
     assert "runPreparedRecommendation" not in source
     assert "applySelectedRecommendation" not in source

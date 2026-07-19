@@ -84,32 +84,25 @@ def test_aurora_blends_with_hue_preserving_fades_and_has_footer_treatment() -> N
 
 def test_entry_screen_is_a_full_window_split_not_a_centered_card() -> None:
     entry = qml_text("screens/EntryScreen.qml")
-    start_surface = entry[entry.index('objectName: "entryStartSurface"') :]
 
-    assert "anchors.fill: parent" in start_surface[:500]
-    assert "radius: theme.spaceNone" in start_surface[:500]
+    assert 'objectName: "entryBrandPanel"' in entry
+    assert 'objectName: "entryTaskPanel"' in entry
+    assert "width: Math.round(parent.width * theme.entryBrandRatio)" in entry
+    assert "color: theme.entryBrand" in entry
+    assert "color: theme.entryCanvas" in entry
     assert "anchors.centerIn: parent" not in entry
-    assert "entryViewportMargin" not in entry
+    assert "anchors.horizontalCenter: parent.horizontalCenter" in entry
     assert "entryStartMaxWidth" not in entry
     assert "entryStartMaxHeight" not in entry
-    assert 'objectName: "entryTaskSurface"' in entry
-    assert "radius: theme.spaceNone" in entry[entry.index('objectName: "entryTaskSurface"') :][:500]
-    aurora_start = entry.index("AuroraGlassSurface {")
-    aurora_end = entry.index("}", aurora_start)
-    aurora_section = entry[aurora_start:aurora_end]
-    assert "anchors.left: parent.left" in aurora_section
-    assert "anchors.top: parent.top" in aurora_section
-    assert "anchors.bottom: parent.bottom" in aurora_section
-    assert "width: theme.entryBrandRegionWidth" in aurora_section
-    assert "anchors.fill: parent" not in aurora_section
+    assert "AuroraGlassSurface" not in entry
 
 
 def test_alternate_candidates_are_distinct_glass_rows() -> None:
     guide = qml_text("components/GuideRail.qml")
     button = qml_text("components/AppButton.qml")
     candidate_section = guide[
-        guide.index("Repeater {", guide.index('appBootstrap.text("guide.other_recommendations")')) :
-        guide.index('appBootstrap.text("guide.manual_selection")')
+        guide.index("Repeater {", guide.index('appBootstrap.text("guide.other_recommendations", appBootstrap.language)')) :
+        guide.index('appBootstrap.text("guide.manual_selection", appBootstrap.language)')
     ]
 
     assert 'variant: "glass"' in candidate_section

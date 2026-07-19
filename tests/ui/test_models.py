@@ -76,6 +76,33 @@ def test_variable_table_model_exposes_metadata_rows() -> None:
     assert model.data(model.index(0, 4), VariableTableModel.MEASURE_VALUE_ROLE) == "scale"
 
 
+def test_variable_table_model_localizes_headers_and_measure_without_touching_data() -> None:
+    from modori.ui.models import VariableRecord, VariableTableModel
+
+    model = VariableTableModel(
+        [
+            VariableRecord(
+                key="score",
+                label="Job satisfaction",
+                measure="scale",
+                value_labels="1.0=Low",
+                missing_codes="99.0",
+                display_type="numeric",
+            )
+        ],
+        language="en",
+    )
+
+    headers = [
+        model.headerData(index, Qt.Orientation.Horizontal, Qt.ItemDataRole.DisplayRole)
+        for index in range(model.columnCount())
+    ]
+    assert headers == ["Name", "Label", "Measure", "Value labels", "Missing", "Type"]
+    assert model.data(model.index(0, 0), Qt.ItemDataRole.DisplayRole) == "score"
+    assert model.data(model.index(0, 1), Qt.ItemDataRole.DisplayRole) == "Job satisfaction"
+    assert model.data(model.index(0, 2), Qt.ItemDataRole.DisplayRole) == "Scale"
+
+
 def test_variable_records_from_engine_dataset() -> None:
     import pandas as pd
 

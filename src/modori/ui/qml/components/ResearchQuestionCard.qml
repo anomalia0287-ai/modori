@@ -23,7 +23,7 @@ PearlSurface {
     fillColor: theme.surfaceCream
     outlined: true
     implicitHeight: questionLayout.implicitHeight + theme.spaceContent * 2
-    Accessible.name: root.question.questionText || appBootstrap.text("research.question.why")
+    Accessible.name: root.question.questionText || appBootstrap.text("research.question.why", appBootstrap.language)
     Accessible.role: Accessible.Grouping
 
     function closedOptionCount() {
@@ -51,7 +51,7 @@ PearlSurface {
                 return String(root.options[index].label)
             }
         }
-        return appBootstrap.text("research.question.answer_required")
+        return appBootstrap.text("research.question.answer_required", appBootstrap.language)
     }
 
     function variableIds() {
@@ -105,7 +105,7 @@ PearlSurface {
         }
 
         Label {
-            text: appBootstrap.text("research.question.why")
+            text: appBootstrap.text("research.question.why", appBootstrap.language)
             color: theme.bronzeDeep
             font.bold: true
             visible: String(root.question.baseReason || "").length > 0
@@ -159,13 +159,13 @@ PearlSurface {
             objectName: "researchQuestionVariables"
             visible: root.variableAnswer
             Layout.fillWidth: true
-            placeholderText: appBootstrap.text("research.question.variables_placeholder")
-            Accessible.name: appBootstrap.text("research.question.variables_accessible")
+            placeholderText: appBootstrap.text("research.question.variables_placeholder", appBootstrap.language)
+            Accessible.name: appBootstrap.text("research.question.variables_accessible", appBootstrap.language)
             selectByMouse: true
         }
 
         Label {
-            text: appBootstrap.text("research.question.selection") + ": "
+            text: appBootstrap.text("research.question.selection", appBootstrap.language) + ": "
                 + String(root.question.selectionSummary || "")
             color: theme.textBody
             wrapMode: Text.WordWrap
@@ -175,7 +175,7 @@ PearlSurface {
         }
 
         Label {
-            text: appBootstrap.text("research.question.remaining") + ": "
+            text: appBootstrap.text("research.question.remaining", appBootstrap.language) + ": "
                 + String(root.question.remainingUncertainty || "")
             color: theme.textBody
             wrapMode: Text.WordWrap
@@ -199,7 +199,7 @@ PearlSurface {
         }
 
         Label {
-            text: appBootstrap.text("research.question.caution") + ": "
+            text: appBootstrap.text("research.question.caution", appBootstrap.language) + ": "
                 + String(root.question.caution || "")
             color: theme.warning
             wrapMode: Text.WordWrap
@@ -208,7 +208,7 @@ PearlSurface {
         }
 
         Label {
-            text: appBootstrap.text("research.question.answer_required")
+            text: appBootstrap.text("research.question.answer_required", appBootstrap.language)
             color: theme.warning
             visible: !root.variableAnswer && root.selectedOptionId.length === 0
             Layout.fillWidth: true

@@ -13,14 +13,14 @@ RowLayout {
     spacing: theme.spaceTight
 
     ModeChoiceButton {
-        text: appBootstrap.text("work.guided")
+        text: appBootstrap.text("work.guided", appBootstrap.language)
         selected: root.currentMode === "guided"
         Layout.preferredWidth: theme.modeChoiceMinimumWidth
         onClicked: root.guidedRequested()
     }
 
     ModeChoiceButton {
-        text: appBootstrap.text("work.standard")
+        text: appBootstrap.text("work.standard", appBootstrap.language)
         selected: root.currentMode === "standard"
         Layout.preferredWidth: theme.modeChoiceMinimumWidth
         onClicked: root.standardRequested()

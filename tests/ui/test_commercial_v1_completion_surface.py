@@ -18,8 +18,8 @@ def test_splash_screen_exists_and_is_wired() -> None:
     assert "theme.splashProgressWidth" in text
     assert "theme.splashProgressHeight" in text
     assert "root.reduceEffects" in text
-    assert 'appBootstrap.text("splash.subtitle")' in text
-    assert 'appBootstrap.text("privacy.local")' in text
+    assert 'appBootstrap.text("splash.subtitle", appBootstrap.language)' in text
+    assert 'appBootstrap.text("privacy.local", appBootstrap.language)' in text
     assert "SplashScreen" in main
 
 
@@ -53,7 +53,7 @@ def test_entry_screen_displays_recent_files() -> None:
 def test_data_table_discloses_read_only_edit_policy() -> None:
     data_table = qml_text("components/DataTable.qml")
 
-    assert 'appBootstrap.text("data.edit_policy")' in data_table
+    assert 'appBootstrap.text("data.edit_policy", appBootstrap.language)' in data_table
 
 
 def test_qa_document_records_current_verdict() -> None:

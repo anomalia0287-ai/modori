@@ -7,6 +7,9 @@ Button {
 
     property url iconSource: Qt.resolvedUrl("../assets/icons/settings.svg")
     property string toolTipText: ""
+    property color foregroundColor: theme.textStrong
+    property color hoverColor: theme.selectionSurface
+    property color focusColor: theme.focusRing
 
     implicitWidth: theme.iconButtonSize
     implicitHeight: theme.iconButtonSize
@@ -14,7 +17,7 @@ Button {
     icon.source: control.iconSource
     icon.width: theme.iconSize
     icon.height: theme.iconSize
-    icon.color: control.enabled ? theme.textStrong : theme.textMuted
+    icon.color: control.enabled ? control.foregroundColor : theme.textMuted
 
     ToolTip.text: control.toolTipText
     ToolTip.visible: control.hovered
@@ -22,8 +25,8 @@ Button {
 
     background: Rectangle {
         radius: theme.radiusMedium
-        color: control.hovered || control.down ? theme.selectionSurface : theme.transparent
-        border.color: control.activeFocus ? theme.focusRing : theme.transparent
+        color: control.hovered || control.down ? control.hoverColor : theme.transparent
+        border.color: control.activeFocus ? control.focusColor : theme.transparent
         border.width: control.activeFocus ? theme.borderWidthFocus : theme.spaceNone
     }
 
