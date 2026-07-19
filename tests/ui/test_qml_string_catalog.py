@@ -62,16 +62,6 @@ def test_qml_catalog_bindings_observe_session_language() -> None:
     assert violations == []
 
 
-def test_qml_catalog_bindings_observe_session_language() -> None:
-    violations: list[str] = []
-    for path in sorted(QML_ROOT.rglob("*.qml")):
-        source = path.read_text(encoding="utf-8")
-        if NON_REACTIVE_CATALOG_CALL.search(source):
-            violations.append(str(path))
-
-    assert violations == []
-
-
 def test_qml_string_catalog_is_complete_and_used() -> None:
     used_keys = _catalog_keys_used_by_qml()
 

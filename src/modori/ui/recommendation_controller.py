@@ -383,15 +383,6 @@ class RecommendationControllerMixin:
             return _candidate_title_en(candidate)
         return candidate.title_ko
 
-    @Slot(int, str, result=str)
-    def recommendationCandidateTitleAtFor(self, index: int, language: str) -> str:
-        if index < 0 or index >= len(self._recommendation_state.candidates):
-            return ""
-        candidate = self._recommendation_state.candidates[index]
-        if str(language).lower() == "en":
-            return _candidate_title_en(candidate)
-        return candidate.title_ko
-
     @Slot(int, result=str)
     def recommendationCandidateReviewRequirementAt(self, index: int) -> str:
         if index < 0 or index >= len(self._recommendation_state.candidates):
