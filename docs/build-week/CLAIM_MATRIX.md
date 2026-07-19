@@ -8,17 +8,21 @@ wins.
 | Topic | Evidence status | Allowed wording | Do not say |
 | --- | --- | --- | --- |
 | Project origin | Verified pre-existing project | "Modori existed before Build Week and was meaningfully extended during the submission period." | "Modori was built entirely during Build Week." |
-| Build Week delta | Timestamp/history audited | "The pre-release baseline has 127 post-cutoff commits, with later release-document commits added separately." | Treating every line reachable through the integration merge as new work |
+| Build Week delta | Timestamp/history audited | "The `eaa0e802` pre-release baseline had 127 post-cutoff commits; later release and functional-usability commits are identified separately." | Treating every line reachable through an integration merge as new work |
 | Runtime AI | No runtime model route in current code | "Codex and GPT-5.6 were build-time collaborators; Modori calculations remain local and deterministic." | "GPT-5.6 analyzes the user's data inside Modori." |
 | P1 scope | Executable catalog and tests | "Research OS P1 supports exactly six bounded local research tasks." | "Modori covers social-science research broadly." |
 | External routes | Catalog contains zero routes | "There are no verified external routes." | Naming a cloud or external fallback as available |
 | Recommendations | `EXPERIMENTAL`, explicit selection and confirmation | "Modori presents experimental candidates that never auto-run." | "Modori recommends the correct test" or an accuracy percentage |
 | Calculation start | Product contract and tests | "A separate user action starts calculation after review." | "The recommendation automatically runs the analysis." |
+| Variable meaning | Dataset-bound contract plus one automated actual-QML Korean novice E2E | "Before the first durable request commit, Modori displays recorded metadata for the selected roles and requires explicit confirmation." | "Modori infers a variable's conceptual definition or unit" or generalizing one bounded path to all studies |
+| Source editing | QML disclosure and read-only grid tests | "The imported source table is read-only; transformations are recorded as new steps and variables." | "Edit spreadsheet cells directly in Modori" or implying that metadata edits rewrite the source file |
+| Drift and replan | Real novice E2E and controller contracts | "Changing reviewed metadata invalidates confirmation, blocks Run, and requires review or replanning." | "A previous passport remains valid after the data meaning changes." |
+| Word export | Real novice E2E after a completed Run | "The audited Korean numeric-distribution path exported a Word report after the separate Run." | "Every method and language path has been live-validated for Word export." |
 | Local processing | Source audit and security tests | "The current runtime has no configured network client, telemetry, or hosted analysis route." | "Certified private", "zero data risk", or claims about OS/cloud/antivirus behavior |
 | Statistical accuracy | Method-specific R/NIST/formula/library anchors | "Selected methods have bounded reference tests described in the QA ledger." | "All calculations are proven correct" |
 | Expert equivalence | Not tested | State that it is unproven | Any professor, expert, or human parity claim |
 | SPSS/JASP/jamovi | Limited fixture/reference comparisons only | Describe a named fixture and exact comparison when necessary | Superiority or full equivalence |
-| Interface language | Main shell Korean-first; selected report/Research OS contracts support English | "The full UI is not completely bilingual." | "Complete Korean and English support" |
+| Interface language | Reviewed Royal Blue entry/workspace and Research OS states react to Korean/English session language; no complete localization audit | "The reviewed workflow has Korean/English controls, but the full UI is not completely bilingual." | "Complete Korean and English support" |
 | Accessibility | Partial tests and accessible labels; no complete conformance audit | "Complete accessibility conformance has not been established." | "Fully accessible" |
 | Windows target | Windows 11 x64 and CPython 3.12.10 verified | Name the exact target and local unsigned build path | macOS/Linux support or general Windows certification |
 | B4-R | Recorded development-PC pass at the sealed kit identity | Quote `3233 passed, 13 skipped`, 300 rejected mutations, and three byte-identical kit builds with the bound commit/hash | Applying those numbers to an unbound later build |
@@ -26,7 +30,9 @@ wins.
 | Open source | Owner-approved `GPL-3.0-only` source with notices | "Modori-authored source is GPL-3.0-only." | Treating dependencies, data, trademarks, or future binaries as relicensed by Modori |
 | Public binary | Intentionally absent | "Judges can run from source or produce a local unsigned one-folder build." | "Download the official Modori executable" |
 | General reproducibility | Exact Windows constraints and local gates | "The documented environment and commands are reproducible targets." | Byte-identical general application builds; only the sealed benchmark kit has that evidence |
-| Live judge flow | Packaged-app walkthrough on the synthetic fixture | "Import, Research OS review, separate Run, and the displayed synthetic result were exercised on Windows." | Generalizing one fixture to recommendation validity, all datasets, or all methods |
+| Functional-usability and final source | Commit-bound candidate evidence at `b368cdcf...`; final release-lane non-gallery rerun after three observed English demo-path fixes | "The candidate reported `3289 passed, 5 skipped`; the final release tree reported `3290 passed, 5 skipped` in 425.65s." | Calling either count an all-tests visual-performance pass or omitting the separately failed all-tests observation |
+| Visual cold render | Mixed observations against an unchanged 250 ms gate | "Cold render timing was load-sensitive and is not characterized as a stable pass." | Selecting only the roughly 200–217 ms passes, hiding the roughly 292–303 ms failures, or lowering the threshold |
+| Live judge flow | Manual packaged correlation walkthrough plus automated actual-QML Korean numeric-distribution E2E | "Import, metadata/meaning review, explicit confirmation, separate Run, result, Word export, and drift recovery were exercised in bounded Windows paths." | Combining the two fixtures into one alleged universal end-to-end validation or generalizing to all methods |
 
 ## Facts that must remain linked
 
@@ -40,6 +46,12 @@ wins.
   `0413059b993ae5bb28190907badb7733d94f3f64`
 - Integrated pre-release baseline:
   `eaa0e802a0c64f6619297432f129be4d198a79ea`
+- Sealed source-release baseline:
+  `616955232d91aa322da66cb21a8865ec686ba87f`
+- Functional-usability candidate:
+  `b368cdcf208d04509717826bc6b0ab7e7b72ba7e`
+- Local two-parent integration commit:
+  `4260ed862a74fee094b9a94c42ffe95fd7fe4c64`
 - Build Week cutoff:
   `2026-07-13T09:00:00-07:00` / `2026-07-14T01:00:00+09:00`
 

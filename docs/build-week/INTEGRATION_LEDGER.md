@@ -2,7 +2,7 @@
 
 Date opened: 2026-07-20 KST
 
-Worktree: `C:\Users\V\.codex\worktrees\49c6\TongTong`
+Worktree: local linked release worktree (personal path intentionally omitted)
 
 Release branch: `codex/modori-build-week-release-p0`
 
@@ -14,9 +14,9 @@ Release branch: `codex/modori-build-week-release-p0`
 | Functional-usability candidate | `b368cdcf208d04509717826bc6b0ab7e7b72ba7e` | 12 commits ahead of the same baseline |
 | Merge base | `eaa0e802a0c64f6619297432f129be4d198a79ea` | verified with `git merge-base` |
 
-The worktree is a linked Git worktree: its Git directory is
-`C:/Users/V/Desktop/TongTong/.git/worktrees/TongTong`, while its common directory is
-`C:/Users/V/Desktop/TongTong/.git`. No nested worktree is required.
+The release checkout is a linked Git worktree whose Git directory and common directory
+were both resolved successfully. Their personal filesystem paths are intentionally not
+published. No nested worktree is required.
 
 ## Original dirty inventory
 
@@ -67,8 +67,8 @@ Observed on the original dirty tree: `54 passed in 17.67s`, exit code `0`.
 
 The candidate branch records `3289 passed, 5 skipped` for its final non-gallery suite,
 plus Ruff, compile, and launch-smoke passes. Those observations remain bound to
-`b368cdcf208d04509717826bc6b0ab7e7b72ba7e` until a fresh merged-source run replaces
-them.
+`b368cdcf208d04509717826bc6b0ab7e7b72ba7e`. The separate final merged-source result
+is recorded in `VERIFICATION.md`; neither count is silently transferred between trees.
 
 Cold-render observations are mixed: earlier runs failed the 250 ms gate at
 approximately 292–303 ms, while independent repeats observed approximately 200–217
@@ -107,6 +107,13 @@ pass. No threshold will be changed for submission.
 - Pre-commit integration cohort: `57 passed in 11.31s` for
   `test_run_validation.py`, `test_research_flow_controller.py`, and
   `test_research_os_novice_e2e.py`.
+- Final release-tree non-gallery suite after the bounded English demo-path fixes:
+  `3290 passed, 5 skipped in 425.65s`, exit code `0`, with R 4.5.3 and isolated
+  application state under normal Windows permissions.
 
-The merge commit identity is recorded in the final-source verification update after
-the two-parent commit exists.
+The resulting two-parent merge commit is
+`4260ed862a74fee094b9a94c42ffe95fd7fe4c64`, with parents
+`616955232d91aa322da66cb21a8865ec686ba87f` and
+`b368cdcf208d04509717826bc6b0ab7e7b72ba7e`. Before commit, three trailing-
+whitespace warnings in two candidate Markdown evidence files were converted to blank
+line separation without changing their wording or product evidence.

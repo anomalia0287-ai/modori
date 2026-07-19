@@ -1,15 +1,38 @@
 # Build Week Release Checklist
 
-Deadline: **2026-07-22 09:00 KST** (2026-07-21 17:00 PDT)
+Owner's internal hard deadline: **2026-07-21 KST**
+
+Official no-edit deadline: **2026-07-22 09:00 KST** (2026-07-21 17:00 PDT)
 
 Release policy: GPL-3.0-only source submission. No prebuilt executable or installer is
 published. GitHub Actions availability is not a release condition; auditable local
 evidence is used instead.
 
+## Immediate owner-only blockers
+
+These three actions cannot be completed by the release agent and must finish within
+the owner's 2026-07-21 KST internal deadline.
+
+| Owner action | Target | Hard boundary |
+| --- | --- | --- |
+| In the existing primary core-build task, run `/feedback`, choose to share that existing session, and copy the returned Session ID | immediately | before final Devpost submission |
+| Record the approved 2:55 English demo with matching subtitles and upload it as **Public** YouTube | by 2026-07-21 12:00 KST | before the internal submission review |
+| Check the repository and video signed out, review the final Devpost preview, and submit | target 2026-07-21 20:00 KST | internal hard deadline 2026-07-21 KST; official deadline 2026-07-22 09:00 KST |
+
+Do not close the existing long-running build task before capturing its `/feedback`
+Session ID. This release-audit task is not a substitute Session ID. Send the
+Fable-edited story to this lane as soon as it is available; repository evidence and
+`CLAIM_MATRIX.md` decide every technical fact.
+
 ## P0 repository closure
 
 - [x] Start from clean integrated baseline
       `eaa0e802a0c64f6619297432f129be4d198a79ea` in an isolated release branch.
+- [x] Seal the original dirty source-release work at
+      `616955232d91aa322da66cb21a8865ec686ba87f` with its SHA-256 inventory.
+- [x] Integrate `b368cdcf208d04509717826bc6b0ab7e7b72ba7e` through the two-parent
+      merge `4260ed862a74fee094b9a94c42ffe95fd7fe4c64`, resolving only the two
+      recorded overlaps by meaning; the integration cohort reported `57 passed`.
 - [x] Audit top-level entry point, dependency and asset licenses, workflow triggers,
       packaging instructions, public-repository distance, and claim boundaries.
 - [x] Obtain owner approval for the GPL-3.0-only, source-only path.
@@ -20,16 +43,27 @@ evidence is used instead.
 - [x] Add exact Windows/Python dependency constraints and a bounded judge smoke path.
 - [x] Draft a sub-three-minute English demo, subtitles, screenshot plan, and Devpost
       technical fields.
-- [ ] Verify the demo path against the final live GUI and correct any screen wording.
-- [ ] Create a fresh constrained Python 3.12 environment from the README commands.
-- [ ] Build and inspect source metadata/archive contents.
-- [ ] Run the judge engine smoke, public-data smoke, and Research OS test cohort.
-- [ ] Run the full local quality gate once with explicit Rscript, local PyInstaller
-      build, packaged smokes, and slow statistical checks.
-- [ ] Record exact exit codes, test counts, durations, artifact size, and SHA-256 in
-      `VERIFICATION.md`; retain warnings and skips.
-- [ ] Run final documentation-link, prohibited-claim, whitespace, and Git-state audit.
-- [ ] Commit the release artifacts and final verification record locally.
+- [x] Retarget the written demo to the Royal Blue workflow, Variable Meaning Gate,
+      source read-only boundary, separate Run, and post-Run Word export.
+- [x] Audit the final integrated demo path in the live Windows GUI and record the
+      exact direct-observation boundary separately from the test-only fresh Research
+      OS path and Word-file creation evidence.
+- [x] Create a fresh constrained Python 3.12 environment from the README commands.
+- [x] Build and inspect final local wheel metadata and license contents; do not publish
+      the wheel as a submission artifact.
+- [x] Run the isolated judge engine smoke, public-data smoke, and four-file Research OS
+      cohort; copy the engine input below `.tmp` so generated reports do not touch the
+      fixture tree.
+- [x] Let one merged-tree all-tests observation finish and retain its failed result;
+      separate the wrong-R, sandbox-TEMP, timeout, and real localization outcomes
+      without relaxing any threshold.
+- [x] Run the corrected final non-gallery suite with explicit R 4.5.3, the local
+      PyInstaller build, all three packaged smokes, and slow statistical checks.
+- [x] Record exact exit codes, test counts, durations, artifact size, SHA-256,
+      warnings, skips, and the non-stable visual boundary in `VERIFICATION.md`.
+- [x] Run final documentation-link, prohibited-claim, whitespace, and Git-state audit.
+- [x] Commit the release artifacts and final verification record locally in the same
+      atomic closure represented by this checklist state.
 
 ## Public repository plan
 
@@ -45,33 +79,24 @@ evidence is used instead.
       the commit.
 - [ ] Record the final public default branch and HEAD in `VERIFICATION.md` and Devpost.
 
-## Owner-only actions and safe timing
-
-These are intentionally not delegated to the release agent.
-
-| Owner action | Recommended completion | Hard boundary |
-| --- | --- | --- |
-| In the existing primary core-build task, run `/feedback`, choose to share that existing session, and copy the returned Session ID | by 2026-07-20 12:00 KST | before Devpost submission |
-| Record the approved 2:52 English demo, add matching English subtitles, and upload it as **Public** YouTube | by 2026-07-21 12:00 KST | before 2026-07-22 09:00 KST |
-| Send the Fable-edited story for repository fact-check | as soon as available, preferably by 2026-07-21 12:00 KST | before final paste |
-| Review the signed-out repository/video links and final Devpost preview, then submit | target 2026-07-21 20:00 KST | 2026-07-22 09:00 KST; no edits afterward |
-
-Do not close the existing long-running build task before capturing its `/feedback`
-Session ID. This release-audit task is not the substitute Session ID.
-
 ## Final cross-surface audit
 
-- [ ] README, Devpost story, pitch, captions, and narration describe the same six-task
+- [x] README, repository Devpost story, pitch, captions, and narration describe the same six-task
       scope and source-only artifact.
-- [ ] Codex/GPT-5.6 are described as meaningful build-time collaborators, not runtime
+- [x] Codex/GPT-5.6 are described as meaningful build-time collaborators, not runtime
       analyzers.
-- [ ] Every test count, commit, and hash has exactly one matching repository record.
-- [ ] B4-R numbers remain bound to commit `989d5c5...` and the recorded kit SHA-256.
-- [ ] B5 remains **pending** unless a separate measured protocol is later completed.
-- [ ] Zero verified external routes, incomplete full bilingual support, unvalidated
+- [x] Every test count, commit, and hash has a matching repository evidence record.
+- [x] B4-R numbers remain bound to commit `989d5c5...` and the recorded kit SHA-256.
+- [x] B5 remains **pending** unless a separate measured protocol is later completed.
+- [x] Zero verified external routes, incomplete full bilingual support, unvalidated
       recommendations, unproven expert/SPSS parity, and incomplete accessibility remain
       explicit.
-- [ ] No new feature work was introduced during release closure.
+- [x] Imported source cells remain documented as read-only; transformations are new
+      steps/variables and changed source values require re-import and review.
+- [x] Mixed cold-render observations remain explicitly uncharacterized; neither the
+      roughly 200–217 ms passes nor the roughly 292–303 ms failures are hidden, and the
+      250 ms gate is unchanged.
+- [x] No new feature work was introduced during release closure.
 
 ## Post-P0 lane
 

@@ -72,6 +72,10 @@ def test_bootstrap_localizes_controller_messages_without_hiding_unknown_details(
         bootstrap.localize("지원하지 않는 모드입니다.", "en")
         == "This mode is not supported."
     )
+    assert bootstrap.localize(
+        "분석 설정을 확정했습니다. 실행 버튼을 눌러야 계산이 시작됩니다.",
+        "en",
+    ) == "The analysis settings were confirmed. Select Run to start the calculation."
     assert bootstrap.localize("engine detail: 42", "en") == "engine detail: 42"
 
 

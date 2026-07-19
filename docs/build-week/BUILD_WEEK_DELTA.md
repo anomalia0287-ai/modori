@@ -1,6 +1,6 @@
 # OpenAI Build Week Delta
 
-Status: source-history audit at the pre-release baseline
+Status: release-lane source-history audit; public default update pending
 
 This project existed before OpenAI Build Week. This document separates prior work
 from work committed during the official submission period. It does not claim that
@@ -28,10 +28,18 @@ Official rules: <https://openai.devpost.com/rules>
 | Public default branch observed at audit | `release/readiness-1-9` |
 | Public default HEAD observed at audit | `0413059b993ae5bb28190907badb7733d94f3f64` |
 | Integrated source baseline for this release lane | `eaa0e802a0c64f6619297432f129be4d198a79ea` |
+| Sealed source-submission baseline | `616955232d91aa322da66cb21a8865ec686ba87f` |
+| Functional-usability candidate | `b368cdcf208d04509717826bc6b0ab7e7b72ba7e` |
+| Local two-parent functional integration | `4260ed862a74fee094b9a94c42ffe95fd7fe4c64` |
 | Last pre-cutoff commit selected by timestamp traversal | `cf068cad748b409737aded844b1e4afb442d181a` |
 | Commit time of that pre-cutoff record | `2026-07-13T05:05:10+09:00` |
 | Post-cutoff commits reachable from the integrated baseline | 127 |
 | Integrated baseline distance from the audited public HEAD | 285 commits |
+
+At the local functional integration `4260ed8`, the same commands report 141
+post-cutoff commits and a 299-commit distance from the audited public HEAD. Later
+submission-evidence commits are additional post-cutoff work; they do not reclassify
+pre-existing foundations as eligible work.
 
 The 127 count is the result at `eaa0e80`, before the Build Week submission-document
 commits on the current release branch. Those later release-only commits are additional
@@ -83,9 +91,11 @@ representative anchors, not an attempt to hide intermediate commits or review fi
 ### 1. Usable Windows research surface
 
 The existing shell was materially redesigned and then reconciled through multiple
-actual-QML review passes. The work includes the cream/nacre and later Aurora Glass
-surface, contained grid scrolling, visible settings, improved import/work/result and
-transform surfaces, and clearer experimental guidance.
+actual-QML review passes. The work includes the cream/nacre and Aurora Glass passes,
+followed by the integrated Royal Blue entry and workspace, contained grid scrolling,
+visible settings, improved import/work/result and transform surfaces, session-level
+Korean/English controls across the reviewed workflow, and clearer experimental
+guidance.
 
 Representative commits:
 
@@ -94,7 +104,10 @@ Representative commits:
 - `73d684d` — result and transform surface improvement;
 - `55fbd50` and `92deb5f` — contained data-grid scrolling;
 - `b5aa7f4` and `145ba6e` — wordmark and header treatment; and
-- `ca40471` — final Aurora Glass interface pass.
+- `ca40471` — Aurora Glass interface pass;
+- `70dadf9` — bilingual Royal Blue entry;
+- `e5db816` — Royal Blue workspace reconciliation; and
+- `05b1ede` — entry-mode and variable-editor layout refinement.
 
 ### 2. Bounded deterministic clarification and AnalysisPassport v2
 
@@ -151,6 +164,21 @@ Representative commits:
 The runtime method space remains exactly six local tasks. It has no verified external
 route, no runtime SLM/LLM, and no automatic calculation execution.
 
+The final functional-usability pass adds a dataset-bound Variable Meaning Gate before
+the first durable request commit. It displays recorded metadata and explicitly reports
+an unavailable conceptual definition or unit rather than inferring either. An
+automated actual-QML Korean novice E2E verifies import, metadata review, the meaning
+gate, durable clarification, configuration confirmation without calculation, a
+separate Run, Word export, and fail-closed replanning after metadata drift. That one
+automated path does not
+establish equivalent end-to-end coverage for every task or language.
+
+Representative commits:
+
+- `ed8bcae` — Variable Meaning Gate and authority binding;
+- `17815ef` — duplicate integration-residue cleanup; and
+- `b368cdc` — functional-usability audit and bounded evidence record.
+
 ### 5. Release and constrained-hardware evidence hardening
 
 The live Research OS path received visual population tests, response gates, file-
@@ -186,12 +214,18 @@ mismatches that narrower component tests had not caught:
 - the run validator accepted only the manual correlation parameter form even though
   the sealed Research OS path emits an engine-supported pair form.
 
-The release branch resolves the first mismatch through a current-pipeline forwarding
-boundary and the second by delegating migration and validation to the correlation
-step's canonical contract. An integration regression test covers import replacement,
-confirmation, insertion into the current pipeline, and Run enablement. These are
-submission-blocking interoperability repairs, not a new statistical method or an
-expansion beyond the six-task scope.
+The sealed release baseline first resolved the import mismatch through a forwarding
+adapter. The later functional integration supersedes that adapter with the more direct
+`pipeline_ops_provider=lambda: owner._services.pipeline_ops` boundary and retains the
+broader real import-to-Word-export E2E. Correlation migration and validation continue
+to delegate to the correlation step's canonical contract. The superseded adapter and
+narrower regression remain recoverable in `6169552`; they are not duplicated in the
+final tree. These are submission-blocking interoperability repairs, not a new
+statistical method or an expansion beyond the six-task scope.
+
+The merge decision and original dirty-file SHA-256 inventory are recorded in
+`docs/build-week/INTEGRATION_LEDGER.md`. The local merge commit `4260ed8` has parents
+`6169552` and `b368cdc`.
 
 ## Codex and GPT-5.6 evidence boundary
 

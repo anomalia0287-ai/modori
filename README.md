@@ -28,12 +28,21 @@ to the current data, show the proposed method and interpretation boundary, and
 prepare the existing deterministic calculation path. A calculation still starts
 only after a separate user action.
 
-The eligible work also includes the revised Windows research surface, authority
-and recovery hardening, and release-path integration. A final packaged-app audit
-found and closed two execution blockers: imported data now keeps Research OS bound
-to the current pipeline, and Research OS correlation preparations are validated by
-the same parameter contract as the calculation engine. Both fixes have regression
-coverage and are included in the fresh release gate below.
+The eligible work also includes the Royal Blue Windows entry/workspace integration,
+session-level Korean/English controls across the reviewed workflow, authority and
+recovery hardening, and release-path integration. Before any durable Research OS
+request is created, a Variable Meaning Gate displays the selected variable keys,
+labels, measurement levels, value labels, missing codes, storage types, and the fact
+that conceptual definitions or units are not recorded when they are unavailable.
+The user must explicitly confirm that dataset-bound review.
+
+An automated actual-QML novice E2E closed three submission-critical boundaries:
+imported data now keeps Research OS bound to the current pipeline; Research OS correlation
+preparations use the calculation engine's canonical validation contract; and Word
+export is available only after a completed separate Run. Changing reviewed variable
+metadata invalidates confirmation, blocks Run, and requires an explicit replan. The
+test covers one complete Korean numeric-distribution path; it does not generalize
+that result to every task or dataset.
 
 The candidate and clarification logic is deterministic. Recommendation evidence
 is labelled `EXPERIMENTAL`, candidate order is not an accuracy ranking, and no
@@ -55,6 +64,11 @@ is enabled by default and can be disabled in Settings. Exported reports are
 written only to a path chosen by the user. Operating-system logs, antivirus
 history, backup software, and cloud-synced folders remain outside Modori's
 control, so this is a code-path description rather than a privacy certification.
+
+The imported source table is read-only in the current UI. Modori does not provide
+spreadsheet-style direct cell editing. Reproducible transformations are appended as
+new pipeline steps and variables; changed source data is imported again and reviewed,
+and any relevant Research OS authority must be reconfirmed or replanned.
 
 ## Verified target
 
@@ -89,9 +103,12 @@ Run the application:
 .\.venv\Scripts\python.exe -m modori.app
 ```
 
-The main application shell is currently Korean-first. On the entry screen,
-choose `CASUAL MODE` or `PRO MODE`, then use `데이터 열기` (Open data). The import
-dialog confirms the detected table before the data enters the workspace.
+The entry screen provides `한국어` and `English` choices. Choose a session language,
+select `CASUAL MODE` or `PRO MODE`, then use `Open data file` (English) or
+`데이터 열기` (Korean). The import dialog confirms the detected table before the
+data enters the workspace. The reviewed entry, work surface, and Research OS path
+react to the session language, but the full application is not claimed to be
+completely bilingual.
 
 Supported import paths are CSV, XLSX, legacy XLS, and SPSS SAV. Some public-data
 CSV layouts with preambles, multi-row headers, aggregate rows, or Korean legacy
@@ -118,11 +135,15 @@ For a GUI walkthrough:
 4. open the Research OS panel and accept the noncausal interpretation boundary;
 5. choose the linear co-movement task and assign `stress` and `sleep_hours` to
    the two variable roles;
-6. answer the bounded clarification prompts about clustering, independence, and
+6. review the Variable Meaning Gate and explicitly confirm the displayed metadata
+   boundary, including any definition or unit that is shown as not recorded;
+7. answer the bounded clarification prompts about clustering, independence, and
    weights for this synthetic sample;
-7. review the experimental Pearson candidate and open its prepared configuration;
-8. confirm the method, roles, missing-data policy, and noncausal boundary; and
-9. start the calculation with the separately enabled Run action.
+8. review the experimental Pearson candidate and open its prepared configuration;
+9. confirm the method, roles, missing-data policy, and noncausal boundary, observing
+   that confirmation itself produces no result; and
+10. start the calculation with the separately enabled Run action, then use the report
+    surface to export Word only after the completed result exists.
 
 For this fixture, the packaged-app audit displayed Pearson `r = -0.995` after
 rounding, `p = 0.000` after display rounding, `n = 16`, and zero excluded rows.
@@ -138,13 +159,26 @@ These commands do not require R and avoid changing user data. They write only
 under the repository's ignored `.tmp` directory.
 
 ```powershell
-New-Item -ItemType Directory -Force .tmp\judge-smoke | Out-Null
-$env:MODORI_CACHE_DIR = (Resolve-Path .tmp\judge-smoke).Path + "\cache"
-$env:MODORI_SETTINGS_PATH = (Resolve-Path .tmp\judge-smoke).Path + "\settings.json"
-$env:MPLCONFIGDIR = (Resolve-Path .tmp\judge-smoke).Path + "\matplotlib"
+$judgeState = (New-Item -ItemType Directory -Force .tmp\judge-smoke).FullName
+New-Item -ItemType Directory -Force `
+  "$judgeState\local-app-data", `
+  "$judgeState\temp", `
+  "$judgeState\cache", `
+  "$judgeState\matplotlib" | Out-Null
+
+$env:LOCALAPPDATA = "$judgeState\local-app-data"
+$env:TEMP = "$judgeState\temp"
+$env:TMP = $env:TEMP
+$env:MODORI_CACHE_DIR = "$judgeState\cache"
+$env:MODORI_SETTINGS_PATH = "$judgeState\settings.json"
+$env:MPLCONFIGDIR = "$judgeState\matplotlib"
+
+Copy-Item `
+  tests\fixtures\recommendation_benchmark\public\pilot\data\pilot-007-correlation.csv `
+  "$judgeState\pilot-007-correlation.csv"
 
 .\.venv\Scripts\python.exe -m modori.app --engine-smoke `
-  tests\fixtures\recommendation_benchmark\public\pilot\data\pilot-007-correlation.csv `
+  "$judgeState\pilot-007-correlation.csv" `
   .tmp\judge-smoke\engine.json
 
 .\.venv\Scripts\python.exe -m modori.app --public-data-smoke `
@@ -154,7 +188,8 @@ $env:MPLCONFIGDIR = (Resolve-Path .tmp\judge-smoke).Path + "\matplotlib"
 .\.venv\Scripts\python.exe -m pytest -q -p no:cacheprovider `
   tests\test_research_os_p1_catalog.py `
   tests\test_research_flow_coordinator.py `
-  tests\ui\test_research_flow_presenter.py
+  tests\ui\test_research_flow_presenter.py `
+  tests\ui\test_research_os_novice_e2e.py
 ```
 
 Success is an exit code of `0`; the two JSON files must contain top-level
@@ -162,8 +197,9 @@ Success is an exit code of `0`; the two JSON files must contain top-level
 
 ## Full local verification
 
-The full suite contains independent Base R reference anchors. For the release
-gate, install R 4.5.x separately and point Modori at its executable:
+The full suite contains independent Base R reference anchors. The final release
+environment uses R 4.5.3, matching the committed factorial-reference metadata;
+install that runtime separately and point Modori at its executable:
 
 ```powershell
 $releaseState = (New-Item -ItemType Directory -Force .tmp\release-state).FullName
@@ -173,7 +209,7 @@ New-Item -ItemType Directory -Force `
   "$releaseState\cache", `
   "$releaseState\matplotlib" | Out-Null
 
-$env:MODORI_RSCRIPT = "C:\path\to\R\bin\Rscript.exe"
+$env:MODORI_RSCRIPT = "C:\path\to\R-4.5.3\bin\Rscript.exe"
 $env:LOCALAPPDATA = "$releaseState\local-app-data"
 $env:TEMP = "$releaseState\temp"
 $env:TMP = $env:TEMP
@@ -223,10 +259,11 @@ Modori is an existing project, so the repository does not present the whole
 application as Build Week work. During the eligible period, Codex with GPT-5.6 was
 used as an engineering collaborator to inspect the existing repository, implement
 and test the bounded deterministic multi-round Research OS flow, challenge data and
-authority boundaries, integrate independently developed histories, harden the
-local benchmark kit, conduct a real packaged-app release-path audit, close two
-contract mismatches exposed by that audit, and audit this submission. The owner retained product,
-licensing, claim, hardware-operation, and release decisions.
+authority boundaries, integrate independently developed histories, reconcile the
+Royal Blue QML surface, add and test the Variable Meaning Gate, harden the local
+benchmark kit, conduct real application and packaged release-path audits, close
+contract mismatches exposed by those audits, and audit this submission. The owner
+retained product, licensing, claim, hardware-operation, and release decisions.
 
 Commit timestamps demonstrate when repository changes were made; they do not by
 themselves prove which model was used. The required `/feedback` Session ID from the
@@ -254,10 +291,16 @@ and [`docs/build-week/RELEASE_CHECKLIST.md`](docs/build-week/RELEASE_CHECKLIST.m
   other statistics package.
 - The product is not evidence of complete statistical-method coverage or complete
   numerical correctness for every possible dataset.
-- The full application UI is not completely bilingual. The main shell is
-  Korean-first; English exists for report output and selected Research OS
-  presentation contracts.
+- The full application UI is not completely bilingual. The reviewed entry, work,
+  import, transform, result, report, and Research OS surfaces have session-level
+  Korean/English coverage, but this is not a complete localization audit of every
+  legacy or exceptional path.
+- Imported source cells cannot be edited directly. Variable metadata and explicit
+  transformation steps are available, but changed source values require re-import.
 - Complete accessibility conformance has not been established.
+- Cold visual-render timing is load-sensitive on the measured development PC. Both
+  sub-250 ms and above-250 ms observations exist, so stable performance is not
+  claimed and the 250 ms gate was not relaxed.
 - B4-R development-PC evidence does not establish a B5 low-cost HP laptop pass.
 - Local execution does not establish research-design validity, causal validity,
   or suitability for a particular real study.

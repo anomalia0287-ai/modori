@@ -15,6 +15,9 @@ UI_MESSAGE_EN: Mapping[str, str] = {
     "분석 결과가 업데이트되었습니다.": "The analysis results were updated.",
     "분석 후보를 찾을 수 없습니다.": "The analysis candidate could not be found.",
     "검토할 분석 후보를 선택했습니다.": "The analysis candidate was selected for review.",
+    "분석 설정을 확정했습니다. 실행 버튼을 눌러야 계산이 시작됩니다.": (
+        "The analysis settings were confirmed. Select Run to start the calculation."
+    ),
     "새 데이터 파일을 열면 현재 분석 단계가 초기화됩니다.": (
         "Opening a new data file will reset the current analysis steps."
     ),
@@ -39,6 +42,9 @@ UI_MESSAGE_EN: Mapping[str, str] = {
     "지원하지 않는 파일 형식입니다.": "This file type is not supported.",
     "파일 미리보기를 만들지 못했습니다.": "The file preview could not be created.",
     "가져올 파일이 선택되지 않았습니다.": "No file was selected for import.",
+    "첫 번째 행을 헤더로 인식했습니다.": (
+        "The first row was recognized as the header."
+    ),
     "표 데이터가 없습니다. 원본 포털에서 CSV 파일을 다시 받거나 표가 있는 시트를 선택해 주세요.": (
         "No table data was found. Download the CSV again from the source portal or select a sheet that contains a table."
     ),
@@ -179,6 +185,9 @@ UI_MESSAGE_EN: Mapping[str, str] = {
     ),
     "상관분석 변수가 변경되었습니다.": (
         "The correlation variables were updated."
+    ),
+    "상관분석 설정이 올바르지 않습니다.": (
+        "The correlation-analysis configuration is invalid."
     ),
     "일원분산분석에는 종속 변수와 집단 변수가 모두 필요합니다.": (
         "One-way ANOVA requires both a dependent variable and a group variable."

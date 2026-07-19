@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import pandas as pd
 
 from modori.ui.importing import ImportPreviewService
@@ -35,6 +37,19 @@ def test_import_preview_service_formats_existing_structure_in_english(tmp_path) 
     assert "Sample rows" in preview.text
     assert "(missing)" in preview.text
     assert not any(token in preview.text for token in ("파일:", "미리보기:", "추론:"))
+
+
+def test_import_preview_localizes_inference_evidence_in_english() -> None:
+    data_path = Path(
+        "tests/fixtures/recommendation_benchmark/public/pilot/data/"
+        "pilot-007-correlation.csv"
+    )
+
+    preview = ImportPreviewService().preview(data_path, language="en")
+
+    assert preview.ok is True
+    assert "Evidence: The first row was recognized as the header." in preview.text
+    assert "첫 번째 행을 헤더로 인식했습니다." not in preview.text
 
 
 def test_import_preview_service_surfaces_xlsx_source_context_and_sample(tmp_path) -> None:

@@ -22,9 +22,9 @@
       <circle cx="150" cy="636" r="8" fill="#c08342"/>
       <text x="180" y="648">Bounded deterministic clarification</text>
       <circle cx="150" cy="708" r="8" fill="#c08342"/>
-      <text x="180" y="720">AnalysisPassport v2 authority</text>
+      <text x="180" y="720">Variable meaning + AnalysisPassport v2</text>
       <circle cx="150" cy="780" r="8" fill="#c08342"/>
-      <text x="180" y="792">Durable local multi-round flow</text>
+      <text x="180" y="792">Durable confirm → Run → Word flow</text>
       <circle cx="150" cy="852" r="8" fill="#c08342"/>
       <text x="180" y="864">Release integration and verification hardening</text>
     </g>

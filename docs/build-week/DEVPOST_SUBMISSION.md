@@ -52,14 +52,20 @@ Welch two-group mean difference, descriptive summary, and frequency distribution
 Research OS flow can:
 
 - collect research intent and variable roles over multiple local rounds;
+- display a dataset-bound Variable Meaning Gate before the first durable request and
+  require explicit confirmation without inferring an unavailable definition or unit;
 - record clarification decisions and their rationale;
 - produce an AnalysisPassport bound to the current dataset and decision state;
 - show an experimental method candidate, roles, and interpretation boundary; and
-- prepare the existing deterministic calculation path without starting it.
+- prepare the existing deterministic calculation path without starting it;
+- export Word only after a completed separate Run; and
+- fail closed into review or replanning when relevant metadata drifts.
 
 A calculation starts only after a separate user action. There is no runtime GPT-5.6,
 LLM, SLM, hosted analysis, telemetry, or verified external route in the current code.
 Application state, recent-file settings, task indexes, and decision ledgers are local.
+The imported source grid is read-only: transformations are recorded as new steps and
+variables, while changed source values are re-imported and reviewed.
 
 ## What existed before Build Week
 
@@ -77,20 +83,25 @@ the meaningful post-cutoff extension rather than the whole historical product.
 
 After July 13, 2026 at 9:00 a.m. Pacific Time, the project was extended with:
 
-1. a substantially revised and repeatedly reviewed Windows research surface;
+1. a substantially revised and repeatedly reviewed Windows research surface,
+   including the integrated Royal Blue entry/workspace and session-level
+   Korean/English controls across the reviewed flow;
 2. bounded deterministic minimax clarification, refusal/replanning behavior, and an
    evidence-backed explanation of why one question ranked ahead of another;
 3. AnalysisPassport v2 authority binding and one-active-passport semantics;
-4. an end-to-end durable local multi-round workflow, exact dataset identity, recovery,
-   asynchronous UI projection, and live QML interaction; and
+4. an end-to-end durable local multi-round workflow, exact dataset identity, a
+   Variable Meaning Gate, recovery, asynchronous UI projection, live QML interaction,
+   post-Run Word export, and fail-closed metadata-drift replanning; and
 5. history-preserving integration plus stronger package, mutation, legacy-path, and
    deterministic benchmark-kit evidence.
 
-The final source-submission audit also used a real packaged application walkthrough.
-It exposed and closed two interoperability blockers between imported pipelines,
-Research OS preparation, correlation validation, and Run enablement. Regression
-coverage now exercises that exact boundary without expanding the six-task method
-space.
+The final source-submission audits used a manual packaged correlation walkthrough and
+one automated actual-QML Korean beginner E2E for numeric distribution. They exposed
+and closed interoperability and authority gaps between imported pipelines, variable
+meanings, Research OS preparation, correlation validation, Run enablement, and Word
+export.
+The two bounded paths are reported separately and do not establish all-task or all-data
+validation.
 
 These are workflow, authority, explanation-fidelity, and release-evidence extensions.
 They do not establish recommendation accuracy or research validity.
@@ -100,8 +111,9 @@ They do not establish recommendation accuracy or research validity.
 Codex with GPT-5.6 acted as a build-time engineering collaborator. It accelerated
 repository-wide contract searches, design alternatives for bounded deterministic
 clarification, adversarial and mutation-oriented test construction, implementation,
-history-preserving integration analysis, QML review, and the final licensing,
-reproducibility, and claim audit.
+history-preserving integration analysis, Royal Blue QML reconciliation, design and
+testing of the Variable Meaning Gate, and the final licensing, reproducibility, and
+claim audit.
 
 The most useful collaboration was not one-shot code generation. Codex repeatedly
 compared intended behavior with executable contracts, found authority and recovery
@@ -124,6 +136,8 @@ the required model-bound session evidence.
   unable to acquire execution authority by itself.
 - Dataset identity, recoverable local state, and one-active-passport rules had to stay
   consistent across services, SQLite ledgers, presenters, and QML.
+- Variable metadata had to be displayed and confirmed without inventing conceptual
+  definitions or units that the dataset did not record.
 - Release evidence had to stay bound to exact commits and hashes. A development-PC
   benchmark result could not be relabelled as an unmeasured low-cost-laptop pass.
 - Dependency licensing favored a source-only GPL-3.0-only release over a rushed
@@ -134,11 +148,17 @@ the required model-bound session evidence.
 - A live, recoverable, local multi-round flow now reaches an exact dataset-bound
   AnalysisPassport, an explicitly reviewed calculation preparation, and a separately
   started result on the public synthetic fixture.
+- One automated actual-QML Korean novice E2E reaches variable-meaning confirmation,
+  explicit configuration confirmation with no calculation, separate Run, Word export,
+  and fail-closed replanning after a metadata change.
 - The candidate boundary remains visible: experimental, no accuracy rank, no automatic
   selection, and no automatic execution.
 - The repository records the Build Week delta, license and third-party notices,
   Windows dependency constraints, synthetic sample, judge smoke path, demo script,
   claim matrix, and verification evidence in one public audit trail.
+- The final release-tree non-gallery suite reported `3290 passed, 5 skipped` in
+  425.65 seconds. A separate all-tests observation and mixed cold-render timings are
+  disclosed in the verification record; stable visual performance is not claimed.
 - The sealed B4-R development-PC kit remains bound to commit
   `989d5c5829e3d3de69ebda0f4fc88e6f76d16112` and SHA-256
   `6f567b327ad53c68eff5f27623e494c1273f9a424e11896e99c5d9f5a0bb8d43`.
@@ -172,7 +192,7 @@ outcomes.
 2. Follow the three setup commands in the top-level `README.md`.
 3. Launch `python -m modori.app` and import the repository's deterministic synthetic
    `pilot-007-correlation.csv` fixture.
-4. Run the two JSON-producing smoke commands and the three-file Research OS pytest
+4. Run the two JSON-producing smoke commands and the four-file Research OS pytest
    cohort under **Judge smoke path** in the README.
 5. Confirm exit code `0` and top-level `"ok": true` in both JSON files.
 
@@ -189,14 +209,15 @@ video.
 
 | Order | Capture | Approved English caption | Acceptance check |
 | --- | --- | --- | --- |
-| 1 | Entry screen with mode choices and local-processing message | **Start locally.** Modori is a Windows-first research workflow; the current runtime has no configured hosted analysis or telemetry route. | No recent-file names or private path visible |
+| 1 | Entry screen with Korean/English controls, mode choices, and local-processing message | **Start locally.** Modori is a Windows-first research workflow; the current runtime has no configured hosted analysis or telemetry route. | No recent-file names or private path visible; do not caption this as complete bilingual support |
 | 2 | Import preview with `stress` and `sleep_hours` | **Review before import.** The demo uses a 16-row deterministic synthetic fixture with no real respondent records. | Filename and both columns legible |
 | 3 | Research OS intake after the noncausal boundary, with linear co-movement and both variable roles | **Bind intent to data.** Research OS P1 supports exactly six bounded local tasks and records roles over multiple rounds. | Boundary, selected task, and two roles visible |
-| 4 | Clarification/rationale or passport state | **Make the decision auditable.** Deterministic clarification and the AnalysisPassport preserve rationale and exact dataset authority. | Do not imply correctness or expert validation |
-| 5 | Candidate/preparation card with experimental and no-auto-run wording | **Review before calculation.** The Pearson candidate is experimental, is not an accuracy rank, and cannot run automatically. | Badge, roles, and boundary legible |
-| 6 | Result/report after the separate Run action | **Run separately, interpret narrowly.** The result summarizes association; it does not establish causality or recommendation validity. | Result visible; no real data or superiority claim |
+| 4 | Variable Meaning Gate with both selected roles | **Confirm recorded meaning.** Modori displays dataset-bound metadata before the first durable request and marks an unavailable definition or unit as not recorded. | Do not imply that Modori inferred semantic meaning |
+| 5 | Clarification/rationale or passport state | **Make the decision auditable.** Deterministic clarification and the AnalysisPassport preserve rationale and exact dataset authority. | Do not imply correctness or expert validation |
+| 6 | Candidate/preparation card with experimental and no-auto-run wording | **Review before calculation.** The Pearson candidate is experimental, is not an accuracy rank, and cannot run automatically. | Badge, roles, boundary, and empty result state legible after confirmation |
+| 7 | Result and Word report surface after the separate Run action | **Run separately, interpret narrowly.** The result summarizes association; Word export follows the completed Run and does not establish causality or recommendation validity. | Result visible; no real data, personal export path, or superiority claim |
 
-Optional seventh image: a plain repository evidence collage showing the top-level
+Optional eighth image: a plain repository evidence collage showing the top-level
 README, `BUILD_WEEK_DELTA.md`, and `VERIFICATION.md`. Do not use a test-terminal image
 unless the command, commit, count, and exit status are all visible and correspond to
 the final release evidence.
@@ -233,4 +254,6 @@ of:
 - [ ] No prebuilt binary, HP pass, full-bilingual, recommendation-accuracy,
       expert-equivalence, SPSS-superiority, complete-accessibility, broad-scope, or
       verified-external-route claim is present.
+- [ ] No screen or caption implies direct source-cell editing or an inferred variable
+      definition/unit.
 - [ ] Owner performs the final Devpost preview and submit action before the deadline.
