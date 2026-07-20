@@ -829,11 +829,14 @@ Record exact paths and hashes in the task handoff, not as a universal release cl
 - [ ] **Step 4: Run the non-gallery UI suite**
 
 ```powershell
-pytest tests/ui -q
+python -m pytest -p no:cacheprovider tests/ui `
+  --ignore=tests/ui/test_research_flow_visual_gallery.py `
+  --basetemp=.test-tmp/u01-ui-nongallery -q
 ```
 
-Expected: exit 0. Any unrelated pre-existing failure is reported with exact command and
-trace; the criterion is not lowered.
+Expected: exit 0. The visual gallery is a separate predeclared evidence boundary; any
+failure in the stated non-gallery command is reported with its exact trace and the
+criterion is not lowered.
 
 - [ ] **Step 5: Mark U-01 closed only if every preservation assertion passes**
 

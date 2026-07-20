@@ -1,7 +1,7 @@
 # Guided Mode Functional Usability Closure Design
 
 **Date:** 2026-07-20
-**Status:** Approved direction; implementation pending
+**Status:** In progress; U-01 verified closed, U-02 active P0
 **Baseline:** `b368cdcf208d04509717826bc6b0ab7e7b72ba7e` on `codex/research-os-functional-usability`
 **Release boundary:** no push, merge, default-branch change, or frozen Build Week artifact replacement
 
@@ -65,8 +65,8 @@ Implementation order follows user cost of failure:
 
 | ID | Problem | Classification and state | Exit condition |
 | --- | --- | --- | --- |
-| U-01 | Word export can silently overwrite | **Active P0 / data loss** | Existing target never changes without explicit replace consent; safe copy is available; DOCX is verified |
-| U-02 | Excel cannot reach sheet selection after a bad default-sheet preview | **Queued blocker / deadline risk** | A parseable workbook retains its path and exposes sheet selection; corrupt input still fails closed |
+| U-01 | Word export can silently overwrite | **Verified closed / data loss prevented** | Existing target never changes without explicit replace consent; safe copy is available; DOCX is verified |
+| U-02 | Excel cannot reach sheet selection after a bad default-sheet preview | **Active P0 / deadline risk** | A parseable workbook retains its path and exposes sheet selection; corrupt input still fails closed |
 | U-03 | `CASUAL MODE` misstates the contract | **Approved quality fix** | Every user-facing selector says `GUIDED MODE`; internal `guided` remains compatible |
 | U-04 | Experimental/no-auto warnings repeat | **Approved warning-fatigue fix** | One entry disclosure plus one quiet status; no duplicate warning in one decision context |
 | U-05 | Abstention looks arbitrary | **Required functional recovery** | Typed reason is visible; causal abstention offers explicit non-causal reframe and direct analysis without changing intent silently |
@@ -79,6 +79,31 @@ Implementation order follows user cost of failure:
 
 Items may move forward when new evidence makes them blockers. They do not disappear
 because a deadline passes.
+
+### 4.1 U-01 closure evidence
+
+Verified on code commit `b8b6839` in this branch. This is a branch claim, not a frozen
+Build Week artifact claim.
+
+- Focused gates: pipeline report `16 passed`; export service `14 passed`; controller
+  replacement `6 passed`; QML/catalog/runtime `44 passed`.
+- Non-gallery UI gate: `775 passed in 70.13s`, exit 0, with workspace-local
+  `--basetemp`. `test_research_flow_visual_gallery.py` remains outside this claim; an
+  earlier unrestricted run reached its fixture with a system-temp permission error.
+- Ruff, compileall, and `git diff --check`: exit 0.
+- Current-source smoke imported
+  `C:\Users\V\.codex\worktrees\3998\TongTong\src\modori\__init__.py` and wrote
+  `C:\Users\V\.codex\worktrees\3998\TongTong\.test-tmp\u01-smoke-current-b884d6eee9874d9b8b0879d0435c19ab\modori-output\report.docx`.
+- Initial and post-cancel file: `76,374` bytes, SHA-256
+  `dc65fe60301cefc959dd69dfffd7a803fdec98c8d36cbe9ec6f59571e385e588`.
+- Approved replacement: valid DOCX ZIP, `76,375` bytes, SHA-256
+  `7ce02ec1637c7d389f1edefc0b05717f5158ed8e6ffad8379d170a9c52178ba5`.
+- Injected post-mutation failure restored the approved file to the same size and
+  SHA-256; no `.backup` file remained.
+
+The safe copy is the same-directory transactional backup used only during an approved
+replacement. It is restored on export or disclosure failure and removed after a
+successful replacement. No arbitrary Save As destination was added.
 
 ## 5. Guided Mode Contract
 
