@@ -1,7 +1,7 @@
 # Guided Mode Functional Usability Closure Design
 
 **Date:** 2026-07-20
-**Status:** In progress; U-01 through U-07 functionally verified closed, U-08 active P0
+**Status:** In progress; U-01 through U-08 functionally verified closed, U-09 active P0
 **Baseline:** `b368cdcf208d04509717826bc6b0ab7e7b72ba7e` on `codex/research-os-functional-usability`
 **Release boundary:** no push, merge, default-branch change, or frozen Build Week artifact replacement
 
@@ -77,8 +77,8 @@ Implementation order follows user cost of failure:
 | U-05 | Abstention looks arbitrary | **Verified closed / reason and bounded recovery visible** | Typed reason is visible; causal abstention offers explicit non-causal reframe and direct analysis without changing intent silently |
 | U-06 | Research OS failure hides cause and next action | **Verified functional closure / actionable recovery** | Sanitized reason, explanation, and state-valid recovery action are visible |
 | U-07 | Long cells and headers cannot be read or resized | **Verified functional closure / inspectability restored** | Bounded auto-fit, manual resize, keyboard fit/reset, and full-text access work in both grids |
-| U-08 | `데이터 넓게 보기` is vague; `데이터 원본 보기` would be false | **Active P0 / required terminology fix** | Copy is `데이터 시트 열기` / `Open data sheet`; no immutable-raw claim |
-| U-09 | Meaning Gate identifies missing metadata but cannot repair it | **Required gate completion** | User reaches the relevant variable setting, saves supported metadata, and receives a newly bound review |
+| U-08 | `데이터 넓게 보기` is vague; `데이터 원본 보기` would be false | **Verified functional closure / current-sheet contract named accurately** | Copy is `데이터 시트 열기` / `Open data sheet`; no immutable-raw claim |
+| U-09 | Meaning Gate identifies missing metadata but cannot repair it | **Active P0 / required gate completion** | User reaches the relevant variable setting, saves supported metadata, and receives a newly bound review |
 | U-10 | Individual erroneous cells cannot be corrected | **Required follow-up; deferred, not abandoned** | Separate approved design supplies previewed, reversible, provenance-bound correction without raw mutation |
 | U-11 | External Fable 5 participation validation is absent | **Separate submission owner; unverified, not abandoned** | Real external outcome is recorded; this branch never fabricates it |
 | U-12 | Production-Windows WorkScreen render p95 is unstable above the 250 ms gallery gate | **Required performance follow-up; retained, not a U-06 semantic regression** | The unchanged 250 ms gate passes reproducibly under a controlled Windows run without weakening fixtures, platform fidelity, or thresholds |
@@ -360,6 +360,45 @@ performance, universal assistive-technology conformance, or broader analysis val
 No wheel, one-folder launcher, frozen Build Week artifact, push, merge, or default
 branch changed. U-08 is now the sole active P0; U-09 through U-12 remain retained, and
 U-10 remains deferred rather than abandoned.
+
+### 4.8 U-08 closure evidence
+
+Verified on implementation commit
+`c80d8467058fbb74a1e1655ef505b9b5bbd32f14` in this branch.
+
+- TDD RED proved that the previous Korean catalog still returned
+  `데이터 넓게 보기` instead of the required `데이터 시트 열기`. The focused catalog
+  contract then passed after the Korean and English values became exactly
+  `데이터 시트 열기` and `Open data sheet`; the same contract rejects `넓게`, `wide`,
+  `원본`, and `raw` in this action's labels.
+- The affected catalog, human-operated flow, QML runtime-load, and app-bootstrap slice
+  passed `49 passed in 25.70s`. Ruff over all source and tests, compileall, and
+  `git diff --check` passed.
+- Independent read-only review reported Critical 0, Important 0, and Minor 0. Its
+  related slice passed `29 passed in 8.12s`. The review confirmed that the WorkScreen
+  button, accessible name, and detached-window title use the same catalog key, and
+  that the detached view still binds `uiController.dataModel` rather than a raw or
+  immutable snapshot.
+- Final full non-gallery regression under normal Windows permissions, isolated local
+  state, Python 3.12.10, and the pinned R 4.5.3 executable passed
+  `3375 passed, 5 skipped in 490.41s`, exit 0. The command excluded only the separately
+  tracked visual-gallery performance test and the historical Royal Blue blob ledger.
+- The current-source Windows UI imported all four columns and two rows of
+  `.visual-qa/u07-audit/long-text-grid-audit.csv`. The visible top action and its
+  accessibility name were both `데이터 시트 열기`; activating it produced a detached
+  window with that exact title. The detached accessibility tree retained all four
+  complete headers and all eight complete cell values, including both long response
+  strings. The before/after comparison showed unchanged data and layout with only the
+  misleading name corrected.
+- Inspected, ignored local evidence is in `.visual-qa/u08-closure/`: the current work
+  view, contextual detached view, detached-window detail, and a matched before/after
+  comparison.
+
+This is branch evidence only. It does not claim a frozen packaged-build replacement or
+that the detached sheet is an immutable raw-data view. No wheel, one-folder launcher,
+frozen Build Week artifact, push, merge, or default branch changed. U-09 is now the
+sole active P0; U-10 through U-12 remain retained, and U-10 remains deferred rather
+than abandoned.
 
 ## 5. Guided Mode Contract
 
