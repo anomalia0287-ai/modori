@@ -99,6 +99,17 @@ def test_report_replacement_copy_names_the_destructive_action() -> None:
     assert UI_STRINGS_EN["dialog.report.replace_existing"] == "Replace existing file"
 
 
+def test_excel_sheet_recovery_copy_names_the_required_action() -> None:
+    assert UI_STRINGS_KO["dialog.import.sheet_recovery"] == (
+        "기본 시트에서 표를 찾지 못했습니다. 표가 있는 시트를 선택하고 "
+        "미리보기를 새로 고치세요."
+    )
+    assert UI_STRINGS_EN["dialog.import.sheet_recovery"] == (
+        "No table was found on the default sheet. Select the sheet that contains "
+        "the table and refresh the preview."
+    )
+
+
 def test_research_os_surface_uses_experimental_and_no_auto_run_vocabulary() -> None:
     assert UI_STRINGS_KO["research.panel.title"] == "Research OS"
     assert UI_STRINGS_KO["research.transformation_first"].startswith(

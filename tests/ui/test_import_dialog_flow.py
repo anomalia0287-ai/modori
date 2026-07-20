@@ -70,9 +70,22 @@ def test_main_qml_uses_import_dialog_before_importing() -> None:
 
     assert "ImportDialog" in main
     assert "uiController.previewDataFilePath" in main
+    assert "uiController.importRecoveryAvailable" in main
     assert "uiController.confirmPendingImport" in main
     assert "uiController.importPreviewText" in dialog
     assert "dialog.import.confirm" in dialog
+
+
+def test_import_dialog_exposes_recovery_sheet_selector() -> None:
+    dialog = qml_text("dialogs/ImportDialog.qml")
+
+    assert "uiController.importRecoveryAvailable" in dialog
+    assert "uiController.importSheetNames" in dialog
+    assert "uiController.importSelectedSheet" in dialog
+    assert "dialog.import.sheet_recovery" in dialog
+    assert "AppComboBox {" in dialog
+    assert "sheetName.currentText" in dialog
+    assert "root.settingsExpanded = uiController.importRecoveryAvailable" in dialog
 
 
 def test_import_corrections_are_progressively_disclosed() -> None:

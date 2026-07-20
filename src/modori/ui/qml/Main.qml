@@ -172,7 +172,8 @@ ApplicationWindow {
         onAccepted: {
             var selectedPath = selectedFile.toString()
             root.runWithLoading(function() {
-                if (uiController.previewDataFilePath(selectedPath)) {
+                var previewReady = uiController.previewDataFilePath(selectedPath)
+                if (previewReady || uiController.importRecoveryAvailable) {
                     importDialog.open()
                 }
             })

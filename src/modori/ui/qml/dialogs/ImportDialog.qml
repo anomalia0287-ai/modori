@@ -39,6 +39,14 @@ Dialog {
         includedColumnNames = next
     }
 
+    function resetSheetSelection() {
+        var names = uiController.importSheetNames
+        var selectedIndex = names.indexOf(uiController.importSelectedSheet)
+        sheetName.currentIndex = selectedIndex >= 0
+            ? selectedIndex
+            : names.length > 0 ? 0 : -1
+    }
+
     function includeAllColumns() {
         var rows = uiController.importColumnRows
         var next = []
@@ -77,8 +85,9 @@ Dialog {
     }
 
     onOpened: {
-        root.settingsExpanded = false
+        root.settingsExpanded = uiController.importRecoveryAvailable
         root.resetIncludedColumns()
+        root.resetSheetSelection()
     }
 
     Connections {
@@ -86,6 +95,7 @@ Dialog {
         function onStateChanged() {
             if (root.opened) {
                 root.resetIncludedColumns()
+                root.resetSheetSelection()
             }
         }
     }
@@ -112,6 +122,16 @@ Dialog {
 
     contentItem: ColumnLayout {
         spacing: theme.spaceMd
+
+        Label {
+            visible: uiController.importRecoveryAvailable
+            text: appBootstrap.text("dialog.import.sheet_recovery", appBootstrap.language)
+            Accessible.name: text
+            color: theme.warning
+            font.bold: true
+            wrapMode: Text.WordWrap
+            Layout.fillWidth: true
+        }
 
         RowLayout {
             Layout.fillWidth: true
@@ -392,10 +412,10 @@ Dialog {
                                         text: appBootstrap.text("dialog.import.sheet_name", appBootstrap.language)
                                     }
 
-                                    AppTextField {
+                                    AppComboBox {
                                         id: sheetName
+                                        model: uiController.importSheetNames
                                         Layout.fillWidth: true
-                                        placeholderText: appBootstrap.text("dialog.import.sheet_name", appBootstrap.language)
                                         Accessible.name: appBootstrap.text("dialog.import.sheet_name", appBootstrap.language)
                                     }
 
@@ -448,7 +468,7 @@ Dialog {
                                             headerRow.value,
                                             headerRows.value,
                                             dataStartRow.value,
-                                            sheetName.text,
+                                            sheetName.currentText,
                                             dropAggregateRows.checked,
                                             dropDuplicateRows.checked,
                                             root.includedColumns()

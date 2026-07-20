@@ -26,6 +26,10 @@ UI_STRINGS_KO = {
     "dialog.import.refresh_preview": "미리보기 갱신",
     "dialog.import.review_accessible": "가져오기 행 판정 검토",
     "dialog.import.review_title": "행 판정 검토",
+    "dialog.import.sheet_recovery": (
+        "기본 시트에서 표를 찾지 못했습니다. 표가 있는 시트를 선택하고 "
+        "미리보기를 새로 고치세요."
+    ),
     "dialog.import.sheet_name": "시트",
     "dialog.import.settings": "가져오기 설정",
     "dialog.import.settings_collapse": "설정 접기",

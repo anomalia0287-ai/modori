@@ -24,6 +24,10 @@ UI_STRINGS_EN = {
     "dialog.import.refresh_preview": "Refresh preview",
     "dialog.import.review_accessible": "Review import row classification",
     "dialog.import.review_title": "Review row classification",
+    "dialog.import.sheet_recovery": (
+        "No table was found on the default sheet. Select the sheet that contains "
+        "the table and refresh the preview."
+    ),
     "dialog.import.sheet_name": "Sheet",
     "dialog.import.settings": "Import settings",
     "dialog.import.settings_collapse": "Collapse settings",
