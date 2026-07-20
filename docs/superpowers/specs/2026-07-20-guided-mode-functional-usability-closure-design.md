@@ -1,7 +1,7 @@
 # Guided Mode Functional Usability Closure Design
 
 **Date:** 2026-07-20
-**Status:** In progress; U-01 through U-06 functionally verified closed, U-07 active P0
+**Status:** In progress; U-01 through U-07 functionally verified closed, U-08 active P0
 **Baseline:** `b368cdcf208d04509717826bc6b0ab7e7b72ba7e` on `codex/research-os-functional-usability`
 **Release boundary:** no push, merge, default-branch change, or frozen Build Week artifact replacement
 
@@ -39,8 +39,11 @@ workflow.
 - Normal Excel files work, including multi-row headers. A recoverable workbook fails
   before the dialog opens when its default sheet is empty or a notice even though a
   data sheet exists.
-- `DataGridView.qml` fixes every column at 120 pixels and right-elides long text. It has
-  no bounded auto-fit or manual resizing.
+- `DataGridView.qml` now uses deterministic, bounded content-fit from the complete
+  header plus at most 40 rows. Automatic widths stay within 96-360 pixels; explicit
+  pointer or keyboard widths stay within 72-640 pixels. Header resizing, keyboard
+  fit/reset, complete tooltip text, and complete accessibility names use the same
+  shared component in the embedded and detached views.
 - The detached table reuses the current `dataModel`; it is not an immutable raw view.
 - Research OS ordinary failures discard actionable detail and render a generic state.
 - Repeated Word export to the same path can silently replace an earlier document.
@@ -73,8 +76,8 @@ Implementation order follows user cost of failure:
 | U-04 | Experimental/no-auto warnings repeat | **Verified closed / warning fatigue removed** | One entry disclosure plus one quiet status; no duplicate warning in one decision context |
 | U-05 | Abstention looks arbitrary | **Verified closed / reason and bounded recovery visible** | Typed reason is visible; causal abstention offers explicit non-causal reframe and direct analysis without changing intent silently |
 | U-06 | Research OS failure hides cause and next action | **Verified functional closure / actionable recovery** | Sanitized reason, explanation, and state-valid recovery action are visible |
-| U-07 | Long cells and headers cannot be read or resized | **Active P0 / required inspectability fix** | Bounded auto-fit, manual resize, keyboard fit/reset, and full-text access work in both grids |
-| U-08 | `데이터 넓게 보기` is vague; `데이터 원본 보기` would be false | **Required terminology fix** | Copy is `데이터 시트 열기` / `Open data sheet`; no immutable-raw claim |
+| U-07 | Long cells and headers cannot be read or resized | **Verified functional closure / inspectability restored** | Bounded auto-fit, manual resize, keyboard fit/reset, and full-text access work in both grids |
+| U-08 | `데이터 넓게 보기` is vague; `데이터 원본 보기` would be false | **Active P0 / required terminology fix** | Copy is `데이터 시트 열기` / `Open data sheet`; no immutable-raw claim |
 | U-09 | Meaning Gate identifies missing metadata but cannot repair it | **Required gate completion** | User reaches the relevant variable setting, saves supported metadata, and receives a newly bound review |
 | U-10 | Individual erroneous cells cannot be corrected | **Required follow-up; deferred, not abandoned** | Separate approved design supplies previewed, reversible, provenance-bound correction without raw mutation |
 | U-11 | External Fable 5 participation validation is absent | **Separate submission owner; unverified, not abandoned** | Real external outcome is recorded; this branch never fabricates it |
@@ -296,6 +299,67 @@ Verified on implementation commit `7c7b7dd` and independent-review correction
 This is branch evidence only. No wheel, one-folder launcher, frozen Build Week
 artifact, push, merge, or default branch changed. U-07 is now the sole active P0;
 U-08 through U-12 remain retained, and U-10 remains deferred rather than abandoned.
+
+### 4.7 U-07 closure evidence
+
+Verified through implementation commits `682687b`, `780a415`, `48dfcd3`, `a33b1cf`,
+`ea6602f`, independent-review correction `7e6ac28`, and final contract correction
+`f31d2282c60e23bf6decdfe73d7169455871baf3` in this branch.
+
+- The shared grid measures the complete header and a deterministic sample of at most
+  40 rows. Automatic widths are clamped to 96-360 pixels, while explicit pointer and
+  keyboard widths are clamped to 72-640 pixels. Explicit widths take precedence only
+  in the current grid instance and are cleared with model replacement.
+- A real QML runtime test sends a native left-button press, seven held-button move
+  events, and release across a header boundary. The actual body column grows by more
+  than 80 pixels and the header width remains equal to it. Keyboard tests prove that
+  a late current row participates in `Ctrl+Shift+F`, `Ctrl+Shift+R` clears the explicit
+  width, and reset keeps the current cell inside the viewport.
+- Header and cell accessibility roles expose complete, unelided names. The keyboard
+  current-cell tooltip contains the complete header and value. The import-column test
+  renders the production `AppCheckBox`, confirms truncation, performs pointer hover,
+  and verifies the exact complete tooltip text.
+- Model-replacement regressions start from a scrolled wide model, replace it, clear
+  explicit widths and stale current coordinates, and prove row 0 / column 0 is visible.
+  Non-finite text measurement has a real QML fallback to the configured width. A
+  deliberately throwing PySide `QAbstractTableModel` callback remains outside this
+  grid boundary because the exception crosses the Qt/QML binding before JavaScript
+  recovery; supported production models must honor the callback contract.
+- Final affected QML, import, flow, runtime, and file-audit slice on `f31d228`:
+  `96 passed in 36.62s`. Ruff, compileall, and `git diff --check`: exit 0.
+- Final independent read-only review on `f31d228`: Critical 0, Important 0, Minor 0;
+  its related slice was `57 passed in 17.74s` and the worktree was clean.
+- Final full non-gallery regression under normal Windows permissions, isolated local
+  state, Python 3.12.10, and the pinned R 4.5.3 executable: `3374 passed, 5 skipped in
+  514.96s`, exit 0. The command excluded only the separately tracked visual-gallery
+  performance test and the historical Royal Blue blob ledger. An earlier run used the
+  wrong R environment-variable name and sandboxed temporary-directory ACLs, producing
+  four R-anchor and three Office-kit failures; all seven passed after the environment
+  defects were reproduced and corrected, and the complete suite was then rerun.
+- The current-source Windows UI imported all four columns of
+  `.visual-qa/u07-audit/long-text-grid-audit.csv`. The import accessibility tree kept
+  each exact long column name. The embedded grid exposed the complete long headers and
+  values; selecting the second long response then invoking `Ctrl+Shift+F` and
+  `Ctrl+Shift+R` displayed the complete header-plus-value tooltip and kept that cell
+  visible. The detached sheet exposed all four complete headers and all eight complete
+  cell values through accessibility.
+- A second actual import of `tests/fixtures/psych_bfi.csv` replaced the 2x4 model with
+  a 30x29 model, returned to the first visible rows and columns, and exposed row 1-15 /
+  30 and column 1-5 / 29. No previous long-grid width or current-cell coordinate leaked.
+- Inspected, ignored local evidence is in `.visual-qa/u07-closure/`: import, embedded,
+  detached, keyboard-reset, and model-replacement captures plus matched 1182x791
+  before/after composites. The embedded comparison changes uniform narrow columns into
+  bounded content-aware columns with horizontal navigation; the detached comparison
+  changes a narrow left-side cluster into a sheet-width distribution with all four
+  columns visible. The Computer Use held-pointer drag did not yield a conclusive visual
+  width delta, so no manual-gesture observation is claimed beyond the native QML
+  pointer regression above.
+
+This is branch evidence only. It does not claim packaged-build parity, stable gallery
+performance, universal assistive-technology conformance, or broader analysis validity.
+No wheel, one-folder launcher, frozen Build Week artifact, push, merge, or default
+branch changed. U-08 is now the sole active P0; U-09 through U-12 remain retained, and
+U-10 remains deferred rather than abandoned.
 
 ## 5. Guided Mode Contract
 
