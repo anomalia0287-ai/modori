@@ -1,7 +1,7 @@
 # Guided Mode Functional Usability Closure Design
 
 **Date:** 2026-07-20
-**Status:** In progress; U-01 through U-04 verified closed, U-05 active P0
+**Status:** In progress; U-01 through U-05 verified closed, U-06 active P0
 **Baseline:** `b368cdcf208d04509717826bc6b0ab7e7b72ba7e` on `codex/research-os-functional-usability`
 **Release boundary:** no push, merge, default-branch change, or frozen Build Week artifact replacement
 
@@ -71,8 +71,8 @@ Implementation order follows user cost of failure:
 | U-02 | Excel cannot reach sheet selection after a bad default-sheet preview | **Verified closed / import blocker removed** | A parseable workbook retains its path and exposes sheet selection; corrupt input still fails closed |
 | U-03 | `CASUAL MODE` misstates the contract | **Verified closed / guided contract named accurately** | Every user-facing selector says `GUIDED MODE`; internal `guided` remains compatible |
 | U-04 | Experimental/no-auto warnings repeat | **Verified closed / warning fatigue removed** | One entry disclosure plus one quiet status; no duplicate warning in one decision context |
-| U-05 | Abstention looks arbitrary | **Active P0 / required functional recovery** | Typed reason is visible; causal abstention offers explicit non-causal reframe and direct analysis without changing intent silently |
-| U-06 | Research OS failure hides cause and next action | **Required functional recovery** | Sanitized reason, explanation, and state-valid recovery action are visible |
+| U-05 | Abstention looks arbitrary | **Verified closed / reason and bounded recovery visible** | Typed reason is visible; causal abstention offers explicit non-causal reframe and direct analysis without changing intent silently |
+| U-06 | Research OS failure hides cause and next action | **Active P0 / required functional recovery** | Sanitized reason, explanation, and state-valid recovery action are visible |
 | U-07 | Long cells and headers cannot be read or resized | **Required inspectability fix** | Bounded auto-fit, manual resize, keyboard fit/reset, and full-text access work in both grids |
 | U-08 | `데이터 넓게 보기` is vague; `데이터 원본 보기` would be false | **Required terminology fix** | Copy is `데이터 시트 열기` / `Open data sheet`; no immutable-raw claim |
 | U-09 | Meaning Gate identifies missing metadata but cannot repair it | **Required gate completion** | User reaches the relevant variable setting, saves supported metadata, and receives a newly bound review |
@@ -200,6 +200,54 @@ Verified on implementation commit `891db7f` and independent-review correction co
 
 This is branch evidence only. No wheel, one-folder launcher, frozen Build Week
 artifact, push, merge, or default branch changed.
+
+### 4.5 U-05 closure evidence
+
+Verified on implementation commit `950a922`, first independent-review correction
+`4ba879f`, atomic head-guard commit `6c370bf`, and final independent-review correction
+`95060ee` in this branch.
+
+- Guided and Pro views project the sealed passport's typed abstention reason. The
+  exact causal tuple is `unsupported_causal_target` with recovery requirement
+  `declare_noncausal_or_use_external_causal_workflow`; Pro diagnostics are bounded
+  and Guided copy remains plain language.
+- Only that exact causal abstention exposes `reframe_noncausal`. It starts a fresh
+  task at non-causal intake without silently choosing a profile, candidate,
+  preparation, confirmation, or run. The original causal task becomes read-only and
+  its ledger remains byte-for-byte logically unchanged after the later non-causal
+  commit.
+- Independent review first found same-version dataset/head drift gaps and unbounded
+  diagnostics; those were reproduced and corrected. The follow-up found a
+  recover-to-replan race. The final design holds the task-index writer transaction,
+  revalidates the exact recovered `LedgerHead`, and only then creates and installs
+  the replacement. A mismatch leaves the original locator active and creates no new
+  ledger.
+- Final review follow-ups directly exercise mutation between the early verification
+  and transactional guard, reject a guarded cross-identity shortcut before either
+  task changes, and classify ordinary SQLite writer contention as conflict rather
+  than corruption. Final read-only review reported no remaining Critical, Important,
+  or Minor finding and approved U-05 closure.
+- Clean-commit focused race and review regressions on `95060ee`: `6 passed in 4.36s`.
+  Related task-index, task-session, and controller files: `94 passed in 13.26s`.
+  Core Research OS suite under normal Windows: `314 passed in 28.30s`.
+- Final clean-commit non-gallery UI gate with workspace-local `--basetemp`:
+  `800 passed in 64.99s`, exit 0. Ruff, compileall, and `git diff --check`: exit 0.
+- Final production-Windows visual-gallery gate: `13 passed in 41.80s`, exit 0.
+  Its 31-item manifest records source commit
+  `95060ee61eae380195b4efb18a1ae1b8cb9ee3aa`, `production-windows`, and zero
+  horizontal overflow, missing regions, property mismatches, or catalog misses.
+  State-render p95 was `249.755 ms` against the unchanged `250 ms` gate; interaction
+  p95 was `31.611 ms`. Manifest SHA-256:
+  `b14d60d9e6aca249f133fd36bb2adfbf52d23cc44e1052d9332ca46e0c4e26f6`.
+- The actual runtime audit reached causal intent, committed causal abstention,
+  explicit non-causal reframe, fresh Variable Meaning Gate, and a later ordinary
+  non-causal commit. The original passport, events, artifacts, and head remained
+  unchanged; no candidate or preparation appeared before that new commit.
+
+This is branch evidence only. No wheel, one-folder launcher, frozen Build Week
+artifact, push, merge, or default branch changed. U-06 is now the sole active P0;
+U-07 through U-11 remain retained follow-ups, and U-10 remains deferred rather than
+abandoned.
 
 ## 5. Guided Mode Contract
 
