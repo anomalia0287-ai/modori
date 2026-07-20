@@ -16,6 +16,7 @@ from modori.research_flow import (
 )
 from modori.research_memory import (
     DecisionLedgerStore,
+    LedgerHead,
     ResearchMemoryCoordinator,
     ResearchTaskIndex,
     ResearchTaskState,
@@ -410,6 +411,29 @@ def test_same_fingerprint_correction_allocates_next_ordinal_and_preserves_histor
         corrected.record.task_project_id,
     ) as new:
         assert new.verify(full_integrity=True).head.sequence == 0
+
+
+def test_same_fingerprint_replan_rejects_a_changed_expected_ledger_head(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _set_local_app_data(tmp_path, monkeypatch)
+    identity = _identity()
+    session = _session("task:first", "task:must-not-be-used")
+    previous = session.open_or_allocate(identity, expected_active_task_id=None)
+    expected_head = LedgerHead.genesis()
+    _initialize(previous)
+
+    with pytest.raises(TaskSessionConflictError, match="head"):
+        session.start_replan(
+            previous,
+            identity,
+            expected_previous_head=expected_head,
+        )
+
+    with ResearchTaskIndex.open_or_create() as index:
+        assert index.get("task:first") == previous.record
+        assert index.verify(full_integrity=True).row_count == 1
 
 
 def test_dataset_drift_allocates_new_identity_and_marks_previous_readonly(

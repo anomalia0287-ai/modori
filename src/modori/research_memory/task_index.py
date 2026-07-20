@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
@@ -719,8 +719,9 @@ class ResearchTaskIndex:
         task_project_id: str,
         created_at_utc: str | None,
         replaces_task_project_id: str | None = None,
+        replace_guard: Callable[[], None] | None = None,
     ) -> ResearchTaskRecord:
-        """Atomically allocate one active task or replace its exact predecessor."""
+        """Atomically allocate or guard and replace one exact predecessor."""
 
         fingerprint_contract_id = _require_contract_id(fingerprint_contract_id)
         dataset_fingerprint = _require_digest(dataset_fingerprint)
@@ -733,6 +734,12 @@ class ResearchTaskIndex:
             replaces_task_project_id = _require_closed_identifier(
                 replaces_task_project_id,
                 field="replaces_task_project_id",
+            )
+        if replace_guard is not None and (
+            replaces_task_project_id is None or not callable(replace_guard)
+        ):
+            raise TaskIndexConflictError(
+                "replace_guard requires one exact replace target"
             )
         self._require_open()
         try:
@@ -771,6 +778,8 @@ class ResearchTaskIndex:
                     raise TaskIndexConflictError(
                         "replace target is not the exact current active task"
                     )
+                if replace_guard is not None:
+                    replace_guard()
                 self._connection.execute(
                     "UPDATE research_tasks SET state='readonly' "
                     "WHERE task_project_id=? AND state='active'",
@@ -820,6 +829,10 @@ class ResearchTaskIndex:
                     "task allocation conflicted with durable index state"
                 ) from exc
             raise TaskIndexIntegrityError("task allocation failed closed") from exc
+        except BaseException:
+            if self._connection.in_transaction:
+                self._connection.rollback()
+            raise
 
     def mark_readonly(self, task_project_id: str) -> ResearchTaskRecord:
         """Close one exact active task while preserving its index history."""

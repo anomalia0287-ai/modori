@@ -236,6 +236,42 @@ def test_allocate_and_replace_are_one_ordered_state_transition(
         assert _row_count(index) == 2
 
 
+def test_replace_guard_runs_inside_index_transaction_and_rolls_back_on_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _set_local_app_data(tmp_path, monkeypatch)
+
+    class GuardFailure(RuntimeError):
+        pass
+
+    with ResearchTaskIndex.open_or_create() as index:
+        first = index.allocate(
+            CONTRACT_ID,
+            DIGEST,
+            task_project_id="task:a",
+            created_at_utc=None,
+        )
+
+        def reject_stale_replacement() -> None:
+            assert index._connection.in_transaction
+            raise GuardFailure("durable head changed")
+
+        with pytest.raises(GuardFailure, match="durable head changed"):
+            index.allocate(
+                CONTRACT_ID,
+                DIGEST,
+                task_project_id="task:b",
+                created_at_utc=None,
+                replaces_task_project_id="task:a",
+                replace_guard=reject_stale_replacement,
+            )
+
+        assert index.locate_active(CONTRACT_ID, DIGEST) == first
+        assert index.get("task:b") is None
+        assert _row_count(index) == 1
+
+
 def test_active_conflict_never_spends_an_ordinal_or_overwrites(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

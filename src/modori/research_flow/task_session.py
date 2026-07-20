@@ -332,12 +332,20 @@ class ResearchTaskSessionStore:
         self,
         previous: ResearchTaskHandle,
         new_identity: DatasetIdentity,
+        *,
+        expected_previous_head: LedgerHead | None = None,
     ) -> ResearchTaskHandle:
         """Create a fresh task while preserving and closing the exact prior locator."""
 
         if not isinstance(previous, ResearchTaskHandle):
             raise TaskSessionError("previous must be a ResearchTaskHandle")
         new_identity = self._require_identity(new_identity)
+        if expected_previous_head is not None:
+            if not isinstance(expected_previous_head, LedgerHead):
+                raise TaskSessionError(
+                    "expected_previous_head must be a LedgerHead or null"
+                )
+            expected_previous_head.__post_init__()
         try:
             with ResearchTaskIndex.open_or_create() as index:
                 current_previous = index.get(previous.record.task_project_id)
@@ -364,16 +372,27 @@ class ResearchTaskSessionStore:
                     )
                 if not expected_path.is_file():
                     raise TaskSessionIntegrityError("previous task ledger is missing")
-                try:
-                    with DecisionLedgerStore.open(
-                        expected_path,
-                        previous.record.task_project_id,
-                    ) as previous_ledger:
-                        previous_ledger.verify(full_integrity=True)
-                except (LedgerStoreError, OSError) as exc:
-                    raise TaskSessionIntegrityError(
-                        "previous task ledger failed full verification"
-                    ) from exc
+
+                def verify_previous_ledger() -> None:
+                    try:
+                        with DecisionLedgerStore.open(
+                            expected_path,
+                            previous.record.task_project_id,
+                        ) as previous_ledger:
+                            report = previous_ledger.verify(full_integrity=True)
+                    except (LedgerStoreError, OSError) as exc:
+                        raise TaskSessionIntegrityError(
+                            "previous task ledger failed full verification"
+                        ) from exc
+                    if (
+                        expected_previous_head is not None
+                        and report.head != expected_previous_head
+                    ):
+                        raise TaskSessionConflictError(
+                            "previous task ledger head changed before replan"
+                        )
+
+                verify_previous_ledger()
 
                 active_new = index.locate_active(
                     new_identity.fingerprint_contract_id,
@@ -394,6 +413,10 @@ class ResearchTaskSessionStore:
                     and previous.record.dataset_fingerprint
                     == new_identity.dataset_fingerprint
                 )
+                if expected_previous_head is not None and not same_index_identity:
+                    raise TaskSessionConflictError(
+                        "expected ledger head guard requires the same dataset identity"
+                    )
                 if active_new is None and current_previous.state is not (
                     ResearchTaskState.ACTIVE
                 ):
@@ -412,7 +435,16 @@ class ResearchTaskSessionStore:
                 task_project_id, path, created_at_utc = self._new_task_identity()
                 if task_project_id == previous.record.task_project_id:
                     raise TaskSessionConflictError("replan task ID must be fresh")
-                self._create_verified_empty_ledger(task_project_id, path)
+                replace_guard = None
+                if same_index_identity and expected_previous_head is not None:
+
+                    def prepare_same_identity_replacement() -> None:
+                        verify_previous_ledger()
+                        self._create_verified_empty_ledger(task_project_id, path)
+
+                    replace_guard = prepare_same_identity_replacement
+                else:
+                    self._create_verified_empty_ledger(task_project_id, path)
                 self._poison("before_replan_index_allocate")
                 record = index.allocate(
                     new_identity.fingerprint_contract_id,
@@ -422,6 +454,7 @@ class ResearchTaskSessionStore:
                     replaces_task_project_id=(
                         previous.record.task_project_id if same_index_identity else None
                     ),
+                    replace_guard=replace_guard,
                 )
                 self._poison("after_replan_index_allocate")
                 if (

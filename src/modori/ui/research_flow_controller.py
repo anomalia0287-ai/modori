@@ -45,6 +45,7 @@ from modori.research_flow import (
     map_passport_to_step,
     preflight_mapped_step,
 )
+from modori.research_memory import LedgerHead
 from modori.research_os import (
     AbstainPayload,
     AnswerKind,
@@ -1178,6 +1179,7 @@ class ResearchFlowRuntime:
             causal_record: DurableDecision | None = None
             causal_handle: object | None = None
             previous_identity: DatasetIdentity | None = None
+            expected_previous_head: LedgerHead | None = None
             if require_causal_abstention:
                 record = self._record
                 if isinstance(record, DurableDecision):
@@ -1237,11 +1239,29 @@ class ResearchFlowRuntime:
                     raise ResearchFlowStaleError(
                         "causal abstention is no longer the current durable record"
                     )
-            if self._handle is not None:
-                self._handle = self._session_store.start_replan(
-                    self._handle,
-                    identity,
+                expected_previous_head = LedgerHead(
+                    sequence=causal_record.committed_sequence,
+                    event_hash=causal_record.committed_head_hash,
                 )
+            if self._handle is not None:
+                try:
+                    if expected_previous_head is None:
+                        self._handle = self._session_store.start_replan(
+                            self._handle,
+                            identity,
+                        )
+                    else:
+                        self._handle = self._session_store.start_replan(
+                            self._handle,
+                            identity,
+                            expected_previous_head=expected_previous_head,
+                        )
+                except TaskSessionConflictError as exc:
+                    if expected_previous_head is not None:
+                        raise ResearchFlowStaleError(
+                            "causal abstention changed before replan"
+                        ) from exc
+                    raise
             self._identity = identity
             self._snapshot = snapshot
             self._record = None

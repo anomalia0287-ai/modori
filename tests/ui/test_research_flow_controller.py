@@ -30,6 +30,7 @@ from modori.research_flow import (
 )
 from modori.research_memory import (
     DecisionLedgerStore,
+    LedgerHead,
     ResearchTaskIndex,
     ResearchTaskState,
 )
@@ -1373,6 +1374,56 @@ def test_real_runtime_reframe_rejects_changed_ledger_head_without_mutation(
     )
 
     assert rejected.standard.state is ResearchFlowState.REPLAN_REQUIRED
+    assert runtime._record is causal_record
+    assert runtime._handle is causal_handle
+    with ResearchTaskIndex.open_or_create() as index:
+        assert index.get(causal_handle.record.task_project_id).state is (
+            ResearchTaskState.ACTIVE
+        )
+        assert index.verify(full_integrity=True).row_count == 1
+
+
+def test_real_runtime_reframe_closes_retraction_between_recovery_and_replan(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    runtime, _access = _started_causal_runtime(tmp_path, monkeypatch)
+    causal_record = runtime._record
+    causal_handle = runtime._handle
+    delegate = runtime._session_store
+    assert causal_record is not None
+    assert causal_handle is not None
+    expected_head = LedgerHead(
+        sequence=causal_record.committed_sequence,
+        event_hash=causal_record.committed_head_hash,
+    )
+    received_heads: list[LedgerHead | None] = []
+
+    class RetractingBeforeReplanSession:
+        def start_replan(
+            self,
+            previous,
+            new_identity,
+            *,
+            expected_previous_head=None,
+        ):
+            received_heads.append(expected_previous_head)
+            runtime._coordinator.retract_current(previous)
+            return delegate.start_replan(
+                previous,
+                new_identity,
+                expected_previous_head=expected_previous_head,
+            )
+
+    runtime._session_store = RetractingBeforeReplanSession()
+
+    rejected = runtime.reframe_noncausal(
+        pipeline_version=1,
+        cancel_event=Event(),
+    )
+
+    assert rejected.standard.state is ResearchFlowState.REPLAN_REQUIRED
+    assert received_heads == [expected_head]
     assert runtime._record is causal_record
     assert runtime._handle is causal_handle
     with ResearchTaskIndex.open_or_create() as index:
