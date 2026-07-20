@@ -156,17 +156,16 @@ class ImportPreviewService:
             try:
                 source = read_workbook_source(path, file_type)
             except Exception:
-                pass
-            else:
-                if source.sheet_names:
-                    return ImportPreview(
-                        ok=False,
-                        text=text,
-                        pending_path=path,
-                        recovery_available=True,
-                        sheet_name=source.sheet_name,
-                        sheet_names=source.sheet_names,
-                    )
+                source = None
+            if source is not None and source.sheet_names:
+                return ImportPreview(
+                    ok=False,
+                    text=text,
+                    pending_path=path,
+                    recovery_available=True,
+                    sheet_name=source.sheet_name,
+                    sheet_names=source.sheet_names,
+                )
         return ImportPreview(ok=False, text=text)
 
     @staticmethod
