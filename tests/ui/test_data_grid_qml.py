@@ -300,17 +300,15 @@ def test_fitted_column_width_reads_at_most_forty_rows() -> None:
     _close_grid(view)
 
 
-def test_fitted_column_width_has_a_measurement_error_fallback() -> None:
-    qml = qml_text("components/DataGridView.qml")
-    fitted = qml[
-        qml.index("function fittedColumnWidth"):
-        qml.index("function automaticColumnWidth")
-    ]
+def test_non_finite_text_measurement_falls_back_to_configured_width() -> None:
+    view, root, _body = _render_grid(_GridFixtureModel(), width=520, height=240)
 
-    assert "try {" in fitted
-    assert "if (!isFinite(measured))" in fitted
-    assert "catch (error)" in fitted
-    assert fitted.count("return root.cellWidth") >= 3
+    fallback = float(_qml_value(root, "boundedMeasuredColumnWidth(NaN)"))
+    finite = float(_qml_value(root, "boundedMeasuredColumnWidth(200)"))
+
+    assert fallback == pytest.approx(root.property("cellWidth"), abs=0.5)
+    assert 200 < finite <= 360
+    _close_grid(view)
 
 
 def test_explicit_column_width_controls_actual_width_with_bounds() -> None:

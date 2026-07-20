@@ -1,5 +1,18 @@
+import os
 import re
 from pathlib import Path
+
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+
+from PySide6.QtCore import QObject, QPoint, QPointF, QUrl
+from PySide6.QtGui import QGuiApplication
+from PySide6.QtQml import QQmlComponent
+from PySide6.QtQuick import QQuickItem, QQuickView
+from PySide6.QtTest import QTest
+
+
+def _app() -> QGuiApplication:
+    return QGuiApplication.instance() or QGuiApplication([])
 
 
 def qml_text(relative: str) -> str:
@@ -115,6 +128,72 @@ def test_import_column_picker_exposes_complete_elided_name() -> None:
     assert "ToolTip.visible: hovered && contentItem.truncated" in checkbox
     assert "ToolTip.text: modelData.name" in checkbox
     assert "ToolTip.delay: theme.tooltipDelayMs" in checkbox
+
+
+def test_import_column_tooltip_runtime_exposes_complete_elided_name() -> None:
+    app = _app()
+    view = QQuickView()
+    component = QQmlComponent(view.engine())
+    column_name = "response_text_that_must_remain_readable_after_import"
+    component.setData(
+        f'''\
+import QtQuick
+import QtQuick.Controls
+import "../../src/modori/ui/qml/components"
+
+Item {{
+    width: 180
+    height: 80
+
+    AppCheckBox {{
+        id: probe
+        objectName: "importColumnProbe"
+        width: 150
+        height: 36
+        text: "{column_name}"
+        hoverEnabled: true
+
+        ToolTip {{
+            objectName: "importColumnTooltip"
+            visible: probe.hovered && probe.contentItem.truncated
+            text: probe.text
+            delay: 0
+        }}
+    }}
+}}
+'''.encode(),
+        QUrl.fromLocalFile(str((Path.cwd() / "tests/ui").resolve()) + "/"),
+    )
+
+    assert component.status() == QQmlComponent.Status.Ready, [
+        error.toString() for error in component.errors()
+    ]
+    root = component.create()
+    assert root is not None
+    view.setContent(QUrl(), component, root)
+    view.setGeometry(0, 0, 180, 80)
+    view.show()
+    QTest.qWait(150)
+    app.processEvents()
+
+    probe = root.findChild(QQuickItem, "importColumnProbe")
+    assert probe is not None
+    content_item = probe.property("contentItem")
+    assert content_item.property("truncated") is True
+    scene_point = probe.mapToScene(QPointF(probe.width() - 8, probe.height() / 2))
+    QTest.mouseMove(view, QPoint(round(scene_point.x()), round(scene_point.y())))
+    QTest.qWait(100)
+    app.processEvents()
+
+    tooltip = root.findChild(QObject, "importColumnTooltip")
+    assert probe.property("hovered") is True
+    assert tooltip is not None
+    assert tooltip.property("visible") is True
+    assert tooltip.property("text") == column_name
+
+    view.close()
+    view.deleteLater()
+    app.processEvents()
 
 
 def test_import_dialog_keeps_one_rounded_frame_and_uses_shared_scrollbars() -> None:

@@ -40,6 +40,17 @@ Item {
         return value < 0 ? 0 : value + 1
     }
 
+    function boundedMeasuredColumnWidth(measured) {
+        if (!isFinite(measured)) {
+            return root.cellWidth
+        }
+        return root.clamp(
+            Math.ceil(measured) + theme.gridColumnMeasurePadding,
+            theme.gridColumnAutoMinWidth,
+            theme.gridColumnAutoMaxWidth
+        )
+    }
+
     function headerText(column) {
         if (!root.model || column < 0 || column >= root.model.columnCount()) {
             return ""
@@ -87,11 +98,7 @@ Item {
                 }
                 measured = Math.max(measured, preferredMeasured)
             }
-            return root.clamp(
-                Math.ceil(measured) + theme.gridColumnMeasurePadding,
-                theme.gridColumnAutoMinWidth,
-                theme.gridColumnAutoMaxWidth
-            )
+            return root.boundedMeasuredColumnWidth(measured)
         } catch (error) {
             return root.cellWidth
         }

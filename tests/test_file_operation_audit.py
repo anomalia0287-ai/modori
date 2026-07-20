@@ -115,12 +115,12 @@ def test_pipeline_operations_audit_documents_read_only_report_prediction() -> No
 
     for required_text in (
         "Read-only report-destination write preflight",
-        "trusted pipeline",
-        "filename",
+        "trusted pipeline's `output_dir`",
+        "validated filename",
         "containment",
         "collision",
-        "approved replacement",
-        "unexpected path",
+        "during an explicitly approved replacement",
+        "unexpected exporter path",
         "does not create, write, replace, or delete",
         "actual export",
     ):

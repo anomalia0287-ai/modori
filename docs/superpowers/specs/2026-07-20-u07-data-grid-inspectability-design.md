@@ -101,8 +101,11 @@ For each column loaded by a grid instance:
 5. Cache the result by logical column index for the life of the current model binding.
 
 The provider must not scan the whole dataset or remeasure on every layout call. A null
-model, invalid column, unavailable value, or measurement error falls back to the
-existing configured `cellWidth`.
+model, invalid column, unavailable value, or non-finite text measurement falls back to
+the existing configured `cellWidth`. The supported production model must honor the
+`QAbstractTableModel` contract and not raise from its callbacks: PySide override
+exceptions cross the Qt/QML binding before QML JavaScript can recover, so a deliberately
+throwing model is outside this grid-level fallback boundary.
 
 The QML runtime has been checked directly: the supported `QAbstractTableModel` surface
 can call `rowCount()`, `columnCount()`, `index()`, `data()`, and `headerData()` without a
