@@ -1790,21 +1790,32 @@ class ResearchFlowController(QObject):
 
     @Slot(result=bool)
     def resume(self) -> bool:
-        if self.current_view.state not in {
-            ResearchFlowState.RECOVERY_PENDING,
-            ResearchFlowState.MEMORY_UNAVAILABLE,
-            ResearchFlowState.FAILURE,
-            ResearchFlowState.CANCELLED,
-        }:
+        state = self.current_view.state
+        action = self.current_view.primary_action
+        if (
+            state not in {
+                ResearchFlowState.RECOVERY_PENDING,
+                ResearchFlowState.MEMORY_UNAVAILABLE,
+                ResearchFlowState.FAILURE,
+                ResearchFlowState.CANCELLED,
+            }
+            or action is None
+            or action.command is not ResearchUiCommand.RESUME
+        ):
             return False
         busy_state = (
             ResearchFlowState.COMMITTING
-            if self.current_view.state is ResearchFlowState.RECOVERY_PENDING
+            if state is ResearchFlowState.RECOVERY_PENDING
             else ResearchFlowState.FINGERPRINTING
+        )
+        operation = (
+            self._runtime.resume
+            if state is ResearchFlowState.RECOVERY_PENDING
+            else self._runtime.start
         )
         return self._submit_runtime(
             busy_state,
-            lambda version, cancel_event: self._runtime.resume(
+            lambda version, cancel_event: operation(
                 pipeline_version=version,
                 cancel_event=cancel_event,
             ),

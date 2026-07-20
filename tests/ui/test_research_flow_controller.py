@@ -11,11 +11,13 @@ import pandas as pd
 import pytest
 from docx import Document
 
+import modori.research_flow.coordinator as coordinator_module
 from modori.core import Dataset, Measure, Pipeline, StepResult, Variable
 from modori.research_flow import (
     FINGERPRINT_CONTRACT_ID,
     FINGERPRINT_WORKER_DEADLINE_SECONDS,
     DatasetIdentity,
+    DurablePendingDecision,
     FingerprintCancelled,
     LiveResearchFlowCoordinator,
     ResearchFlowState,
@@ -62,6 +64,7 @@ from tests.ui.test_research_flow_presenter import (
     _generic_abstain_record,
     _labels,
     _preflight,
+    _request,
     _terminal_record,
 )
 from tests.test_research_flow_preflight import _mapping, _valid_dataset
@@ -157,6 +160,35 @@ def _abstain_views(record=None) -> ResearchFlowViews:
             mode=ControllerMode.STANDARD,
             language=Language.KO,
             preflight=None,
+        ),
+    )
+
+
+def _pending_views() -> ResearchFlowViews:
+    request = _request(P1TaskProfile.NUMERIC_DISTRIBUTION)
+    pending = DurablePendingDecision(
+        task_project_id=request.question.envelope.project_id,
+        request=request,
+        committed_event_id="event:pending:controller",
+        committed_sequence=1,
+        committed_head_hash="a" * 64,
+        reason_code="decision_not_committed",
+        _coordinator_seal=coordinator_module._DURABLE_COORDINATOR_SEAL,
+    )
+    return ResearchFlowViews(
+        guided=present_durable_record(
+            pending,
+            mode=ControllerMode.GUIDED,
+            language=Language.KO,
+            preflight=None,
+            variable_labels=None,
+        ),
+        standard=present_durable_record(
+            pending,
+            mode=ControllerMode.STANDARD,
+            language=Language.KO,
+            preflight=None,
+            variable_labels=None,
         ),
     )
 
@@ -1509,8 +1541,21 @@ def test_controller_queues_only_typed_durable_commands() -> None:
             lambda controller: controller.replan(),
         ),
         (
-            _transient_views(ResearchFlowState.MEMORY_UNAVAILABLE),
+            _pending_views(),
             "resume",
+            lambda controller: controller.resume(),
+        ),
+        (
+            _transient_views(ResearchFlowState.MEMORY_UNAVAILABLE),
+            "start",
+            lambda controller: controller.resume(),
+        ),
+        (
+            _transient_views(
+                ResearchFlowState.FAILURE,
+                failure_reason=ResearchFailureReason.LOCAL_RECORD_CONFLICT,
+            ),
+            "start",
             lambda controller: controller.resume(),
         ),
     )
@@ -1540,6 +1585,8 @@ def test_failure_replan_runs_only_when_the_presented_recovery_authorizes_it() ->
         controller.current_view.primary_action.command
         is ResearchUiCommand.REPLAN
     )
+    assert controller.resume() is False
+    assert worker.submissions == []
     assert controller.replan() is True
     assert worker.execute().standard.state is ResearchFlowState.INTAKE_CAUSAL
     assert runtime.calls[-1][0] == "replan"
