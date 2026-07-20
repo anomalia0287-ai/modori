@@ -356,6 +356,60 @@ def test_main_qml_exposes_openable_result_and_report_dialogs() -> None:
         del engine
 
 
+def test_cronbach_explanation_button_tracks_actual_reliability_results(
+    tmp_path,
+) -> None:
+    from modori.ui.contracts import DisplayResult
+    from modori.ui.worker import EngineJobResult
+
+    controller = UiController(
+        reduce_effects=True,
+        settings_store=UiSettingsStore(tmp_path / "settings.json"),
+    )
+    assert controller.setExplainModeEnabled(True) is True
+    engine, root, messages = _load_main_with_warnings(controller)
+    app = _app()
+
+    def publish(kind: str) -> None:
+        display = DisplayResult(
+            result_id=kind,
+            kind=kind,  # type: ignore[arg-type]
+            title_ko="결과",
+            title_en="Result",
+            prose_ko="요약",
+            prose_en="Summary",
+        )
+        assert controller.apply_worker_result(
+            EngineJobResult(
+                run_id=0,
+                pipeline_version=controller.pipeline_version,
+                ok=True,
+                payload=[display],
+            )
+        )
+        app.processEvents()
+
+    try:
+        button = root.findChild(QQuickItem, "cronbachAlphaExplanationButton")
+        assert button is not None
+        assert button.property("visible") is False
+
+        publish("correlation")
+        assert button.property("visible") is False
+
+        publish("reliability")
+        assert button.property("visible") is True
+
+        assert controller.setExplainModeEnabled(False) is True
+        app.processEvents()
+        assert button.property("visible") is False
+        assert _significant_warnings(messages) == []
+    finally:
+        root.deleteLater()
+        app.processEvents()
+        del engine
+
+
 def test_logistic_value_selectors_instantiate_and_require_explicit_choices(
     tmp_path,
 ) -> None:

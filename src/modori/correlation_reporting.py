@@ -6,8 +6,9 @@ from modori.correlation_results import CorrelationResult
 def prose_for_correlation(result: CorrelationResult, language: str = "ko") -> str:
     pair_count = len(result.pairs)
     if language == "en":
+        pair_label = "pair" if pair_count == 1 else "pairs"
         return (
-            f"{result.title_ko} summarized {pair_count} correlation pair(s) "
+            f"This result summarizes {pair_count} correlation {pair_label} "
             f"using {result.missing_policy} deletion. Interpret matrix p-values "
             "with multiple-comparison caution when more than one pair is reviewed."
         )

@@ -32,12 +32,15 @@ def test_correlation_reporting_formats_pair_rows_and_korean_noncausal_prose() ->
     )
 
     prose = prose_for_correlation(result, language="ko")
+    prose_en = prose_for_correlation(result, language="en")
     rows = table_for_correlation(result)
 
     assert "상관" in prose
     assert "영향" not in prose
     assert "예측" not in prose
     assert "affect" not in prose.lower()
+    assert prose_en.startswith("This result summarizes 1 correlation pair ")
+    assert "상관분석" not in prose_en
     assert rows == [
         {
             "x": "스트레스",
@@ -94,6 +97,8 @@ def test_correlation_reporting_includes_multiple_comparison_guidance_for_matrix(
     )
 
     prose = prose_for_correlation(result, language="ko")
+    prose_en = prose_for_correlation(result, language="en")
 
     assert "다중비교" in prose
     assert "조정" in prose
+    assert "This result summarizes 2 correlation pairs " in prose_en

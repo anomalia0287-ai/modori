@@ -127,6 +127,26 @@ def test_validator_handles_dict_style_steps() -> None:
     assert result.ok is True
 
 
+def test_validator_accepts_pair_scoped_correlation_from_research_os() -> None:
+    result = validate(
+        [
+            {
+                "step_type": "stats.correlation",
+                "params": {
+                    "schema_version": 1,
+                    "pairs": [["body_mass_g", "flipper_length_mm"]],
+                    "method": "pearson",
+                    "missing_policy": "pairwise",
+                    "p_adjust": "none",
+                },
+            }
+        ],
+        {"body_mass_g", "flipper_length_mm"},
+    )
+
+    assert result.ok is True
+
+
 def test_validator_rejects_comparison_outcome_equal_group() -> None:
     result = validate(
         [

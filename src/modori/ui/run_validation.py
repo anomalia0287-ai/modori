@@ -239,15 +239,15 @@ class RunConfigurationValidator:
         params: Mapping[str, Any],
         variable_keys: set[str] | None,
     ) -> RunValidationResult:
-        if params.get("schema_version") != 1:
-            return self._invalid("상관분석 파라미터 schema_version이 필요합니다.")
-        variables, error = self._string_list(params.get("variables"), "상관분석 변수")
-        if error is not None:
-            return error
-        if len(variables) < 2:
-            return self._invalid("상관분석에는 두 개 이상의 변수가 필요합니다.")
-        if self._has_duplicates(variables):
-            return self._invalid("상관분석 변수에 중복이 있습니다.")
+        from modori.steps.correlation import CorrelationStep
+
+        try:
+            clean = CorrelationStep.validate_params(
+                CorrelationStep.migrate_params(dict(params))
+            )
+        except (TypeError, ValueError):
+            return self._invalid("상관분석 설정이 올바르지 않습니다.")
+        variables = [str(value) for value in clean["variables"]]
         return self._require_known_variables(variables, variable_keys)
 
     def _validate_anova_oneway(
