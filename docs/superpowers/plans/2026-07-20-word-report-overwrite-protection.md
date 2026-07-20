@@ -4,7 +4,7 @@
 
 **Goal:** Prevent an existing Word report from changing unless the user explicitly confirms replacement, and restore the original bytes if an approved replacement fails.
 
-**Architecture:** `PipelineOperations` predicts the production report destination without writing. `ReportExportService` owns the no-clobber check and same-directory backup/restore transaction. `UiController` retains only the options for the current conflict, while `ReportExportDialog.qml` renders the one destructive-action confirmation. The exporter and provenance publisher remain the only successful write path.
+**Architecture:** UI-managed report steps keep their pipeline/serialization role but defer filesystem publication during ordinary Run. Explicit Word export temporarily activates the report step and restores the deferred pipeline state afterward. `PipelineOperations` predicts the destination, `ReportExportService` owns the no-clobber check and same-directory backup/restore transaction, `UiController` retains only the current conflict options, and QML renders the one destructive-action confirmation.
 
 **Tech Stack:** Python 3.11+, PySide6/QML, python-docx, pytest, pathlib/tempfile/shutil
 
@@ -25,6 +25,7 @@
 
 - `src/modori/ui/contracts.py`: add the explicit replacement authority bit to immutable report options.
 - `src/modori/ui/pipeline_ops.py`: predict the destination used by an existing or temporary Research OS report step without recomputation.
+- `src/modori/steps/reporting.py`: return an in-memory deferred report for UI-managed ordinary Run and publish only when export activates the step.
 - `src/modori/ui/report_export.py`: enforce conflict detection and transactional backup/restore around the exporter and provenance publisher.
 - `src/modori/ui/controller.py`: expose pending-conflict state and clear/confirm slots.
 - `src/modori/ui/report_export_controller.py`: bridge the pending replacement action to QML.
@@ -528,6 +529,164 @@ Expected: all selected tests pass.
 ```powershell
 git add src/modori/ui/controller.py src/modori/ui/report_export_controller.py tests/ui/test_controller.py
 git commit -m "feat: confirm destructive report replacement"
+```
+
+---
+
+### Task 3A: Defer UI-Managed Report Files Until Explicit Export
+
+**Root cause evidence:** `replace_managed_analysis_steps()` adds `ReportStep`; ordinary
+`recompute_and_display_results()` calls `pipeline.recompute(dirty_from=None)`; and
+`ReportStep.compute()` writes fixed `report.docx`. The first filesystem mutation is
+therefore Run, before the export service can inspect the destination.
+
+**Files:**
+- Modify: `src/modori/ui/pipeline_ops.py:133-155,339-430,717-730`
+- Modify: `src/modori/steps/reporting.py:1345-1420`
+- Test: `tests/ui/test_pipeline_ops.py:450-520`
+- Regression: `tests/ui/test_human_operated_qml_flow.py::test_controller_bridge_runs_reference_flow_from_path`
+
+**Interfaces:**
+- Produces report param: `defer_write_until_export: bool` on UI-managed report steps.
+- Produces: ordinary Run returns `ReportResult(docx_path="")` without creating a file.
+- Produces: explicit `PipelineOperations.export_report()` temporarily computes a file,
+  returns its path, and restores deferred params/cache state.
+- Preserves: core/report pipelines without the defer param retain existing behavior.
+
+- [ ] **Step 1: Write the failing Run-versus-export regression**
+
+```python
+def test_ui_managed_report_defers_file_until_explicit_export(tmp_path) -> None:
+    data_path = tmp_path / "survey.csv"
+    _write_reference_slice_csv(data_path)
+    pipeline = build_reference_slice_pipeline(
+        data_path=data_path,
+        output_dir=tmp_path / "legacy-report",
+        mode="guided",
+        preferences=AnalysisPreferences(),
+    )
+    pipeline.recompute(dirty_from=None)
+    ops = PipelineOperations(pipeline)
+    ops.replace_managed_analysis_steps(
+        step_id="reliability",
+        step_type="stats.reliability",
+        params={"items": ["q1", "q2", "q4"], "scale_name": "selected_scale"},
+    )
+    report_step = next(step for step in pipeline.steps if step.id == "report")
+    output_path = tmp_path / "modori-output" / "report.docx"
+
+    assert report_step.params["defer_write_until_export"] is True
+    pipeline.recompute(dirty_from=None)
+    assert output_path.exists() is False
+    assert pipeline.analysis_objects["report"].docx_path == ""
+
+    exported = ops.export_report(ReportExportOptions())
+
+    assert exported == output_path.resolve()
+    assert output_path.is_file()
+    assert report_step.params["defer_write_until_export"] is True
+    assert pipeline.analysis_objects["report"].docx_path == ""
+```
+
+- [ ] **Step 2: Run the test and verify RED at the root cause**
+
+```powershell
+pytest -p no:cacheprovider tests/ui/test_pipeline_ops.py::test_ui_managed_report_defers_file_until_explicit_export -q
+```
+
+Expected: fail because the managed report lacks `defer_write_until_export` and ordinary
+Run creates the file.
+
+- [ ] **Step 3: Add deferred in-memory ReportStep behavior**
+
+In `ReportStep.compute()`, after resolving included results but before resolving output
+paths or rendering charts, build prose/tables and return:
+
+```python
+if bool(self.params.get("defer_write_until_export", False)):
+    return StepResult(
+        analysis=ReportResult(
+            prose=prose,
+            tables=tables,
+            docx_path="",
+            figure_paths={key: [] for key, _ in included_results},
+            apa_template_id="report.apa.v1",
+        )
+    )
+```
+
+Do not call `_safe_report_paths()`, `render_chart()`, or `write_docx()` in the deferred
+branch. Extract a small pure content builder only if needed to keep prose/table logic
+single-sourced. Report steps without the flag follow the unchanged existing path.
+
+- [ ] **Step 4: Mark UI-managed reports deferred and export them transactionally**
+
+Change the factory signature and param:
+
+```python
+def _report_step_for_analysis(
+    self,
+    analysis_step: object,
+    params: dict[str, Any],
+    *,
+    defer_write_until_export: bool = True,
+) -> ReportStep:
+    return ReportStep(
+        # existing id/title/include/output/language fields
+        params={
+            # existing fields
+            "defer_write_until_export": defer_write_until_export,
+        },
+        input_step_ids=[self._step_id(analysis_step)],
+    )
+```
+
+Research OS's temporary export calls the factory with
+`defer_write_until_export=False`.
+
+For an existing deferred report, `export_report()` calls a new helper:
+
+```python
+def _export_deferred_report(
+    self,
+    report_step: object,
+    options: ReportExportOptions,
+) -> Path:
+    original_params = self._step_params(report_step)
+    snapshot = self._snapshot_pipeline_state()
+    try:
+        export_params = self._report_params_for_options(report_step, options)
+        export_params["defer_write_until_export"] = False
+        self._pipeline.edit_params(self._step_id(report_step), export_params)
+        report = self.analysis_objects().get("report")
+        docx_path = getattr(report, "docx_path", None)
+        if not docx_path:
+            raise RuntimeError("ReportStep did not produce a docx path")
+        return Path(docx_path)
+    finally:
+        self._restore_pipeline_state(snapshot)
+        report_step.params = original_params
+```
+
+Use this helper before the legacy persistent-report export path. It leaves the produced
+file in place while restoring pipeline steps, params, analysis objects, and caches.
+
+- [ ] **Step 5: Verify the root test and first explicit export flow**
+
+```powershell
+pytest -p no:cacheprovider tests/ui/test_pipeline_ops.py::test_ui_managed_report_defers_file_until_explicit_export -q
+pytest -p no:cacheprovider tests/ui/test_human_operated_qml_flow.py::test_controller_bridge_runs_reference_flow_from_path -q
+pytest -p no:cacheprovider tests/ui/test_pipeline_ops.py -k "report" -q
+```
+
+Expected: all commands pass. The bridge test proves ordinary Run no longer pre-creates
+the managed file and the first explicit Word export succeeds without conflict.
+
+- [ ] **Step 6: Commit Task 3A**
+
+```powershell
+git add src/modori/ui/pipeline_ops.py src/modori/steps/reporting.py tests/ui/test_pipeline_ops.py
+git commit -m "fix: defer Word files until explicit export"
 ```
 
 ---
