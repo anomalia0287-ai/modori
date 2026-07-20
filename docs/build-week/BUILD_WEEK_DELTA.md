@@ -31,6 +31,10 @@ Official rules: <https://openai.devpost.com/rules>
 | Sealed source-submission baseline | `616955232d91aa322da66cb21a8865ec686ba87f` |
 | Functional-usability candidate | `b368cdcf208d04509717826bc6b0ab7e7b72ba7e` |
 | Local two-parent functional integration | `4260ed862a74fee094b9a94c42ffe95fd7fe4c64` |
+| Historical immutable P0 functional freeze | `b2235dabbe01258ae68be4f49bcbb974777a9578` |
+| Direct documentation audit correction | `8e4e6f91cd05e51fcb5d0f3b0fbd4c0b3ff235bc` |
+| Final claim-fidelity source | `42538443501b817cedd25f858224499f4a97322e` |
+| Package-metadata README child | `35e5d706861a0a4a8d8333c97df5d21a95a52e38` |
 | Last pre-cutoff commit selected by timestamp traversal | `cf068cad748b409737aded844b1e4afb442d181a` |
 | Commit time of that pre-cutoff record | `2026-07-13T05:05:10+09:00` |
 | Post-cutoff commits reachable from the integrated baseline | 127 |
@@ -226,6 +230,30 @@ statistical method or an expansion beyond the six-task scope.
 The merge decision and original dirty-file SHA-256 inventory are recorded in
 `docs/build-week/INTEGRATION_LEDGER.md`. The local merge commit `4260ed8` has parents
 `6169552` and `b368cdc`.
+
+After the immutable `b223` functional freeze and its direct documentation-audit child
+`8e4e6f91`, a final claim-fidelity review found one misleading result affordance. The
+underlying Cronbach's alpha explanation was valid, but its label and visibility could
+be read as a generic explanation of why an analysis had been selected. Commit
+`4253844` added a typed reliability-result gate, hid the affordance for empty,
+correlation, and unsupported results, and relabelled it as Cronbach's alpha help. It
+did not create a passport- or ledger-backed selection rationale, infer provenance, or
+expand the six-task method space.
+
+The first exact non-gallery observation on that working tree retained two failures:
+one expected stale integration-ledger blob binding and one full-suite-only Word publish
+exception. After rebinding the ledger, the actual-QML novice E2E completed in ten
+separate processes, and a fresh exact non-gallery run reported
+`3292 passed, 5 skipped in 367.62s` with pinned R 4.5.3. The Word exception did not
+recur, but is not declared impossible or attributed to load. The README-only child
+`35e5d70` preserves the `4253844` source and tests trees and supplies the metadata for
+the final ignored local package candidate.
+
+A fresh packaged English correlation walkthrough then directly exercised import,
+the Variable Meaning Gate, all three clarifications, configuration confirmation with
+no calculation, a separate Run, the exact result, and actual English Word creation.
+The existing Korean numeric-distribution E2E remains the evidence for metadata-drift
+recovery. These are separate bounded paths, not all-method or full-bilingual evidence.
 
 ## Codex and GPT-5.6 evidence boundary
 

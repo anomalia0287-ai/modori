@@ -1,6 +1,6 @@
 # Devpost Submission Packet
 
-Status: **technical draft; final story edit, URLs, Session ID, and owner review pending**
+Status: **technical evidence frozen; final story edit, public video URL, Session ID, and owner review pending**
 
 This packet is written in English so it can be pasted into Devpost without
 translation. Repository evidence and `CLAIM_MATRIX.md` remain authoritative. The
@@ -17,8 +17,8 @@ official rules and FAQ are:
 | Track | Education |
 | Tagline | A local, auditable path from research intent to a reviewed statistical run. |
 | Repository | `https://github.com/anomalia0287-ai/modori` after the final release commit becomes the public default entry point |
-| Demo video | `[OWNER: paste the final Public YouTube URL]` |
-| Codex Session ID | `[OWNER: run /feedback in the primary build thread and paste the returned Session ID]` |
+| Demo video | Pending owner action: record and supply the final Public YouTube URL before submission |
+| Codex Session ID | Pending owner action: run `/feedback` in the primary build task and supply the returned Session ID |
 | Tested platform | Windows 11 x64 with CPython 3.12.10 |
 | Public artifact | GPL-3.0-only source; no prebuilt executable |
 | Technologies | Python, PySide6/QML, pandas, SciPy, statsmodels, scikit-learn, Pingouin, factor_analyzer, SQLite, PyInstaller, pytest, Ruff, Bandit |
@@ -95,13 +95,18 @@ After July 13, 2026 at 9:00 a.m. Pacific Time, the project was extended with:
 5. history-preserving integration plus stronger package, mutation, legacy-path, and
    deterministic benchmark-kit evidence.
 
-The final source-submission audits used a manual packaged correlation walkthrough and
-one automated actual-QML Korean beginner E2E for numeric distribution. They exposed
-and closed interoperability and authority gaps between imported pipelines, variable
-meanings, Research OS preparation, correlation validation, Run enablement, and Word
-export.
-The two bounded paths are reported separately and do not establish all-task or all-data
-validation.
+The final source-submission audits used a fresh packaged English correlation
+walkthrough and one automated actual-QML Korean beginner E2E for numeric distribution.
+The packaged walkthrough directly covered import, the Variable Meaning Gate, all three
+clarifications, exact configuration confirmation without calculation, a separate Run,
+the correlation result, and actual English Word creation. The Korean E2E separately
+covers metadata drift and fail-closed replanning. The two bounded paths are reported
+separately and do not establish all-task, all-language, or all-data validation.
+
+A final claim-fidelity correction also removed a misleading generic selection-reason
+affordance. Cronbach's alpha help is now available only for an actual reliability
+result. Modori did not gain a passport- or ledger-backed explanation of why an
+arbitrary analysis was selected.
 
 These are workflow, authority, explanation-fidelity, and release-evidence extensions.
 They do not establish recommendation accuracy or research validity.
@@ -156,9 +161,11 @@ the required model-bound session evidence.
 - The repository records the Build Week delta, license and third-party notices,
   Windows dependency constraints, synthetic sample, judge smoke path, demo script,
   claim matrix, and verification evidence in one public audit trail.
-- The final release-tree non-gallery suite reported `3290 passed, 5 skipped` in
-  425.65 seconds. A separate all-tests observation and mixed cold-render timings are
-  disclosed in the verification record; stable visual performance is not claimed.
+- The final claim-fidelity source non-gallery suite reported
+  `3292 passed, 5 skipped` in 367.62 seconds. The earlier immutable `b223` freeze
+  remains recorded at `3290 passed, 5 skipped`; failed observations and mixed
+  cold-render timings are disclosed in the verification record, and stable visual
+  performance is not claimed.
 - The sealed B4-R development-PC kit remains bound to commit
   `989d5c5829e3d3de69ebda0f4fc88e6f76d16112` and SHA-256
   `6f567b327ad53c68eff5f27623e494c1273f9a424e11896e99c5d9f5a0bb8d43`.
@@ -211,11 +218,11 @@ video.
 | --- | --- | --- | --- |
 | 1 | Entry screen with Korean/English controls, mode choices, and local-processing message | **Start locally.** Modori is a Windows-first research workflow; the current runtime has no configured hosted analysis or telemetry route. | No recent-file names or private path visible; do not caption this as complete bilingual support |
 | 2 | Import preview with `stress` and `sleep_hours` | **Review before import.** The demo uses a 16-row deterministic synthetic fixture with no real respondent records. | Filename and both columns legible |
-| 3 | Research OS intake after the noncausal boundary, with linear co-movement and both variable roles | **Bind intent to data.** Research OS P1 supports exactly six bounded local tasks and records roles over multiple rounds. | Boundary, selected task, and two roles visible |
+| 3 | Research OS intake after the noncausal boundary, with linear co-movement and both variable roles drafted | **Draft intent against data.** Research OS P1 supports exactly six bounded local tasks and records reviewed roles over multiple rounds. | Boundary, selected task, and both draft roles visible; do not imply durable authority before meaning confirmation |
 | 4 | Variable Meaning Gate with both selected roles | **Confirm recorded meaning.** Modori displays dataset-bound metadata before the first durable request and marks an unavailable definition or unit as not recorded. | Do not imply that Modori inferred semantic meaning |
 | 5 | Clarification/rationale or passport state | **Make the decision auditable.** Deterministic clarification and the AnalysisPassport preserve rationale and exact dataset authority. | Do not imply correctness or expert validation |
 | 6 | Candidate/preparation card with experimental and no-auto-run wording | **Review before calculation.** The Pearson candidate is experimental, is not an accuracy rank, and cannot run automatically. | Badge, roles, boundary, and empty result state legible after confirmation |
-| 7 | Correlation result and report dialog after the separate Run action | **Run separately, interpret narrowly.** This manual walkthrough reached the report dialog; a separate automated Korean numeric-distribution E2E verified Word-file creation after Run. Neither path establishes causality or recommendation validity. | Result and dialog visible; do not imply that the correlation walkthrough saved a file; no real data, personal export path, or superiority claim |
+| 7 | Correlation result and English report after the separate Run action | **Run separately, interpret narrowly.** This fresh packaged walkthrough created an English Word report after Run; the separate Korean numeric-distribution E2E covers drift and replanning. Neither path establishes causality or recommendation validity. | Result and exported confirmation visible; use only the neutral Public path and do not imply all-method or all-language Word coverage |
 
 Optional eighth image: a plain repository evidence collage showing the top-level
 README, `BUILD_WEEK_DELTA.md`, and `VERIFICATION.md`. Do not use a test-terminal image

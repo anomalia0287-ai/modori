@@ -40,4 +40,4 @@ Only Run starts the calculation. For this synthetic file, Modori reports an asso
 
 11
 00:02:44,000 --> 00:02:55,000
-Here I reach the report dialog, not a saved file. A separate automated Korean numeric-distribution E2E verifies Word export after Run. Full bilingual coverage is not established.
+I save this English report locally after Run. This bounded walkthrough does not establish full bilingual coverage or recommendation validity.

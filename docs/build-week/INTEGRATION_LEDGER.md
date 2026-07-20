@@ -13,6 +13,12 @@ Release branch: `codex/modori-build-week-release-p0`
 | Dirty release baseline | `eaa0e802a0c64f6619297432f129be4d198a79ea` | current HEAD before sealing |
 | Functional-usability candidate | `b368cdcf208d04509717826bc6b0ab7e7b72ba7e` | 12 commits ahead of the same baseline |
 | Merge base | `eaa0e802a0c64f6619297432f129be4d198a79ea` | verified with `git merge-base` |
+| Sealed release-side baseline | `616955232d91aa322da66cb21a8865ec686ba87f` | preserved the original release-side work before integration |
+| Two-parent functional integration | `4260ed862a74fee094b9a94c42ffe95fd7fe4c64` | parents `6169552` and `b368cdc` |
+| Historical immutable functional freeze | `b2235dabbe01258ae68be4f49bcbb974777a9578` | direct child of the integration commit |
+| Documentation audit correction | `8e4e6f91cd05e51fcb5d0f3b0fbd4c0b3ff235bc` | direct `b223` child; source/tests unchanged |
+| Final claim-fidelity source | `42538443501b817cedd25f858224499f4a97322e` | Cronbach result-help gating; no generic selection rationale |
+| Package-metadata README child | `35e5d706861a0a4a8d8333c97df5d21a95a52e38` | README only; source/tests identical to `4253844` |
 
 The release checkout is a linked Git worktree whose Git directory and common directory
 were both resolved successfully. Their personal filesystem paths are intentionally not
@@ -107,7 +113,7 @@ pass. No threshold will be changed for submission.
 - Pre-commit integration cohort: `57 passed in 11.31s` for
   `test_run_validation.py`, `test_research_flow_controller.py`, and
   `test_research_os_novice_e2e.py`.
-- Final release-tree non-gallery suite after the bounded English demo-path fixes:
+- Historical `b223` non-gallery suite after the bounded English demo-path fixes:
   `3290 passed, 5 skipped in 425.65s`, exit code `0`, with R 4.5.3 and isolated
   application state under normal Windows permissions.
 
@@ -117,3 +123,38 @@ The resulting two-parent merge commit is
 `b368cdcf208d04509717826bc6b0ab7e7b72ba7e`. Before commit, three trailing-
 whitespace warnings in two candidate Markdown evidence files were converted to blank
 line separation without changing their wording or product evidence.
+
+## Post-freeze claim-fidelity closure
+
+The later source correction did not modify the integration sequence, shared-path
+count, conflict count, or functional merge decision above. It narrowed a result-help
+claim that had outgrown its implementation:
+
+- `src/modori/ui/controller.py` now exposes a typed gate that is true only when an
+  actual reliability `DisplayResult` exists;
+- empty, correlation, and unsupported result states fail closed;
+- `ResultsPanel.qml` uses that gate for its Cronbach's alpha help button;
+- Korean and English strings describe Cronbach's alpha rather than why an arbitrary
+  analysis was selected; and
+- no passport, ledger, result-summary parsing, candidate guess, or generic selection
+  rationale was introduced.
+
+The shared-path working-tree binding ledger was updated for the changed controller
+and strings blobs while retaining its seven-commit integration sequence and recorded
+conflict set. The first exact non-gallery observation before that rebinding reported
+`2 failed, 3290 passed, 5 skipped in 390.26s`: the stale binding was expected, while a
+Word publish exception appeared only in that full-suite process. The actual-QML
+novice E2E then completed in ten separate processes (`10/10` exit code `0`), and the
+Word exception did not recur in the fresh full run. No impossible-to-recur or
+load-cause claim is made.
+
+The final source at `4253844` completed the exact non-gallery suite with pinned
+R 4.5.3, fresh isolated state, and normal Windows permissions:
+`3292 passed, 5 skipped in 367.62s`, exit code `0`. Compileall, Ruff, Bandit, source
+launch, and pip check returned exit code `0`. One representative gallery contract
+reported `1 passed in 39.19s`; the mixed historical 292–303 ms failures remain the
+controlling reason not to claim stable cold-render performance.
+
+The README-only child `35e5d70` retains the `4253844` source and tests trees. Its
+ignored local package candidate and fresh English packaged-GUI audit are recorded in
+`VERIFICATION.md`; neither artifact is a public binary.

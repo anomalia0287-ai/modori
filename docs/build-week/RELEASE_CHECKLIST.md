@@ -45,9 +45,8 @@ Fable-edited story to this lane as soon as it is available; repository evidence 
       technical fields.
 - [x] Retarget the written demo to the Royal Blue workflow, Variable Meaning Gate,
       source read-only boundary, separate Run, and post-Run Word export.
-- [x] Audit the final integrated demo path in the live Windows GUI and record the
-      exact direct-observation boundary separately from the test-only fresh Research
-      OS path and Word-file creation evidence.
+- [x] Preserve the historical `b223` packaged-GUI observation boundary, including its
+      recovered-task start and report-dialog-only Word evidence.
 - [x] Create a fresh constrained Python 3.12 environment from the README commands.
 - [x] Build and inspect final local wheel metadata and license contents; do not publish
       the wheel as a submission artifact.
@@ -57,9 +56,9 @@ Fable-edited story to this lane as soon as it is available; repository evidence 
 - [x] Let one merged-tree all-tests observation finish and retain its failed result;
       separate the wrong-R, sandbox-TEMP, timeout, and real localization outcomes
       without relaxing any threshold.
-- [x] Run the corrected final non-gallery suite with explicit R 4.5.3, the local
-      PyInstaller build, and all three packaged smokes on the source-under-test later
-      frozen as `b2235dabbe01258ae68be4f49bcbb974777a9578`.
+- [x] Run the corrected historical non-gallery suite with explicit R 4.5.3, the local
+      PyInstaller build, and all three package checks on the source later frozen as
+      `b2235dabbe01258ae68be4f49bcbb974777a9578`.
 - [x] Reattribute `4 passed, 3301 deselected in 28.05s` to the pre-final tree and
       record the independent exact-`b223` slow-statistics result:
       `4 passed, 3302 deselected in 43.91s`, exit code `0`.
@@ -70,6 +69,42 @@ Fable-edited story to this lane as soon as it is available; repository evidence 
 - [x] Run final documentation-link, prohibited-claim, whitespace, and Git-state audit.
 - [x] Preserve `b223` as the immutable functional freeze and commit this minimal
       documentation-only audit correction as its direct child.
+- [x] Preserve `8e4e6f91cd05e51fcb5d0f3b0fbd4c0b3ff235bc` as the direct
+      documentation-audit child of `b223`, with unchanged `src/` and `tests/`.
+- [x] Correct the misleading generic result-help affordance at
+      `42538443501b817cedd25f858224499f4a97322e`: Cronbach's alpha help is
+      visible only for actual reliability results; no passport- or ledger-backed
+      selection rationale was added.
+- [x] Retain the first claim-fidelity non-gallery observation as failed:
+      `2 failed, 3290 passed, 5 skipped in 390.26s`; separate the expected stale
+      integration-ledger binding from the full-suite-only Word publish exception.
+- [x] After rebinding the integration ledger, run the actual-QML novice E2E in ten
+      separate processes (`10/10` exit code `0`) without claiming that the earlier
+      Word exception was impossible or load-caused.
+- [x] Run a fresh exact non-gallery suite on the final source with pinned R 4.5.3,
+      isolated state, and normal Windows permissions:
+      `3292 passed, 5 skipped in 367.62s`, exit code `0`.
+- [x] Run compileall, Ruff, Bandit, source launch, and pip check with exit code `0`;
+      retain the representative gallery result `1 passed in 39.19s` separately from
+      the historically mixed cold-render evidence.
+- [x] Freeze the final package-metadata README child at
+      `35e5d706861a0a4a8d8333c97df5d21a95a52e38`, whose `src/` and `tests/`
+      trees are identical to `4253844`.
+- [x] Build the ignored local final candidate without replacing existing `dist`:
+      wheel SHA-256 `4cbfa9b7f82e3245b3c2ad2d44ddffdfe87b376cf3fa972d1b100961935b3be1`
+      and executable SHA-256
+      `81b76763dcff2faa4f33ea8ec838a3ca6b3492ab7fa2664f984b01edbab2c6b1`.
+- [x] Record the package checks with correct process boundaries: packaged QML/library
+      payload-load 7.525s; actual executable engine smoke 24.230s; actual executable
+      public-data smoke 3.615s; all exit code `0`.
+- [x] Complete a fresh actual-package English/Casual correlation walkthrough from
+      import through Variable Meaning Gate, all three clarifications, confirmation
+      without calculation, separate Run, exact result, and actual English Word
+      creation. Keep metadata-drift recovery bound to the existing numeric E2E.
+- [x] Record the current `35e5d70` slow-statistics result separately from `b223`:
+      `4 passed, 3304 deselected in 34.77s`, exit code `0`.
+- [x] Require a full jump cut around the native input picker because it exposed a
+      personal OneDrive label; use only a neutral Public path in visible evidence.
 
 ## Public repository plan
 
@@ -87,8 +122,9 @@ Fable-edited story to this lane as soon as it is available; repository evidence 
 
 ## Final cross-surface audit
 
-- [x] README, repository Devpost story, pitch, captions, and narration describe the same six-task
-      scope and source-only artifact.
+- [ ] When the final Fable-edited story arrives, verify that README, Devpost story,
+      pitch, captions, and narration describe the same six-task scope and source-only
+      artifact.
 - [x] Codex/GPT-5.6 are described as meaningful build-time collaborators, not runtime
       analyzers.
 - [x] Every test count, commit, and hash has a matching repository evidence record.
