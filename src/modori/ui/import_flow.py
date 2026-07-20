@@ -26,6 +26,9 @@ class UiImportFlow:
         self.drop_duplicate_rows = False
         self.source_columns: tuple[str, ...] = ()
         self.import_selection: dict[str, object] | None = None
+        self.recovery_available = False
+        self.sheet_names: tuple[str, ...] = ()
+        self.selected_sheet_name = ""
         self.language = "ko"
         self._preview_error_ko = ""
 
@@ -53,6 +56,8 @@ class UiImportFlow:
         included_columns: Sequence[object] | None = None,
     ) -> bool:
         previous_pending_path = self.pending_path
+        previous_sheet_names = self.sheet_names
+        previous_selected_sheet = self.selected_sheet_name
         schema: TableSchema | None = None
         selection: ImportSelection | None = None
         if included_columns is not None:
@@ -64,6 +69,8 @@ class UiImportFlow:
                     layout=layout,
                     pending_path=path,
                     previous_pending_path=previous_pending_path,
+                    previous_sheet_names=previous_sheet_names,
+                    previous_selected_sheet=previous_selected_sheet,
                 )
                 return False
             except Exception:
@@ -72,6 +79,8 @@ class UiImportFlow:
                     layout=layout,
                     pending_path=path,
                     previous_pending_path=previous_pending_path,
+                    previous_sheet_names=previous_sheet_names,
+                    previous_selected_sheet=previous_selected_sheet,
                 )
                 return False
             selection = _selection_from_schema(schema, included_columns)
@@ -98,6 +107,8 @@ class UiImportFlow:
                             layout=layout,
                             pending_path=path,
                             previous_pending_path=previous_pending_path,
+                            previous_sheet_names=previous_sheet_names,
+                            previous_selected_sheet=previous_selected_sheet,
                         )
                         return False
                     except Exception:
@@ -106,6 +117,8 @@ class UiImportFlow:
                             layout=layout,
                             pending_path=path,
                             previous_pending_path=previous_pending_path,
+                            previous_sheet_names=previous_sheet_names,
+                            previous_selected_sheet=previous_selected_sheet,
                         )
                         return False
                 if selection is None:
@@ -117,6 +130,11 @@ class UiImportFlow:
             self.drop_duplicate_rows = bool(drop_duplicate_rows)
             self.source_columns = schema.columns if schema is not None else ()
             self.import_selection = _selection_payload(selection) if selection is not None else None
+            self.recovery_available = False
+            self.sheet_names = tuple(getattr(preview, "sheet_names", ()) or ())
+            self.selected_sheet_name = str(
+                getattr(preview, "sheet_name", None) or ""
+            )
             self._preview_error_ko = ""
             if self.table_preview is not None:
                 self.preview_text = self._preview_service.format_preview(
@@ -131,6 +149,13 @@ class UiImportFlow:
                 previous_pending_path=previous_pending_path,
                 schema=schema,
                 selection=selection,
+                recovery_available=bool(
+                    getattr(preview, "recovery_available", False)
+                ),
+                sheet_name=getattr(preview, "sheet_name", None),
+                sheet_names=tuple(getattr(preview, "sheet_names", ()) or ()),
+                previous_sheet_names=previous_sheet_names,
+                previous_selected_sheet=previous_selected_sheet,
             )
         return bool(preview.ok)
 
@@ -171,9 +196,23 @@ class UiImportFlow:
         previous_pending_path: Path | None,
         schema: TableSchema | None = None,
         selection: ImportSelection | None = None,
+        recovery_available: bool = False,
+        sheet_name: str | None = None,
+        sheet_names: tuple[str, ...] = (),
+        previous_sheet_names: tuple[str, ...] = (),
+        previous_selected_sheet: str = "",
     ) -> None:
         self._set_preview_error(message)
-        self.pending_path = previous_pending_path if layout is not None else pending_path
+        if layout is not None:
+            self.pending_path = previous_pending_path
+            self.sheet_names = sheet_names or previous_sheet_names
+            self.selected_sheet_name = previous_selected_sheet
+            self.recovery_available = bool(self.sheet_names)
+        else:
+            self.pending_path = pending_path
+            self.sheet_names = sheet_names
+            self.selected_sheet_name = str(sheet_name or "")
+            self.recovery_available = bool(recovery_available and sheet_names)
         self.table_preview = None
         self.table_layout = None
         self.drop_aggregate_rows = False

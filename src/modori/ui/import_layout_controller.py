@@ -16,7 +16,10 @@ class ImportLayoutControllerMixin:
     def previewDataFilePath(self, path: str) -> bool:
         local_path = local_path_from_qml(path)
         ok = self._services.import_flow.preview(local_path)
-        self._last_error = "" if ok else self._services.import_flow.preview_text
+        recoverable = self._services.import_flow.recovery_available
+        self._last_error = (
+            "" if ok or recoverable else self._services.import_flow.preview_text
+        )
         if not ok:
             self._last_message = ""
         self.stateChanged.emit()
@@ -36,9 +39,10 @@ class ImportLayoutControllerMixin:
         drop_duplicate_rows: bool = False,
         included_columns: list | None = None,
     ) -> bool:
-        pending_path = self._services.import_flow.require_pending_file_path()
+        import_flow = self._services.import_flow
+        pending_path = import_flow.require_pending_file_path()
         if pending_path is None:
-            self._last_error = self._services.import_flow.preview_text
+            self._last_error = import_flow.preview_text
             self._last_message = ""
             self.stateChanged.emit()
             return False
@@ -48,14 +52,17 @@ class ImportLayoutControllerMixin:
             header_row_count=max(1, int(header_row_count)) if header_row_count > 0 else None,
             data_start_row_index=max(0, int(data_start_row) - 1) if data_start_row > 0 else None,
         )
-        ok = self._services.import_flow.preview(
+        effective_columns = included_columns
+        if included_columns == [] and import_flow.table_preview is None:
+            effective_columns = None
+        ok = import_flow.preview(
             pending_path,
             layout=layout,
             drop_aggregate_rows=drop_aggregate_rows,
             drop_duplicate_rows=drop_duplicate_rows,
-            included_columns=included_columns,
+            included_columns=effective_columns,
         )
-        self._last_error = "" if ok else self._services.import_flow.preview_text
+        self._last_error = "" if ok else import_flow.preview_text
         if not ok:
             self._last_message = ""
         self.stateChanged.emit()

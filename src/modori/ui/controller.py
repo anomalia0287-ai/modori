@@ -250,6 +250,18 @@ class UiController(
     def importPreviewText(self) -> str:
         return self._services.import_flow.preview_text
 
+    @Property(bool, notify=stateChanged)
+    def importRecoveryAvailable(self) -> bool:
+        return self._services.import_flow.recovery_available
+
+    @Property("QVariantList", notify=stateChanged)
+    def importSheetNames(self) -> list[str]:
+        return list(self._services.import_flow.sheet_names)
+
+    @Property(str, notify=stateChanged)
+    def importSelectedSheet(self) -> str:
+        return self._services.import_flow.selected_sheet_name
+
     @Property("QVariantList", notify=stateChanged)
     def importReviewRows(self) -> list:
         return review_rows(

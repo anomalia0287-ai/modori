@@ -1,3 +1,22 @@
+from pathlib import Path
+
+
+def _write_recoverable_workbook(path: Path) -> None:
+    from openpyxl import Workbook
+
+    workbook = Workbook()
+    notice = workbook.active
+    notice.title = "안내"
+    notice.append(["이 시트는 안내문입니다."])
+    data = workbook.create_sheet("응답자료")
+    data.append(["id", "score"])
+    data.append([1, 4])
+    data.append([2, 5])
+    workbook.active = 0
+    workbook.save(path)
+    workbook.close()
+
+
 def test_import_preview_lists_variables_and_inferred_measures(tmp_path) -> None:
     from tests.ui.test_end_to_end_ui_flow import write_reference_csv
     from modori.ui.controller import UiController
@@ -39,6 +58,102 @@ def test_confirm_import_without_preview_sets_visible_error() -> None:
 
     assert controller.importPreviewText == "가져올 파일이 선택되지 않았습니다."
     assert controller.lastError == "가져올 파일이 선택되지 않았습니다."
+
+
+def test_bad_default_sheet_retains_workbook_for_explicit_sheet_recovery(
+    tmp_path,
+) -> None:
+    from modori.ui.controller import UiController
+
+    data_path = tmp_path / "recoverable.xlsx"
+    _write_recoverable_workbook(data_path)
+    controller = UiController()
+
+    assert controller.previewDataFilePath(str(data_path)) is False
+    assert controller.importRecoveryAvailable is True
+    assert controller.importSheetNames == ["안내", "응답자료"]
+    assert controller.importSelectedSheet == "안내"
+    assert controller.lastError == ""
+    assert controller.pipeline is None
+    assert controller._services.import_flow.pending_path == data_path
+    assert controller._services.import_flow.table_preview is None
+    assert controller.confirmPendingImport() is False
+
+    assert (
+        controller.previewPendingImportLayout(
+            1, 1, 2, "없는시트", False, False, []
+        )
+        is False
+    )
+    assert controller.importRecoveryAvailable is True
+    assert controller.importSheetNames == ["안내", "응답자료"]
+    assert controller._services.import_flow.pending_path == data_path
+
+    assert (
+        controller.previewPendingImportLayout(
+            1, 1, 2, "응답자료", False, False, []
+        )
+        is True
+    )
+    assert controller.importRecoveryAvailable is False
+    assert controller.importSelectedSheet == "응답자료"
+    assert controller.confirmPendingImport() is True
+    assert controller.dataModel is not None
+    assert controller.dataModel.rowCount() == 2
+    assert controller.dataModel.columnCount() == 2
+    assert controller.pipeline.steps[0].params["table_layout"]["sheet_name"] == (
+        "응답자료"
+    )
+
+
+def test_corrupt_workbook_does_not_expose_sheet_recovery(tmp_path) -> None:
+    from modori.ui.controller import UiController
+
+    data_path = tmp_path / "corrupt.xlsx"
+    data_path.write_bytes(b"not-an-xlsx")
+    controller = UiController()
+
+    assert controller.previewDataFilePath(str(data_path)) is False
+    assert controller.importRecoveryAvailable is False
+    assert controller.importSheetNames == []
+    assert controller.importSelectedSheet == ""
+    assert controller.lastError == "파일 미리보기를 만들지 못했습니다."
+    assert controller._services.import_flow.pending_path is None
+    assert controller.confirmPendingImport() is False
+    assert controller.pipeline is None
+
+
+def test_sheet_recovery_does_not_replace_current_pipeline_before_confirm(
+    tmp_path,
+) -> None:
+    from tests.ui.test_end_to_end_ui_flow import write_reference_csv
+    from modori.ui.controller import UiController
+
+    current_path = tmp_path / "current.csv"
+    write_reference_csv(current_path)
+    recovery_path = tmp_path / "recoverable.xlsx"
+    _write_recoverable_workbook(recovery_path)
+    controller = UiController()
+    assert controller.openDataFilePath(str(current_path)) is True
+    current_pipeline = controller.pipeline
+    current_version = controller.pipeline_version
+    current_frame = controller.pipeline.current_dataset.df.copy(deep=True)
+
+    assert controller.previewDataFilePath(str(recovery_path)) is False
+    assert controller.importRecoveryAvailable is True
+    assert controller.pipeline is current_pipeline
+    assert controller.pipeline_version == current_version
+    assert controller.pipeline.current_dataset.df.equals(current_frame)
+
+    assert (
+        controller.previewPendingImportLayout(
+            1, 1, 2, "응답자료", False, False, []
+        )
+        is True
+    )
+    assert controller.pipeline is current_pipeline
+    assert controller.pipeline_version == current_version
+    assert controller.pipeline.current_dataset.df.equals(current_frame)
 
 
 def test_confirm_import_binds_preview_models_before_analysis_runs(tmp_path) -> None:
