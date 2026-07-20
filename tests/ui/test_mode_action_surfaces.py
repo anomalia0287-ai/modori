@@ -178,9 +178,9 @@ def test_final_mode_entry_loading_and_footer_copy_contract() -> None:
     entry = qml_text("screens/EntryScreen.qml")
     pipeline = qml_text("components/PipelineRail.qml")
 
-    assert UI_STRINGS_KO["entry.guided"] == "CASUAL MODE"
+    assert UI_STRINGS_KO["entry.guided"] == "GUIDED MODE"
     assert UI_STRINGS_KO["entry.standard"] == "PRO MODE"
-    assert UI_STRINGS_KO["work.guided"] == "CASUAL MODE"
+    assert UI_STRINGS_KO["work.guided"] == "GUIDED MODE"
     assert UI_STRINGS_KO["work.standard"] == "PRO MODE"
     assert UI_STRINGS_KO["entry.promise"] == (
         "통계 작업을 위한 선택,\n모도리에 오신 것을 환영합니다."

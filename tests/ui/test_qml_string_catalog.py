@@ -74,8 +74,12 @@ def test_qml_string_catalog_is_complete_and_used() -> None:
 
 
 def test_recommendation_surface_uses_one_persistent_experimental_status() -> None:
-    assert UI_STRINGS_KO["entry.guided"] == "CASUAL MODE"
-    assert UI_STRINGS_KO["work.guided"] == "CASUAL MODE"
+    assert UI_STRINGS_KO["entry.guided"] == "GUIDED MODE"
+    assert UI_STRINGS_KO["work.guided"] == "GUIDED MODE"
+    assert UI_STRINGS_EN["entry.guided"] == "GUIDED MODE"
+    assert UI_STRINGS_EN["work.guided"] == "GUIDED MODE"
+    assert "CASUAL MODE" not in UI_STRINGS_KO.values()
+    assert "CASUAL MODE" not in UI_STRINGS_EN.values()
     assert UI_STRINGS_KO["guide.title"] == "분석 후보 안내"
     assert UI_STRINGS_KO["guide.experimental_status"] == "실험적 · 자동 실행 안 함"
     assert UI_STRINGS_KO["guide.candidate_list"] == "분석 후보 목록"

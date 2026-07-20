@@ -107,7 +107,7 @@ def test_app_bootstrap_exposes_string_catalog() -> None:
 
     bootstrap = AppBootstrap()
 
-    assert bootstrap.text("entry.guided") == "CASUAL MODE"
+    assert bootstrap.text("entry.guided") == "GUIDED MODE"
     assert bootstrap.text("entry.guided_description") == (
         "검증 중인 분석 후보를 단계별로 살펴봅니다. 자동 실행하지 않습니다."
     )
