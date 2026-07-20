@@ -14,11 +14,22 @@ Item {
     property int currentRow: 0
     property int currentColumn: 0
     property bool reduceEffects: false
+    property var automaticColumnWidths: ({})
 
     signal cellActivated(int row, int column, string variableKey, string measureValue)
 
     Theme {
         id: theme
+    }
+
+    TextMetrics {
+        id: headerTextMetrics
+        font.pixelSize: theme.fontCaption
+    }
+
+    TextMetrics {
+        id: cellTextMetrics
+        font.pixelSize: theme.fontBody
     }
 
     function clamp(value, low, high) {
@@ -27,6 +38,59 @@ Item {
 
     function oneBased(value) {
         return value < 0 ? 0 : value + 1
+    }
+
+    function headerText(column) {
+        if (!root.model || column < 0 || column >= root.model.columnCount()) {
+            return ""
+        }
+        var value = root.model.headerData(column, Qt.Horizontal, Qt.DisplayRole)
+        return value === undefined || value === null ? "" : String(value)
+    }
+
+    function cellTextAt(row, column) {
+        if (!root.model || row < 0 || column < 0
+                || row >= root.model.rowCount() || column >= root.model.columnCount()) {
+            return ""
+        }
+        var value = root.model.data(root.model.index(row, column), Qt.DisplayRole)
+        return value === undefined || value === null ? "" : String(value)
+    }
+
+    function fittedColumnWidth(column, preferredRow) {
+        if (!root.model || column < 0 || column >= root.model.columnCount()) {
+            return root.cellWidth
+        }
+        headerTextMetrics.text = root.headerText(column)
+        var measured = headerTextMetrics.advanceWidth
+        var rowCount = root.model.rowCount()
+        var sampleCount = Math.min(rowCount, theme.gridAutoFitSampleRows)
+        var includePreferred = preferredRow >= sampleCount && preferredRow < rowCount
+        var leadingCount = includePreferred ? Math.max(0, sampleCount - 1) : sampleCount
+        for (var row = 0; row < leadingCount; row += 1) {
+            cellTextMetrics.text = root.cellTextAt(row, column)
+            measured = Math.max(measured, cellTextMetrics.advanceWidth)
+        }
+        if (includePreferred) {
+            cellTextMetrics.text = root.cellTextAt(preferredRow, column)
+            measured = Math.max(measured, cellTextMetrics.advanceWidth)
+        }
+        return root.clamp(
+            Math.ceil(measured) + theme.gridColumnMeasurePadding,
+            theme.gridColumnAutoMinWidth,
+            theme.gridColumnAutoMaxWidth
+        )
+    }
+
+    function automaticColumnWidth(column) {
+        var key = String(column)
+        var cached = root.automaticColumnWidths[key]
+        if (cached !== undefined) {
+            return cached
+        }
+        var width = root.fittedColumnWidth(column, -1)
+        root.automaticColumnWidths[key] = width
+        return width
     }
 
     function moveCurrent(rowDelta, columnDelta) {
@@ -238,7 +302,9 @@ Item {
                     boundsMovement: Flickable.StopAtBounds
                     pixelAligned: true
                     model: root.model
-                    columnWidthProvider: function(column) { return root.cellWidth }
+                    columnWidthProvider: function(column) {
+                        return root.automaticColumnWidth(column)
+                    }
                     rowHeightProvider: function(row) { return root.cellHeight }
 
                     onMovementStarted: {

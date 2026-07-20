@@ -248,6 +248,12 @@ QtObject {
     readonly property int splashProgressCycleMs: 1050
     readonly property int tableCellWidth: 120
     readonly property int tableCellHeight: 32
+    readonly property int gridAutoFitSampleRows: 40
+    readonly property int gridColumnAutoMinWidth: 96
+    readonly property int gridColumnAutoMaxWidth: 360
+    readonly property int gridColumnManualMinWidth: 72
+    readonly property int gridColumnManualMaxWidth: 640
+    readonly property int gridColumnMeasurePadding: 24
     readonly property int gridHeaderHeight: 28
     readonly property int gridRowLabelWidth: 56
     readonly property int gridStatusHeight: 28

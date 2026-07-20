@@ -36,6 +36,8 @@ class _GridFixtureModel(QAbstractTableModel):
         self,
         rows: int | tuple[tuple[str, str, tuple[str, ...]], ...] = 2,
         columns: int = 2,
+        *,
+        headers: tuple[str, ...] | None = None,
     ) -> None:
         super().__init__()
         if isinstance(rows, tuple):
@@ -54,6 +56,9 @@ class _GridFixtureModel(QAbstractTableModel):
                 )
                 for row in range(rows)
             )
+        self._headers = headers or tuple(
+            f"col-{column}" for column in range(len(self._rows[0][2]))
+        )
 
     def rowCount(self, parent: QModelIndex = QModelIndex()) -> int:
         if parent.isValid():
@@ -92,8 +97,19 @@ class _GridFixtureModel(QAbstractTableModel):
         if role != Qt.ItemDataRole.DisplayRole:
             return None
         if orientation == Qt.Orientation.Horizontal:
-            return f"col-{section}"
+            return self._headers[section]
         return str(section + 1)
+
+
+class _CountingGridFixtureModel(_GridFixtureModel):
+    def __init__(self, *, rows: int, columns: int) -> None:
+        super().__init__(rows=rows, columns=columns)
+        self.display_calls = 0
+
+    def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole) -> str | None:
+        if role == Qt.ItemDataRole.DisplayRole and index.isValid():
+            self.display_calls += 1
+        return super().data(index, role)
 
 
 def qml_text(relative: str) -> str:
@@ -230,6 +246,39 @@ def _qml_value(item: QQuickItem, expression_text: str) -> object:
     assert not expression.hasError(), expression.error().toString()
     assert not is_undefined
     return value
+
+
+def test_data_grid_uses_bounded_content_aware_automatic_widths() -> None:
+    model = _GridFixtureModel(
+        (
+            ("alpha", "scale", ("A", "A deliberately long response value " * 5)),
+            ("beta", "scale", ("B", "another long response")),
+        ),
+        headers=("id", "response_text_that_must_remain_readable"),
+    )
+    view, _root, body = _render_grid(model, width=720, height=240)
+
+    content_width = float(body.property("contentWidth"))
+    first_width = float(_qml_value(body, "columnWidth(0)"))
+    second_width = float(_qml_value(body, "columnWidth(1)"))
+
+    assert 96 <= first_width <= 360
+    assert 96 <= second_width <= 360
+    assert second_width > first_width
+    assert content_width >= first_width + second_width
+    _close_grid(view)
+
+
+def test_fitted_column_width_reads_at_most_forty_rows() -> None:
+    model = _CountingGridFixtureModel(rows=120, columns=2)
+    view, root, _body = _render_grid(model, width=480, height=240)
+    model.display_calls = 0
+
+    width = float(_qml_value(root, "fittedColumnWidth(0, 119)"))
+
+    assert 96 <= width <= 360
+    assert model.display_calls <= 40
+    _close_grid(view)
 
 
 def test_data_grid_uses_virtualized_table_with_synchronized_headers() -> None:
@@ -508,6 +557,7 @@ def test_truncated_cell_tooltip_matches_hovered_delegate_after_reuse() -> None:
         for row in range(60)
     )
     view, root, body = _render_grid(_GridFixtureModel(rows), width=340, height=180)
+    body.setProperty("contentX", float(_qml_value(body, "columnWidth(0)")))
     body.setProperty("contentY", 40 * root.property("cellHeight"))
     _process_events()
     cell = _visible_grid_delegate(body, row=40, column=1)
