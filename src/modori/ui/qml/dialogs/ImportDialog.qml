@@ -327,6 +327,9 @@ Dialog {
                                     text: modelData.name
                                     checked: root.isColumnIncluded(modelData.name)
                                     Accessible.name: modelData.name
+                                    ToolTip.visible: hovered && contentItem.truncated
+                                    ToolTip.text: modelData.name
+                                    ToolTip.delay: theme.tooltipDelayMs
                                     onToggled: root.setColumnIncluded(modelData.name, checked)
                                 }
                             }

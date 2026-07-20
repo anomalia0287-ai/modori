@@ -104,6 +104,18 @@ def test_import_preview_and_column_picker_keep_bounded_widths() -> None:
     assert "Layout.minimumWidth: theme.importSettingsColumnMinimumWidth" in dialog
 
 
+def test_import_column_picker_exposes_complete_elided_name() -> None:
+    dialog = qml_text("dialogs/ImportDialog.qml")
+    column_section = dialog[dialog.index("id: columnList"):]
+    repeater = _qml_object_block(column_section, "Repeater {")
+    checkbox = _qml_object_block(repeater, "AppCheckBox {")
+
+    assert "Accessible.name: modelData.name" in checkbox
+    assert "ToolTip.visible: hovered && contentItem.truncated" in checkbox
+    assert "ToolTip.text: modelData.name" in checkbox
+    assert "ToolTip.delay: theme.tooltipDelayMs" in checkbox
+
+
 def test_import_dialog_keeps_one_rounded_frame_and_uses_shared_scrollbars() -> None:
     dialog = qml_text("dialogs/ImportDialog.qml")
 
