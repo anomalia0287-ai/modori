@@ -16,7 +16,7 @@ from PySide6.QtCore import (
     Qt,
     QUrl,
 )
-from PySide6.QtGui import QGuiApplication
+from PySide6.QtGui import QAccessible, QGuiApplication
 from PySide6.QtQml import QQmlComponent, QQmlEngine, QQmlExpression
 from PySide6.QtQuick import QQuickItem, QQuickView
 from PySide6.QtTest import QSignalSpy, QTest
@@ -195,8 +195,11 @@ def _render_grid(
 
 
 def _hover_delegate(view: QQuickView, delegate: QQuickItem) -> None:
-    scene_point = delegate.mapToScene(QPointF(delegate.width() / 2, delegate.height() / 2))
+    QTest.mouseMove(view, QPoint(1, max(1, view.height() - 1)))
+    _app().processEvents()
+    scene_point = delegate.mapToScene(QPointF(10, delegate.height() / 2))
     QTest.mouseMove(view, QPoint(round(scene_point.x()), round(scene_point.y())))
+    QTest.qWait(500)
     _process_events()
 
 
@@ -232,6 +235,21 @@ def _grid_headers(root: QQuickItem) -> tuple[QQuickItem, QQuickItem]:
         if child.metaObject().className().startswith("VerticalHeaderView")
     )
     return horizontal, vertical
+
+
+def _visible_header_delegate(header: QQuickItem, *, column: int) -> QQuickItem:
+    content_item = next(
+        child for child in header.childItems()
+        if child.metaObject().className() == "QQuickItem"
+    )
+    delegates = sorted(
+        (
+            child for child in content_item.childItems()
+            if child.metaObject().className().startswith("QQuickRectangle")
+        ),
+        key=lambda child: child.x(),
+    )
+    return delegates[column]
 
 
 def _point(scene_point: QPointF) -> QPoint:
@@ -320,6 +338,116 @@ def test_model_replacement_clears_widths_and_stale_current_cell() -> None:
     assert root.property("currentRow") == 0
     assert root.property("currentColumn") == 0
     _close_grid(view)
+
+
+def test_keyboard_fit_includes_late_current_row_and_reset_clears_explicit_width() -> None:
+    rows = tuple(
+        (
+            f"variable-{row}",
+            "scale",
+            (("late value needing a wider current column" * 6) if row == 49 else "x",),
+        )
+        for row in range(50)
+    )
+    model = _GridFixtureModel(rows, headers=("response",))
+    view, root, body = _render_grid(model, width=520, height=240)
+    original_values = tuple(
+        model.data(model.index(row, 0), Qt.ItemDataRole.DisplayRole)
+        for row in range(model.rowCount())
+    )
+    initial_width = float(_qml_value(body, "columnWidth(0)"))
+    root.setProperty("currentRow", 49)
+    root.setProperty("currentColumn", 0)
+    body.forceActiveFocus()
+
+    QTest.keyClick(view, Qt.Key_F, Qt.ControlModifier | Qt.ShiftModifier)
+    _process_events()
+    fitted_width = float(_qml_value(body, "columnWidth(0)"))
+
+    assert fitted_width > initial_width
+    assert fitted_width <= 360
+    assert tuple(
+        model.data(model.index(row, 0), Qt.ItemDataRole.DisplayRole)
+        for row in range(model.rowCount())
+    ) == original_values
+
+    QTest.keyClick(view, Qt.Key_R, Qt.ControlModifier | Qt.ShiftModifier)
+    _process_events()
+    assert float(_qml_value(body, "explicitColumnWidth(0)")) == -1
+    _close_grid(view)
+
+
+def test_header_and_cell_accessibility_use_unelided_text_and_roles() -> None:
+    header_text = "response_text_that_must_remain_readable"
+    cell_text = "a complete cell value that is intentionally much wider than the grid"
+    model = _GridFixtureModel(
+        (("alpha", "scale", (cell_text,)),),
+        headers=(header_text,),
+    )
+    view, root, body = _render_grid(model, width=180, height=140)
+    horizontal, _vertical = _grid_headers(root)
+    header = _visible_header_delegate(horizontal, column=0)
+    cell = _visible_grid_delegate(body, row=0, column=0)
+
+    header_interface = QAccessible.queryAccessibleInterface(header)
+    cell_interface = QAccessible.queryAccessibleInterface(cell)
+
+    assert header_interface is not None
+    assert header_interface.role() == QAccessible.Role.ColumnHeader
+    assert header_interface.text(QAccessible.Text.Name) == header_text
+    assert cell_interface is not None
+    assert cell_interface.role() == QAccessible.Role.Cell
+    assert cell_interface.text(QAccessible.Text.Name) == cell_text
+    _close_grid(view)
+
+
+def test_keyboard_current_tooltip_contains_complete_header_and_cell() -> None:
+    header_text = "response_text_that_must_remain_readable"
+    cell_text = "a complete cell value that is intentionally much wider than the grid"
+    model = _GridFixtureModel(
+        (("alpha", "scale", (cell_text,)),),
+        headers=(header_text,),
+    )
+    view, _root, body = _render_grid(model, width=180, height=140)
+    cell = _visible_grid_delegate(body, row=0, column=0)
+    body.forceActiveFocus()
+    QTest.qWait(500)
+    _process_events()
+
+    tooltip = cell.findChild(QObject, "gridCellTooltip")
+    assert tooltip is not None
+    assert tooltip.property("visible") is True
+    assert header_text in tooltip.property("text")
+    assert cell_text in tooltip.property("text")
+    _close_grid(view)
+
+
+def test_truncated_header_tooltip_contains_complete_header() -> None:
+    header_text = "response_text_that_must_remain_readable_" * 5
+    model = _GridFixtureModel(
+        (("alpha", "scale", ("x",)),),
+        headers=(header_text,),
+    )
+    view, root, _body = _render_grid(model, width=140, height=140)
+    horizontal, _vertical = _grid_headers(root)
+    header = _visible_header_delegate(horizontal, column=0)
+
+    _hover_delegate(view, header)
+
+    tooltip = header.findChild(QObject, "gridHeaderTooltip")
+    assert tooltip is not None
+    assert tooltip.property("visible") is True
+    assert tooltip.property("text") == header_text
+    _close_grid(view)
+
+
+def test_data_grid_keyboard_help_strings_are_catalogued() -> None:
+    from modori.ui.strings_en import UI_STRINGS_EN
+
+    assert UI_STRINGS_KO["data.grid_accessible"] == "데이터 표"
+    assert "Ctrl+Shift+F" in UI_STRINGS_KO["data.grid_keyboard_help"]
+    assert UI_STRINGS_EN["data.grid_accessible"] == "Data table"
+    assert "Ctrl+Shift+R" in UI_STRINGS_EN["data.grid_keyboard_help"]
 
 
 def test_data_grid_uses_virtualized_table_with_synchronized_headers() -> None:
@@ -572,8 +700,10 @@ def test_data_grid_does_not_use_shared_attached_tooltip_for_cells() -> None:
     qml = qml_text("components/DataGridView.qml")
 
     assert "ToolTip.visible: containsMouse" not in qml
-    assert "visible: cellHover.containsMouse && cellLabel.truncated" in qml
-    assert "text: cellDelegate.cellText" in qml
+    assert 'objectName: "gridCellTooltip"' in qml
+    assert "property bool keyboardDetail" in qml
+    assert "(cellHover.containsMouse && cellLabel.truncated) || keyboardDetail" in qml
+    assert "root.keyboardDetailText" in qml
 
 
 def test_short_cell_hover_has_no_duplicate_tooltip() -> None:

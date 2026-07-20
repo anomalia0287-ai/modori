@@ -51,9 +51,14 @@ UI_STRINGS_EN = {
     "dialog.report.replace_existing": "Replace existing file",
     "dialog.report.sections": "Content to include",
     "dialog.report.title": "Export report",
+    "data.grid_accessible": "Data table",
     "data.grid_columns": "columns",
     "data.grid_empty": "No data to display.",
     "data.grid_extent_separator": " · ",
+    "data.grid_keyboard_help": (
+        "Use the arrow keys to move. Ctrl+Shift+F fits the current column; "
+        "Ctrl+Shift+R resets all column widths."
+    ),
     "data.grid_rows": "rows",
     "data.edit_policy": "Direct cell editing will be enabled after a reproducible editing step is available.",
     "entry.guided": "GUIDED MODE",

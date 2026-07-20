@@ -108,6 +108,36 @@ Item {
         })
     }
 
+    function fitCurrentColumn() {
+        if (!root.model || body.columns <= 0) {
+            return
+        }
+        var column = root.clamp(root.currentColumn, 0, body.columns - 1)
+        var row = root.clamp(root.currentRow, 0, Math.max(0, body.rows - 1))
+        var fitted = root.fittedColumnWidth(column, row)
+        root.automaticColumnWidths[String(column)] = fitted
+        body.setColumnWidth(column, fitted)
+        body.forceLayout()
+        body.positionViewAtCell(Qt.point(column, row), TableView.Contain)
+    }
+
+    function resetAllColumnWidths() {
+        root.clearColumnWidths(false)
+    }
+
+    function headerWouldElide(column) {
+        var width = body.columnWidth(column)
+        if (width < 0) {
+            return false
+        }
+        headerTextMetrics.text = root.headerText(column)
+        return headerTextMetrics.advanceWidth + theme.gridColumnMeasurePadding > width
+    }
+
+    function keyboardDetailText(column, cellText) {
+        return root.headerText(column) + "\n" + cellText
+    }
+
     onModelChanged: root.clearColumnWidths(true)
 
     function moveCurrent(rowDelta, columnDelta) {
@@ -227,9 +257,18 @@ Item {
                     clip: true
 
                     delegate: Rectangle {
+                        id: headerDelegate
+                        property string headerValue: String(model.display ?? "")
+
                         implicitWidth: root.cellWidth
                         implicitHeight: theme.gridHeaderHeight
                         color: theme.gridColumnHeaderSurface
+                        Accessible.role: Accessible.ColumnHeader
+                        Accessible.name: headerValue
+
+                        HoverHandler {
+                            id: headerHover
+                        }
 
                         Rectangle {
                             objectName: "columnHeaderDivider"
@@ -248,13 +287,21 @@ Item {
                         }
 
                         Text {
+                            id: headerLabel
                             anchors.centerIn: parent
                             width: parent.width - theme.spaceSm
-                            text: String(model.display ?? "")
+                            text: headerDelegate.headerValue
                             color: theme.gridHeaderText
                             font.pixelSize: theme.fontCaption
                             elide: Text.ElideRight
                             horizontalAlignment: Text.AlignHCenter
+                        }
+
+                        ToolTip {
+                            objectName: "gridHeaderTooltip"
+                            visible: headerHover.hovered && headerLabel.truncated
+                            text: headerDelegate.headerValue
+                            delay: theme.tooltipDelayMs
                         }
                     }
                 }
@@ -333,6 +380,15 @@ Item {
                         return automaticWidth > 0 ? automaticWidth : root.cellWidth
                     }
                     rowHeightProvider: function(row) { return root.cellHeight }
+                    Accessible.role: Accessible.Table
+                    Accessible.name: appBootstrap.text(
+                        "data.grid_accessible",
+                        appBootstrap.language
+                    )
+                    Accessible.description: appBootstrap.text(
+                        "data.grid_keyboard_help",
+                        appBootstrap.language
+                    )
 
                     onMovementStarted: {
                         horizontalSettleAnimation.stop()
@@ -356,7 +412,15 @@ Item {
                     }
 
                     Keys.onPressed: function(event) {
-                        if (event.modifiers & Qt.ControlModifier && event.key === Qt.Key_C) {
+                        var controlPressed = Boolean(event.modifiers & Qt.ControlModifier)
+                        var shiftPressed = Boolean(event.modifiers & Qt.ShiftModifier)
+                        if (controlPressed && shiftPressed && event.key === Qt.Key_F) {
+                            root.fitCurrentColumn()
+                            event.accepted = true
+                        } else if (controlPressed && shiftPressed && event.key === Qt.Key_R) {
+                            root.resetAllColumnWidths()
+                            event.accepted = true
+                        } else if (controlPressed && event.key === Qt.Key_C) {
                             root.copyCurrentCell()
                             event.accepted = true
                         } else if (event.key === Qt.Key_Left) {
@@ -402,6 +466,9 @@ Item {
 
                         implicitWidth: root.cellWidth
                         implicitHeight: root.cellHeight
+                        Accessible.role: Accessible.Cell
+                        Accessible.name: cellDelegate.cellText
+                        Accessible.description: root.headerText(column)
                         color: isCurrentCell || selectedVariable
                             ? theme.selectionSurface
                             : cellPointer.containsMouse
@@ -434,8 +501,18 @@ Item {
                         ToolTip {
                             id: cellToolTip
                             objectName: "gridCellTooltip"
-                            visible: cellHover.containsMouse && cellLabel.truncated
-                            text: cellDelegate.cellText
+                            property bool keyboardDetail: cellDelegate.isCurrentCell
+                                && body.activeFocus
+                                && (cellLabel.truncated
+                                    || root.headerWouldElide(cellDelegate.column))
+                            visible: (cellHover.containsMouse && cellLabel.truncated) || keyboardDetail
+                            text: keyboardDetail
+                                ? root.keyboardDetailText(
+                                    cellDelegate.column,
+                                    cellDelegate.cellText
+                                )
+                                : cellDelegate.cellText
+                            delay: theme.tooltipDelayMs
                         }
                     }
                 }

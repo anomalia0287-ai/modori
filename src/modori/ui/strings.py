@@ -53,9 +53,14 @@ UI_STRINGS_KO = {
     "dialog.report.replace_existing": "기존 파일 바꾸기",
     "dialog.report.sections": "포함할 내용",
     "dialog.report.title": "보고서 내보내기",
+    "data.grid_accessible": "데이터 표",
     "data.grid_columns": "열",
     "data.grid_empty": "표시할 데이터가 없습니다.",
     "data.grid_extent_separator": " · ",
+    "data.grid_keyboard_help": (
+        "화살표 키로 이동합니다. Ctrl+Shift+F는 현재 열 맞춤, "
+        "Ctrl+Shift+R은 모든 열 너비 초기화입니다."
+    ),
     "data.grid_rows": "행",
     "data.edit_policy": "셀 직접 수정은 재현 가능한 편집 단계가 준비된 뒤 활성화됩니다.",
     "entry.guided": "GUIDED MODE",
