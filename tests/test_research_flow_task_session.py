@@ -436,6 +436,71 @@ def test_same_fingerprint_replan_rejects_a_changed_expected_ledger_head(
         assert index.verify(full_integrity=True).row_count == 1
 
 
+def test_same_fingerprint_replan_rechecks_head_inside_replace_transaction(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _set_local_app_data(tmp_path, monkeypatch)
+    identity = _identity()
+    previous_holder: dict[str, ResearchTaskHandle] = {}
+
+    def initialize_between_early_check_and_replace(stage: str) -> None:
+        if stage == "before_replan_index_allocate":
+            _initialize(previous_holder["handle"])
+
+    session = ResearchTaskSessionStore(
+        task_id_factory=_id_factory("task:first", "task:must-not-be-used"),
+        utc_clock=lambda: "2026-07-17T00:00:00Z",
+        poison_hook=initialize_between_early_check_and_replace,
+    )
+    previous = session.open_or_allocate(identity, expected_active_task_id=None)
+    previous_holder["handle"] = previous
+
+    with pytest.raises(TaskSessionConflictError, match="head"):
+        session.start_replan(
+            previous,
+            identity,
+            expected_previous_head=LedgerHead.genesis(),
+        )
+
+    assert not default_ledger_path("task:must-not-be-used").exists()
+    with DecisionLedgerStore.open(
+        previous.ledger_path,
+        previous.record.task_project_id,
+    ) as ledger:
+        assert ledger.verify(full_integrity=True).head.sequence == 1
+    with ResearchTaskIndex.open_or_create() as index:
+        assert index.get("task:first") == previous.record
+        assert index.verify(full_integrity=True).row_count == 1
+
+
+def test_ledger_head_guard_rejects_an_existing_different_dataset_task(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _set_local_app_data(tmp_path, monkeypatch)
+    previous_identity = _identity(dataset="a" * 64)
+    other_identity = _identity(dataset="c" * 64)
+    session = _session("task:previous", "task:other", "task:must-not-be-used")
+    previous = session.open_or_allocate(
+        previous_identity,
+        expected_active_task_id=None,
+    )
+    other = session.open_or_allocate(other_identity, expected_active_task_id=None)
+
+    with pytest.raises(TaskSessionConflictError, match="same dataset identity"):
+        session.start_replan(
+            previous,
+            other_identity,
+            expected_previous_head=LedgerHead.genesis(),
+        )
+
+    with ResearchTaskIndex.open_or_create() as index:
+        assert index.get(previous.record.task_project_id) == previous.record
+        assert index.get(other.record.task_project_id) == other.record
+        assert index.verify(full_integrity=True).row_count == 2
+
+
 def test_dataset_drift_allocates_new_identity_and_marks_previous_readonly(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

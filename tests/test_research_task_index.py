@@ -488,6 +488,49 @@ def test_active_lease_busy_is_conflict_not_integrity_corruption(
             second.close()
 
 
+def test_allocate_busy_is_conflict_not_integrity_corruption(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _set_local_app_data(tmp_path, monkeypatch)
+    first = ResearchTaskIndex.open_or_create()
+    record = first.allocate(
+        CONTRACT_ID,
+        DIGEST,
+        task_project_id="task:leased",
+        created_at_utc=None,
+    )
+    second: ResearchTaskIndex | None = None
+    try:
+        configure = task_index_module.configure_managed_connection
+
+        def configure_with_short_busy_timeout(connection, **kwargs) -> None:
+            configure(connection, **kwargs)
+            connection.execute("PRAGMA busy_timeout=50")
+
+        monkeypatch.setattr(
+            task_index_module,
+            "configure_managed_connection",
+            configure_with_short_busy_timeout,
+        )
+        second = ResearchTaskIndex.open_or_create()
+        with first._active_writer_lease(record):
+            with pytest.raises(TaskIndexConflictError, match="busy|allocation"):
+                second.allocate(
+                    CONTRACT_ID,
+                    "b" * 64,
+                    task_project_id="task:contender",
+                    created_at_utc=None,
+                )
+        assert first.get(record.task_project_id) == record
+        assert first.get("task:contender") is None
+        second.verify(full_integrity=True)
+    finally:
+        first.close()
+        if second is not None:
+            second.close()
+
+
 def test_live_external_modification_requires_verification_and_fails_closed(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

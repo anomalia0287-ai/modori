@@ -828,6 +828,15 @@ class ResearchTaskIndex:
                 raise TaskIndexConflictError(
                     "task allocation conflicted with durable index state"
                 ) from exc
+            sqlite_code = getattr(exc, "sqlite_errorcode", None)
+            if (
+                isinstance(exc, sqlite3.OperationalError)
+                and isinstance(sqlite_code, int)
+                and sqlite_code & 0xFF in {sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED}
+            ):
+                raise TaskIndexConflictError(
+                    "task allocation is busy"
+                ) from exc
             raise TaskIndexIntegrityError("task allocation failed closed") from exc
         except BaseException:
             if self._connection.in_transaction:

@@ -394,6 +394,16 @@ class ResearchTaskSessionStore:
 
                 verify_previous_ledger()
 
+                same_index_identity = (
+                    previous.record.fingerprint_contract_id
+                    == new_identity.fingerprint_contract_id
+                    and previous.record.dataset_fingerprint
+                    == new_identity.dataset_fingerprint
+                )
+                if expected_previous_head is not None and not same_index_identity:
+                    raise TaskSessionConflictError(
+                        "expected ledger head guard requires the same dataset identity"
+                    )
                 active_new = index.locate_active(
                     new_identity.fingerprint_contract_id,
                     new_identity.dataset_fingerprint,
@@ -407,16 +417,6 @@ class ResearchTaskSessionStore:
                         self._poison("after_previous_mark_readonly")
                     return self._verified_handle(active_new)
 
-                same_index_identity = (
-                    previous.record.fingerprint_contract_id
-                    == new_identity.fingerprint_contract_id
-                    and previous.record.dataset_fingerprint
-                    == new_identity.dataset_fingerprint
-                )
-                if expected_previous_head is not None and not same_index_identity:
-                    raise TaskSessionConflictError(
-                        "expected ledger head guard requires the same dataset identity"
-                    )
                 if active_new is None and current_previous.state is not (
                     ResearchTaskState.ACTIVE
                 ):
