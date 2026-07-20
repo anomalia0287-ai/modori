@@ -17,6 +17,7 @@ from modori.table_io import (
     read_header_result,
     read_preview,
     read_schema,
+    read_workbook_source,
 )
 
 
@@ -67,6 +68,41 @@ def test_read_preview_returns_xlsx_source_context_and_sample_rows(tmp_path) -> N
         {"respondent_id": 101, "score": 5},
         {"respondent_id": 102, "score": 4},
     )
+
+
+def test_read_workbook_source_lists_sheets_when_active_sheet_is_not_tabular(
+    tmp_path,
+) -> None:
+    from openpyxl import Workbook
+
+    path = tmp_path / "recoverable.xlsx"
+    workbook = Workbook()
+    notice = workbook.active
+    notice.title = "안내"
+    notice.append(["이 시트는 안내문입니다."])
+    data = workbook.create_sheet("응답자료")
+    data.append(["id", "score"])
+    data.append([1, 4])
+    workbook.active = 0
+    workbook.save(path)
+    workbook.close()
+
+    source = read_workbook_source(path)
+
+    assert source.path == path
+    assert source.file_type == "xlsx"
+    assert source.sheet_name == "안내"
+    assert source.sheet_names == ("안내", "응답자료")
+
+
+def test_read_workbook_source_rejects_corrupt_xlsx(tmp_path) -> None:
+    from zipfile import BadZipFile
+
+    path = tmp_path / "corrupt.xlsx"
+    path.write_bytes(b"not-an-xlsx")
+
+    with pytest.raises(BadZipFile):
+        read_workbook_source(path)
 
 
 def test_read_header_result_exposes_xlsx_source_context_and_compat_header(tmp_path) -> None:

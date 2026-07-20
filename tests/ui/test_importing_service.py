@@ -131,6 +131,44 @@ def test_import_preview_service_rejects_notice_only_xlsx_with_specific_error(tmp
     assert preview.text == "표 데이터가 없습니다. 원본 포털에서 CSV 파일을 다시 받거나 표가 있는 시트를 선택해 주세요."
 
 
+def test_import_preview_service_marks_bad_default_sheet_recoverable(tmp_path) -> None:
+    from openpyxl import Workbook
+
+    data_path = tmp_path / "recoverable.xlsx"
+    workbook = Workbook()
+    notice = workbook.active
+    notice.title = "안내"
+    notice.append(["이 시트는 안내문입니다."])
+    data = workbook.create_sheet("응답자료")
+    data.append(["id", "score"])
+    data.append([1, 4])
+    workbook.active = 0
+    workbook.save(data_path)
+    workbook.close()
+
+    preview = ImportPreviewService().preview(data_path)
+
+    assert preview.ok is False
+    assert preview.recovery_available is True
+    assert preview.pending_path == data_path
+    assert preview.sheet_name == "안내"
+    assert preview.sheet_names == ("안내", "응답자료")
+    assert preview.table_preview is None
+
+
+def test_import_preview_service_keeps_corrupt_xlsx_terminal(tmp_path) -> None:
+    data_path = tmp_path / "corrupt.xlsx"
+    data_path.write_bytes(b"not-an-xlsx")
+
+    preview = ImportPreviewService().preview(data_path)
+
+    assert preview.ok is False
+    assert preview.recovery_available is False
+    assert preview.pending_path is None
+    assert preview.sheet_names == ()
+    assert preview.table_preview is None
+
+
 def test_import_preview_service_reads_bounded_csv_preview(tmp_path, monkeypatch) -> None:
     data_path = tmp_path / "large-survey.csv"
     data_path.write_text("score\n1\n2\n", encoding="utf-8")

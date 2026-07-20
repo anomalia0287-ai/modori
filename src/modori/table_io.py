@@ -213,6 +213,20 @@ def read_schema(
     )
 
 
+def read_workbook_source(
+    path: Path,
+    file_type: str | None = None,
+) -> TableReadSource:
+    normalized = normalize_file_type(path, file_type)
+    if normalized != "xlsx":
+        raise ValueError("Workbook sheet discovery requires an XLSX file")
+    workbook = _load_xlsx_workbook(path)
+    try:
+        return _xlsx_source_from_workbook(path, workbook, workbook.active)
+    finally:
+        workbook.close()
+
+
 def validate_import_selection(
     schema: TableSchema,
     selection: ImportSelection | None,

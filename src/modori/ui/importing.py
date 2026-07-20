@@ -11,6 +11,7 @@ from modori.table_io import (
     TablePreviewResult,
     TableReadError,
     read_preview,
+    read_workbook_source,
 )
 from modori.ui.localization import localize_message
 
@@ -21,6 +22,9 @@ class ImportPreview:
     text: str
     pending_path: Path | None = None
     table_preview: TablePreviewResult | None = None
+    recovery_available: bool = False
+    sheet_name: str | None = None
+    sheet_names: tuple[str, ...] = ()
 
 
 _REVIEW_ROLE_LABELS_KO = {
@@ -123,14 +127,16 @@ class ImportPreviewService:
                 drop_duplicate_rows=drop_duplicate_rows,
             )
         except TableReadError as exc:
-            return ImportPreview(
-                ok=False,
-                text=localize_message(exc.message_ko, selected_language),
+            return self._failed_preview(
+                path,
+                file_type,
+                localize_message(exc.message_ko, selected_language),
             )
         except Exception:
-            return ImportPreview(
-                ok=False,
-                text=localize_message(
+            return self._failed_preview(
+                path,
+                file_type,
+                localize_message(
                     "파일 미리보기를 만들지 못했습니다.",
                     selected_language,
                 ),
@@ -140,7 +146,28 @@ class ImportPreviewService:
             pending_path=path,
             table_preview=table_preview,
             text=self.format_preview(table_preview, language=selected_language),
+            sheet_name=table_preview.source.sheet_name,
+            sheet_names=table_preview.source.sheet_names,
         )
+
+    @staticmethod
+    def _failed_preview(path: Path, file_type: str, text: str) -> ImportPreview:
+        if file_type == "xlsx":
+            try:
+                source = read_workbook_source(path, file_type)
+            except Exception:
+                pass
+            else:
+                if source.sheet_names:
+                    return ImportPreview(
+                        ok=False,
+                        text=text,
+                        pending_path=path,
+                        recovery_available=True,
+                        sheet_name=source.sheet_name,
+                        sheet_names=source.sheet_names,
+                    )
+        return ImportPreview(ok=False, text=text)
 
     @staticmethod
     def _preview_variable_lines(
