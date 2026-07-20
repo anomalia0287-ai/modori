@@ -1,0 +1,340 @@
+# Guided Mode Functional Usability Closure Design
+
+**Date:** 2026-07-20
+**Status:** Approved direction; implementation pending
+**Baseline:** `b368cdcf208d04509717826bc6b0ab7e7b72ba7e` on `codex/research-os-functional-usability`
+**Release boundary:** no push, merge, default-branch change, or frozen Build Week artifact replacement
+
+## 1. Objective
+
+Make Modori's bounded Research OS path useful and understandable to a novice without
+weakening safety, provenance, or deterministic execution boundaries.
+
+The product promise has two inseparable parts:
+
+1. **Useful:** get data in, understand what Modori needs, reach a supported analysis,
+   inspect the exact configuration, run it, recover, and keep the output.
+2. **Bounded:** experimental guidance remains separate from the calculation engine;
+   unsupported claims may abstain; nothing is silently selected or run; assisted
+   provenance is committed before display or export.
+
+Safety is necessary, but repeated warnings are not a substitute for a successful
+workflow.
+
+## 2. Confirmed Repository State
+
+- Controller modes are `guided` and `standard`; each process starts in `standard`.
+- User-facing copy currently says `CASUAL MODE` and `PRO MODE`.
+- Guided and standard Research OS views retain equivalent state, actions, options, and
+  decision authority. Standard exposes more role/evidence detail.
+- Guided mode does not automatically select, prepare, confirm, or run an analysis.
+  `Prepare`, confirmation, and `Run` remain separate.
+- Experimental/no-auto-run wording repeats across entry, candidate, legacy candidate,
+  and preparation surfaces.
+- All seven audited abstentions were `unsupported_causal_target`. The same user data
+  reached `candidate_ready` with supported non-causal questions. Generic abstention UI
+  hid the distinction.
+- Normal Excel files work, including multi-row headers. A recoverable workbook fails
+  before the dialog opens when its default sheet is empty or a notice even though a
+  data sheet exists.
+- `DataGridView.qml` fixes every column at 120 pixels and right-elides long text. It has
+  no bounded auto-fit or manual resizing.
+- The detached table reuses the current `dataModel`; it is not an immutable raw view.
+- Research OS ordinary failures discard actionable detail and render a generic state.
+- Repeated Word export to the same path can silently replace an earlier document.
+- Variable Meaning Gate identifies missing meaning but lacks a complete in-flow repair
+  route for concept/unit metadata.
+- Unrestricted raw-cell mutation is outside the immediate boundary. A reproducible
+  value-correction workflow is still required and retained below.
+
+## 3. Single-P0 Order
+
+Only one active P0 is worked at a time. Queued work retains an owner, exit criteria,
+and ledger position until verified or explicitly superseded by the user.
+
+Implementation order follows user cost of failure:
+
+1. prevent data loss;
+2. let the user import data;
+3. make the guided journey coherent and recoverable;
+4. make data readable;
+5. make meaning and values reproducibly correctable;
+6. re-audit the entire novice task.
+
+## 4. Closure Ledger
+
+| ID | Problem | Classification and state | Exit condition |
+| --- | --- | --- | --- |
+| U-01 | Word export can silently overwrite | **Active P0 / data loss** | Existing target never changes without explicit replace consent; safe copy is available; DOCX is verified |
+| U-02 | Excel cannot reach sheet selection after a bad default-sheet preview | **Queued blocker / deadline risk** | A parseable workbook retains its path and exposes sheet selection; corrupt input still fails closed |
+| U-03 | `CASUAL MODE` misstates the contract | **Approved quality fix** | Every user-facing selector says `GUIDED MODE`; internal `guided` remains compatible |
+| U-04 | Experimental/no-auto warnings repeat | **Approved warning-fatigue fix** | One entry disclosure plus one quiet status; no duplicate warning in one decision context |
+| U-05 | Abstention looks arbitrary | **Required functional recovery** | Typed reason is visible; causal abstention offers explicit non-causal reframe and direct analysis without changing intent silently |
+| U-06 | Research OS failure hides cause and next action | **Required functional recovery** | Sanitized reason, explanation, and state-valid recovery action are visible |
+| U-07 | Long cells and headers cannot be read or resized | **Required inspectability fix** | Bounded auto-fit, manual resize, keyboard fit/reset, and full-text access work in both grids |
+| U-08 | `데이터 넓게 보기` is vague; `데이터 원본 보기` would be false | **Required terminology fix** | Copy is `데이터 시트 열기` / `Open data sheet`; no immutable-raw claim |
+| U-09 | Meaning Gate identifies missing metadata but cannot repair it | **Required gate completion** | User reaches the relevant variable setting, saves supported metadata, and receives a newly bound review |
+| U-10 | Individual erroneous cells cannot be corrected | **Required follow-up; deferred, not abandoned** | Separate approved design supplies previewed, reversible, provenance-bound correction without raw mutation |
+| U-11 | External Fable 5 participation validation is absent | **Separate submission owner; unverified, not abandoned** | Real external outcome is recorded; this branch never fabricates it |
+
+Items may move forward when new evidence makes them blockers. They do not disappear
+because a deadline passes.
+
+## 5. Guided Mode Contract
+
+### 5.1 Naming and value proposition
+
+User-facing names become `GUIDED MODE` and `PRO MODE`. Internal values remain `guided`
+and `standard` to avoid unnecessary controller, presenter, persistence, and test risk.
+
+`AUTO MODE` is rejected: the product does not automatically select, prepare, confirm,
+or run an analysis.
+
+Korean primary description:
+
+> 연구 질문과 데이터 구조를 따라 분석 후보와 필요한 확인을 단계별로 안내합니다.
+
+English primary description:
+
+> Follow guided steps from your research question and data structure to a reviewable analysis candidate.
+
+Compact secondary disclosure:
+
+> 실험적 연구 가이드 · 설정과 실행은 직접 확인
+
+> Experimental research guide · You review the setup and start the run
+
+The benefit precedes the limitation. The disclosure applies to candidate guidance,
+not to every manual calculation module.
+
+### 5.2 Session disclosure
+
+First Guided Mode entry in a process presents this complete contract inline, not in a
+modal:
+
+> 후보 안내는 실험적입니다. 계산 모듈은 별도 검증 범위를 가지며, 설정과 실행은 사용자가 확인합니다.
+
+Entry is explicit and not persisted across restarts. Inspecting the mode never mutates
+the pipeline or selects a candidate. After entry, the shell retains one quiet status:
+`실험적 가이드` / `Experimental guide`. Candidate and preparation screens do not
+repeat equivalent experimental/no-auto-run sentences.
+
+### 5.3 Fixed evidence and execution boundary
+
+- Guidance status never changes numerical parameters, cache identity, or engine claims.
+- Assisted configuration retains `experimental_candidate_assisted` provenance.
+- Manual configuration remains `manual` unless an assisted prefill is still in use.
+- Assisted reports keep their provenance disclosure.
+- Candidate display remains commit-before-display.
+- No command combines recommendation application and execution.
+
+## 6. Interruption Model
+
+Every message has exactly one level.
+
+### Mode information
+
+Sets expectations once. It never blocks inspection, question entry, candidate browsing,
+or direct analysis. Examples are the experimental-guidance and no-auto-run boundary.
+
+### Review request
+
+Appears inline only when information changes the defensible configuration. It blocks
+only the dependent action and links directly to remediation. Examples are missing
+meaning, required roles, and stale preparation.
+
+### Hard block
+
+Prevents data loss, integrity failure, unsupported claims, or unconfirmed execution.
+It names the specific reason, affected action, and valid next actions. Examples are
+existing Word targets, ledger corruption, causal claims outside scope, and an
+unconfirmed assisted run.
+
+Generic danger prose is not shown when a specific condition is known. Identical
+warnings do not repeat within one visible decision context.
+
+## 7. End-to-End Interaction
+
+### 7.1 Excel import
+
+1. Record the selected local path before tabular preview.
+2. Enumerate workbook sheets independently of a successful default-sheet preview.
+3. Open the ordinary inferred preview when the default sheet is usable.
+4. If the workbook is parseable but the default sheet is empty/non-tabular, open the
+   import dialog in recovery mode with the sheet selector and an explanation.
+5. A chosen sheet must produce the ordinary schema-bound preview before confirmation.
+6. Corrupt, unreadable, or unsupported-encryption input remains a terminal failure.
+
+Recoverable preview failure preserves the pending path. Previous datasets and
+pipelines remain untouched until import confirmation succeeds.
+
+### 7.2 Data inspection
+
+Embedded and detached grids share width behavior:
+
+- deterministic bounded content-fit from header plus a sample;
+- drag a header boundary to resize one column;
+- keyboard-accessible fit/reset;
+- full header/cell text access without requiring precise hover;
+- widths remain view state and never mutate data or the pipeline.
+
+The detached action becomes `데이터 시트 열기` / `Open data sheet`. It displays the
+current model, including committed transformations, and is not called a raw-data view.
+
+### 7.3 Variable meaning
+
+The gate displays only recorded metadata and never invents definitions or units. A row
+requiring repair links to its variable settings. Saving supported metadata invalidates
+stale guidance and produces a new meaning review bound to the updated identity.
+
+If the current metadata contract cannot persist concept/unit safely, the UI must say
+`기록되지 않음` without requesting unsavable information. Persistence expansion needs
+its own contract tests.
+
+### 7.4 Task, clarification, recommendation, and abstention
+
+Guided Mode presents one current next action and does not interleave repeated global
+warnings. Questions stay deterministic and bounded; `잘 모르겠습니다` remains a valid
+answer.
+
+- **Recommend:** show the reviewable candidate and deterministic reason.
+- **Clarify:** ask only a question capable of changing a supported decision.
+- **Abstain:** show the typed reason and supported next actions.
+
+For `unsupported_causal_target`, the primary recovery is an explicit choice such as
+`인과 효과 대신 변수 간 관계 확인`. Choosing it records the non-causal boundary and
+replans. Modori never rewrites intent silently. Direct analysis remains secondary. If
+the user keeps causal intent, abstention stands.
+
+Abstention counts are not reduced by weakening claims or fabricating candidates.
+
+### 7.5 Prepare, confirm, and run
+
+The five stages remain distinct: candidate display, Prepare, exact role/parameter
+review, Confirm, separate Run. Only the current-stage instruction is prominent.
+Dataset, metadata, role, candidate, or mode changes invalidate relevant confirmation.
+
+### 7.6 Results and Word export
+
+Numerical engine evidence remains separate from recommendation validity.
+
+- New destination: write normally.
+- Existing destination: require explicit replacement or a safe-copy path.
+- Cancel: leave the existing file byte-for-byte unchanged.
+- Assisted report: include required provenance before exposing completion.
+- Write failure: do not expose a partial file as successful output.
+
+### 7.7 Failure recovery
+
+Research OS carries a sanitized presentation payload containing a stable reason code,
+localized explanation, and valid recovery actions. Raw exceptions and cell contents
+are never rendered. Integrity failure remains distinct from ordinary failure.
+
+The primary button names the real action (`다시 시도`, `현재 데이터로 다시 계획`, or
+`데이터 다시 열기`) rather than generic `기록에서 다시 확인` when the controller will
+do something else.
+
+## 8. Components and Data Flow
+
+Expected copy/QML surfaces include:
+
+- `src/modori/ui/strings.py` and `strings_en.py`;
+- `EntryScreen.qml`, `ModeSegment.qml`, `GuideRail.qml`;
+- `ResearchFlowPanel.qml`, `ResearchCandidateCard.qml`;
+- `DataGridView.qml` and `Main.qml`.
+
+`UiImportFlow` separates pending path, workbook discovery, successful table preview,
+recoverable layout failure, and terminal read failure. QML opens `ImportDialog` for a
+successful preview or recoverable workbook state; confirmation still requires a
+successful schema-bound preview.
+
+Research flow results gain a small typed, sanitized failure payload. Guided and
+standard retain equivalent recovery authority; standard may expose a diagnostic ID,
+never raw data.
+
+Column widths are UI-only state keyed by column identity and reset with model/dataset
+replacement. Sizing is bounded so an extreme cell cannot create an unusable width.
+
+Report destination conflict is rejected at the service/controller boundary before
+write, not merely warned about in QML, so alternate callers cannot bypass it.
+
+## 9. Test and Audit Strategy
+
+Implementation is test-first. Passing criteria are not weakened.
+
+### Copy and boundary tests
+
+- Korean and English use `GUIDED MODE` consistently.
+- Internal modes and Guided/PRO decision equivalence remain unchanged.
+- Disclosure appears only at approved mode-level locations.
+- No combined recommendation-and-run command exists.
+- Assisted provenance and report disclosure remain intact.
+
+### Import tests
+
+- empty first sheet plus populated second sheet;
+- notice sheet plus multi-row-header data sheet;
+- usable default sheet;
+- corrupt/unreadable workbook;
+- pending-path and previous-pipeline preservation;
+- sheet change then schema-bound confirmation.
+
+### Recovery tests
+
+- causal abstention exposes exact reason and reframe;
+- accepting the reframe records the boundary before replan;
+- declining preserves abstention;
+- ordinary, memory, and integrity failures remain distinct;
+- each rendered recovery action maps to a valid controller command.
+
+### Grid tests
+
+- bounded widths for short and long content;
+- single-column manual resize without data mutation;
+- reset/fit and keyboard accessibility;
+- full cell/header text access;
+- embedded/detached parity and corrected naming.
+
+### Report tests
+
+- new destination succeeds;
+- existing destination without consent fails before mutation;
+- cancel preserves original SHA-256;
+- explicit replacement produces a valid DOCX;
+- safe copy preserves both documents;
+- assisted disclosure and commit-before-display remain verified.
+
+### Novice end-to-end audit
+
+Exercise an actual Excel workbook through:
+
+```text
+open -> import -> meaning review -> task -> bounded questions ->
+recommend/clarify/abstain -> exact roles/parameters -> Prepare -> Confirm ->
+separate Run -> results/evidence -> Word export -> error recovery
+```
+
+Separate manual UI observations from automated assertions. Record generated paths,
+sizes, hashes, and DOCX validity. Reachability does not prove universal recommendation
+validity or numerical correctness beyond existing engine evidence.
+
+## 10. Deadline and Release Boundary
+
+The Build Week deadline is 2026-07-21. P0 evidence and artifacts were frozen in a
+separate release worktree. This branch does not enter that build automatically.
+
+Before any integration decision, report the user benefit, invalidated frozen evidence,
+required rechecks, remaining unverified claims, and cost of deferral. This design does
+not authorize push, merge, default changes, or release artifact replacement.
+
+## 11. Non-goals and Retained Follow-ups
+
+No generative model, SLM, cloud transfer, telemetry, broad method expansion, or
+recommendation-validity promotion is added.
+
+Unrestricted raw-cell editing is not enabled. U-10 remains a required follow-up for a
+previewed, reversible, provenance-bound correction step. Deferral is not completion
+and not abandonment.
+
+External Fable 5 validation remains unverified until the separate submission owner
+records real evidence.
