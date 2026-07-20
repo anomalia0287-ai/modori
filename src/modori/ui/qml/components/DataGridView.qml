@@ -61,25 +61,40 @@ Item {
         if (!root.model || column < 0 || column >= root.model.columnCount()) {
             return root.cellWidth
         }
-        headerTextMetrics.text = root.headerText(column)
-        var measured = headerTextMetrics.advanceWidth
-        var rowCount = root.model.rowCount()
-        var sampleCount = Math.min(rowCount, theme.gridAutoFitSampleRows)
-        var includePreferred = preferredRow >= sampleCount && preferredRow < rowCount
-        var leadingCount = includePreferred ? Math.max(0, sampleCount - 1) : sampleCount
-        for (var row = 0; row < leadingCount; row += 1) {
-            cellTextMetrics.text = root.cellTextAt(row, column)
-            measured = Math.max(measured, cellTextMetrics.advanceWidth)
+        try {
+            headerTextMetrics.text = root.headerText(column)
+            var measured = headerTextMetrics.advanceWidth
+            if (!isFinite(measured)) {
+                return root.cellWidth
+            }
+            var rowCount = root.model.rowCount()
+            var sampleCount = Math.min(rowCount, theme.gridAutoFitSampleRows)
+            var includePreferred = preferredRow >= sampleCount && preferredRow < rowCount
+            var leadingCount = includePreferred ? Math.max(0, sampleCount - 1) : sampleCount
+            for (var row = 0; row < leadingCount; row += 1) {
+                cellTextMetrics.text = root.cellTextAt(row, column)
+                var cellMeasured = cellTextMetrics.advanceWidth
+                if (!isFinite(cellMeasured)) {
+                    return root.cellWidth
+                }
+                measured = Math.max(measured, cellMeasured)
+            }
+            if (includePreferred) {
+                cellTextMetrics.text = root.cellTextAt(preferredRow, column)
+                var preferredMeasured = cellTextMetrics.advanceWidth
+                if (!isFinite(preferredMeasured)) {
+                    return root.cellWidth
+                }
+                measured = Math.max(measured, preferredMeasured)
+            }
+            return root.clamp(
+                Math.ceil(measured) + theme.gridColumnMeasurePadding,
+                theme.gridColumnAutoMinWidth,
+                theme.gridColumnAutoMaxWidth
+            )
+        } catch (error) {
+            return root.cellWidth
         }
-        if (includePreferred) {
-            cellTextMetrics.text = root.cellTextAt(preferredRow, column)
-            measured = Math.max(measured, cellTextMetrics.advanceWidth)
-        }
-        return root.clamp(
-            Math.ceil(measured) + theme.gridColumnMeasurePadding,
-            theme.gridColumnAutoMinWidth,
-            theme.gridColumnAutoMaxWidth
-        )
     }
 
     function automaticColumnWidth(column) {
@@ -105,6 +120,14 @@ Item {
         body.clearColumnWidths()
         Qt.callLater(function() {
             body.forceLayout()
+            if (body.rows <= 0 || body.columns <= 0) {
+                body.contentX = 0
+                body.contentY = 0
+                return
+            }
+            var row = root.clamp(root.currentRow, 0, body.rows - 1)
+            var column = root.clamp(root.currentColumn, 0, body.columns - 1)
+            body.positionViewAtCell(Qt.point(column, row), TableView.Contain)
         })
     }
 

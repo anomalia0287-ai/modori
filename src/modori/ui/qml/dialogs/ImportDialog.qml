@@ -326,6 +326,7 @@ Dialog {
                                     visible: root.columnMatchesFilter(modelData.name)
                                     text: modelData.name
                                     checked: root.isColumnIncluded(modelData.name)
+                                    hoverEnabled: true
                                     Accessible.name: modelData.name
                                     ToolTip.visible: hovered && contentItem.truncated
                                     ToolTip.text: modelData.name

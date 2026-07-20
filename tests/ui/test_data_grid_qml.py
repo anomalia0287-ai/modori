@@ -8,6 +8,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from PySide6.QtCore import (
     QAbstractTableModel,
     QByteArray,
+    QEvent,
     QModelIndex,
     QMetaObject,
     QObject,
@@ -16,7 +17,7 @@ from PySide6.QtCore import (
     Qt,
     QUrl,
 )
-from PySide6.QtGui import QAccessible, QGuiApplication
+from PySide6.QtGui import QAccessible, QGuiApplication, QMouseEvent
 from PySide6.QtQml import QQmlComponent, QQmlEngine, QQmlExpression
 from PySide6.QtQuick import QQuickItem, QQuickView
 from PySide6.QtTest import QSignalSpy, QTest
@@ -299,6 +300,19 @@ def test_fitted_column_width_reads_at_most_forty_rows() -> None:
     _close_grid(view)
 
 
+def test_fitted_column_width_has_a_measurement_error_fallback() -> None:
+    qml = qml_text("components/DataGridView.qml")
+    fitted = qml[
+        qml.index("function fittedColumnWidth"):
+        qml.index("function automaticColumnWidth")
+    ]
+
+    assert "try {" in fitted
+    assert "if (!isFinite(measured))" in fitted
+    assert "catch (error)" in fitted
+    assert fitted.count("return root.cellWidth") >= 3
+
+
 def test_explicit_column_width_controls_actual_width_with_bounds() -> None:
     view, root, body = _render_grid(_GridFixtureModel(), width=520, height=240)
     horizontal, _vertical = _grid_headers(root)
@@ -323,6 +337,39 @@ def test_explicit_column_width_controls_actual_width_with_bounds() -> None:
     _close_grid(view)
 
 
+def test_native_header_boundary_drag_resizes_header_and_body_together() -> None:
+    model = _GridFixtureModel(headers=("short", "second"))
+    view, root, body = _render_grid(model, width=520, height=240)
+    horizontal, _vertical = _grid_headers(root)
+    header = _visible_header_delegate(horizontal, column=0)
+    initial_width = float(_qml_value(body, "columnWidth(0)"))
+    scene_start = header.mapToScene(QPointF(header.width() - 1, header.height() / 2))
+    start = QPointF(round(scene_start.x()), round(scene_start.y()))
+    end = QPointF(start.x() + 140, start.y())
+
+    QTest.mousePress(view, Qt.LeftButton, Qt.NoModifier, start.toPoint())
+    for step in range(1, 8):
+        point = QPointF(start.x() + ((end.x() - start.x()) * step / 7), start.y())
+        event = QMouseEvent(
+            QEvent.Type.MouseMove,
+            point,
+            point,
+            point,
+            Qt.MouseButton.NoButton,
+            Qt.MouseButton.LeftButton,
+            Qt.KeyboardModifier.NoModifier,
+        )
+        _app().sendEvent(view, event)
+        _app().processEvents()
+    QTest.mouseRelease(view, Qt.LeftButton, Qt.NoModifier, end.toPoint())
+    _process_events()
+
+    resized_width = float(_qml_value(body, "columnWidth(0)"))
+    assert resized_width > initial_width + 80
+    assert header.width() == pytest.approx(resized_width, abs=0.5)
+    _close_grid(view)
+
+
 def test_model_replacement_clears_widths_and_stale_current_cell() -> None:
     first = _GridFixtureModel(rows=6, columns=2)
     second = _GridFixtureModel(rows=2, columns=2)
@@ -337,6 +384,27 @@ def test_model_replacement_clears_widths_and_stale_current_cell() -> None:
     assert float(_qml_value(body, "explicitColumnWidth(0)")) == -1
     assert root.property("currentRow") == 0
     assert root.property("currentColumn") == 0
+    _close_grid(view)
+
+
+def test_model_replacement_reveals_reset_current_cell_from_scrolled_viewport() -> None:
+    first = _large_grid_model(rows=80, columns=20)
+    second = _large_grid_model(rows=40, columns=12)
+    view, root, body = _render_grid(first, width=360, height=190)
+    body.setProperty("contentX", 8 * root.property("cellWidth"))
+    body.setProperty("contentY", 30 * root.property("cellHeight"))
+    _process_events()
+
+    assert float(body.property("contentX")) > 0
+    assert float(body.property("contentY")) > 0
+
+    root.setProperty("model", second)
+    _process_events()
+
+    assert root.property("currentRow") == 0
+    assert root.property("currentColumn") == 0
+    assert body.property("leftColumn") <= 0 <= body.property("rightColumn")
+    assert body.property("topRow") <= 0 <= body.property("bottomRow")
     _close_grid(view)
 
 
@@ -374,6 +442,26 @@ def test_keyboard_fit_includes_late_current_row_and_reset_clears_explicit_width(
     QTest.keyClick(view, Qt.Key_R, Qt.ControlModifier | Qt.ShiftModifier)
     _process_events()
     assert float(_qml_value(body, "explicitColumnWidth(0)")) == -1
+    _close_grid(view)
+
+
+def test_keyboard_width_reset_keeps_current_cell_in_view() -> None:
+    model = _large_grid_model(rows=8, columns=10)
+    view, root, body = _render_grid(model, width=360, height=190)
+    for column in range(model.columnCount()):
+        _qml_value(body, f"(setColumnWidth({column}, 72), true)")
+    body.forceActiveFocus()
+    QTest.keyClick(view, Qt.Key_End)
+    _process_events()
+
+    assert root.property("currentColumn") == 9
+    assert body.property("leftColumn") <= 9 <= body.property("rightColumn")
+
+    QTest.keyClick(view, Qt.Key_R, Qt.ControlModifier | Qt.ShiftModifier)
+    _process_events()
+
+    assert root.property("currentColumn") == 9
+    assert body.property("leftColumn") <= 9 <= body.property("rightColumn")
     _close_grid(view)
 
 

@@ -114,10 +114,13 @@ def test_pipeline_operations_audit_documents_read_only_report_prediction() -> No
     row = _audit_row("src/modori/ui/pipeline_ops.py")
 
     for required_text in (
-        "Read-only report-destination prediction",
+        "Read-only report-destination write preflight",
         "trusted pipeline",
         "filename",
         "containment",
+        "collision",
+        "approved replacement",
+        "unexpected path",
         "does not create, write, replace, or delete",
         "actual export",
     ):

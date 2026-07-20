@@ -111,6 +111,7 @@ def test_import_column_picker_exposes_complete_elided_name() -> None:
     checkbox = _qml_object_block(repeater, "AppCheckBox {")
 
     assert "Accessible.name: modelData.name" in checkbox
+    assert "hoverEnabled: true" in checkbox
     assert "ToolTip.visible: hovered && contentItem.truncated" in checkbox
     assert "ToolTip.text: modelData.name" in checkbox
     assert "ToolTip.delay: theme.tooltipDelayMs" in checkbox
