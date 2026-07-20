@@ -113,6 +113,47 @@ def test_report_export_adds_localized_experimental_selection_disclosure(
     assert EXPERIMENTAL_DISCLOSURE_KO not in paragraphs
 
 
+def test_disclosure_publish_retries_transient_windows_file_lock(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    output_path = tmp_path / "report.docx"
+    real_replace = os.replace
+    replace_attempts = 0
+
+    def transient_replace(source, destination):
+        nonlocal replace_attempts
+        replace_attempts += 1
+        if replace_attempts == 1:
+            raise PermissionError("transient Windows file lock")
+        real_replace(source, destination)
+
+    def exporter(pipeline, options):
+        document = Document()
+        document.add_paragraph("Body")
+        document.save(output_path)
+        return output_path
+
+    monkeypatch.setattr(report_export_module.os, "replace", transient_replace)
+    monkeypatch.setattr(report_export_module, "sleep", lambda _delay: None)
+
+    result = ReportExportService().export(
+        pipeline=object(),
+        options=ReportExportOptions(
+            language="en",
+            selection_provenance="experimental_candidate_assisted",
+        ),
+        exporter=exporter,
+        pipeline_version=2,
+    )
+
+    assert result.ok is True
+    assert replace_attempts >= 3
+    assert EXPERIMENTAL_DISCLOSURE_EN in [
+        paragraph.text for paragraph in Document(output_path).paragraphs
+    ]
+
+
 def test_manual_report_export_has_no_experimental_selection_disclosure(
     tmp_path,
 ) -> None:

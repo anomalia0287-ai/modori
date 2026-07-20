@@ -106,9 +106,11 @@ def _publish_with_selection_disclosure(
         staging_path = Path(staging_file.name)
 
     try:
-        output_path.replace(staging_path)
+        if not _replace_with_retry(output_path, staging_path):
+            raise PermissionError("Report staging path remained locked")
         _apply_selection_disclosure(staging_path, options)
-        staging_path.replace(output_path)
+        if not _replace_with_retry(staging_path, output_path):
+            raise PermissionError("Report output path remained locked")
     except Exception:
         staging_path.unlink(missing_ok=True)
         output_path.unlink(missing_ok=True)
@@ -136,9 +138,13 @@ def _restore_backup(backup_path: Path | None, output_path: Path) -> bool:
         return True
     if not backup_path.exists():
         return False
+    return _replace_with_retry(backup_path, output_path)
+
+
+def _replace_with_retry(source: Path, destination: Path) -> bool:
     for delay in (*_RESTORE_RETRY_DELAYS, None):
         try:
-            os.replace(backup_path, output_path)
+            os.replace(source, destination)
         except PermissionError:
             if delay is None:
                 return False
