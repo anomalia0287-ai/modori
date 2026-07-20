@@ -1,0 +1,92 @@
+# Build Week Real-Data Demo Design
+
+Date: 2026-07-21 KST
+
+## Decision
+
+Use the UCI Student Performance dataset's 649-row Portuguese-language-course file as the submission demo source. The user-approved result-first story asks a noncausal question: **Do weekly study-time bands and final grades tend to move together in these records?** Modori will review the two variable meanings, prepare one Spearman rank correlation, wait for a separate Run action, show the result, and export it to Word.
+
+This is a demo of a reviewable workflow on observed social-science data. It is not a claim that study time causes grades or that two Portuguese schools represent other students.
+
+## Options considered
+
+### A. UCI Student Performance with an allowlisted demo view — selected
+
+- Observed school-report and questionnaire data from two Portuguese secondary schools.
+- UCI classifies the dataset as Social Science, assigns DOI `10.24432/C5TG7T`, publishes a complete codebook, and explicitly licenses it CC BY 4.0.
+- The Portuguese-course file has 649 rows and no missing values in the chosen fields.
+- Weekly study-time band and final grade have Spearman `rho = 0.2747118483356099`, two-sided `p = 1.060624038270125e-12`: visible and credible without a toy-perfect relationship.
+- A six-column view can look like genuine educational data while excluding demographics, relationship status, and alcohol-use fields.
+
+### B. BFI/SAPA personality responses — rejected for the public demo
+
+- The data are observed responses and statistically suitable.
+- The Rdatasets distributor explicitly says the rights to the numeric data could not be determined definitively. Existing repository use is not sufficient evidence for a new public marketing artifact.
+
+### C. World Development Indicators country cross-section — fallback only
+
+- The World Bank catalog provides a clear CC BY 4.0 license and strong metadata.
+- The observation unit would be country-year rather than a person, adding ecological-correlation and third-party-indicator licensing caveats to a three-minute beginner demo.
+- Use only if the UCI archive, codebook, or design checks fail.
+
+## Tracked artifacts
+
+- `examples/build-week-demo/source/uci-student-performance.zip`: the exact official UCI download, retained for offline reproduction and attribution.
+- `scripts/prepare_build_week_demo_data.py`: an offline, standard-library/pandas preparation command. It performs no network access.
+- `examples/build-week-demo/student-study-and-grades.csv`: deterministic UTF-8 output used by the demo and tests.
+- `examples/build-week-demo/README.md`: attribution, codebook, transform, interpretation boundary, and regeneration commands.
+- `docs/qa/build-week-real-data-demo-audit.md`: independent hashes, metrics, candidate decision, and license evidence.
+
+## Source integrity and transform
+
+The script accepts the checked-in outer archive only when its SHA-256 is:
+
+```text
+82ae9d66437b9808df42e8c89d2bb179c46e9cfbcf06f38abc1d20b3b747e177
+```
+
+It opens the outer `student.zip`, verifies the inner archive SHA-256 `4f671ae4598c20bb4e64de0f65931c98a609a52e383604e2601bd8f7e3822427`, and then reads `student-por.csv`, whose SHA-256 is `a7594a11d7771c0efe1a740824e0e833da9c4cad07c39a9766a874575563fb3f`.
+
+Only these fields cross the transform boundary:
+
+| UCI field | Demo field | Meaning | Allowed values |
+| --- | --- | --- | --- |
+| `studytime` | `weekly_study_time_band` | Weekly study time: 1 `<2h`, 2 `2–5h`, 3 `5–10h`, 4 `>10h` | integer 1–4 |
+| `failures` | `past_class_failures` | Number of past class failures under the UCI coding rule | integer 0–3 in this file |
+| `absences` | `school_absences` | Recorded school absences | integer 0–32 in this file |
+| `famsup` | `family_educational_support` | Family educational support | `yes` or `no` |
+| `higher` | `plans_higher_education` | Intention to pursue higher education | `yes` or `no` |
+| `G3` | `final_grade` | Portuguese-course final grade | integer 0–19 in this file; source scale is 0–20 |
+
+No source identifier is present. The output does not add a pseudonymous person identifier and does not retain age, sex, school, address, parent attributes, relationship status, or alcohol-use variables.
+
+The row order is preserved. CSV columns and line endings are fixed. A `--summary` output records hashes, row count, missing counts, ranges, and both Pearson and Spearman references as deterministic JSON.
+
+## Failure behavior
+
+The preparation command exits nonzero and writes no final output when any of these checks fails:
+
+- source, inner archive, or member hash mismatch;
+- missing or duplicate required member;
+- missing, reordered, or unexpected source schema;
+- row count other than 649;
+- any missing chosen value;
+- any numeric or binary value outside the frozen codebook;
+- computed Spearman statistic outside `1e-12` of the recorded reference.
+
+The script writes to temporary sibling files and replaces final outputs only after validation. Existing valid outputs may be regenerated byte-for-byte.
+
+## Product and research boundaries
+
+- Product runtime remains local-only; the development preparation script also performs no download.
+- `weekly_study_time_band` is ordinal and `final_grade` is scale. The prepared method is Spearman with pairwise missing handling, although this frozen pair has no missing values.
+- The research question is association only. No causal language, prediction claim, intervention advice, population generalization, or recommendation-validity claim is permitted.
+- The file represents 649 course records in the released Portuguese-course table. The source notes that some students also occur in its separate mathematics table; that other table is not joined or used here.
+
+## Verification design
+
+1. Unit tests build a controlled nested archive and prove member selection, schema allowlisting, atomic failure, and deterministic CSV/JSON behavior.
+2. An integration test regenerates the committed output from the checked-in official archive and requires byte identity.
+3. A separate SciPy calculation checks row count, missingness, ranges, Pearson, Spearman, and p-value without reading the script's summary.
+4. The actual-QML Research OS test imports the committed CSV and verifies metadata review, sealed roles, clarification answers, Prepare-without-run, separate Run, numerical output, provenance, and English Word export.
+5. The packaged Windows executable repeats the same visible path with fresh local state before any release decision.
