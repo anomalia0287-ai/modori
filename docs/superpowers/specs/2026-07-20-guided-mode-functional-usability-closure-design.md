@@ -1,7 +1,7 @@
 # Guided Mode Functional Usability Closure Design
 
 **Date:** 2026-07-20
-**Status:** In progress; U-01 verified closed, U-02 active P0
+**Status:** In progress; U-01/U-02 verified closed, U-03 active P0
 **Baseline:** `b368cdcf208d04509717826bc6b0ab7e7b72ba7e` on `codex/research-os-functional-usability`
 **Release boundary:** no push, merge, default-branch change, or frozen Build Week artifact replacement
 
@@ -66,8 +66,8 @@ Implementation order follows user cost of failure:
 | ID | Problem | Classification and state | Exit condition |
 | --- | --- | --- | --- |
 | U-01 | Word export can silently overwrite | **Verified closed / data loss prevented** | Existing target never changes without explicit replace consent; safe copy is available; DOCX is verified |
-| U-02 | Excel cannot reach sheet selection after a bad default-sheet preview | **Active P0 / deadline risk** | A parseable workbook retains its path and exposes sheet selection; corrupt input still fails closed |
-| U-03 | `CASUAL MODE` misstates the contract | **Approved quality fix** | Every user-facing selector says `GUIDED MODE`; internal `guided` remains compatible |
+| U-02 | Excel cannot reach sheet selection after a bad default-sheet preview | **Verified closed / import blocker removed** | A parseable workbook retains its path and exposes sheet selection; corrupt input still fails closed |
+| U-03 | `CASUAL MODE` misstates the contract | **Active P0 / approved quality fix** | Every user-facing selector says `GUIDED MODE`; internal `guided` remains compatible |
 | U-04 | Experimental/no-auto warnings repeat | **Approved warning-fatigue fix** | One entry disclosure plus one quiet status; no duplicate warning in one decision context |
 | U-05 | Abstention looks arbitrary | **Required functional recovery** | Typed reason is visible; causal abstention offers explicit non-causal reframe and direct analysis without changing intent silently |
 | U-06 | Research OS failure hides cause and next action | **Required functional recovery** | Sanitized reason, explanation, and state-valid recovery action are visible |
@@ -104,6 +104,35 @@ Build Week artifact claim.
 The safe copy is the same-directory transactional backup used only during an approved
 replacement. It is restored on export or disclosure failure and removed after a
 successful replacement. No arbitrary Save As destination was added.
+
+### 4.2 U-02 closure evidence
+
+Verified on implementation commits `6456e25`, `0c8171d`, and `717ec9a`. The final gate
+also includes Windows report-publication hardening commits `d6943dd` and `2f9cb73`,
+which were required after the full suite exposed transient file locks.
+
+- Table/XLSX focus: `16 passed`; import/QML focus: `57 passed`; combined import/QML
+  runtime slice: `73 passed`.
+- Final non-gallery UI gate: `785 passed in 95.59s`, exit 0, with workspace-local
+  `--basetemp`.
+- Ruff, compileall, and `git diff --check`: exit 0.
+- Current-source smoke imported
+  `C:\Users\V\.codex\worktrees\3998\TongTong\src\modori\__init__.py` and used
+  `C:\Users\V\.codex\worktrees\3998\TongTong\.test-tmp\u02-smoke-current-3c4dcbd5fb814dfe9911515d4027154c\recoverable.xlsx`.
+- The workbook had active `안내`, valid `응답자료`, and `코드북` sheets. Initial table
+  preview remained false, recovery exposed all three names, and only an explicit
+  `응답자료` preview enabled confirmation.
+- Confirmed data was exactly two columns (`id`, `score`) and two rows; the committed
+  import step recorded `table_layout.sheet_name=응답자료` and the schema-bound column
+  selection.
+- Source workbook before/after: `5,920` bytes, SHA-256
+  `18d26768f53226e47e745e5a43d33c8b6eaad0f884567f4a88ce95a5bd18c54a`.
+- Automated tests prove corrupt XLSX exposes no recovery state and a current pipeline,
+  pipeline version, and dataset remain unchanged through recovery preview until
+  explicit Confirm.
+
+This evidence applies to the branch only. No frozen wheel, one-folder launcher,
+default branch, or release artifact was replaced.
 
 ## 5. Guided Mode Contract
 
