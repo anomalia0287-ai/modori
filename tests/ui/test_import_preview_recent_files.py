@@ -28,7 +28,8 @@ def test_import_preview_lists_variables_and_inferred_measures(tmp_path) -> None:
     assert controller.previewDataFilePath(str(data_path)) is True
 
     preview = controller.importPreviewText
-    assert "미리 읽은 데이터: 20행 · 9개 변수" in preview
+    assert "미리보기 표본: 20행 · 9개 변수" in preview
+    assert "앞 30행까지만 미리 읽으며, 확인 후 전체 데이터를 불러옵니다." in preview
     assert "q1" in preview
     assert "group" in preview
     assert "순서형" in preview

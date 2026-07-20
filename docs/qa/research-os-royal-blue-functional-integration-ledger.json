@@ -48,7 +48,7 @@
         "removal of an existing security finding"
       ],
       "status": "verified",
-      "integrated_blob_oid": "c36f189171b30e9e10cf49eccadeb1ed441fb322",
+      "integrated_blob_oid": "713eaf3f69a6dbeb84336457ed509b978e0c4f5a",
       "evidence": {
         "focused_tests": [
           "tests/test_file_operation_audit.py"
@@ -117,7 +117,7 @@
         "language change that appends ledger authority"
       ],
       "status": "verified",
-      "integrated_blob_oid": "adf332024cf1c528ed0e68cd6db60f887097c67c",
+      "integrated_blob_oid": "083d4a6ff1db0627e14fbac3017da23da8fef7a8",
       "evidence": {
         "focused_tests": [
           "tests/ui/test_controller.py",
@@ -193,7 +193,7 @@
         "raw cell mutation"
       ],
       "status": "verified",
-      "integrated_blob_oid": "e94d34ff156cb97ece5d60cda952d50bdab51a7b",
+      "integrated_blob_oid": "54e4c3f374717404c88c972c601242bc7b85ac44",
       "evidence": {
         "focused_tests": [
           "tests/ui/test_data_grid_qml.py",
@@ -231,7 +231,7 @@
         "whole-file Royal Blue replacement"
       ],
       "status": "verified",
-      "integrated_blob_oid": "88be623acab4a201466926541dd6f134e74bbd25",
+      "integrated_blob_oid": "510ea4bb7f992865a92b29c308e7d10b9a1c4c61",
       "evidence": {
         "focused_tests": [
           "tests/ui/test_human_operated_qml_flow.py",
@@ -307,7 +307,7 @@
         "Prepare or Confirm invoking Run"
       ],
       "status": "verified",
-      "integrated_blob_oid": "ff16502d04e8a48dbfe130bb4220fb3acfe2ed0d",
+      "integrated_blob_oid": "10c76ed6503b3bf9effecf60f300e8958c5cabb3",
       "evidence": {
         "focused_tests": [
           "tests/ui/test_human_operated_qml_flow.py",
@@ -345,7 +345,7 @@
         "semantic state conveyed by color alone"
       ],
       "status": "verified",
-      "integrated_blob_oid": "7dc485b01e8f6f3908d924d394dac0be5712f783",
+      "integrated_blob_oid": "22f35bd5481487cc424cb16fb7cd7e795f2de6e2",
       "evidence": {
         "focused_tests": [
           "tests/ui/test_royal_blue_workspace.py",
@@ -421,7 +421,7 @@
         "missing-key fallback on a production Research OS state"
       ],
       "status": "verified",
-      "integrated_blob_oid": "04d31278704311de9e3cccb04fb4e6ae5582dba0",
+      "integrated_blob_oid": "e74c296c6761759274126fb39e1e47bd4e09484e",
       "evidence": {
         "focused_tests": [
           "tests/ui/test_qml_string_catalog.py",
@@ -456,7 +456,7 @@
         "deleted audit coverage"
       ],
       "status": "verified",
-      "integrated_blob_oid": "42fedbbaf2af3d4286e32952a4c5a4b4b01c2df3",
+      "integrated_blob_oid": "777aef6c38e5d84f74fa3556400f40cd75d0e6d6",
       "evidence": {
         "focused_tests": [
           "tests/test_file_operation_audit.py"
@@ -556,7 +556,7 @@
         "direct raw-cell edit path"
       ],
       "status": "verified",
-      "integrated_blob_oid": "fa3bc344ab6e3038329cd74866f11e2f31ef9b84",
+      "integrated_blob_oid": "96eb21b8ded9e6c21e6b7e069434896ea2597618",
       "evidence": {
         "focused_tests": [
           "tests/ui/test_data_grid_qml.py"
@@ -659,7 +659,7 @@
         "legacy-only research flow"
       ],
       "status": "verified",
-      "integrated_blob_oid": "b89ab35ee6c2a3d11504711fe21693c26cc0afb5",
+      "integrated_blob_oid": "febad58ee6bd19c3536e41250da23f0170bd39b4",
       "evidence": {
         "focused_tests": [
           "tests/ui/test_human_operated_qml_flow.py"
@@ -694,7 +694,7 @@
         "guided-mode automatic execution"
       ],
       "status": "verified",
-      "integrated_blob_oid": "98e75ace2a3091035fd7687929d995617afa72fa",
+      "integrated_blob_oid": "223a55d2e8bbc5a774f6f984b6f03bc1ae8c6a49",
       "evidence": {
         "focused_tests": [
           "tests/ui/test_mode_action_surfaces.py",
@@ -729,7 +729,7 @@
         "silent missing-key fallback"
       ],
       "status": "verified",
-      "integrated_blob_oid": "a5d9ebbd4c2d99cfa6d38daf6ed51c7e86dba8bc",
+      "integrated_blob_oid": "6aa35577fffeda2fd58cc1a9067df8e3965a172d",
       "evidence": {
         "focused_tests": [
           "tests/ui/test_qml_string_catalog.py"
@@ -763,7 +763,7 @@
         "color-only status or invisible focus"
       ],
       "status": "verified",
-      "integrated_blob_oid": "059bc22a15867d45ee8a4a9f2b7767bf604bb54e",
+      "integrated_blob_oid": "12c51ec43051941e2b33b1daa4d3abec2b2d358b",
       "evidence": {
         "focused_tests": [
           "tests/ui/test_qml_visual_contract.py",
@@ -797,7 +797,7 @@
         "localized text replacing provenance identifiers"
       ],
       "status": "verified",
-      "integrated_blob_oid": "3cc6d6bbe308c63e08b0d510663877a7d714f915",
+      "integrated_blob_oid": "c6e7f60abbcaa66a915ecca3cc06ab4763bf002c",
       "evidence": {
         "focused_tests": [
           "tests/ui/test_result_binding.py"
@@ -863,7 +863,7 @@
         "cloud, telemetry, or remote content"
       ],
       "status": "verified",
-      "integrated_blob_oid": "0db5db945ea79b549451659709cda67c3adfe689",
+      "integrated_blob_oid": "ff9ae6cdcc40ba66f8d6be19ab86baec4947c90d",
       "evidence": {
         "focused_tests": [
           "tests/ui/test_security_privacy.py"

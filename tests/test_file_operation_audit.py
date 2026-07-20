@@ -27,6 +27,7 @@ AUDITED_FILE_OPERATION_FILES = {
     "scripts/package_launch_smoke.py",
     "scripts/package_public_data_smoke.py",
     "scripts/package_windows.py",
+    "scripts/prepare_build_week_demo_data.py",
     "scripts/recommendation_benchmark.py",
     "scripts/run_office_live_research_os_benchmark.py",
     "scripts/run_office_research_memory_benchmark.py",
@@ -108,6 +109,22 @@ def test_file_operation_audit_document_covers_every_audited_file() -> None:
     ]
 
     assert missing == []
+
+
+def test_build_week_demo_builder_documents_its_offline_atomic_write_boundary() -> None:
+    row = _audit_row("scripts/prepare_build_week_demo_data.py")
+
+    for required_text in (
+        "Developer-only offline",
+        "fixed SHA-256",
+        "caller-selected output",
+        "unique temporary sibling",
+        "atomically",
+        "only its own incomplete temporary file",
+        "no network client",
+        "not packaged",
+    ):
+        assert required_text in row
 
 
 def test_pipeline_operations_audit_documents_read_only_report_prediction() -> None:
