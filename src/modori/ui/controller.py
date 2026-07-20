@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from dataclasses import replace
 from pathlib import Path
 from typing import Any, Callable, Mapping
 
@@ -30,7 +29,6 @@ from modori.value_clustering import unification_suggestions
 from modori.value_inventory import value_recode_inventory
 from modori.ui.patches import PatchValidationError, parse_step_patch
 from modori.ui.paths import local_path_from_qml
-from modori.ui.pipeline_ops import PipelineOperations
 from modori.ui.pipeline_state import UiPipelineState
 from modori.ui.preview_models import models_for_dataset
 from modori.ui.recommendation_controller import (
@@ -52,16 +50,6 @@ _RECONFIRMATION_ERROR_CODE = "experimental_confirmation_required"
 _RECONFIRMATION_RUN_MESSAGE = (
     "변경된 데이터 구성을 다시 확인하거나 분석 방법을 직접 구성해 주세요."
 )
-_RECONFIRMATION_REPORT_MESSAGE = (
-    "변경된 데이터 구성을 다시 확인한 뒤 보고서를 저장해 주세요."
-)
-
-
-def export_report_from_pipeline(
-    pipeline: object,
-    options: ReportExportOptions,
-) -> Path:
-    return PipelineOperations(pipeline).export_report(options)
 
 
 def _worker_boundaries(
@@ -148,7 +136,7 @@ class UiController(
             mode_provider=lambda: self.mode,
             library=library,
         )
-        self._report_exporter = report_exporter
+        self._init_report_export_state(report_exporter)
         self._session = UiSessionState(
             settings_store or UiSettingsStore(),
             reduce_effects_override=reduce_effects,
@@ -158,9 +146,6 @@ class UiController(
         self._last_error = ""
         self._last_message = ""
         self._result_state = UiResultState()
-        self._report_path = ""
-        self._pending_report_options: ReportExportOptions | None = None
-        self._pending_report_path = ""
         self._pipeline_state = UiPipelineState.initial(
             self._services.pipeline_ops,
             status="empty" if pipeline is None else "ready",
@@ -525,49 +510,6 @@ class UiController(
     @Slot(result=bool)
     def rerunNow(self) -> bool:
         return self.rerun().ok
-
-    def exportReport(self, options: ReportExportOptions) -> CommandResult:
-        if self._session.selection_confirmation_required:
-            return self._command_error(
-                _RECONFIRMATION_REPORT_MESSAGE, _RECONFIRMATION_ERROR_CODE
-            )
-        exporter = self._report_exporter or export_report_from_pipeline
-        selection_origin = self._session.selection_provenance
-        effective_options = replace(
-            options,
-            selection_provenance=selection_origin,
-            selection_origin=selection_origin,
-        )
-        expected_output_path = self._services.pipeline_ops.report_output_path(
-            effective_options
-        )
-        result = self._services.report_export_service.export(
-            pipeline=self.pipeline,
-            options=effective_options,
-            exporter=exporter,
-            pipeline_version=self._pipeline_state.pipeline_version,
-            expected_output_path=expected_output_path,
-        )
-        if not result.ok:
-            if result.error_code == "report_destination_exists":
-                self._pending_report_options = effective_options
-                self._pending_report_path = (
-                    result.result_ids[0] if result.result_ids else ""
-                )
-                self._last_error = ""
-            else:
-                self._clear_pending_report_replacement()
-                self._last_error = result.message_ko
-            self._last_message = ""
-            self._pipeline_state.mark_ready_unless_empty()
-            self.stateChanged.emit()
-            return result
-        self._clear_pending_report_replacement()
-        self._report_path = result.result_ids[0]
-        self._last_error = ""
-        self._last_message = result.message_ko
-        self.stateChanged.emit()
-        return result
 
     @Slot(bool, result=bool)
     def markCurrentSelectionExperimental(self, assisted: bool) -> bool:

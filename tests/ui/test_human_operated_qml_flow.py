@@ -257,6 +257,9 @@ def test_work_actions_are_disabled_until_required_state_exists() -> None:
 
 
 def test_controller_bridge_runs_reference_flow_from_path(tmp_path) -> None:
+    import hashlib
+    import zipfile
+
     from tests.ui.test_end_to_end_ui_flow import write_reference_csv
     from modori.ui.controller import UiController
 
@@ -278,16 +281,33 @@ def test_controller_bridge_runs_reference_flow_from_path(tmp_path) -> None:
     report_path = Path(controller.reportPath)
     assert report_path.name == "report.docx"
     assert report_path.exists()
-    original_bytes = report_path.read_bytes()
+    original_sha256 = hashlib.sha256(report_path.read_bytes()).hexdigest()
 
     assert controller.exportReportNow() is False
     assert controller.reportReplacementPending is True
     assert Path(controller.reportConflictPath) == report_path
-    assert report_path.read_bytes() == original_bytes
+    assert hashlib.sha256(report_path.read_bytes()).hexdigest() == original_sha256
 
+    assert controller.cancelPendingReportReplacement() is True
+    assert controller.reportReplacementPending is False
+    assert hashlib.sha256(report_path.read_bytes()).hexdigest() == original_sha256
+
+    assert controller.exportReportNow() is False
     assert controller.replacePendingReport() is True
     assert controller.reportReplacementPending is False
-    assert report_path.exists()
+    assert zipfile.is_zipfile(report_path)
+    replaced_sha256 = hashlib.sha256(report_path.read_bytes()).hexdigest()
+
+    def fail_after_mutation(_pipeline, _options):
+        report_path.write_bytes(b"partial-replacement")
+        raise RuntimeError("injected replacement failure")
+
+    controller._report_exporter = fail_after_mutation
+    assert controller.exportReportNow() is False
+    assert controller.reportReplacementPending is True
+    assert controller.replacePendingReport() is False
+    assert hashlib.sha256(report_path.read_bytes()).hexdigest() == replaced_sha256
+    assert list(report_path.parent.glob(".*.backup")) == []
     assert "Cronbach" in controller.explainPlainText("ui.result.cronbach_alpha", "ko")
 
 

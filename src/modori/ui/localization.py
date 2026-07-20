@@ -34,6 +34,15 @@ UI_MESSAGE_EN: Mapping[str, str] = {
     "보고서에 선택 경로 안내를 기록하지 못했습니다.": (
         "The selection-path note could not be written to the report."
     ),
+    "보고서 저장 경로를 확인하지 못했습니다.": (
+        "The report destination could not be verified."
+    ),
+    "기존 보고서를 안전하게 보관하지 못했습니다.": (
+        "The existing report could not be preserved safely."
+    ),
+    "같은 이름의 보고서가 이미 있습니다. 기존 파일을 바꿀지 확인해 주세요.": (
+        "A report with this name already exists. Confirm whether to replace it."
+    ),
     "보고서를 내보냈습니다.": "The report was exported.",
     "설명 항목을 찾을 수 없습니다.": "The explanation entry could not be found.",
     "지원하지 않는 파일 형식입니다.": "This file type is not supported.",

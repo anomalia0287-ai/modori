@@ -426,6 +426,10 @@ def test_real_logistic_pipeline_produces_display_charts_and_report(tmp_path) -> 
     }
 
     pipeline.recompute(dirty_from=None)
+    report_path = tmp_path / "report" / "logistic.docx"
+    assert report_path.exists() is False
+
+    assert controller.exportReportNow() is True
     displays = PipelineOperations(
         pipeline,
         chart_renderer=ChartAssetRenderer(chart_dir=tmp_path / "display-charts"),
@@ -438,7 +442,7 @@ def test_real_logistic_pipeline_produces_display_charts_and_report(tmp_path) -> 
         "analysis:report",
         "report:report",
     }
-    assert (tmp_path / "report" / "logistic.docx").is_file()
+    assert report_path.is_file()
     assert len(displays) == 1
     display = displays[0]
     assert display.kind == "logistic_regression"
