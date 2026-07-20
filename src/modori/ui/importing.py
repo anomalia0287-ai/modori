@@ -228,17 +228,22 @@ class ImportPreviewService:
         language: str,
     ) -> str:
         if language == "en":
+            row_label = "row" if preview.previewed_rows == 1 else "rows"
+            variable_label = "variable" if len(preview.columns) == 1 else "variables"
             lines = [
                 f"File: {preview.source.path.name}",
-                f"Previewed data: {preview.previewed_rows} rows · {len(preview.columns)} variables",
-                f"Preview: {preview.previewed_rows} of the first {preview.preview_limit} rows",
+                f"Preview sample: {preview.previewed_rows} {row_label} · "
+                f"{len(preview.columns)} {variable_label}",
+                f"Only the first {preview.preview_limit} rows are previewed; "
+                "the full dataset is loaded after confirmation.",
                 f"Variables with value labels: {label_count}",
             ]
         else:
             lines = [
                 f"파일: {preview.source.path.name}",
-                f"미리 읽은 데이터: {preview.previewed_rows}행 · {len(preview.columns)}개 변수",
-                f"미리보기: 앞 {preview.preview_limit}행 중 {preview.previewed_rows}행",
+                f"미리보기 표본: {preview.previewed_rows}행 · {len(preview.columns)}개 변수",
+                f"앞 {preview.preview_limit}행까지만 미리 읽으며, "
+                "확인 후 전체 데이터를 불러옵니다.",
                 f"값 레이블이 있는 변수: {label_count}",
             ]
         if preview.source.sheet_name:

@@ -95,9 +95,16 @@ class ResultPayloadValidator:
             return False
         if not isinstance(table.rows, list):
             return False
-        return all(
+        if not all(
             isinstance(row, list) and all(isinstance(cell, str) for cell in row)
             for row in table.rows
+        ):
+            return False
+        if table.rows_en is None:
+            return True
+        return isinstance(table.rows_en, list) and all(
+            isinstance(row, list) and all(isinstance(cell, str) for cell in row)
+            for row in table.rows_en
         )
 
     @staticmethod

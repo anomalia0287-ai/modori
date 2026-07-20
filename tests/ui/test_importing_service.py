@@ -15,7 +15,8 @@ def test_import_preview_service_returns_variable_summary(tmp_path) -> None:
 
     assert preview.ok is True
     assert preview.pending_path == data_path
-    assert "미리 읽은 데이터: 2행 · 2개 변수" in preview.text
+    assert "미리보기 표본: 2행 · 2개 변수" in preview.text
+    assert "앞 30행까지만 미리 읽으며, 확인 후 전체 데이터를 불러옵니다." in preview.text
     assert "group" in preview.text
     assert "score" in preview.text
 
@@ -31,8 +32,11 @@ def test_import_preview_service_formats_existing_structure_in_english(tmp_path) 
 
     assert preview.ok is True
     assert "File: survey.csv" in preview.text
-    assert "Previewed data: 2 rows · 2 variables" in preview.text
-    assert "Preview:" in preview.text
+    assert "Preview sample: 2 rows · 2 variables" in preview.text
+    assert (
+        "Only the first 30 rows are previewed; the full dataset is loaded after confirmation."
+        in preview.text
+    )
     assert "Inference:" in preview.text
     assert "Sample rows" in preview.text
     assert "(missing)" in preview.text
@@ -73,7 +77,7 @@ def test_import_preview_service_surfaces_xlsx_source_context_and_sample(tmp_path
     assert "파일: survey.xlsx" in preview.text
     assert "시트: Responses" in preview.text
     assert "전체 시트: Responses, Codebook" in preview.text
-    assert "미리보기: 앞 30행 중 2행" in preview.text
+    assert "미리보기 표본: 2행 · 2개 변수" in preview.text
     assert "샘플 행" in preview.text
     assert "group=1" in preview.text
     assert "score=3.5" in preview.text
@@ -88,6 +92,21 @@ def test_import_preview_service_surfaces_preview_limit_warning(tmp_path) -> None
 
     assert preview.ok is True
     assert "미리보기 열 제한: 51개 중 50개 열만 표시합니다." in preview.text
+
+
+def test_large_preview_never_presents_the_preview_limit_as_total_rows(tmp_path) -> None:
+    data_path = tmp_path / "large.csv"
+    pd.DataFrame({"score": range(649)}).to_csv(data_path, index=False)
+
+    preview = ImportPreviewService().preview(data_path, language="en")
+
+    assert preview.ok is True
+    assert "Preview sample: 30 rows · 1 variable" in preview.text
+    assert (
+        "Only the first 30 rows are previewed; the full dataset is loaded after confirmation."
+        in preview.text
+    )
+    assert "Previewed data: 30 rows" not in preview.text
 
 
 def test_import_preview_service_surfaces_public_data_header_warning(tmp_path) -> None:

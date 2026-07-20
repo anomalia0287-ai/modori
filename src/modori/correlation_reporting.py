@@ -1,6 +1,16 @@
 from __future__ import annotations
 
-from modori.correlation_results import CorrelationResult
+from modori.correlation_results import CorrelationPairResult, CorrelationResult
+
+
+_TIED_RANK_WARNING_KO = (
+    "Spearman 상관은 동점 rank를 SciPy spearmanr 정책으로 처리했다. "
+    "동점이 많은 자료의 p-value는 소프트웨어별로 달라질 수 있다."
+)
+_TIED_RANK_WARNING_EN = (
+    "Spearman correlation handled tied ranks using SciPy's spearmanr policy. "
+    "P-values for data with many ties can differ across statistical software."
+)
 
 
 def prose_for_correlation(result: CorrelationResult, language: str = "ko") -> str:
@@ -24,7 +34,10 @@ def prose_for_correlation(result: CorrelationResult, language: str = "ko") -> st
     return base
 
 
-def table_for_correlation(result: CorrelationResult) -> list[dict[str, str]]:
+def table_for_correlation(
+    result: CorrelationResult,
+    language: str = "ko",
+) -> list[dict[str, str]]:
     return [
         {
             "x": pair.x_label,
@@ -36,10 +49,33 @@ def table_for_correlation(result: CorrelationResult) -> list[dict[str, str]]:
             "p_adjusted": _format_optional(pair.p_adjusted),
             "n": str(pair.n),
             "excluded_n": str(pair.excluded_n),
-            "warnings": "; ".join(pair.warnings_ko),
+            "warnings": "; ".join(_warnings_for_pair(pair, language)),
         }
         for pair in result.pairs
     ]
+
+
+def _warnings_for_pair(
+    pair: CorrelationPairResult,
+    language: str,
+) -> tuple[str, ...]:
+    if language != "en":
+        return pair.warnings_ko
+
+    warnings = list(pair.warnings_ko)
+    details = pair.method_details
+    has_tied_rank_warning = (
+        pair.method == "spearman"
+        and details.get("method") == "scipy_spearmanr"
+        and details.get("ties_present") is True
+        and details.get("p_value_method") == "scipy_asymptotic"
+    )
+    if has_tied_rank_warning:
+        warnings = [
+            warning for warning in warnings if warning != _TIED_RANK_WARNING_KO
+        ]
+        warnings.insert(0, _TIED_RANK_WARNING_EN)
+    return tuple(warnings)
 
 
 def _format_optional(value: float | None, digits: int = 3) -> str:

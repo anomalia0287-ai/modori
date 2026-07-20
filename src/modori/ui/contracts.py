@@ -103,6 +103,7 @@ class DisplayTable:
     caption_en: str
     columns: list[DisplayColumn]
     rows: list[list[str]]
+    rows_en: list[list[str]] | None = None
 
 
 @dataclass(frozen=True)

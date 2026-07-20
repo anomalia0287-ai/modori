@@ -15,9 +15,10 @@ def test_display_result_uses_reporting_helpers(monkeypatch) -> None:
         prose_calls.append(language)
         return "한국어 문장" if language == "ko" else "English sentence"
 
-    def fake_table_for(result):
-        table_calls.append(result)
-        return [{"statistic": "t", "p": ".012"}]
+    def fake_table_for(result, *, language="ko"):
+        table_calls.append((result, language))
+        warning = "주의" if language == "ko" else "Caution"
+        return [{"statistic": "t", "p": ".012", "warning": warning}]
 
     monkeypatch.setattr(ui_results, "prose_for", fake_prose_for)
     monkeypatch.setattr(ui_results, "table_for", fake_table_for)
@@ -30,13 +31,14 @@ def test_display_result_uses_reporting_helpers(monkeypatch) -> None:
     )
 
     assert prose_calls == ["ko", "en"]
-    assert table_calls == [engine_result]
+    assert table_calls == [(engine_result, "ko"), (engine_result, "en")]
     assert display.result_id == "comparison:score:group"
     assert display.kind == "comparison"
     assert display.prose_ko == "한국어 문장"
     assert display.prose_en == "English sentence"
     assert display.tables[0].columns[0].label == "statistic"
-    assert display.tables[0].rows == [["t", ".012"]]
+    assert display.tables[0].rows == [["t", ".012", "주의"]]
+    assert display.tables[0].rows_en == [["t", ".012", "Caution"]]
 
 
 def test_missing_chart_path_becomes_display_note(monkeypatch, tmp_path) -> None:
@@ -44,7 +46,11 @@ def test_missing_chart_path_becomes_display_note(monkeypatch, tmp_path) -> None:
 
     missing = tmp_path / "missing.png"
     monkeypatch.setattr(ui_results, "prose_for", lambda result, language="ko": "문장")
-    monkeypatch.setattr(ui_results, "table_for", lambda result: [])
+    monkeypatch.setattr(
+        ui_results,
+        "table_for",
+        lambda result, *, language="ko": [],
+    )
 
     display = ui_results.display_result_from_engine_result(
         FakeEngineResult(chart_paths=[str(missing)]),
@@ -62,7 +68,11 @@ def test_existing_chart_path_is_preserved(monkeypatch, tmp_path) -> None:
     chart = tmp_path / "chart.png"
     chart.write_text("png placeholder", encoding="utf-8")
     monkeypatch.setattr(ui_results, "prose_for", lambda result, language="ko": "문장")
-    monkeypatch.setattr(ui_results, "table_for", lambda result: [])
+    monkeypatch.setattr(
+        ui_results,
+        "table_for",
+        lambda result, *, language="ko": [],
+    )
 
     display = ui_results.display_result_from_engine_result(
         FakeEngineResult(chart_paths=[str(chart)]),

@@ -34,7 +34,10 @@ def display_result_from_engine_result(
     result_id: str,
     kind: ResultKind,
 ) -> DisplayResult:
-    tables = _display_tables(table_for(result))
+    tables = _display_tables(
+        table_for(result, language="ko"),
+        rows_en=table_for(result, language="en"),
+    )
     chart_paths, notes = _chart_paths_and_notes(getattr(result, "chart_paths", []))
     return DisplayResult(
         result_id=result_id,
@@ -49,7 +52,11 @@ def display_result_from_engine_result(
     )
 
 
-def _display_tables(rows: list[dict[str, str]]) -> list[DisplayTable]:
+def _display_tables(
+    rows: list[dict[str, str]],
+    *,
+    rows_en: list[dict[str, str]] | None = None,
+) -> list[DisplayTable]:
     if not rows:
         return []
     columns = list(rows[0].keys())
@@ -59,6 +66,14 @@ def _display_tables(rows: list[dict[str, str]]) -> list[DisplayTable]:
             caption_en="Result table",
             columns=[DisplayColumn(label=column) for column in columns],
             rows=[[str(row.get(column, "")) for column in columns] for row in rows],
+            rows_en=(
+                None
+                if rows_en is None
+                else [
+                    [str(row.get(column, "")) for column in columns]
+                    for row in rows_en
+                ]
+            ),
         )
     ]
 

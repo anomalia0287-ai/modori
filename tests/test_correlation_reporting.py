@@ -102,3 +102,50 @@ def test_correlation_reporting_includes_multiple_comparison_guidance_for_matrix(
     assert "다중비교" in prose
     assert "조정" in prose
     assert "This result summarizes 2 correlation pairs " in prose_en
+
+
+def test_correlation_reporting_localizes_tied_rank_warning_from_method_details() -> None:
+    warning_ko = (
+        "Spearman 상관은 동점 rank를 SciPy spearmanr 정책으로 처리했다. "
+        "동점이 많은 자료의 p-value는 소프트웨어별로 달라질 수 있다."
+    )
+    result = CorrelationResult(
+        analysis_key="correlation",
+        title_ko="상관분석",
+        variables=("study", "grade"),
+        method_policy="spearman",
+        missing_policy="pairwise",
+        n_total=649,
+        pairs=(
+            CorrelationPairResult(
+                x="study",
+                y="grade",
+                x_label="Weekly study time",
+                y_label="Final grade",
+                method="spearman",
+                statistic_label="rho",
+                coefficient=0.2747,
+                p_value=1.06e-12,
+                n=649,
+                excluded_n=0,
+                warnings_ko=(warning_ko,),
+                method_details={
+                    "method": "scipy_spearmanr",
+                    "ties_present": True,
+                    "p_value_method": "scipy_asymptotic",
+                },
+            ),
+        ),
+        warnings_ko=(),
+        notes_ko=(),
+    )
+
+    korean = table_for_correlation(result, language="ko")
+    english = table_for_correlation(result, language="en")
+
+    assert korean[0]["warnings"] == warning_ko
+    assert english[0]["warnings"] == (
+        "Spearman correlation handled tied ranks using SciPy's spearmanr policy. "
+        "P-values for data with many ties can differ across statistical software."
+    )
+    assert "상관" not in english[0]["warnings"]

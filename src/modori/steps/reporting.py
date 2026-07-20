@@ -520,7 +520,7 @@ def prose_for(result: object, language: str = "ko") -> str:
     raise TypeError(f"Unsupported result for prose: {type(result).__name__}")
 
 
-def table_for(result: object) -> list[dict[str, str]]:
+def table_for(result: object, *, language: str = "ko") -> list[dict[str, str]]:
     if isinstance(result, DescriptivesTableResult):
         return table_for_descriptives(result)
 
@@ -528,7 +528,7 @@ def table_for(result: object) -> list[dict[str, str]]:
         return table_for_frequency_crosstab(result)
 
     if isinstance(result, CorrelationResult):
-        return table_for_correlation(result)
+        return table_for_correlation(result, language=language)
 
     if isinstance(result, OneWayAnovaResult):
         return table_for_anova_oneway(result)
@@ -1374,7 +1374,7 @@ class ReportStep(Step):
         tables: dict[str, list[dict[str, str]]] = {}
         for public_key, result in included_results:
             prose.append(prose_for(result, language=language))
-            tables[public_key] = table_for(result)
+            tables[public_key] = table_for(result, language=language)
 
         if bool(self.params.get("defer_write_until_export", False)):
             return StepResult(

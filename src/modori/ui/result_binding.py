@@ -79,8 +79,13 @@ class ResultBindingPresenter:
             for table in getattr(result, "tables", []):
                 columns = [column.label for column in table.columns]
                 caption = getattr(table, f"caption_{language}", "")
+                localized_rows = (
+                    table.rows_en
+                    if language == "en" and table.rows_en is not None
+                    else table.rows
+                )
                 lines = [caption, "\t".join(columns)]
-                lines.extend("\t".join(row) for row in table.rows)
+                lines.extend("\t".join(row) for row in localized_rows)
                 blocks.append("\n".join(lines))
         return "\n\n".join(blocks)
 

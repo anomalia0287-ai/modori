@@ -23,6 +23,7 @@ def test_result_binding_formats_summary_tables_notes_and_chart_paths() -> None:
                 caption_en="Table 1",
                 columns=[DisplayColumn(label="값"), DisplayColumn(label="p")],
                 rows=[["1.23", ".04"]],
+                rows_en=[["1.23", ".04 (English warning)"]],
             )
         ],
         chart_paths=["C:/tmp/chart.png"],
@@ -39,7 +40,7 @@ def test_result_binding_formats_summary_tables_notes_and_chart_paths() -> None:
     english = presenter.bind([result], language="en")
 
     assert english.summary_text == "Comparison\nEnglish sentence"
-    assert english.table_text == "Table 1\n값\tp\n1.23\t.04"
+    assert english.table_text == "Table 1\n값\tp\n1.23\t.04 (English warning)"
     assert english.notes_text == "Figure: Figure file could not be found"
 
 
@@ -47,7 +48,10 @@ def test_factorial_result_kind_has_bilingual_product_titles(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr("modori.ui.results.prose_for", lambda _result, language: language)
-    monkeypatch.setattr("modori.ui.results.table_for", lambda _result: [])
+    monkeypatch.setattr(
+        "modori.ui.results.table_for",
+        lambda _result, *, language="ko": [],
+    )
 
     display = display_result_from_engine_result(
         object(),
