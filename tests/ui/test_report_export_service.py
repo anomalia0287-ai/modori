@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import hashlib
+import os
 from pathlib import Path
 
 from docx import Document
 
 from modori.steps.reporting import RESEARCH_OS_SELECTION_DISCLOSURE
+import modori.ui.report_export as report_export_module
 from modori.ui.contracts import ReportExportOptions
 from modori.ui.report_export import (
     EXPERIMENTAL_DISCLOSURE_EN,
@@ -266,6 +268,83 @@ def test_approved_replacement_restores_original_when_exporter_fails(
     assert result.error_code == "engine_error"
     assert _sha256(output_path) == before
     assert not list(tmp_path.glob(".*.backup"))
+
+
+def test_approved_replacement_retries_transient_windows_restore_lock(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    output_path = tmp_path / "report.docx"
+    output_path.write_bytes(b"original-report")
+    before = _sha256(output_path)
+    real_replace = os.replace
+    restore_attempts = 0
+
+    def transient_replace(source, destination):
+        nonlocal restore_attempts
+        if Path(source).suffix == ".backup" and Path(destination) == output_path:
+            restore_attempts += 1
+            if restore_attempts == 1:
+                raise PermissionError("transient Windows file lock")
+        real_replace(source, destination)
+
+    def failing_exporter(pipeline, options):
+        output_path.write_bytes(b"partial-new-report")
+        raise RuntimeError("failed after mutation")
+
+    monkeypatch.setattr(report_export_module.os, "replace", transient_replace)
+    monkeypatch.setattr(report_export_module, "sleep", lambda _delay: None)
+
+    result = ReportExportService().export(
+        pipeline=object(),
+        options=ReportExportOptions(replace_existing=True),
+        exporter=failing_exporter,
+        pipeline_version=9,
+        expected_output_path=output_path,
+    )
+
+    assert result.ok is False
+    assert result.error_code == "engine_error"
+    assert restore_attempts == 2
+    assert _sha256(output_path) == before
+    assert not list(tmp_path.glob(".*.backup"))
+
+
+def test_persistent_restore_lock_retains_backup_and_returns_recovery_path(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    output_path = tmp_path / "report.docx"
+    output_path.write_bytes(b"original-report")
+    before = _sha256(output_path)
+
+    def locked_replace(source, destination):
+        if Path(source).suffix == ".backup" and Path(destination) == output_path:
+            raise PermissionError("persistent Windows file lock")
+        os.replace(source, destination)
+
+    def failing_exporter(pipeline, options):
+        output_path.write_bytes(b"partial-new-report")
+        raise RuntimeError("failed after mutation")
+
+    monkeypatch.setattr(report_export_module.os, "replace", locked_replace)
+    monkeypatch.setattr(report_export_module, "sleep", lambda _delay: None)
+
+    result = ReportExportService().export(
+        pipeline=object(),
+        options=ReportExportOptions(replace_existing=True),
+        exporter=failing_exporter,
+        pipeline_version=9,
+        expected_output_path=output_path,
+    )
+
+    assert result.ok is False
+    assert result.error_code == "report_restore_failed"
+    assert len(result.result_ids) == 1
+    backup_path = Path(result.result_ids[0])
+    assert backup_path.suffix == ".backup"
+    assert _sha256(backup_path) == before
+    assert output_path.read_bytes() == b"partial-new-report"
 
 
 def test_approved_replacement_commits_valid_docx_and_discards_backup(

@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import os
 import zipfile
 from pathlib import Path
 from shutil import copyfile
 from tempfile import NamedTemporaryFile
+from time import sleep
 from typing import Callable
 
 from docx import Document
@@ -41,6 +43,7 @@ _KNOWN_DISCLOSURES = {
     *SELECTION_DISCLOSURE.values(),
     *RESEARCH_OS_SELECTION_DISCLOSURE.values(),
 }
+_RESTORE_RETRY_DELAYS = (0.02, 0.05, 0.1, 0.2)
 
 
 def _remove_paragraph(paragraph: object) -> None:
@@ -128,9 +131,42 @@ def _backup_existing(path: Path) -> Path:
     return backup_path
 
 
-def _restore_backup(backup_path: Path | None, output_path: Path) -> None:
-    if backup_path is not None and backup_path.exists():
-        backup_path.replace(output_path)
+def _restore_backup(backup_path: Path | None, output_path: Path) -> bool:
+    if backup_path is None:
+        return True
+    if not backup_path.exists():
+        return False
+    for delay in (*_RESTORE_RETRY_DELAYS, None):
+        try:
+            os.replace(backup_path, output_path)
+        except PermissionError:
+            if delay is None:
+                return False
+            sleep(delay)
+        else:
+            return True
+    return False
+
+
+def _restore_failure_result(
+    backup_path: Path | None,
+    pipeline_version: int,
+) -> CommandResult:
+    backup_ids = (
+        [str(backup_path.resolve())]
+        if backup_path is not None and backup_path.exists()
+        else []
+    )
+    return CommandResult(
+        ok=False,
+        message_ko=(
+            "기존 보고서를 자동으로 복구하지 못했습니다. "
+            "원래 보고서 폴더의 보관 파일을 확인해 주세요."
+        ),
+        error_code="report_restore_failed",
+        pipeline_version=pipeline_version,
+        result_ids=backup_ids,
+    )
 
 
 class ReportExportService:
@@ -178,8 +214,10 @@ class ReportExportService:
         try:
             output_path = Path(exporter(pipeline, options))
         except Exception:
-            if expected_path is not None:
-                _restore_backup(backup_path, expected_path)
+            if expected_path is not None and not _restore_backup(
+                backup_path, expected_path
+            ):
+                return _restore_failure_result(backup_path, pipeline_version)
             return CommandResult(
                 ok=False,
                 message_ko="보고서를 내보내지 못했습니다.",
@@ -191,7 +229,8 @@ class ReportExportService:
             and expected_path is not None
             and output_path.resolve() != expected_path
         ):
-            _restore_backup(backup_path, expected_path)
+            if not _restore_backup(backup_path, expected_path):
+                return _restore_failure_result(backup_path, pipeline_version)
             return CommandResult(
                 ok=False,
                 message_ko="보고서 저장 경로를 확인하지 못했습니다.",
@@ -199,8 +238,10 @@ class ReportExportService:
                 pipeline_version=pipeline_version,
             )
         if not output_path.exists():
-            if expected_path is not None:
-                _restore_backup(backup_path, expected_path)
+            if expected_path is not None and not _restore_backup(
+                backup_path, expected_path
+            ):
+                return _restore_failure_result(backup_path, pipeline_version)
             return CommandResult(
                 ok=False,
                 message_ko="보고서 파일이 생성되지 않았습니다.",
@@ -210,8 +251,10 @@ class ReportExportService:
         try:
             _publish_with_selection_disclosure(output_path, options)
         except Exception:
-            if expected_path is not None:
-                _restore_backup(backup_path, expected_path)
+            if expected_path is not None and not _restore_backup(
+                backup_path, expected_path
+            ):
+                return _restore_failure_result(backup_path, pipeline_version)
             return CommandResult(
                 ok=False,
                 message_ko="보고서에 선택 경로 안내를 기록하지 못했습니다.",

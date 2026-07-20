@@ -40,6 +40,10 @@ UI_MESSAGE_EN: Mapping[str, str] = {
     "기존 보고서를 안전하게 보관하지 못했습니다.": (
         "The existing report could not be preserved safely."
     ),
+    "기존 보고서를 자동으로 복구하지 못했습니다. 원래 보고서 폴더의 보관 파일을 확인해 주세요.": (
+        "The existing report could not be restored automatically. "
+        "Check the backup file in the original report folder."
+    ),
     "같은 이름의 보고서가 이미 있습니다. 기존 파일을 바꿀지 확인해 주세요.": (
         "A report with this name already exists. Confirm whether to replace it."
     ),
