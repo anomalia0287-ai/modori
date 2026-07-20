@@ -137,6 +137,38 @@ def test_gallery_manifest_freezes_the_approved_matrix_before_capture() -> None:
     assert {item["reduce_effects"] for item in items} == {False, True}
 
 
+def test_gallery_warning_copy_matches_the_guided_mode_contract() -> None:
+    manifest = _manifest()
+    overrides = manifest["ui_copy_overrides"]["en"]
+    fixtures = manifest["fixtures"]
+
+    assert "research.experimental" not in overrides
+    assert "research.no_auto_run" not in overrides
+    assert "research.confirmed_run_hint" not in overrides
+    assert overrides["research.preparation.review_badge"] == "Setup review"
+    assert overrides["research.preparation.confirmed_badge"] == "Setup confirmed"
+    assert overrides["research.confirm_description"] == (
+        "Confirms only the displayed setup."
+    )
+
+    guided = fixtures["candidate_guided_ko"]["state_model"]
+    standard = fixtures["candidate_standard_en"]["state_model"]
+    assert guided["badgeText"] == "후보 준비됨"
+    assert guided["candidate"]["persistentBoundary"] == (
+        "다음 단계에서 변수 역할과 설정을 검토합니다."
+    )
+    assert standard["badgeText"] == "Candidate ready"
+    assert standard["candidate"]["persistentBoundary"] == (
+        "Next, review variable roles and settings."
+    )
+
+    for fixture_id in ("prepare_review_ko", "confirmed_en"):
+        rows = fixtures[fixture_id]["state_model"]["preparationReview"]["settingsRows"]
+        assert {row["label"] for row in rows}.isdisjoint(
+            {"experimental", "automatic_run"}
+        )
+
+
 def test_manifest_fixture_content_is_synthetic_and_privacy_closed() -> None:
     manifest = _manifest()
     privacy = manifest["privacy"]

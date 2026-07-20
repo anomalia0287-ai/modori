@@ -76,13 +76,29 @@ def test_guide_rail_has_explicit_committed_run_anchor() -> None:
     assert "selectedIntent" in guide
 
 
-def test_experimental_status_stays_outside_the_scrolling_form() -> None:
+def test_one_quiet_experimental_status_stays_outside_the_scrolling_form() -> None:
     guide = qml_text("components/GuideRail.qml")
+    work = qml_text("screens/WorkScreen.qml")
+    panel = qml_text("components/ResearchFlowPanel.qml")
+    candidate = qml_text("components/ResearchCandidateCard.qml")
     scroll_start = guide.index("ScrollView {")
+    header = guide[guide.index("id: guideHeader") : scroll_start]
 
     assert guide.index("id: guideHeader") < scroll_start
-    assert 'appBootstrap.text("guide.experimental_status", appBootstrap.language)' in guide[:scroll_start]
+    assert "ColumnLayout {\n        id: guideHeader" in guide
+    assert guide.count('appBootstrap.text("guide.experimental_status", appBootstrap.language)') == 1
+    assert 'objectName: "guidedExperimentalStatus"' in header
+    assert "visible: true" in header
+    assert "anchors.top: guideHeader.bottom" in guide[scroll_start:]
     assert 'appBootstrap.text("guide.experimental_status", appBootstrap.language)' not in guide[scroll_start:]
+    assert "guide.experimental_badge" not in guide
+    assert "research.legacy.experimental_status" not in guide
+    assert "research.experimental" not in panel
+    assert "research.no_auto_run" not in panel
+    assert "research.confirmed_run_hint" not in panel
+    assert "research.experimental" not in candidate
+    assert "research.no_auto_run" not in candidate
+    assert "research.no_auto_run" not in work
 
 
 def test_guide_has_explicit_fail_closed_reset_and_provenance_calls() -> None:

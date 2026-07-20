@@ -104,6 +104,25 @@ def _load_main_with_warnings(
         qInstallMessageHandler(previous_handler)
 
 
+def test_guided_work_runtime_shows_one_quiet_experimental_status() -> None:
+    controller = UiController(reduce_effects=True)
+    assert controller.chooseMode("guided") is True
+    engine, root, messages = _load_main_with_warnings(controller)
+    app = _app()
+
+    try:
+        statuses = root.findChildren(QObject, "guidedExperimentalStatus")
+        assert len(statuses) == 1
+        status = statuses[0]
+        assert status.property("visible") is True
+        assert status.property("label") == "실험적 가이드"
+        assert _significant_warnings(messages) == []
+    finally:
+        root.deleteLater()
+        app.processEvents()
+        del engine
+
+
 def test_data_grid_view_qml_loads_without_runtime_errors() -> None:
     app = _app()
     engine = QQmlEngine()

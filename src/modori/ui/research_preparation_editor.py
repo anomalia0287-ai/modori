@@ -133,7 +133,6 @@ def _settings_rows(
         )
     else:
         raise ResearchPreparationError("preparation step type is outside P1")
-    rows.extend((("experimental", "true"), ("automatic_run", "false")))
     return tuple(rows)
 
 

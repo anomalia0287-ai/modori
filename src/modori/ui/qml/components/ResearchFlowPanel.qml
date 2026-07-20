@@ -392,8 +392,13 @@ ColumnLayout {
 
             StateBadge {
                 id: researchPanelBadge
+                objectName: "researchPanelBadge"
                 state: root.statusBadgeState()
-                label: String(root.stateModel.badgeText || "")
+                label: root.flowState === "prepare_review"
+                    ? appBootstrap.text("research.preparation.review_badge", appBootstrap.language)
+                    : root.flowState === "confirmed"
+                        ? appBootstrap.text("research.preparation.confirmed_badge", appBootstrap.language)
+                        : String(root.stateModel.badgeText || "")
                 visible: label.length > 0
                 Layout.alignment: Qt.AlignRight
             }
@@ -779,7 +784,6 @@ ColumnLayout {
             proMode: root.proMode
             preparationBlocked: root.flowState === "preparation_blocked"
             prepareLabel: root.primaryAction ? String(root.primaryAction.label) : ""
-            badgeLabel: String(root.stateModel.badgeText || "")
             onPrepareRequested: {
                 if (root.controller) {
                     root.controller.prepare()
@@ -803,24 +807,6 @@ ColumnLayout {
                 anchors.fill: parent
                 anchors.margins: theme.spaceContent
                 spacing: theme.spaceSm
-
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: theme.spaceSm
-
-                    StateBadge {
-                        state: root.flowState === "confirmed" ? "latest" : "running"
-                        label: appBootstrap.text("research.experimental", appBootstrap.language)
-                    }
-
-                    Label {
-                        text: appBootstrap.text("research.no_auto_run", appBootstrap.language)
-                        color: theme.warning
-                        font.bold: true
-                        wrapMode: Text.WordWrap
-                        Layout.fillWidth: true
-                    }
-                }
 
                 Label {
                     text: appBootstrap.text("research.preparation.settings", appBootstrap.language)
@@ -861,7 +847,7 @@ ColumnLayout {
                 AppButton {
                     text: appBootstrap.text("research.confirm", appBootstrap.language)
                     Accessible.name: text
-                    Accessible.description: appBootstrap.text("research.no_auto_run", appBootstrap.language)
+                    Accessible.description: appBootstrap.text("research.confirm_description", appBootstrap.language)
                     variant: "primary"
                     visible: root.flowState === "prepare_review"
                     enabled: visible
@@ -869,13 +855,6 @@ ColumnLayout {
                     onClicked: root.confirmReview()
                 }
 
-                Label {
-                    text: appBootstrap.text("research.confirmed_run_hint", appBootstrap.language)
-                    color: theme.textBody
-                    wrapMode: Text.WordWrap
-                    visible: root.flowState === "confirmed"
-                    Layout.fillWidth: true
-                }
             }
         }
 

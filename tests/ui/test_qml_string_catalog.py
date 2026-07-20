@@ -80,8 +80,30 @@ def test_recommendation_surface_uses_one_persistent_experimental_status() -> Non
     assert UI_STRINGS_EN["work.guided"] == "GUIDED MODE"
     assert "CASUAL MODE" not in UI_STRINGS_KO.values()
     assert "CASUAL MODE" not in UI_STRINGS_EN.values()
+    assert UI_STRINGS_KO["entry.guided_description"] == (
+        "연구 질문과 데이터 구조를 따라 분석 후보와 필요한 확인을 단계별로 안내합니다.\n"
+        "실험적 연구 가이드 · 설정과 실행은 직접 확인"
+    )
+    assert UI_STRINGS_EN["entry.guided_description"] == (
+        "Follow guided steps from your research question and data structure to a "
+        "reviewable analysis candidate.\n"
+        "Experimental research guide · You review the setup and start the run"
+    )
+    assert "entry.guided_badge" not in UI_STRINGS_KO
+    assert "entry.guided_badge" not in UI_STRINGS_EN
     assert UI_STRINGS_KO["guide.title"] == "분석 후보 안내"
-    assert UI_STRINGS_KO["guide.experimental_status"] == "실험적 · 자동 실행 안 함"
+    assert UI_STRINGS_KO["guide.experimental_status"] == "실험적 가이드"
+    assert UI_STRINGS_EN["guide.experimental_status"] == "Experimental guide"
+    assert "guide.experimental_badge" not in UI_STRINGS_KO
+    assert "guide.experimental_badge" not in UI_STRINGS_EN
+    assert "research.legacy.experimental_status" not in UI_STRINGS_KO
+    assert "research.legacy.experimental_status" not in UI_STRINGS_EN
+    assert "research.experimental" not in UI_STRINGS_KO
+    assert "research.experimental" not in UI_STRINGS_EN
+    assert "research.no_auto_run" not in UI_STRINGS_KO
+    assert "research.no_auto_run" not in UI_STRINGS_EN
+    assert "research.confirmed_run_hint" not in UI_STRINGS_KO
+    assert "research.confirmed_run_hint" not in UI_STRINGS_EN
     assert UI_STRINGS_KO["guide.candidate_list"] == "분석 후보 목록"
     assert UI_STRINGS_KO["guide.candidate_label"] == "분석 후보"
     assert UI_STRINGS_KO["guide.no_recommendation"] == (
@@ -119,8 +141,14 @@ def test_research_os_surface_uses_experimental_and_no_auto_run_vocabulary() -> N
     assert UI_STRINGS_KO["research.transformation_first"].startswith(
         "역코딩·척도 구성·결측 처리"
     )
-    assert UI_STRINGS_KO["research.experimental"] == "실험적 후보"
-    assert UI_STRINGS_KO["research.no_auto_run"] == (
-        "검증 중인 분석 후보 · 자동 실행 안 함"
+    assert UI_STRINGS_KO["research.preparation.review_badge"] == "설정 검토"
+    assert UI_STRINGS_KO["research.preparation.confirmed_badge"] == "설정 확인됨"
+    assert UI_STRINGS_KO["research.confirm_description"] == (
+        "표시된 설정만 확인합니다."
+    )
+    assert UI_STRINGS_EN["research.preparation.review_badge"] == "Setup review"
+    assert UI_STRINGS_EN["research.preparation.confirmed_badge"] == "Setup confirmed"
+    assert UI_STRINGS_EN["research.confirm_description"] == (
+        "Confirms only the displayed setup."
     )
     assert UI_STRINGS_KO["research.legacy.title"] == "데이터 모양 기반 빠른 후보"

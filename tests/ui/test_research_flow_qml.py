@@ -163,7 +163,7 @@ def _model_for(state: str) -> dict[str, object]:
                 if state == "candidate_ready"
                 else "현재 데이터에서는 구성을 준비할 수 없음"
             ),
-            "persistentBoundary": "검증 중인 분석 후보 · 자동 실행 안 함",
+            "persistentBoundary": "다음 단계에서 변수 역할과 설정을 검토합니다.",
         }
         model["evidenceRows"] = [
             {"label": "실행 전 구조 검사", "value": "구성 검토 가능"}
@@ -369,6 +369,41 @@ def test_real_panel_renders_each_closed_state_region(
         assert region is not None
         assert region.property("visible") is True
         assert panel.property("routeReadyRenderable") is False
+    finally:
+        panel.deleteLater()
+        _app().processEvents()
+        del engine
+
+
+@pytest.mark.parametrize(
+    ("state", "expected_badge"),
+    [
+        ("candidate_ready", "후보 준비됨"),
+        ("prepare_review", "설정 검토"),
+        ("confirmed", "설정 확인됨"),
+    ],
+)
+def test_candidate_and_preparation_use_stage_copy_without_repeated_warning(
+    state: str,
+    expected_badge: str,
+) -> None:
+    model = _model_for(state)
+    if state == "candidate_ready":
+        model["badgeText"] = expected_badge
+    controller = FakeResearchFlow(model)
+    engine, panel = _load_panel(controller)
+    try:
+        badge = panel.findChild(QObject, "researchPanelBadge")
+        assert badge is not None
+        assert badge.property("label") == expected_badge
+        visible_texts = {
+            str(child.property("text"))
+            for child in panel.findChildren(QObject)
+            if child.property("text") is not None
+            and child.property("visible") is True
+        }
+        assert "실험적 후보" not in visible_texts
+        assert "검증 중인 분석 후보 · 자동 실행 안 함" not in visible_texts
     finally:
         panel.deleteLater()
         _app().processEvents()

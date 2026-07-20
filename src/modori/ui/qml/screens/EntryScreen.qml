@@ -154,7 +154,6 @@ Item {
                 id: guidedCard
                 objectName: "entryModeCasual"
                 text: appBootstrap.text("entry.guided", appBootstrap.language)
-                badgeText: appBootstrap.text("entry.guided_badge", appBootstrap.language)
                 description: appBootstrap.text("entry.guided_description", appBootstrap.language)
                 selectedStateText: appBootstrap.text("entry.selected", appBootstrap.language)
                 selected: uiController.mode === "guided"

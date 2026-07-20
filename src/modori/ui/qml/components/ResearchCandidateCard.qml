@@ -15,14 +15,13 @@ PearlSurface {
     property bool proMode: false
     property bool preparationBlocked: false
     property string prepareLabel: ""
-    property string badgeLabel: ""
 
     signal prepareRequested()
 
     fillColor: theme.surfaceCream
     outlined: true
     implicitHeight: candidateLayout.implicitHeight + theme.spaceContent * 2
-    Accessible.name: root.candidate.capabilityLabel || appBootstrap.text("research.experimental", appBootstrap.language)
+    Accessible.name: root.candidate.capabilityLabel || appBootstrap.text("guide.candidate_label", appBootstrap.language)
     Accessible.role: Accessible.Grouping
 
     ColumnLayout {
@@ -34,13 +33,6 @@ PearlSurface {
         RowLayout {
             Layout.fillWidth: true
             spacing: theme.spaceSm
-
-            StateBadge {
-                state: root.preparationBlocked ? "stale" : "latest"
-                label: root.badgeLabel.length > 0
-                    ? root.badgeLabel
-                    : appBootstrap.text("research.experimental", appBootstrap.language)
-            }
 
             Label {
                 text: root.candidate.capabilityLabel || ""
@@ -69,11 +61,10 @@ PearlSurface {
         }
 
         Label {
-            text: String(root.candidate.persistentBoundary
-                || appBootstrap.text("research.no_auto_run", appBootstrap.language))
-            color: theme.warning
+            text: String(root.candidate.persistentBoundary || "")
+            color: theme.textBody
             wrapMode: Text.WordWrap
-            font.bold: true
+            visible: text.length > 0
             Layout.fillWidth: true
         }
 
@@ -147,7 +138,7 @@ PearlSurface {
         AppButton {
             text: root.prepareLabel
             Accessible.name: text
-            Accessible.description: appBootstrap.text("research.no_auto_run", appBootstrap.language)
+            Accessible.description: String(root.candidate.persistentBoundary || "")
             variant: "primary"
             enabled: !root.preparationBlocked
             visible: !root.preparationBlocked

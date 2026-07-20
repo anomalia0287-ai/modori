@@ -115,9 +115,9 @@ def test_prepare_review_is_immutable_exact_and_does_not_mutate_pipeline() -> Non
         "method": "pearson",
         "missing_policy": "pairwise",
         "p_adjust": "none",
-        "experimental": "true",
-        "automatic_run": "false",
     }
+    assert preparation.experimental is True
+    assert preparation.requires_explicit_configure_confirm_run is True
     assert preparation.preparation_digest
     assert pipeline.to_json() == before_json
     assert pipeline.current_dataset is before_dataset

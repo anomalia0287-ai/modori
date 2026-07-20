@@ -11,7 +11,8 @@ Button {
     property string badgeText: ""
     property string selectedStateText: ""
 
-    implicitHeight: theme.entryModeCardHeight
+    implicitHeight: Math.max(theme.entryModeCardHeight,
+        cardContent.implicitHeight + topPadding + bottomPadding)
     leftPadding: theme.spaceLg
     rightPadding: theme.spaceLg
     topPadding: theme.spaceMd
@@ -25,6 +26,7 @@ Button {
     Accessible.checked: control.selected
 
     contentItem: RowLayout {
+        id: cardContent
         spacing: theme.spaceMd
 
         ColumnLayout {
@@ -66,10 +68,11 @@ Button {
 
             Text {
                 Layout.fillWidth: true
+                Layout.minimumWidth: theme.spaceNone
                 text: control.description
                 color: theme.entryTextMuted
                 font.pixelSize: theme.fontBody
-                elide: Text.ElideRight
+                wrapMode: Text.WordWrap
             }
         }
 

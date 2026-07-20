@@ -525,12 +525,12 @@ PearlSurface {
 
     ColumnLayout {
         id: guideHeader
-        visible: false
+        visible: true
         anchors.top: parent.top
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.margins: theme.spaceLg
-        spacing: theme.spaceSm
+        spacing: theme.spaceXs
 
         Label {
             text: appBootstrap.text("guide.title", appBootstrap.language)
@@ -539,30 +539,25 @@ PearlSurface {
             Layout.fillWidth: true
         }
 
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: theme.spaceSm
-
-            StateBadge {
-                state: "empty"
-                label: appBootstrap.text("guide.experimental_badge", appBootstrap.language)
-            }
-
-            Label {
-                text: appBootstrap.text("guide.experimental_status", appBootstrap.language)
-                color: theme.textBody
-                wrapMode: Text.WordWrap
-                Layout.fillWidth: true
-            }
+        StateBadge {
+            objectName: "guidedExperimentalStatus"
+            state: "empty"
+            label: appBootstrap.text("guide.experimental_status", appBootstrap.language)
+            Layout.alignment: Qt.AlignLeft
         }
     }
 
     ScrollView {
         id: guideScroll
         objectName: "guideFormScroll"
-        anchors.fill: parent
-        anchors.margins: theme.spaceLg
-        anchors.topMargin: theme.spaceLg
+        anchors.top: guideHeader.bottom
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.topMargin: theme.spaceSm
+        anchors.leftMargin: theme.spaceLg
+        anchors.rightMargin: theme.spaceLg
+        anchors.bottomMargin: theme.spaceLg
         clip: true
         contentWidth: availableWidth
         ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
@@ -588,13 +583,6 @@ PearlSurface {
                     text: appBootstrap.text("research.legacy.title", appBootstrap.language)
                     color: theme.bronzeDeep
                     font.bold: true
-                    wrapMode: Text.WordWrap
-                    Layout.fillWidth: true
-                }
-
-                Label {
-                    text: appBootstrap.text("research.legacy.experimental_status", appBootstrap.language)
-                    color: theme.textBody
                     wrapMode: Text.WordWrap
                     Layout.fillWidth: true
                 }

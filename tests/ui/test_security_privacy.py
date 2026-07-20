@@ -109,7 +109,8 @@ def test_app_bootstrap_exposes_string_catalog() -> None:
 
     assert bootstrap.text("entry.guided") == "GUIDED MODE"
     assert bootstrap.text("entry.guided_description") == (
-        "검증 중인 분석 후보를 단계별로 살펴봅니다. 자동 실행하지 않습니다."
+        "연구 질문과 데이터 구조를 따라 분석 후보와 필요한 확인을 단계별로 안내합니다.\n"
+        "실험적 연구 가이드 · 설정과 실행은 직접 확인"
     )
     assert bootstrap.text("privacy.local") == "데이터는 이 컴퓨터를 떠나지 않습니다"
     assert bootstrap.text("missing.key") == "missing.key"

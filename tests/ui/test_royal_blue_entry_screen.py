@@ -73,7 +73,8 @@ def test_entry_structure_matches_reference_without_fabricated_recent_metadata() 
     assert 'appBootstrap.text("entry.heading", appBootstrap.language)' in entry
     assert entry.count("EntryModeCard {") == 2
     assert entry.count("LanguageChoiceButton {") == 2
-    assert 'appBootstrap.text("entry.guided_badge", appBootstrap.language)' in entry
+    assert 'appBootstrap.text("entry.guided_badge", appBootstrap.language)' not in entry
+    assert 'appBootstrap.text("entry.guided_description", appBootstrap.language)' in entry
     assert "model: uiController.recentFilesModel" in entry
     assert "required property string display" in entry
     assert "text: recentFileDelegate.display" in entry
@@ -101,6 +102,9 @@ def test_mode_card_uses_border_background_marker_and_accessible_checked_state() 
     assert 'Qt.resolvedUrl("../assets/icons/check.svg")' in card
     assert "visible: control.selected" in card
     assert "activeFocus" in card
+    assert "wrapMode: Text.WordWrap" in card
+    assert "elide: Text.ElideRight" not in card
+    assert "Math.max(theme.entryModeCardHeight" in card
 
 
 def test_language_choice_is_keyboard_focusable_and_semantically_checked() -> None:

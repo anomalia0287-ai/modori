@@ -92,7 +92,7 @@ Item {
                         ? appBootstrap.text("research.close", appBootstrap.language)
                         : appBootstrap.text("research.open", appBootstrap.language)
                     Accessible.name: text
-                    Accessible.description: appBootstrap.text("research.no_auto_run", appBootstrap.language)
+                    Accessible.description: appBootstrap.text("research.open_description", appBootstrap.language)
                     variant: "quiet"
                     compact: true
                     selected: root.researchRailOpen

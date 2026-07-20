@@ -190,9 +190,9 @@ def test_candidate_projection_keeps_authority_identical_across_modes(
     assert casual.evidence_rows == ()
     assert pro.evidence_rows
     copy = RESEARCH_FLOW_STRINGS[language.value]
-    assert casual.badge_text == copy["candidate.experimental_badge"]
+    assert casual.badge_text == copy["candidate.ready_badge"]
     assert casual.candidate.review_status == copy["candidate.review_status"]
-    assert casual.candidate.persistent_boundary == copy["candidate.no_auto_run"]
+    assert casual.candidate.persistent_boundary == copy["candidate.prepare_boundary"]
     assert casual.primary_action.label == copy["action.prepare"]
 
 

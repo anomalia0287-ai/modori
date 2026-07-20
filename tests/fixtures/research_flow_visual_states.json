@@ -77,13 +77,13 @@
       "research.candidate.review_state": "Review state",
       "research.candidate.roles": "Variable roles",
       "research.confirm": "Confirm these settings",
-      "research.confirmed_run_hint": "Only the settings were confirmed. Start calculation separately from the Run command.",
+      "research.confirm_description": "Confirms only the displayed setup.",
       "research.direct_available": "Direct analysis remains available at any time.",
-      "research.experimental": "Experimental candidate",
-      "research.no_auto_run": "Candidate under verification · never runs automatically",
       "research.panel.accessible": "Local Research OS study-task guidance",
       "research.panel.title": "Research OS",
+      "research.preparation.confirmed_badge": "Setup confirmed",
       "research.preparation.digest": "Preparation review reference",
+      "research.preparation.review_badge": "Setup review",
       "research.preparation.settings": "Settings to review",
       "research.preparation.step": "Analysis step",
       "research.question.answer_required": "Choose one answer.",
@@ -521,7 +521,7 @@
         "title": "검토할 분석 후보가 있습니다",
         "body": "연구 사실과 현재 지원 경계에 맞는 설정을 검토하세요.",
         "stageText": "",
-        "badgeText": "실험적 후보",
+        "badgeText": "후보 준비됨",
         "visiblePassportDigest": "SYNTHETIC-01",
         "primaryAction": {"command": "prepare", "label": "구성 검토로 이동", "enabled": true},
         "secondaryActions": [],
@@ -536,7 +536,7 @@
             {"label": "집단 역할", "value": "합성 조건 분류"}
           ],
           "reviewStatus": "검토 필요",
-          "persistentBoundary": "검증 중인 분석 후보 · 자동 실행 안 함"
+          "persistentBoundary": "다음 단계에서 변수 역할과 설정을 검토합니다."
         },
         "evidenceRows": [
           {"label": "실행 전 구조 검사", "value": "구성 검토 가능"}
@@ -552,7 +552,7 @@
         "title": "A candidate is ready for review",
         "body": "Review the exact method, variable roles, and claim boundary before configuration.",
         "stageText": "",
-        "badgeText": "Experimental candidate",
+        "badgeText": "Candidate ready",
         "visiblePassportDigest": "SYNTHETIC-02",
         "primaryAction": {"command": "prepare", "label": "Open configuration review", "enabled": true},
         "secondaryActions": [],
@@ -567,7 +567,7 @@
             {"label": "Group role", "value": "Synthetic condition category"}
           ],
           "reviewStatus": "Review required",
-          "persistentBoundary": "Candidate under verification · never runs automatically"
+          "persistentBoundary": "Next, review variable roles and settings."
         },
         "evidenceRows": [
           {"label": "Preflight structure check", "value": "Configuration review available"},
@@ -757,7 +757,7 @@
         "title": "분석 편집기에 넣을 설정을 확인합니다",
         "body": "이 단계는 설정만 준비하며 계산을 시작하지 않습니다.",
         "stageText": "",
-        "badgeText": "구성 검토",
+        "badgeText": "설정 검토",
         "primaryAction": null,
         "secondaryActions": [],
         "options": [],
@@ -786,7 +786,7 @@
         "title": "The editor configuration is confirmed",
         "body": "No calculation has started. Use the separate Run command only after final review.",
         "stageText": "",
-        "badgeText": "Configuration confirmed",
+        "badgeText": "Setup confirmed",
         "primaryAction": null,
         "secondaryActions": [],
         "options": [],

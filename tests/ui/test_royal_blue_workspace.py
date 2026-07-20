@@ -106,7 +106,7 @@ def test_guide_width_and_english_candidate_copy_fit_acceptance_viewport() -> Non
 
     assert (
         UI_STRINGS_EN["guide.other_recommendations"]
-        == "Other experimental candidates"
+        == "Other candidates"
     )
 
 
