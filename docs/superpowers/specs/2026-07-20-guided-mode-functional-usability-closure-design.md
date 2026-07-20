@@ -1,7 +1,7 @@
 # Guided Mode Functional Usability Closure Design
 
 **Date:** 2026-07-20
-**Status:** In progress; U-01 through U-03 verified closed, U-04 active P0
+**Status:** In progress; U-01 through U-04 verified closed, U-05 active P0
 **Baseline:** `b368cdcf208d04509717826bc6b0ab7e7b72ba7e` on `codex/research-os-functional-usability`
 **Release boundary:** no push, merge, default-branch change, or frozen Build Week artifact replacement
 
@@ -30,8 +30,9 @@ workflow.
   decision authority. Standard exposes more role/evidence detail.
 - Guided mode does not automatically select, prepare, confirm, or run an analysis.
   `Prepare`, confirmation, and `Run` remain separate.
-- Experimental/no-auto-run wording repeats across entry, candidate, legacy candidate,
-  and preparation surfaces.
+- Guided entry now carries the experimental/manual-review disclosure once, and the
+  open guide retains one quiet status. Candidate and preparation stages use
+  action-specific copy without weakening explicit Prepare, Confirm, and Run steps.
 - All seven audited abstentions were `unsupported_causal_target`. The same user data
   reached `candidate_ready` with supported non-causal questions. Generic abstention UI
   hid the distinction.
@@ -69,8 +70,8 @@ Implementation order follows user cost of failure:
 | U-01 | Word export can silently overwrite | **Verified closed / data loss prevented** | Existing target never changes without explicit replace consent; safe copy is available; DOCX is verified |
 | U-02 | Excel cannot reach sheet selection after a bad default-sheet preview | **Verified closed / import blocker removed** | A parseable workbook retains its path and exposes sheet selection; corrupt input still fails closed |
 | U-03 | `CASUAL MODE` misstates the contract | **Verified closed / guided contract named accurately** | Every user-facing selector says `GUIDED MODE`; internal `guided` remains compatible |
-| U-04 | Experimental/no-auto warnings repeat | **Active P0 / approved warning-fatigue fix** | One entry disclosure plus one quiet status; no duplicate warning in one decision context |
-| U-05 | Abstention looks arbitrary | **Required functional recovery** | Typed reason is visible; causal abstention offers explicit non-causal reframe and direct analysis without changing intent silently |
+| U-04 | Experimental/no-auto warnings repeat | **Verified closed / warning fatigue removed** | One entry disclosure plus one quiet status; no duplicate warning in one decision context |
+| U-05 | Abstention looks arbitrary | **Active P0 / required functional recovery** | Typed reason is visible; causal abstention offers explicit non-causal reframe and direct analysis without changing intent silently |
 | U-06 | Research OS failure hides cause and next action | **Required functional recovery** | Sanitized reason, explanation, and state-valid recovery action are visible |
 | U-07 | Long cells and headers cannot be read or resized | **Required inspectability fix** | Bounded auto-fit, manual resize, keyboard fit/reset, and full-text access work in both grids |
 | U-08 | `데이터 넓게 보기` is vague; `데이터 원본 보기` would be false | **Required terminology fix** | Copy is `데이터 시트 열기` / `Open data sheet`; no immutable-raw claim |
@@ -152,8 +153,53 @@ Verified on implementation commit `3e1c391` in this branch.
   `--basetemp`.
 - Ruff, compileall, and `git diff --check`: exit 0.
 
-This closes the misleading name only. Warning consolidation remains U-04; no claim is
-made here that the repeated experimental/no-auto-run copy has already been removed.
+That commit closed the misleading name only. Warning consolidation remained U-04 at
+that checkpoint and is closed separately with the evidence in section 4.4.
+
+### 4.4 U-04 closure evidence
+
+Verified on implementation commit `891db7f` and independent-review correction commit
+`9a10e6d` in this branch.
+
+- Entry copy states the benefit first and the experimental/manual-review boundary
+  once. The open guide retains one `실험적 가이드` / `Experimental guide` badge;
+  candidate, preparation, confirmation, and the Research OS toggle no longer repeat
+  the same global warning.
+- Candidate stages now say `후보 준비됨`, `설정 준비 안 됨`, `설정 검토`, or
+  `설정 확인됨` according to the actual state. The blocked state never presents a
+  Prepare action or ready-state next step.
+- A read-only independent review found two Important issues in `891db7f`: production
+  blocked preparation still received ready copy, and the sole persistent status had
+  no accessibility interface. Correction TDD reproduced ten failures, then passed the
+  same ten contracts. `StateBadge` now exposes a static-text accessible name, and the
+  open/close toggle description follows its state.
+- Related presenter, QML runtime, catalog, accessibility, and panel slice:
+  `147 passed in 22.90s`, exit 0. Ruff, compileall, and `git diff --check`: exit 0.
+- Final clean-commit non-gallery UI gate on `9a10e6d` with workspace-local
+  `--basetemp`: `790 passed in 65.48s`, exit 0.
+- Final clean-commit visual-gallery gate: `12 passed in 38.90s`, exit 0. Its 30-item
+  persistent Windows render manifest records source commit
+  `9a10e6d2aba78aaa9f863cf1c8528ab0682a0f68`, `production-windows`, 387 available
+  font families, and zero horizontal overflow, clipped headers, missing regions,
+  property mismatches, or catalog misses. Manifest SHA-256:
+  `88d7e4af1311a85e9d724dabdabd7c60bc2db5cd6019a3768c539735ba61dafd`.
+- Current-source Windows entry captures showed the complete Korean and English Guided
+  Mode descriptions without clipping. SHA-256 values are
+  `1325b5bc1790f253fb79d9688bd319161a913d312c377cb883806cdd3c53074a`
+  (Korean) and
+  `a4cac1d3a6ac54ed9954b001d2c86f9d417ba6873cc652526e26160e28c588ce`
+  (English).
+- Current-source Windows work captures showed one persistent status. They also
+  independently retained the queued U-07 English quick-candidate elision and U-08
+  `Open wide data view` terminology findings; neither was hidden or reclassified as
+  closed by U-04.
+- Sealed preparations still retain `experimental=True` and
+  `requires_explicit_configure_confirm_run=True`. Assisted provenance, report
+  disclosure, commit-before-display, abstention, explicit confirmation, and separate
+  Run boundaries remain unchanged.
+
+This is branch evidence only. No wheel, one-folder launcher, frozen Build Week
+artifact, push, merge, or default branch changed.
 
 ## 5. Guided Mode Contract
 
