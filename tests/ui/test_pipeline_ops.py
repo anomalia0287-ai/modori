@@ -499,6 +499,39 @@ def test_replace_managed_analysis_steps_refreshes_dataset_before_worker_recomput
     )
 
 
+def test_ui_managed_report_defers_file_until_explicit_export(tmp_path) -> None:
+    data_path = tmp_path / "survey.csv"
+    _write_reference_slice_csv(data_path)
+    pipeline = build_reference_slice_pipeline(
+        data_path=data_path,
+        output_dir=tmp_path / "legacy-report",
+        mode="guided",
+        preferences=AnalysisPreferences(),
+    )
+    pipeline.recompute(dirty_from=None)
+    ops = PipelineOperations(pipeline)
+    ops.replace_managed_analysis_steps(
+        step_id="reliability",
+        step_type="stats.reliability",
+        params={"items": ["q1", "q2", "q4"], "scale_name": "selected_scale"},
+    )
+    report_step = next(step for step in pipeline.steps if step.id == "report")
+    output_path = tmp_path / "modori-output" / "report.docx"
+
+    assert report_step.params["defer_write_until_export"] is True
+    pipeline.recompute(dirty_from=None)
+
+    assert output_path.exists() is False
+    assert pipeline.analysis_objects["report"].docx_path == ""
+
+    exported = ops.export_report(ReportExportOptions())
+
+    assert exported == output_path.resolve()
+    assert output_path.is_file()
+    assert report_step.params["defer_write_until_export"] is True
+    assert pipeline.analysis_objects["report"].docx_path == ""
+
+
 def test_pipeline_operations_returns_display_results_by_known_analysis_kind(
     monkeypatch,
 ) -> None:

@@ -337,10 +337,15 @@ class PipelineOperations:
         )
 
     def export_report(self, options: ReportExportOptions) -> Path:
-        if self._report_step() is None:
+        report_step = self._report_step()
+        if report_step is None:
             research_os_path = self._export_research_os_report(options)
             if research_os_path is not None:
                 return research_os_path
+        elif bool(
+            self._step_params(report_step).get("defer_write_until_export", False)
+        ):
+            return self._export_deferred_report(report_step, options)
         self._apply_report_export_options(options)
         analysis_objects = self.analysis_objects()
         if "report" not in analysis_objects and self._pipeline is not None:
@@ -352,6 +357,28 @@ class PipelineOperations:
         if docx_path is None:
             raise RuntimeError("ReportStep did not produce a docx path")
         return Path(docx_path)
+
+    def _export_deferred_report(
+        self,
+        report_step: object,
+        options: ReportExportOptions,
+    ) -> Path:
+        if self._pipeline is None or not self.can_edit_steps():
+            raise RuntimeError("Pipeline does not support deferred report export")
+        original_params = self._step_params(report_step)
+        snapshot = self._snapshot_pipeline_state()
+        try:
+            export_params = self._report_params_for_options(report_step, options)
+            export_params["defer_write_until_export"] = False
+            self._pipeline.edit_params(self._step_id(report_step), export_params)
+            report = self.analysis_objects().get("report")
+            docx_path = getattr(report, "docx_path", None)
+            if not docx_path:
+                raise RuntimeError("ReportStep did not produce a docx path")
+            return Path(docx_path)
+        finally:
+            self._restore_pipeline_state(snapshot)
+            report_step.params = original_params
 
     def report_output_path(self, options: ReportExportOptions) -> Path | None:
         report_step = self._report_step()
@@ -393,6 +420,7 @@ class PipelineOperations:
         report_step = self._report_step_for_analysis(
             analysis_step,
             analysis_params,
+            defer_write_until_export=False,
         )
         report_params = self._step_params(report_step)
         report_params.update(
@@ -715,7 +743,11 @@ class PipelineOperations:
         raise RuntimeError(f"Unsupported analysis step type: {step_type}")
 
     def _report_step_for_analysis(
-        self, analysis_step: object, params: dict[str, Any]
+        self,
+        analysis_step: object,
+        params: dict[str, Any],
+        *,
+        defer_write_until_export: bool = True,
     ) -> ReportStep:
         return ReportStep(
             id="report",
@@ -725,6 +757,7 @@ class PipelineOperations:
                 "output_dir": str(self._default_output_dir()),
                 "filename": "report.docx",
                 "language": "ko",
+                "defer_write_until_export": defer_write_until_export,
             },
             input_step_ids=[self._step_id(analysis_step)],
         )

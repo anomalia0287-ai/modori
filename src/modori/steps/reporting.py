@@ -1364,23 +1364,36 @@ class ReportStep(Step):
 
         include = _normalise_include(self.params)
         include_figures = bool(self.params.get("include_figures", True))
-        output_dir, docx_path, chart_dir, remove_output_dir_on_failure = (
-            _safe_report_paths(self.params)
-        )
         included_results = _resolve_included(ctx, include)
 
-        created_paths: list[Path] = []
         prose: list[str] = []
         if selection_origin == "experimental_candidate_assisted":
             prose.append(SELECTION_DISCLOSURE[language])
         elif selection_origin == "research_os_assisted":
             prose.append(RESEARCH_OS_SELECTION_DISCLOSURE[language])
         tables: dict[str, list[dict[str, str]]] = {}
+        for public_key, result in included_results:
+            prose.append(prose_for(result, language=language))
+            tables[public_key] = table_for(result)
+
+        if bool(self.params.get("defer_write_until_export", False)):
+            return StepResult(
+                analysis=ReportResult(
+                    prose=prose,
+                    tables=tables,
+                    docx_path="",
+                    figure_paths={key: [] for key, _ in included_results},
+                    apa_template_id="report.apa.v1",
+                )
+            )
+
+        output_dir, docx_path, chart_dir, remove_output_dir_on_failure = (
+            _safe_report_paths(self.params)
+        )
+        created_paths: list[Path] = []
         figure_paths: dict[str, list[str]] = {}
         try:
             for public_key, result in included_results:
-                prose.append(prose_for(result, language=language))
-                tables[public_key] = table_for(result)
                 chart_specs = _report_chart_specs(result)
                 paths: list[str] = []
                 if include_figures:
