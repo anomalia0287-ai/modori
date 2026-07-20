@@ -381,14 +381,8 @@ Item {
                     }
                     rowHeightProvider: function(row) { return root.cellHeight }
                     Accessible.role: Accessible.Table
-                    Accessible.name: appBootstrap.text(
-                        "data.grid_accessible",
-                        appBootstrap.language
-                    )
-                    Accessible.description: appBootstrap.text(
-                        "data.grid_keyboard_help",
-                        appBootstrap.language
-                    )
+                    Accessible.name: appBootstrap.text("data.grid_accessible", appBootstrap.language)
+                    Accessible.description: appBootstrap.text("data.grid_keyboard_help", appBootstrap.language)
 
                     onMovementStarted: {
                         horizontalSettleAnimation.stop()

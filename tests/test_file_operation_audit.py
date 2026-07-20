@@ -48,6 +48,7 @@ AUDITED_FILE_OPERATION_FILES = {
     "src/modori/ui/worker.py",
     "src/modori/ui/resources.py",
     "src/modori/ui/result_binding.py",
+    "src/modori/ui/pipeline_ops.py",
     "src/modori/ui/report_export.py",
     "src/modori/ui/session.py",
     "src/modori/ui/settings.py",
@@ -107,6 +108,20 @@ def test_file_operation_audit_document_covers_every_audited_file() -> None:
     ]
 
     assert missing == []
+
+
+def test_pipeline_operations_audit_documents_read_only_report_prediction() -> None:
+    row = _audit_row("src/modori/ui/pipeline_ops.py")
+
+    for required_text in (
+        "Read-only report-destination prediction",
+        "trusted pipeline",
+        "filename",
+        "containment",
+        "does not create, write, replace, or delete",
+        "actual export",
+    ):
+        assert required_text in row
 
 
 def test_live_research_os_office_tools_document_their_closed_file_boundaries() -> None:
