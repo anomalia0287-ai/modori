@@ -60,12 +60,13 @@ Required reason families:
 1. current data/import context unavailable;
 2. dataset fingerprint unavailable within the local deadline;
 3. local record unavailable;
-4. local record changed or writer conflict;
-5. local record integrity failure;
-6. request verification failure;
-7. unsupported, invalid, or failed execution preflight;
-8. preparation review failure;
-9. unexpected serialized-worker failure.
+4. local record changed;
+5. local record writer/state conflict;
+6. local record integrity failure;
+7. request verification failure;
+8. unsupported, invalid, or failed execution preflight;
+9. preparation review failure;
+10. unexpected serialized-worker failure.
 
 Guided Mode shows localized reason and next step. Pro Mode adds one stable bounded
 reason ID. Both modes retain identical state and command authority.
@@ -77,7 +78,8 @@ reason ID. Both modes retain identical state and command authority.
 | current data/import context | `failure` | `resume` | reread the current data and last verified record |
 | fingerprint deadline | `memory_unavailable` | `resume` | retry the local identity check |
 | local record unavailable | `memory_unavailable` | `resume` | reopen the local record |
-| changed record or writer conflict | `replan_required` | `replan` | start a fresh explicit task from current data |
+| changed data/record identity | `replan_required` | `replan` | start a fresh explicit task from current data |
+| record writer/state conflict | `failure` | `resume` | reread the latest verified local state before deciding whether to replan |
 | integrity failure | `corruption` | `back` | leave the unsafe record for the safe start surface |
 | request verification | `failure` | `resume` | return to the last verified durable state |
 | preflight unsupported/invalid/failure | `failure` | `replan` | do not loop the same sealed preparation |
@@ -147,4 +149,3 @@ preservation.
 Close U-06 only when every production failure path shows a sanitized reason, the
 displayed action succeeds from that state, deterministic preflight failures no longer
 loop through Resume, and no raw diagnostic or false corruption claim reaches QML.
-

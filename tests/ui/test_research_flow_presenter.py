@@ -33,6 +33,7 @@ from modori.ui.contracts import ControllerMode
 from modori.ui.recommendation_controller import RecommendationControllerMixin
 from modori.ui.research_flow_presenter import (
     ResearchCandidateView,
+    ResearchFailureReason,
     ResearchFlowPresentationError,
     ResearchFlowView,
     ResearchOptionView,
@@ -336,6 +337,60 @@ def test_nonpreparable_terminal_preflight_never_leaks_a_candidate(
         assert view.primary_action.command is ResearchUiCommand.REPLAN
 
 
+@pytest.mark.parametrize(
+    ("issue_code", "reason"),
+    (
+        ("unsupported_step_type", ResearchFailureReason.PREFLIGHT_UNSUPPORTED_STEP),
+        ("invalid_params", ResearchFailureReason.PREFLIGHT_INVALID_CONFIGURATION),
+        ("preflight_failure", ResearchFailureReason.PREFLIGHT_VERIFICATION_FAILED),
+    ),
+)
+def test_failed_preflight_explains_the_closed_reason_and_replans(
+    issue_code: str,
+    reason: ResearchFailureReason,
+) -> None:
+    record = _terminal_record(P1TaskProfile.LINEAR_CO_MOVEMENT)
+    preflight = PreflightResult(
+        disposition=PreflightDisposition.FAILURE,
+        issues=(StepInputIssue(code=issue_code),),
+        preparation=None,
+        captured_pipeline_version=7,
+    )
+
+    guided = present_durable_record(
+        record,
+        mode=ControllerMode.GUIDED,
+        language=Language.EN,
+        preflight=preflight,
+        variable_labels=_labels(record),
+    )
+    standard = present_durable_record(
+        record,
+        mode=ControllerMode.STANDARD,
+        language=Language.EN,
+        preflight=preflight,
+        variable_labels=_labels(record),
+    )
+
+    assert guided.primary_action is not None
+    assert guided.primary_action.command is ResearchUiCommand.REPLAN
+    assert standard.primary_action == guided.primary_action
+    assert guided.evidence_rows == (
+        (
+            RESEARCH_FLOW_STRINGS["en"]["failure.reason_label"],
+            RESEARCH_FLOW_STRINGS["en"][f"failure.reason.{reason.value}"],
+        ),
+        (
+            RESEARCH_FLOW_STRINGS["en"]["failure.next_step_label"],
+            RESEARCH_FLOW_STRINGS["en"][f"failure.recovery.{reason.value}"],
+        ),
+    )
+    assert standard.evidence_rows == (
+        *guided.evidence_rows,
+        (RESEARCH_FLOW_STRINGS["en"]["failure.reason_id"], reason.value),
+    )
+
+
 @pytest.mark.parametrize("language", (Language.KO, Language.EN))
 def test_causal_abstention_projects_committed_reason_and_explicit_reframe(
     language: Language,
@@ -620,6 +675,112 @@ def test_error_taxonomy_copy_is_not_collapsed() -> None:
     assert "failed" in bodies[1].lower()
     assert "integrity" in bodies[2].lower()
     assert "current data" in bodies[3].lower()
+
+
+@pytest.mark.parametrize(
+    ("reason", "state", "command"),
+    (
+        (
+            ResearchFailureReason.CURRENT_DATA_CONTEXT_UNAVAILABLE,
+            ResearchFlowState.FAILURE,
+            ResearchUiCommand.RESUME,
+        ),
+        (
+            ResearchFailureReason.DATASET_FINGERPRINT_UNAVAILABLE,
+            ResearchFlowState.MEMORY_UNAVAILABLE,
+            ResearchUiCommand.RESUME,
+        ),
+        (
+            ResearchFailureReason.LOCAL_RECORD_UNAVAILABLE,
+            ResearchFlowState.MEMORY_UNAVAILABLE,
+            ResearchUiCommand.RESUME,
+        ),
+        (
+            ResearchFailureReason.LOCAL_RECORD_CONFLICT,
+            ResearchFlowState.FAILURE,
+            ResearchUiCommand.RESUME,
+        ),
+        (
+            ResearchFailureReason.LOCAL_RECORD_CHANGED,
+            ResearchFlowState.REPLAN_REQUIRED,
+            ResearchUiCommand.REPLAN,
+        ),
+        (
+            ResearchFailureReason.LOCAL_RECORD_INTEGRITY_FAILED,
+            ResearchFlowState.CORRUPTION,
+            ResearchUiCommand.BACK,
+        ),
+        (
+            ResearchFailureReason.REQUEST_VERIFICATION_FAILED,
+            ResearchFlowState.FAILURE,
+            ResearchUiCommand.RESUME,
+        ),
+        (
+            ResearchFailureReason.PREPARATION_REVIEW_FAILED,
+            ResearchFlowState.FAILURE,
+            ResearchUiCommand.RESUME,
+        ),
+        (
+            ResearchFailureReason.WORKER_OPERATION_FAILED,
+            ResearchFlowState.FAILURE,
+            ResearchUiCommand.RESUME,
+        ),
+    ),
+)
+def test_failure_reason_contract_is_plain_bounded_and_state_valid(
+    reason: ResearchFailureReason,
+    state: ResearchFlowState,
+    command: ResearchUiCommand,
+) -> None:
+    guided = present_transient_state(
+        state,
+        mode=ControllerMode.GUIDED,
+        language=Language.KO,
+        failure_reason=reason,
+    )
+    standard = present_transient_state(
+        state,
+        mode=ControllerMode.STANDARD,
+        language=Language.KO,
+        failure_reason=reason,
+    )
+    copy = RESEARCH_FLOW_STRINGS["ko"]
+
+    assert guided.primary_action is not None
+    assert guided.primary_action.command is command
+    assert standard.primary_action == guided.primary_action
+    assert guided.evidence_rows == (
+        (copy["failure.reason_label"], copy[f"failure.reason.{reason.value}"]),
+        (
+            copy["failure.next_step_label"],
+            copy[f"failure.recovery.{reason.value}"],
+        ),
+    )
+    assert standard.evidence_rows == (
+        *guided.evidence_rows,
+        (copy["failure.reason_id"], reason.value),
+    )
+    assert len(reason.value) <= 64
+    rendered = " ".join(value for _label, value in guided.evidence_rows)
+    assert "C:\\" not in rendered
+    assert "Traceback" not in rendered
+
+
+def test_failure_reason_cannot_be_attached_to_the_wrong_state() -> None:
+    with pytest.raises(ResearchFlowPresentationError, match="reason.*state"):
+        present_transient_state(
+            ResearchFlowState.FAILURE,
+            mode=ControllerMode.GUIDED,
+            language=Language.EN,
+            failure_reason=ResearchFailureReason.LOCAL_RECORD_INTEGRITY_FAILED,
+        )
+    with pytest.raises(ResearchFlowPresentationError, match="error state"):
+        present_transient_state(
+            ResearchFlowState.IDLE,
+            mode=ControllerMode.GUIDED,
+            language=Language.EN,
+            failure_reason=ResearchFailureReason.WORKER_OPERATION_FAILED,
+        )
 
 
 def test_route_ready_and_durable_state_without_authority_are_rejected() -> None:

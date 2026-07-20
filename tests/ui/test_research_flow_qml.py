@@ -211,6 +211,11 @@ def _model_for(state: str) -> dict[str, object]:
         model["primaryAction"] = _action("replan", "현재 데이터로 다시 계획")
     elif state in {"corruption", "intake_blocked", "scope_boundary"}:
         model["primaryAction"] = _action("back", "돌아가기")
+    if state in {"memory_unavailable", "failure", "corruption", "replan_required"}:
+        model["evidenceRows"] = [
+            {"label": "확인된 원인", "value": "안전하게 확인된 오류 원인입니다."},
+            {"label": "다음 단계", "value": "표시된 복구 작업을 선택하세요."},
+        ]
     return model
 
 
@@ -530,6 +535,37 @@ def test_causal_abstention_renders_reason_and_dispatches_explicit_reframe() -> N
             Q_ARG("QVariant", "reframe_noncausal"),
         )
         assert controller.calls == [("reframe_noncausal", None)]
+    finally:
+        panel.deleteLater()
+        _app().processEvents()
+        del engine
+
+
+@pytest.mark.parametrize(
+    ("state", "command"),
+    (
+        ("memory_unavailable", "resume"),
+        ("failure", "resume"),
+        ("corruption", "back"),
+        ("replan_required", "replan"),
+    ),
+)
+def test_failure_recovery_surface_is_visible_and_dispatches_its_closed_action(
+    state: str,
+    command: str,
+) -> None:
+    controller = FakeResearchFlow(_model_for(state))
+    engine, panel = _load_panel(controller)
+    try:
+        recovery = panel.findChild(QObject, "researchFailureRecovery")
+        assert recovery is not None
+        assert recovery.property("visible") is True
+        assert QMetaObject.invokeMethod(
+            panel,
+            "invokeCommand",
+            Q_ARG("QVariant", command),
+        )
+        assert controller.calls == [(command, None)]
     finally:
         panel.deleteLater()
         _app().processEvents()

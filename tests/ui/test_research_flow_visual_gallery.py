@@ -212,6 +212,36 @@ def test_causal_abstention_fixture_has_reason_and_explicit_recovery() -> None:
     }
 
 
+def test_failure_fixtures_expose_plain_recovery_and_bounded_pro_diagnostics() -> None:
+    manifest = _manifest()
+    memory = manifest["fixtures"]["memory_unavailable_ko"]["state_model"]
+    failure = manifest["fixtures"]["failure_en"]["state_model"]
+    replan = manifest["fixtures"]["replan_required_en"]["state_model"]
+
+    assert memory["evidenceRows"] == [
+        {
+            "label": "확인된 원인",
+            "value": "연구과업의 로컬 기록 파일을 지금 열 수 없습니다.",
+        },
+        {
+            "label": "다음 단계",
+            "value": "로컬 기록을 다시 열어 마지막 확인 상태를 복구하세요.",
+        },
+    ]
+    assert failure["primaryAction"]["label"] == "Return to the last verified state"
+    assert failure["evidenceRows"][-1] == {
+        "label": "Reason ID",
+        "value": "worker_operation_failed",
+    }
+    assert replan["evidenceRows"][-1] == {
+        "label": "Reason ID",
+        "value": "local_record_changed",
+    }
+    for item_id in ("memory-unavailable-ko", "failure-standard-en", "stale-replan-en"):
+        item = next(item for item in manifest["items"] if item["id"] == item_id)
+        assert "researchFailureRecovery" in item["expected_present"]
+
+
 def test_manifest_fixture_content_is_synthetic_and_privacy_closed() -> None:
     manifest = _manifest()
     privacy = manifest["privacy"]

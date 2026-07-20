@@ -446,16 +446,19 @@
         "state": "memory_unavailable",
         "mode": "guided",
         "language": "ko",
-        "title": "연구 기록을 지금 열 수 없습니다",
-        "body": "분석 계산 기능은 유지됩니다. 기록을 사용할 수 있을 때 다시 확인하세요.",
+        "title": "로컬 연구과업 기록을 사용할 수 없습니다",
+        "body": "필요한 로컬 기록 경로를 현재 사용할 수 없습니다. 분석 데이터는 외부로 전송되지 않았으며 직접 분석은 계속 사용할 수 있습니다.",
         "stageText": "",
-        "badgeText": "기록 사용 불가",
-        "primaryAction": {"command": "resume", "label": "기록에서 다시 확인", "enabled": true},
+        "badgeText": "로컬 기능 사용 불가",
+        "primaryAction": {"command": "resume", "label": "로컬 기록 다시 열기", "enabled": true},
         "secondaryActions": [],
         "options": [],
         "question": null,
         "candidate": null,
-        "evidenceRows": []
+        "evidenceRows": [
+          {"label": "확인된 원인", "value": "연구과업의 로컬 기록 파일을 지금 열 수 없습니다."},
+          {"label": "다음 단계", "value": "로컬 기록을 다시 열어 마지막 확인 상태를 복구하세요."}
+        ]
       }
     },
     "failure_en": {
@@ -464,16 +467,20 @@
         "state": "failure",
         "mode": "standard",
         "language": "en",
-        "title": "The research decision could not be verified",
-        "body": "No candidate is shown from an unverified state. Re-open the local record before continuing.",
+        "title": "Research OS operation failed",
+        "body": "The requested Research OS operation failed. This state alone does not imply ledger corruption, and direct analysis remains available.",
         "stageText": "",
-        "badgeText": "Verification failed",
-        "primaryAction": {"command": "resume", "label": "Verify from the record again", "enabled": true},
+        "badgeText": "Operation failed",
+        "primaryAction": {"command": "resume", "label": "Return to the last verified state", "enabled": true},
         "secondaryActions": [],
         "options": [],
         "question": null,
         "candidate": null,
-        "evidenceRows": []
+        "evidenceRows": [
+          {"label": "What was confirmed", "value": "The background Research OS operation stopped before it completed."},
+          {"label": "Next step", "value": "Reload the last verified record. The incomplete operation was not applied automatically."},
+          {"label": "Reason ID", "value": "worker_operation_failed"}
+        ]
       }
     },
     "fingerprinting_ko": {
@@ -645,16 +652,20 @@
         "state": "replan_required",
         "mode": "standard",
         "language": "en",
-        "title": "The data changed after the recorded answers",
-        "body": "Prior answers remain read-only but cannot authorise a candidate for the current data.",
+        "title": "Replanning is required for the current data",
+        "body": "The prior decision no longer binds the current data. Start a fresh research task for the current data.",
         "stageText": "",
         "badgeText": "Replan required",
-        "primaryAction": {"command": "replan", "label": "Replan with the current data", "enabled": true},
+        "primaryAction": {"command": "replan", "label": "Replan with current data", "enabled": true},
         "secondaryActions": [],
         "options": [],
         "question": null,
         "candidate": null,
-        "evidenceRows": []
+        "evidenceRows": [
+          {"label": "What was confirmed", "value": "The data or research-task record changed after the last verification."},
+          {"label": "Next step", "value": "Explicitly start a fresh research task from the current data."},
+          {"label": "Reason ID", "value": "local_record_changed"}
+        ]
       }
     },
     "abstain_ready_ko": {
@@ -841,8 +852,8 @@
     {"id": "question-standard-en", "capture_kind": "panel", "state_id": "clarify_ready", "locale": "en", "mode": "standard", "interaction_state": null, "viewport": "reference", "scale_factor": 1.25, "reduce_effects": false, "fixture_id": "clarify_standard_en", "expected_present": ["researchQuestionCard"], "expected_absent": ["researchCandidateCard"], "expected_properties": {}},
     {"id": "question-not-sure-ko", "capture_kind": "panel", "state_id": "clarify_ready", "locale": "ko", "mode": "guided", "interaction_state": null, "viewport": "minimum", "scale_factor": 1.0, "reduce_effects": true, "fixture_id": "clarify_not_sure_ko", "expected_present": ["researchQuestionCard"], "expected_absent": ["researchCandidateCard"], "expected_properties": {}},
     {"id": "scope-not-applicable-en", "capture_kind": "panel", "state_id": "scope_boundary", "locale": "en", "mode": "guided", "interaction_state": null, "viewport": "minimum", "scale_factor": 1.0, "reduce_effects": false, "fixture_id": "scope_boundary_en", "expected_present": ["researchStaticBoundary"], "expected_absent": ["researchQuestionCard", "researchCandidateCard"], "expected_properties": {}},
-    {"id": "memory-unavailable-ko", "capture_kind": "panel", "state_id": "memory_unavailable", "locale": "ko", "mode": "guided", "interaction_state": null, "viewport": "minimum", "scale_factor": 1.0, "reduce_effects": false, "fixture_id": "memory_unavailable_ko", "expected_present": ["researchStatusPanel"], "expected_absent": ["researchQuestionCard", "researchCandidateCard"], "expected_properties": {}},
-    {"id": "failure-standard-en", "capture_kind": "panel", "state_id": "failure", "locale": "en", "mode": "standard", "interaction_state": null, "viewport": "reference", "scale_factor": 1.25, "reduce_effects": false, "fixture_id": "failure_en", "expected_present": ["researchStatusPanel"], "expected_absent": ["researchQuestionCard", "researchCandidateCard"], "expected_properties": {}},
+    {"id": "memory-unavailable-ko", "capture_kind": "panel", "state_id": "memory_unavailable", "locale": "ko", "mode": "guided", "interaction_state": null, "viewport": "minimum", "scale_factor": 1.0, "reduce_effects": false, "fixture_id": "memory_unavailable_ko", "expected_present": ["researchStatusPanel", "researchFailureRecovery"], "expected_absent": ["researchQuestionCard", "researchCandidateCard"], "expected_properties": {}},
+    {"id": "failure-standard-en", "capture_kind": "panel", "state_id": "failure", "locale": "en", "mode": "standard", "interaction_state": null, "viewport": "reference", "scale_factor": 1.25, "reduce_effects": false, "fixture_id": "failure_en", "expected_present": ["researchStatusPanel", "researchFailureRecovery"], "expected_absent": ["researchQuestionCard", "researchCandidateCard"], "expected_properties": {}},
     {"id": "loading-ko-scale-150", "capture_kind": "panel", "state_id": "fingerprinting", "locale": "ko", "mode": "guided", "interaction_state": null, "viewport": "minimum", "scale_factor": 1.5, "reduce_effects": false, "fixture_id": "fingerprinting_ko", "expected_present": ["researchBusyStage"], "expected_absent": ["researchQuestionCard", "researchCandidateCard"], "expected_properties": {}},
     {"id": "loading-en-reduced-scale-200", "capture_kind": "panel", "state_id": "fingerprinting", "locale": "en", "mode": "standard", "interaction_state": null, "viewport": "reference", "scale_factor": 2.0, "reduce_effects": true, "fixture_id": "fingerprinting_en", "expected_present": ["researchBusyStage"], "expected_absent": ["researchQuestionCard", "researchCandidateCard"], "expected_properties": {}},
     {"id": "long-copy-ko-min", "capture_kind": "panel", "state_id": "clarify_ready", "locale": "ko", "mode": "guided", "interaction_state": null, "viewport": "minimum", "scale_factor": 1.25, "reduce_effects": false, "fixture_id": "clarify_long_ko", "expected_present": ["researchQuestionCard"], "expected_absent": ["researchCandidateCard"], "expected_properties": {}},
@@ -852,7 +863,7 @@
     {"id": "preflight-block-ko", "capture_kind": "panel", "state_id": "preparation_blocked", "locale": "ko", "mode": "standard", "interaction_state": null, "viewport": "minimum", "scale_factor": 1.0, "reduce_effects": false, "fixture_id": "preparation_blocked_ko", "expected_present": ["researchCandidateCard"], "expected_absent": ["researchQuestionCard"], "expected_properties": {}},
     {"id": "recovery-pending-en", "capture_kind": "panel", "state_id": "recovery_pending", "locale": "en", "mode": "standard", "interaction_state": null, "viewport": "reference", "scale_factor": 1.0, "reduce_effects": true, "fixture_id": "recovery_pending_en", "expected_present": ["researchStatusPanel"], "expected_absent": ["researchQuestionCard", "researchCandidateCard"], "expected_properties": {}},
     {"id": "retracted-ko", "capture_kind": "panel", "state_id": "retracted", "locale": "ko", "mode": "guided", "interaction_state": null, "viewport": "minimum", "scale_factor": 1.0, "reduce_effects": false, "fixture_id": "retracted_ko", "expected_present": ["researchStatusPanel"], "expected_absent": ["researchQuestionCard", "researchCandidateCard"], "expected_properties": {}},
-    {"id": "stale-replan-en", "capture_kind": "panel", "state_id": "replan_required", "locale": "en", "mode": "standard", "interaction_state": null, "viewport": "reference", "scale_factor": 1.0, "reduce_effects": false, "fixture_id": "replan_required_en", "expected_present": ["researchStatusPanel"], "expected_absent": ["researchQuestionCard", "researchCandidateCard"], "expected_properties": {}},
+    {"id": "stale-replan-en", "capture_kind": "panel", "state_id": "replan_required", "locale": "en", "mode": "standard", "interaction_state": null, "viewport": "reference", "scale_factor": 1.0, "reduce_effects": false, "fixture_id": "replan_required_en", "expected_present": ["researchStatusPanel", "researchFailureRecovery"], "expected_absent": ["researchQuestionCard", "researchCandidateCard"], "expected_properties": {}},
     {"id": "recorded-abstention-ko", "capture_kind": "panel", "state_id": "abstain_ready", "locale": "ko", "mode": "guided", "interaction_state": null, "viewport": "minimum", "scale_factor": 1.0, "reduce_effects": false, "fixture_id": "abstain_ready_ko", "expected_present": ["researchStatusPanel", "researchAbstentionReason"], "expected_absent": ["researchQuestionCard", "researchCandidateCard"], "expected_properties": {}},
     {"id": "recorded-abstention-standard-en", "capture_kind": "panel", "state_id": "abstain_ready", "locale": "en", "mode": "standard", "interaction_state": null, "viewport": "minimum", "scale_factor": 1.5, "reduce_effects": false, "fixture_id": "abstain_ready_standard_en", "expected_present": ["researchStatusPanel", "researchAbstentionReason"], "expected_absent": ["researchQuestionCard", "researchCandidateCard"], "expected_properties": {}},
     {"id": "causal-scope-notice-en", "capture_kind": "panel", "state_id": "causal_scope_notice", "locale": "en", "mode": "guided", "interaction_state": null, "viewport": "minimum", "scale_factor": 1.0, "reduce_effects": false, "fixture_id": "causal_scope_notice_en", "expected_present": ["researchStaticBoundary"], "expected_absent": ["researchQuestionCard", "researchCandidateCard"], "expected_properties": {}},

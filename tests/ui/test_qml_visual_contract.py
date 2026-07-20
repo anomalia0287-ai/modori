@@ -232,3 +232,19 @@ def test_research_flow_actions_keep_accessible_names_and_keyboard_focus_contract
     assert 'control.variant === "primary" ? theme.onBrand : theme.focusRing' in button
     assert "control.enabled" in button
     assert "hoverEnabled: true" in button
+
+
+def test_research_failure_recovery_surface_is_wrapped_and_accessible() -> None:
+    panel = (QML_ROOT / "components/ResearchFlowPanel.qml").read_text(
+        encoding="utf-8"
+    )
+
+    assert 'objectName: "researchFailureRecovery"' in panel
+    assert 'root.flowState === "failure"' in panel
+    assert 'root.flowState === "memory_unavailable"' in panel
+    assert 'root.flowState === "corruption"' in panel
+    assert 'root.flowState === "replan_required"' in panel
+    failure_surface = panel[panel.index('objectName: "researchFailureRecovery"') :]
+    assert "Accessible.name" in failure_surface
+    assert "Accessible.Grouping" in failure_surface
+    assert "Text.Wrap" in failure_surface

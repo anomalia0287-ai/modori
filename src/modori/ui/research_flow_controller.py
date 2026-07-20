@@ -64,6 +64,7 @@ from modori.research_os import (
 from modori.table_io import import_selection_from_params
 from modori.ui.contracts import ControllerMode
 from modori.ui.research_flow_presenter import (
+    ResearchFailureReason,
     ResearchFlowView,
     ResearchUiCommand,
     present_durable_record,
@@ -297,6 +298,7 @@ class ResearchFlowViews:
             "state",
             "language",
             "decision_identity_digest",
+            "failure_reason",
             "primary_action",
             "secondary_actions",
             "options",
@@ -367,17 +369,20 @@ def _transient_views(
     *,
     language: Language,
     meaning_review: VariableMeaningReview | None = None,
+    failure_reason: ResearchFailureReason | None = None,
 ) -> ResearchFlowViews:
     return ResearchFlowViews(
         guided=present_transient_state(
             state,
             mode=ControllerMode.GUIDED,
             language=language,
+            failure_reason=failure_reason,
         ),
         standard=present_transient_state(
             state,
             mode=ControllerMode.STANDARD,
             language=language,
+            failure_reason=failure_reason,
         ),
         meaning_review=meaning_review,
     )
@@ -733,23 +738,44 @@ class ResearchFlowRuntime:
     def _typed_error(self, exc: Exception) -> ResearchFlowViews:
         if isinstance(exc, ResearchFlowStaleError):
             state = ResearchFlowState.REPLAN_REQUIRED
+            reason = ResearchFailureReason.LOCAL_RECORD_CHANGED
         elif isinstance(exc, FingerprintDeadlineExceeded):
             state = ResearchFlowState.MEMORY_UNAVAILABLE
+            reason = ResearchFailureReason.DATASET_FINGERPRINT_UNAVAILABLE
         elif isinstance(exc, FingerprintCancelled):
-            state = ResearchFlowState.CANCELLED
+            return _transient_views(
+                ResearchFlowState.CANCELLED,
+                language=self._language,
+            )
         elif isinstance(
             exc,
             (TaskSessionUnavailableError, LiveResearchFlowUnavailableError),
         ):
             state = ResearchFlowState.MEMORY_UNAVAILABLE
+            reason = ResearchFailureReason.LOCAL_RECORD_UNAVAILABLE
         elif isinstance(
             exc,
             (TaskSessionIntegrityError, LiveResearchFlowIntegrityError),
         ):
             state = ResearchFlowState.CORRUPTION
+            reason = ResearchFailureReason.LOCAL_RECORD_INTEGRITY_FAILED
+        elif isinstance(
+            exc,
+            (TaskSessionConflictError, LiveResearchFlowConflictError),
+        ):
+            state = ResearchFlowState.FAILURE
+            reason = ResearchFailureReason.LOCAL_RECORD_CONFLICT
+        elif isinstance(exc, (FingerprintContractError, ResearchFlowPipelineError)):
+            state = ResearchFlowState.FAILURE
+            reason = ResearchFailureReason.CURRENT_DATA_CONTEXT_UNAVAILABLE
         else:
             state = ResearchFlowState.FAILURE
-        return _transient_views(state, language=self._language)
+            reason = ResearchFailureReason.REQUEST_VERIFICATION_FAILED
+        return _transient_views(
+            state,
+            language=self._language,
+            failure_reason=reason,
+        )
 
     def start(
         self,
@@ -1610,6 +1636,11 @@ class ResearchFlowController(QObject):
     @Slot(result=bool)
     def back(self) -> bool:
         state = self.current_view.state
+        if state is ResearchFlowState.CORRUPTION:
+            self._preparation_review = None
+            self._selected_profile = None
+            self._pending_roles = None
+            return self._publish_transient(ResearchFlowState.IDLE)
         if state is ResearchFlowState.VARIABLE_MEANING_REVIEW:
             self._pending_roles = None
             return self._publish_transient(ResearchFlowState.INTAKE_ROLES)
@@ -1800,7 +1831,14 @@ class ResearchFlowController(QObject):
 
     @Slot(result=bool)
     def replan(self) -> bool:
-        if self.current_view.state not in {
+        state = self.current_view.state
+        action = self.current_view.primary_action
+        failure_authorizes_replan = (
+            state is ResearchFlowState.FAILURE
+            and action is not None
+            and action.command is ResearchUiCommand.REPLAN
+        )
+        if not failure_authorizes_replan and state not in {
             ResearchFlowState.REPLAN_REQUIRED,
             ResearchFlowState.RETRACTED,
             ResearchFlowState.ABSTAIN_READY,
@@ -1872,7 +1910,15 @@ class ResearchFlowController(QObject):
                 }
                 else ResearchFlowState.FAILURE
             )
-            self._views = _transient_views(state, language=self._language)
+            self._views = _transient_views(
+                state,
+                language=self._language,
+                failure_reason=(
+                    ResearchFailureReason.PREPARATION_REVIEW_FAILED
+                    if state is ResearchFlowState.FAILURE
+                    else None
+                ),
+            )
             self.stateChanged.emit()
             return False
         self._active_pipeline_version = result.pipeline_version
@@ -1985,7 +2031,11 @@ class ResearchFlowController(QObject):
                     meaning_review=self._views.meaning_review,
                 )
             else:
-                translated = _transient_views(state, language=adopted)
+                translated = _transient_views(
+                    state,
+                    language=adopted,
+                    failure_reason=self.current_view.failure_reason,
+                )
         except (ValueError, ResearchFlowControllerError):
             return False
         self._runtime.adopt_language(adopted)
@@ -2049,6 +2099,9 @@ class ResearchFlowController(QObject):
                     self._views = _transient_views(
                         ResearchFlowState.FAILURE,
                         language=self._language,
+                        failure_reason=(
+                            ResearchFailureReason.PREPARATION_REVIEW_FAILED
+                        ),
                     )
                     self._preparation_review = None
                 else:
@@ -2062,6 +2115,9 @@ class ResearchFlowController(QObject):
                         self._views = _transient_views(
                             ResearchFlowState.FAILURE,
                             language=self._language,
+                            failure_reason=(
+                                ResearchFailureReason.PREPARATION_REVIEW_FAILED
+                            ),
                         )
                         self._preparation_review = None
             else:

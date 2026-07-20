@@ -22,6 +22,7 @@ from modori.research_flow import (
     ResearchTaskSessionStore,
     SourceSchemaDescriptor,
     StaticBoundary,
+    TaskSessionConflictError,
     TaskSessionIntegrityError,
     TaskSessionUnavailableError,
     VariableMeaningReview,
@@ -42,6 +43,7 @@ from modori.ui.research_flow_controller import (
     ResearchFlowController,
     ResearchFlowControllerError,
     ResearchFlowPipelineAccess,
+    ResearchFlowPipelineError,
     ResearchFlowPipelineSnapshot,
     ResearchFlowRuntime,
     ResearchFlowViews,
@@ -49,6 +51,7 @@ from modori.ui.research_flow_controller import (
 from modori.ui.pipeline_ops import PipelineOperations
 from modori.ui.research_preparation_editor import ResearchPreparationEditor
 from modori.ui.research_flow_presenter import (
+    ResearchFailureReason,
     ResearchUiCommand,
     present_transient_state,
 )
@@ -70,17 +73,20 @@ def _transient_views(
     state: ResearchFlowState,
     *,
     meaning_review: VariableMeaningReview | None = None,
+    failure_reason: ResearchFailureReason | None = None,
 ) -> ResearchFlowViews:
     return ResearchFlowViews(
         guided=present_transient_state(
             state,
             mode=ControllerMode.GUIDED,
             language=Language.KO,
+            failure_reason=failure_reason,
         ),
         standard=present_transient_state(
             state,
             mode=ControllerMode.STANDARD,
             language=Language.KO,
+            failure_reason=failure_reason,
         ),
         meaning_review=meaning_review,
     )
@@ -486,6 +492,30 @@ def test_worker_failure_enters_closed_failure_without_free_form_error_copy() -> 
     assert controller.busy is False
     assert controller.current_view.state is ResearchFlowState.FAILURE
     assert controller.stateModel["body"] != "오류"
+    assert controller.stateModel["evidenceRows"][-1]["value"] == (
+        ResearchFailureReason.WORKER_OPERATION_FAILED.value
+    )
+    serialized = json.dumps(controller.stateModel, ensure_ascii=False)
+    assert "engine_error" not in serialized
+    assert '"오류"' not in serialized
+
+
+def test_language_change_preserves_the_exact_sanitized_failure_reason() -> None:
+    runtime = FakeRuntime(_transient_views(ResearchFlowState.INTAKE_CAUSAL))
+    worker = ControllableWorker()
+    controller = _controller(runtime, worker, [1])
+    controller._views = _transient_views(
+        ResearchFlowState.FAILURE,
+        failure_reason=ResearchFailureReason.CURRENT_DATA_CONTEXT_UNAVAILABLE,
+    )
+
+    assert controller.adoptLanguage("en") is True
+
+    assert controller.current_view.language is Language.EN
+    assert controller.current_view.evidence_rows[-1][1] == (
+        ResearchFailureReason.CURRENT_DATA_CONTEXT_UNAVAILABLE.value
+    )
+    assert "current data" in controller.current_view.evidence_rows[0][1].lower()
 
 
 def test_static_causal_and_scope_choices_never_submit_runtime_work() -> None:
@@ -866,22 +896,45 @@ def test_runtime_start_caches_exact_version_and_never_allocates() -> None:
 
 
 @pytest.mark.parametrize(
-    ("error", "expected_state"),
+    ("error", "expected_state", "expected_reason", "expected_command"),
     (
         (
             TaskSessionUnavailableError("storage unavailable"),
             ResearchFlowState.MEMORY_UNAVAILABLE,
+            ResearchFailureReason.LOCAL_RECORD_UNAVAILABLE.value,
+            ResearchUiCommand.RESUME,
         ),
         (
             TaskSessionIntegrityError("ledger integrity"),
             ResearchFlowState.CORRUPTION,
+            ResearchFailureReason.LOCAL_RECORD_INTEGRITY_FAILED.value,
+            ResearchUiCommand.BACK,
         ),
-        (ValueError("ordinary failure"), ResearchFlowState.FAILURE),
+        (
+            TaskSessionConflictError("writer busy"),
+            ResearchFlowState.FAILURE,
+            "local_record_conflict",
+            ResearchUiCommand.RESUME,
+        ),
+        (
+            ResearchFlowPipelineError("C:\\private\\source.xlsx"),
+            ResearchFlowState.FAILURE,
+            ResearchFailureReason.CURRENT_DATA_CONTEXT_UNAVAILABLE.value,
+            ResearchUiCommand.RESUME,
+        ),
+        (
+            ValueError("C:\\private\\raw-value-secret"),
+            ResearchFlowState.FAILURE,
+            ResearchFailureReason.REQUEST_VERIFICATION_FAILED.value,
+            ResearchUiCommand.RESUME,
+        ),
     ),
 )
 def test_runtime_preserves_closed_error_taxonomy(
     error: Exception,
     expected_state: ResearchFlowState,
+    expected_reason: str,
+    expected_command: ResearchUiCommand,
 ) -> None:
     dataset = _small_dataset()
     snapshot = ResearchFlowPipelineSnapshot(
@@ -910,6 +963,11 @@ def test_runtime_preserves_closed_error_taxonomy(
     views = runtime.start(pipeline_version=1, cancel_event=Event())
 
     assert views.standard.state is expected_state
+    assert views.standard.evidence_rows[-1][1] == expected_reason
+    assert views.standard.primary_action is not None
+    assert views.standard.primary_action.command is expected_command
+    serialized = repr(views)
+    assert str(error) not in serialized
 
 
 def test_runtime_cancellation_is_not_reported_as_failure() -> None:
@@ -1468,6 +1526,46 @@ def test_controller_queues_only_typed_durable_commands() -> None:
         assert runtime.calls[0][0] == expected_call
 
 
+def test_failure_replan_runs_only_when_the_presented_recovery_authorizes_it() -> None:
+    runtime = FakeRuntime(_transient_views(ResearchFlowState.INTAKE_CAUSAL))
+    worker = ControllableWorker()
+    controller = _controller(runtime, worker, [9])
+    controller._views = _transient_views(
+        ResearchFlowState.FAILURE,
+        failure_reason=ResearchFailureReason.PREFLIGHT_VERIFICATION_FAILED,
+    )
+
+    assert controller.current_view.primary_action is not None
+    assert (
+        controller.current_view.primary_action.command
+        is ResearchUiCommand.REPLAN
+    )
+    assert controller.replan() is True
+    assert worker.execute().standard.state is ResearchFlowState.INTAKE_CAUSAL
+    assert runtime.calls[-1][0] == "replan"
+
+    controller._busy = False
+    controller._views = _transient_views(
+        ResearchFlowState.FAILURE,
+        failure_reason=ResearchFailureReason.WORKER_OPERATION_FAILED,
+    )
+    assert controller.replan() is False
+
+
+def test_corruption_back_action_is_a_write_free_safe_exit() -> None:
+    runtime = FakeRuntime(_transient_views(ResearchFlowState.INTAKE_CAUSAL))
+    worker = ControllableWorker()
+    controller = _controller(runtime, worker, [9])
+    controller._views = _transient_views(ResearchFlowState.CORRUPTION)
+
+    assert controller.current_view.primary_action is not None
+    assert controller.current_view.primary_action.command is ResearchUiCommand.BACK
+    assert controller.back() is True
+    assert controller.current_view.state is ResearchFlowState.IDLE
+    assert worker.submissions == []
+    assert runtime.calls == []
+
+
 def test_controller_queues_explicit_noncausal_reframe_only_from_causal_abstention() -> None:
     runtime = FakeRuntime(_transient_views(ResearchFlowState.INTAKE_PROFILE))
     worker = ControllableWorker()
@@ -1571,6 +1669,39 @@ def test_prepare_reviews_exact_settings_and_confirm_never_submits_run() -> None:
     assert controller.stateModel["preparationReview"] == review_model
     assert len(pipeline.steps) == 1
     assert controller.confirm() is False
+
+
+def test_missing_preparation_reviewer_shows_sanitized_recovery_reason() -> None:
+    preparation = _ready_preparation(P1TaskProfile.LINEAR_CO_MOVEMENT)
+    candidate_base = _candidate_views()
+    review_base = _transient_views(ResearchFlowState.PREPARE_REVIEW)
+    candidate = ResearchFlowViews(
+        guided=candidate_base.guided,
+        standard=candidate_base.standard,
+        preparation=preparation,
+    )
+    review = ResearchFlowViews(
+        guided=review_base.guided,
+        standard=review_base.standard,
+        preparation=preparation,
+    )
+    runtime = FakeRuntime(review)
+    worker = ControllableWorker()
+    controller = _controller(runtime, worker, [1])
+    controller._views = candidate
+
+    assert controller.prepare() is True
+    worker.finish(worker.execute())
+
+    assert controller.current_view.state is ResearchFlowState.FAILURE
+    assert controller.current_view.evidence_rows[-1][1] == (
+        ResearchFailureReason.PREPARATION_REVIEW_FAILED.value
+    )
+    assert controller.current_view.primary_action is not None
+    assert (
+        controller.current_view.primary_action.command
+        is ResearchUiCommand.RESUME
+    )
 
 
 def test_mode_change_discards_pending_confirmation_but_keeps_candidate() -> None:

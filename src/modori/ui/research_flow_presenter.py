@@ -69,6 +69,21 @@ class ResearchUiCommand(str, Enum):
     REFRAME_NONCAUSAL = "reframe_noncausal"
 
 
+class ResearchFailureReason(str, Enum):
+    CURRENT_DATA_CONTEXT_UNAVAILABLE = "current_data_context_unavailable"
+    DATASET_FINGERPRINT_UNAVAILABLE = "dataset_fingerprint_unavailable"
+    LOCAL_RECORD_UNAVAILABLE = "local_record_unavailable"
+    LOCAL_RECORD_CONFLICT = "local_record_conflict"
+    LOCAL_RECORD_CHANGED = "local_record_changed"
+    LOCAL_RECORD_INTEGRITY_FAILED = "local_record_integrity_failed"
+    REQUEST_VERIFICATION_FAILED = "request_verification_failed"
+    PREFLIGHT_UNSUPPORTED_STEP = "preflight_unsupported_step"
+    PREFLIGHT_INVALID_CONFIGURATION = "preflight_invalid_configuration"
+    PREFLIGHT_VERIFICATION_FAILED = "preflight_verification_failed"
+    PREPARATION_REVIEW_FAILED = "preparation_review_failed"
+    WORKER_OPERATION_FAILED = "worker_operation_failed"
+
+
 _DIGEST_RE = re.compile(r"[0-9a-f]{64}\Z")
 _ABBREVIATED_DIGEST_RE = re.compile(r"[0-9a-f]{12}\Z")
 
@@ -165,6 +180,7 @@ class ResearchFlowView:
     question: QuestionRationaleView | None
     candidate: ResearchCandidateView | None
     evidence_rows: tuple[tuple[str, str], ...]
+    failure_reason: ResearchFailureReason | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.state, ResearchFlowState):
@@ -267,6 +283,20 @@ class ResearchFlowView:
                 "question and candidate cannot share one view"
             )
         _require_row_tuple(self.evidence_rows, "evidence_rows")
+        default_failure_reason = _DEFAULT_FAILURE_REASON.get(self.state)
+        if default_failure_reason is not None and self.failure_reason is None:
+            raise ResearchFlowPresentationError(
+                "error state requires one sanitized failure reason"
+            )
+        if self.failure_reason is not None:
+            if not isinstance(self.failure_reason, ResearchFailureReason):
+                raise ResearchFlowPresentationError(
+                    "failure_reason must be a ResearchFailureReason or null"
+                )
+            if _FAILURE_SPECS[self.failure_reason].state is not self.state:
+                raise ResearchFlowPresentationError(
+                    "failure reason does not match the presented error state"
+                )
 
 
 @dataclass(frozen=True)
@@ -276,6 +306,13 @@ class _CandidateSpec:
     method_copy_key: str
     claim_copy_key: str
     role_shape: str
+
+
+@dataclass(frozen=True)
+class _FailureSpec:
+    state: ResearchFlowState
+    command: ResearchUiCommand
+    action_copy_key: str
 
 
 _SUMMARY_KEY = (
@@ -371,6 +408,84 @@ _ACTION_COPY_KEYS = MappingProxyType(
     }
 )
 
+_FAILURE_SPECS = MappingProxyType(
+    {
+        ResearchFailureReason.CURRENT_DATA_CONTEXT_UNAVAILABLE: _FailureSpec(
+            ResearchFlowState.FAILURE,
+            ResearchUiCommand.RESUME,
+            "action.retry_current_data",
+        ),
+        ResearchFailureReason.DATASET_FINGERPRINT_UNAVAILABLE: _FailureSpec(
+            ResearchFlowState.MEMORY_UNAVAILABLE,
+            ResearchUiCommand.RESUME,
+            "action.retry_current_data",
+        ),
+        ResearchFailureReason.LOCAL_RECORD_UNAVAILABLE: _FailureSpec(
+            ResearchFlowState.MEMORY_UNAVAILABLE,
+            ResearchUiCommand.RESUME,
+            "action.retry_local_record",
+        ),
+        ResearchFailureReason.LOCAL_RECORD_CONFLICT: _FailureSpec(
+            ResearchFlowState.FAILURE,
+            ResearchUiCommand.RESUME,
+            "action.retry_local_record",
+        ),
+        ResearchFailureReason.LOCAL_RECORD_CHANGED: _FailureSpec(
+            ResearchFlowState.REPLAN_REQUIRED,
+            ResearchUiCommand.REPLAN,
+            "action.replan",
+        ),
+        ResearchFailureReason.LOCAL_RECORD_INTEGRITY_FAILED: _FailureSpec(
+            ResearchFlowState.CORRUPTION,
+            ResearchUiCommand.BACK,
+            "action.leave_unsafe_record",
+        ),
+        ResearchFailureReason.REQUEST_VERIFICATION_FAILED: _FailureSpec(
+            ResearchFlowState.FAILURE,
+            ResearchUiCommand.RESUME,
+            "action.resume_verified",
+        ),
+        ResearchFailureReason.PREFLIGHT_UNSUPPORTED_STEP: _FailureSpec(
+            ResearchFlowState.FAILURE,
+            ResearchUiCommand.REPLAN,
+            "action.replan",
+        ),
+        ResearchFailureReason.PREFLIGHT_INVALID_CONFIGURATION: _FailureSpec(
+            ResearchFlowState.FAILURE,
+            ResearchUiCommand.REPLAN,
+            "action.replan",
+        ),
+        ResearchFailureReason.PREFLIGHT_VERIFICATION_FAILED: _FailureSpec(
+            ResearchFlowState.FAILURE,
+            ResearchUiCommand.REPLAN,
+            "action.replan",
+        ),
+        ResearchFailureReason.PREPARATION_REVIEW_FAILED: _FailureSpec(
+            ResearchFlowState.FAILURE,
+            ResearchUiCommand.RESUME,
+            "action.resume_verified",
+        ),
+        ResearchFailureReason.WORKER_OPERATION_FAILED: _FailureSpec(
+            ResearchFlowState.FAILURE,
+            ResearchUiCommand.RESUME,
+            "action.resume_verified",
+        ),
+    }
+)
+
+_DEFAULT_FAILURE_REASON = MappingProxyType(
+    {
+        ResearchFlowState.FAILURE: ResearchFailureReason.WORKER_OPERATION_FAILED,
+        ResearchFlowState.MEMORY_UNAVAILABLE: (
+            ResearchFailureReason.LOCAL_RECORD_UNAVAILABLE
+        ),
+        ResearchFlowState.CORRUPTION: (
+            ResearchFailureReason.LOCAL_RECORD_INTEGRITY_FAILED
+        ),
+        ResearchFlowState.REPLAN_REQUIRED: ResearchFailureReason.LOCAL_RECORD_CHANGED,
+    }
+)
+
 _CAUSAL_ABSTENTION_REASON = "unsupported_causal_target"
 _CAUSAL_ABSTENTION_RECOVERY = (
     "declare_noncausal_or_use_external_causal_workflow"
@@ -409,6 +524,49 @@ def _action(
         command=command,
         label=_copy(language, _ACTION_COPY_KEYS[command]),
         enabled=enabled,
+    )
+
+
+def _failure_projection(
+    reason: ResearchFailureReason,
+    *,
+    state: ResearchFlowState,
+    mode: ControllerMode,
+    language: Language,
+) -> tuple[ResearchUiAction, tuple[tuple[str, str], ...]]:
+    if not isinstance(reason, ResearchFailureReason):
+        raise ResearchFlowPresentationError(
+            "failure reason must be a ResearchFailureReason"
+        )
+    spec = _FAILURE_SPECS[reason]
+    if spec.state is not state:
+        raise ResearchFlowPresentationError(
+            "failure reason does not match the presented error state"
+        )
+    rows = [
+        (
+            _copy(language, "failure.reason_label"),
+            _copy(language, f"failure.reason.{reason.value}"),
+        ),
+        (
+            _copy(language, "failure.next_step_label"),
+            _copy(language, f"failure.recovery.{reason.value}"),
+        ),
+    ]
+    if mode is ControllerMode.STANDARD:
+        rows.append(
+            (
+                _copy(language, "failure.reason_id"),
+                reason.value,
+            )
+        )
+    return (
+        ResearchUiAction(
+            command=spec.command,
+            label=_copy(language, spec.action_copy_key),
+            enabled=True,
+        ),
+        tuple(rows),
     )
 
 
@@ -539,6 +697,7 @@ def _base_view(
     question: QuestionRationaleView | None = None,
     candidate: ResearchCandidateView | None = None,
     evidence_rows: tuple[tuple[str, str], ...] = (),
+    failure_reason: ResearchFailureReason | None = None,
 ) -> ResearchFlowView:
     return ResearchFlowView(
         state=state,
@@ -556,6 +715,7 @@ def _base_view(
         question=question,
         candidate=candidate,
         evidence_rows=evidence_rows,
+        failure_reason=failure_reason,
     )
 
 
@@ -959,6 +1119,13 @@ def present_durable_record(
         preflight.__post_init__()
         state = ResearchFlowState.REPLAN_REQUIRED
         title, body = _state_copy(language, state)
+        reason = ResearchFailureReason.LOCAL_RECORD_CHANGED
+        primary, evidence_rows = _failure_projection(
+            reason,
+            state=state,
+            mode=mode,
+            language=language,
+        )
         return _base_view(
             state=state,
             mode=mode,
@@ -968,12 +1135,27 @@ def present_durable_record(
             badge_text=_copy(language, "badge.stale"),
             decision_identity_digest=digest,
             visible_passport_digest=visible_digest,
-            primary_action=_action(ResearchUiCommand.REPLAN, language),
+            primary_action=primary,
+            evidence_rows=evidence_rows,
+            failure_reason=reason,
         )
     if preflight.disposition is PreflightDisposition.FAILURE:
         preflight.__post_init__()
         state = ResearchFlowState.FAILURE
         title, body = _state_copy(language, state)
+        issue_codes = {issue.code for issue in preflight.issues}
+        if issue_codes == {"unsupported_step_type"}:
+            reason = ResearchFailureReason.PREFLIGHT_UNSUPPORTED_STEP
+        elif issue_codes == {"invalid_params"}:
+            reason = ResearchFailureReason.PREFLIGHT_INVALID_CONFIGURATION
+        else:
+            reason = ResearchFailureReason.PREFLIGHT_VERIFICATION_FAILED
+        primary, evidence_rows = _failure_projection(
+            reason,
+            state=state,
+            mode=mode,
+            language=language,
+        )
         return _base_view(
             state=state,
             mode=mode,
@@ -983,7 +1165,9 @@ def present_durable_record(
             badge_text=_copy(language, "badge.error"),
             decision_identity_digest=digest,
             visible_passport_digest=visible_digest,
-            primary_action=_action(ResearchUiCommand.RESUME, language),
+            primary_action=primary,
+            evidence_rows=evidence_rows,
+            failure_reason=reason,
         )
     candidate, evidence = _candidate_projection(
         record,
@@ -1148,6 +1332,7 @@ def present_transient_state(
     *,
     mode: ControllerMode,
     language: Language,
+    failure_reason: ResearchFailureReason | None = None,
 ) -> ResearchFlowView:
     """Present only non-authoritative in-memory controller states."""
 
@@ -1164,6 +1349,22 @@ def present_transient_state(
     badge_key, command, stage_key = row
     title, body = _state_copy(language, state)
     secondary: tuple[ResearchUiAction, ...] = ()
+    primary = _action(command, language) if command else None
+    evidence_rows: tuple[tuple[str, str], ...] = ()
+    default_failure_reason = _DEFAULT_FAILURE_REASON.get(state)
+    resolved_failure_reason: ResearchFailureReason | None = None
+    if failure_reason is not None and default_failure_reason is None:
+        raise ResearchFlowPresentationError(
+            "failure reason requires an error state"
+        )
+    if default_failure_reason is not None:
+        resolved_failure_reason = failure_reason or default_failure_reason
+        primary, evidence_rows = _failure_projection(
+            resolved_failure_reason,
+            state=state,
+            mode=mode,
+            language=language,
+        )
     if state is ResearchFlowState.INTAKE_CAUSAL:
         secondary = (
             _action(ResearchUiCommand.CAUSAL_YES, language),
@@ -1179,6 +1380,8 @@ def present_transient_state(
         body=body,
         stage_text=_copy(language, stage_key) if stage_key else "",
         badge_text=_copy(language, badge_key),
-        primary_action=_action(command, language) if command else None,
+        primary_action=primary,
         secondary_actions=secondary,
+        evidence_rows=evidence_rows,
+        failure_reason=resolved_failure_reason,
     )
