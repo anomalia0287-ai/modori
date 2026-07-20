@@ -353,6 +353,15 @@ class PipelineOperations:
             raise RuntimeError("ReportStep did not produce a docx path")
         return Path(docx_path)
 
+    def report_output_path(self, options: ReportExportOptions) -> Path | None:
+        report_step = self._report_step()
+        if report_step is not None:
+            params = self._report_params_for_options(report_step, options)
+            return self._report_path_from_params(params)
+        if options.selection_origin == "research_os_assisted":
+            return (self._default_output_dir() / "report.docx").resolve()
+        return None
+
     def _export_research_os_report(
         self,
         options: ReportExportOptions,
@@ -803,6 +812,24 @@ class PipelineOperations:
         if include is not None:
             params["include"] = include
         return params
+
+    @staticmethod
+    def _report_path_from_params(params: Mapping[str, object]) -> Path | None:
+        filename = str(params.get("filename", "report.docx"))
+        if (
+            any(separator in filename for separator in ("/", "\\"))
+            or Path(filename).is_absolute()
+            or ":" in filename
+            or Path(filename).suffix.lower() != ".docx"
+        ):
+            return None
+        output_dir = Path(str(params.get("output_dir", "."))).resolve()
+        destination = (output_dir / filename).resolve()
+        try:
+            destination.relative_to(output_dir)
+        except ValueError:
+            return None
+        return destination
 
     def _filtered_report_include(
         self,

@@ -72,6 +72,7 @@ class ReportExportOptions:
     include_figures: bool = True
     selection_provenance: SelectionProvenance = "manual"
     selection_origin: SelectionOrigin = "manual"
+    replace_existing: bool = False
 
     def __post_init__(self) -> None:
         origin: SelectionOrigin = (

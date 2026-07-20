@@ -770,6 +770,43 @@ def test_pipeline_operations_export_report_requires_docx_path(tmp_path) -> None:
         PipelineOperations(pipeline).export_report(ReportExportOptions())
 
 
+def test_report_options_require_explicit_replacement_authority() -> None:
+    assert ReportExportOptions().replace_existing is False
+    assert ReportExportOptions(replace_existing=True).replace_existing is True
+
+
+def test_pipeline_operations_predict_report_path_without_mutation(tmp_path) -> None:
+    pipeline = FakePipeline()
+    pipeline.steps.append(
+        {
+            "id": "report",
+            "step_type": "report.apa",
+            "params": {"output_dir": str(tmp_path), "filename": "report.docx"},
+        }
+    )
+    ops = PipelineOperations(pipeline)
+
+    assert ops.report_output_path(ReportExportOptions()) == (
+        tmp_path / "report.docx"
+    ).resolve()
+    assert pipeline.edits == []
+    assert pipeline.recomputed is False
+
+
+def test_pipeline_operations_predict_research_os_temporary_report_path(
+    tmp_path,
+) -> None:
+    data_path = tmp_path / "survey.csv"
+    pipeline = FakePipeline()
+    pipeline.steps[0].params = {"path": str(data_path)}
+
+    predicted = PipelineOperations(pipeline).report_output_path(
+        ReportExportOptions(selection_origin="research_os_assisted")
+    )
+
+    assert predicted == (tmp_path / "modori-output" / "report.docx").resolve()
+
+
 def test_pipeline_operations_export_report_recomputes_missing_report(tmp_path) -> None:
     output_path = tmp_path / "report.docx"
     output_path.write_bytes(b"docx")
