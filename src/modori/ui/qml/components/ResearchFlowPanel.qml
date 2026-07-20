@@ -142,6 +142,9 @@ ColumnLayout {
         if (command === "replan") {
             return root.controller.replan()
         }
+        if (command === "reframe_noncausal") {
+            return root.controller.reframeNoncausal()
+        }
         if (command === "cancel") {
             return root.controller.cancel()
         }
@@ -426,6 +429,47 @@ ColumnLayout {
                 color: theme.textBody
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
+            }
+        }
+
+        PearlSurface {
+            objectName: "researchAbstentionReason"
+            visible: root.flowState === "abstain_ready"
+                && (root.stateModel.evidenceRows || []).length > 0
+            Layout.fillWidth: true
+            Layout.preferredHeight: visible
+                ? abstentionReasonLayout.implicitHeight + theme.spaceContent * 2
+                : theme.spaceNone
+            fillColor: theme.surfaceCream
+            outlined: true
+            Accessible.name: appBootstrap.text("research.abstention.details", appBootstrap.language)
+            Accessible.role: Accessible.Grouping
+
+            ColumnLayout {
+                id: abstentionReasonLayout
+                anchors.fill: parent
+                anchors.margins: theme.spaceContent
+                spacing: theme.spaceSm
+
+                Label {
+                    text: appBootstrap.text("research.abstention.details", appBootstrap.language)
+                    color: theme.bronzeDeep
+                    font.bold: true
+                    wrapMode: Text.WordWrap
+                    Layout.fillWidth: true
+                }
+
+                Repeater {
+                    model: root.stateModel.evidenceRows || []
+
+                    Label {
+                        required property var modelData
+                        text: String(modelData.label) + ": " + String(modelData.value)
+                        color: theme.textBody
+                        wrapMode: Text.WordWrap
+                        Layout.fillWidth: true
+                    }
+                }
             }
         }
 

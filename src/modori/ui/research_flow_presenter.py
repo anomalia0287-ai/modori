@@ -29,6 +29,7 @@ from modori.research_memory import (
     project_current_question_rationale,
 )
 from modori.research_os import (
+    AbstainPayload,
     ClarificationError,
     ClarifyPayloadV2,
     Language,
@@ -65,6 +66,7 @@ class ResearchUiCommand(str, Enum):
     REPLAN = "replan"
     CANCEL = "cancel"
     PREPARE = "prepare"
+    REFRAME_NONCAUSAL = "reframe_noncausal"
 
 
 _DIGEST_RE = re.compile(r"[0-9a-f]{64}\Z")
@@ -365,7 +367,13 @@ _ACTION_COPY_KEYS = MappingProxyType(
         ResearchUiCommand.REPLAN: "action.replan",
         ResearchUiCommand.CANCEL: "action.cancel",
         ResearchUiCommand.PREPARE: "action.prepare",
+        ResearchUiCommand.REFRAME_NONCAUSAL: "action.reframe_noncausal",
     }
+)
+
+_CAUSAL_ABSTENTION_REASON = "unsupported_causal_target"
+_CAUSAL_ABSTENTION_RECOVERY = (
+    "declare_noncausal_or_use_external_causal_workflow"
 )
 
 
@@ -417,6 +425,58 @@ def _state_copy(
         _copy(language, f"state.{state.value}.title"),
         _copy(language, f"state.{state.value}.body"),
     )
+
+
+def _abstention_reason_copy_key(reason_code: str) -> str:
+    if reason_code == _CAUSAL_ABSTENTION_REASON:
+        return "abstention.reason.causal"
+    if reason_code.startswith("integrity:"):
+        return "abstention.reason.integrity"
+    if reason_code in {
+        "clarification_budget_exhausted",
+        "clarification_answer_unavailable",
+        "planner_search_limit_exceeded",
+    }:
+        return "abstention.reason.clarification"
+    return "abstention.reason.unsupported"
+
+
+def _abstention_projection(
+    record: DurableDecision,
+    *,
+    mode: ControllerMode,
+    language: Language,
+) -> tuple[bool, tuple[tuple[str, str], ...]]:
+    payload = record.passport.abstain
+    if not isinstance(payload, AbstainPayload):
+        raise ResearchFlowPresentationError(
+            "abstain decision is missing its sealed abstention payload"
+        )
+    payload.__post_init__()
+    can_reframe_noncausal = (
+        payload.reason_codes == (_CAUSAL_ABSTENTION_REASON,)
+        and payload.recovery_requirement_ids == (_CAUSAL_ABSTENTION_RECOVERY,)
+    )
+    rows = [
+        (
+            _copy(language, "abstention.reason_label"),
+            _copy(language, _abstention_reason_copy_key(reason_code)),
+        )
+        for reason_code in payload.reason_codes
+    ]
+    if mode is ControllerMode.STANDARD:
+        rows.extend(
+            (_copy(language, "abstention.reason_code"), reason_code)
+            for reason_code in payload.reason_codes
+        )
+        rows.extend(
+            (
+                _copy(language, "abstention.recovery_requirement"),
+                requirement_id,
+            )
+            for requirement_id in payload.recovery_requirement_ids
+        )
+    return can_reframe_noncausal, tuple(rows)
 
 
 def _base_view(
@@ -811,17 +871,34 @@ def present_durable_record(
         )
     if record.action is PrimaryAction.ABSTAIN:
         state = ResearchFlowState.ABSTAIN_READY
-        title, body = _state_copy(language, state)
+        can_reframe_noncausal, evidence_rows = _abstention_projection(
+            record,
+            mode=mode,
+            language=language,
+        )
+        if can_reframe_noncausal:
+            title = _copy(language, "state.abstain_causal.title")
+            body = _copy(language, "state.abstain_causal.body")
+            badge_text = _copy(language, "badge.abstain_causal")
+            primary = _action(ResearchUiCommand.REFRAME_NONCAUSAL, language)
+            secondary = (_action(ResearchUiCommand.REPLAN, language),)
+        else:
+            title, body = _state_copy(language, state)
+            badge_text = _copy(language, "badge.abstain")
+            primary = _action(ResearchUiCommand.REPLAN, language)
+            secondary = ()
         return _base_view(
             state=state,
             mode=mode,
             language=language,
             title=title,
             body=body,
-            badge_text=_copy(language, "badge.abstain"),
+            badge_text=badge_text,
             decision_identity_digest=digest,
             visible_passport_digest=visible_digest,
-            primary_action=_action(ResearchUiCommand.REPLAN, language),
+            primary_action=primary,
+            secondary_actions=secondary,
+            evidence_rows=evidence_rows,
         )
     if record.action is PrimaryAction.ROUTE_EXTERNAL:
         raise ResearchFlowPresentationError(

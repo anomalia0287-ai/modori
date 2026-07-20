@@ -663,16 +663,20 @@
         "state": "abstain_ready",
         "mode": "guided",
         "language": "ko",
-        "title": "현재 정보로는 분석 후보를 제시하지 않습니다",
-        "body": "확인되지 않은 연구 사실을 임의로 채우지 않았습니다. 직접 분석 또는 외부 방법 안내를 이용하세요.",
+        "title": "인과 효과 요청은 현재 지원 범위 밖입니다",
+        "body": "요청이 인과 효과 해석을 요구해 후보를 내지 않았습니다. 비인과 관계로 바꾸려면 아래에서 명시적으로 선택하세요. 인과 의도를 유지하면 이 기권은 그대로 남습니다.",
         "stageText": "",
-        "badgeText": "기권 기록됨",
-        "primaryAction": {"command": "replan", "label": "현재 데이터로 다시 계획", "enabled": true},
-        "secondaryActions": [],
+        "badgeText": "인과 요청 기권",
+        "primaryAction": {"command": "reframe_noncausal", "label": "인과 효과 대신 변수 간 관계 확인", "enabled": true},
+        "secondaryActions": [
+          {"command": "replan", "label": "현재 데이터로 다시 계획", "enabled": true}
+        ],
         "options": [],
         "question": null,
         "candidate": null,
-        "evidenceRows": []
+        "evidenceRows": [
+          {"label": "기권 이유", "value": "요청이 인과 효과 해석을 요구하지만 현재 Research OS는 비인과 과업만 지원합니다."}
+        ]
       }
     },
     "causal_scope_notice_en": {
@@ -825,7 +829,7 @@
     {"id": "recovery-pending-en", "capture_kind": "panel", "state_id": "recovery_pending", "locale": "en", "mode": "standard", "interaction_state": null, "viewport": "reference", "scale_factor": 1.0, "reduce_effects": true, "fixture_id": "recovery_pending_en", "expected_present": ["researchStatusPanel"], "expected_absent": ["researchQuestionCard", "researchCandidateCard"], "expected_properties": {}},
     {"id": "retracted-ko", "capture_kind": "panel", "state_id": "retracted", "locale": "ko", "mode": "guided", "interaction_state": null, "viewport": "minimum", "scale_factor": 1.0, "reduce_effects": false, "fixture_id": "retracted_ko", "expected_present": ["researchStatusPanel"], "expected_absent": ["researchQuestionCard", "researchCandidateCard"], "expected_properties": {}},
     {"id": "stale-replan-en", "capture_kind": "panel", "state_id": "replan_required", "locale": "en", "mode": "standard", "interaction_state": null, "viewport": "reference", "scale_factor": 1.0, "reduce_effects": false, "fixture_id": "replan_required_en", "expected_present": ["researchStatusPanel"], "expected_absent": ["researchQuestionCard", "researchCandidateCard"], "expected_properties": {}},
-    {"id": "recorded-abstention-ko", "capture_kind": "panel", "state_id": "abstain_ready", "locale": "ko", "mode": "guided", "interaction_state": null, "viewport": "minimum", "scale_factor": 1.0, "reduce_effects": false, "fixture_id": "abstain_ready_ko", "expected_present": ["researchStatusPanel"], "expected_absent": ["researchQuestionCard", "researchCandidateCard"], "expected_properties": {}},
+    {"id": "recorded-abstention-ko", "capture_kind": "panel", "state_id": "abstain_ready", "locale": "ko", "mode": "guided", "interaction_state": null, "viewport": "minimum", "scale_factor": 1.0, "reduce_effects": false, "fixture_id": "abstain_ready_ko", "expected_present": ["researchStatusPanel", "researchAbstentionReason"], "expected_absent": ["researchQuestionCard", "researchCandidateCard"], "expected_properties": {}},
     {"id": "causal-scope-notice-en", "capture_kind": "panel", "state_id": "causal_scope_notice", "locale": "en", "mode": "guided", "interaction_state": null, "viewport": "minimum", "scale_factor": 1.0, "reduce_effects": false, "fixture_id": "causal_scope_notice_en", "expected_present": ["researchStaticBoundary"], "expected_absent": ["researchQuestionCard", "researchCandidateCard"], "expected_properties": {}},
     {"id": "variable-meaning-review-ko", "capture_kind": "panel", "state_id": "variable_meaning_review", "locale": "ko", "mode": "standard", "interaction_state": null, "viewport": "reference", "scale_factor": 1.0, "reduce_effects": false, "fixture_id": "variable_meaning_review_ko", "expected_present": ["researchVariableMeaningReview"], "expected_absent": ["researchQuestionCard", "researchCandidateCard"], "expected_properties": {"researchVariableMeaningReview.rowCount": 2, "researchVariableMeaningReview.conceptDefinitionUnknown": true}},
     {"id": "prepare-review-ko", "capture_kind": "panel", "state_id": "prepare_review", "locale": "ko", "mode": "standard", "interaction_state": null, "viewport": "reference", "scale_factor": 1.0, "reduce_effects": false, "fixture_id": "prepare_review_ko", "expected_present": ["researchPreparationReview"], "expected_absent": ["researchQuestionCard", "researchCandidateCard"], "expected_properties": {}},

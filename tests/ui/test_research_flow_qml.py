@@ -191,7 +191,23 @@ def _model_for(state: str) -> dict[str, object]:
         }
     elif state in {"recovery_pending", "memory_unavailable", "failure", "cancelled"}:
         model["primaryAction"] = _action("resume", "기록에서 다시 확인")
-    elif state in {"retracted", "replan_required", "abstain_ready"}:
+    elif state == "abstain_ready":
+        model["title"] = "인과 효과 요청은 현재 지원 범위 밖입니다"
+        model["body"] = "인과 해석을 요구해 후보를 내지 않았습니다."
+        model["primaryAction"] = _action(
+            "reframe_noncausal",
+            "인과 효과 대신 변수 간 관계 확인",
+        )
+        model["secondaryActions"] = [
+            _action("replan", "현재 데이터로 다시 계획")
+        ]
+        model["evidenceRows"] = [
+            {
+                "label": "기권 이유",
+                "value": "현재 Research OS는 비인과 과업만 지원합니다.",
+            }
+        ]
+    elif state in {"retracted", "replan_required"}:
         model["primaryAction"] = _action("replan", "현재 데이터로 다시 계획")
     elif state in {"corruption", "intake_blocked", "scope_boundary"}:
         model["primaryAction"] = _action("back", "돌아가기")
@@ -286,6 +302,10 @@ class FakeResearchFlow(QObject):
     @Slot(result=bool)
     def replan(self) -> bool:
         return self._record("replan")
+
+    @Slot(result=bool)
+    def reframeNoncausal(self) -> bool:
+        return self._record("reframe_noncausal")
 
     @Slot(result=bool)
     def prepare(self) -> bool:
@@ -491,6 +511,25 @@ def test_panel_dispatches_only_typed_controller_commands() -> None:
             Q_ARG("QVariant", "route"),
         )
         assert controller.calls == [("causal_yes", None)]
+    finally:
+        panel.deleteLater()
+        _app().processEvents()
+        del engine
+
+
+def test_causal_abstention_renders_reason_and_dispatches_explicit_reframe() -> None:
+    controller = FakeResearchFlow(_model_for("abstain_ready"))
+    engine, panel = _load_panel(controller)
+    try:
+        reason = panel.findChild(QObject, "researchAbstentionReason")
+        assert reason is not None
+        assert reason.property("visible") is True
+        assert QMetaObject.invokeMethod(
+            panel,
+            "invokeCommand",
+            Q_ARG("QVariant", "reframe_noncausal"),
+        )
+        assert controller.calls == [("reframe_noncausal", None)]
     finally:
         panel.deleteLater()
         _app().processEvents()

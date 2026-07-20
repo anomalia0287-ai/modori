@@ -284,6 +284,7 @@ UI_STRINGS_EN = {
     "research.candidate.passport": "Passport",
     "research.candidate.review_state": "Review status",
     "research.candidate.roles": "Variable roles",
+    "research.abstention.details": "Decision basis",
     "research.close": "Close Research OS",
     "research.close_description": "Closes the local research-task guide.",
     "research.confirm": "Confirm this configuration",

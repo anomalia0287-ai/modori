@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import FrozenInstanceError
+from dataclasses import FrozenInstanceError, replace
 
 import pytest
 
@@ -19,6 +19,7 @@ from modori.research_flow import (
 )
 from modori.research_memory import LedgerArtifact
 from modori.research_os import (
+    AbstainPayload,
     AnalysisPassport,
     Language,
     P1TaskProfile,
@@ -94,6 +95,20 @@ def _abstain_record(language: Language = Language.KO) -> DurableDecision:
     )
     assert resolved.passport.action is PrimaryAction.ABSTAIN
     return _durable(request, resolved.passport)
+
+
+def _generic_abstain_record(language: Language = Language.KO) -> DurableDecision:
+    causal = _abstain_record(language)
+    passport = replace(
+        causal.passport,
+        abstain=AbstainPayload(
+            reason_codes=("no_stable_supported_capability",),
+            recovery_requirement_ids=(
+                "revise_target_or_expand_verified_method_space",
+            ),
+        ),
+    )
+    return _durable(causal.request, passport)
 
 
 def _labels(record: DurableDecision) -> dict[str, str]:
@@ -319,6 +334,80 @@ def test_nonpreparable_terminal_preflight_never_leaks_a_candidate(
     if state is ResearchFlowState.REPLAN_REQUIRED:
         assert view.primary_action is not None
         assert view.primary_action.command is ResearchUiCommand.REPLAN
+
+
+@pytest.mark.parametrize("language", (Language.KO, Language.EN))
+def test_causal_abstention_projects_committed_reason_and_explicit_reframe(
+    language: Language,
+) -> None:
+    record = _abstain_record(language)
+    payload = record.passport.abstain
+    assert payload is not None
+
+    guided = present_durable_record(
+        record,
+        mode=ControllerMode.GUIDED,
+        language=language,
+        preflight=None,
+    )
+    standard = present_durable_record(
+        record,
+        mode=ControllerMode.STANDARD,
+        language=language,
+        preflight=None,
+    )
+    copy = RESEARCH_FLOW_STRINGS[language.value]
+
+    assert guided.state is standard.state is ResearchFlowState.ABSTAIN_READY
+    assert guided.title == standard.title == copy["state.abstain_causal.title"]
+    assert guided.body == standard.body == copy["state.abstain_causal.body"]
+    assert guided.primary_action is not None
+    assert standard.primary_action is not None
+    assert guided.primary_action.command is ResearchUiCommand.REFRAME_NONCAUSAL
+    assert standard.primary_action.command is ResearchUiCommand.REFRAME_NONCAUSAL
+    assert tuple(action.command for action in guided.secondary_actions) == (
+        ResearchUiCommand.REPLAN,
+    )
+    assert tuple(action.command for action in standard.secondary_actions) == (
+        ResearchUiCommand.REPLAN,
+    )
+    assert guided.evidence_rows == (
+        (copy["abstention.reason_label"], copy["abstention.reason.causal"]),
+    )
+    assert standard.evidence_rows == (
+        *guided.evidence_rows,
+        (copy["abstention.reason_code"], payload.reason_codes[0]),
+        (
+            copy["abstention.recovery_requirement"],
+            payload.recovery_requirement_ids[0],
+        ),
+    )
+    assert guided.decision_identity_digest == record.passport_digest
+    assert standard.visible_passport_digest == record.passport_digest[:12]
+
+
+def test_generic_abstention_never_inherits_the_causal_reframe() -> None:
+    record = _generic_abstain_record()
+
+    view = present_durable_record(
+        record,
+        mode=ControllerMode.GUIDED,
+        language=Language.KO,
+        preflight=None,
+    )
+
+    assert view.primary_action is not None
+    assert view.primary_action.command is ResearchUiCommand.REPLAN
+    assert all(
+        action.command is not ResearchUiCommand.REFRAME_NONCAUSAL
+        for action in view.secondary_actions
+    )
+    assert view.evidence_rows == (
+        (
+            RESEARCH_FLOW_STRINGS["ko"]["abstention.reason_label"],
+            RESEARCH_FLOW_STRINGS["ko"]["abstention.reason.unsupported"],
+        ),
+    )
 
 
 def test_abstain_pending_and_retracted_are_distinct_closed_states() -> None:

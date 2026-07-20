@@ -46,6 +46,7 @@ from modori.research_flow import (
     preflight_mapped_step,
 )
 from modori.research_os import (
+    AbstainPayload,
     AnswerKind,
     AnswerValue,
     AnswerValueKind,
@@ -63,6 +64,7 @@ from modori.table_io import import_selection_from_params
 from modori.ui.contracts import ControllerMode
 from modori.ui.research_flow_presenter import (
     ResearchFlowView,
+    ResearchUiCommand,
     present_durable_record,
     present_static_boundary,
     present_transient_state,
@@ -84,6 +86,12 @@ class ResearchFlowPipelineError(ValueError):
 
 class ResearchFlowStaleError(RuntimeError):
     """Raised when a command no longer binds the current pipeline identity."""
+
+
+_CAUSAL_ABSTENTION_REASON = "unsupported_causal_target"
+_CAUSAL_ABSTENTION_RECOVERY = (
+    "declare_noncausal_or_use_external_causal_workflow"
+)
 
 
 class _ResearchFlowRuntime(Protocol):
@@ -115,6 +123,8 @@ class _ResearchFlowRuntime(Protocol):
     def retract(self, **kwargs: object) -> "ResearchFlowViews": ...
 
     def replan(self, **kwargs: object) -> "ResearchFlowViews": ...
+
+    def reframe_noncausal(self, **kwargs: object) -> "ResearchFlowViews": ...
 
     def prepare(self, **kwargs: object) -> "ResearchFlowViews": ...
 
@@ -1156,13 +1166,35 @@ class ResearchFlowRuntime:
         ) as exc:
             return self._typed_error(exc)
 
-    def replan(
+    def _replan_to(
         self,
         *,
         pipeline_version: int,
         cancel_event: Event,
+        next_state: ResearchFlowState,
+        require_causal_abstention: bool = False,
     ) -> ResearchFlowViews:
         try:
+            if require_causal_abstention:
+                record = self._record
+                if isinstance(record, DurableDecision):
+                    record.__post_init__()
+                payload = (
+                    record.passport.abstain
+                    if isinstance(record, DurableDecision)
+                    and record.action is PrimaryAction.ABSTAIN
+                    else None
+                )
+                if (
+                    not isinstance(payload, AbstainPayload)
+                    or self._handle is None
+                    or payload.reason_codes != (_CAUSAL_ABSTENTION_REASON,)
+                    or payload.recovery_requirement_ids
+                    != (_CAUSAL_ABSTENTION_RECOVERY,)
+                ):
+                    raise ResearchFlowControllerError(
+                        "noncausal reframe requires the exact durable causal abstention"
+                    )
             snapshot = self._pipeline_access.capture()
             identity = self._identity_for(
                 snapshot,
@@ -1183,7 +1215,7 @@ class ResearchFlowRuntime:
             self._snapshot = snapshot
             self._record = None
             return _transient_views(
-                ResearchFlowState.INTAKE_CAUSAL,
+                next_state,
                 language=self._language,
             )
         except (
@@ -1201,6 +1233,31 @@ class ResearchFlowRuntime:
             ValueError,
         ) as exc:
             return self._typed_error(exc)
+
+    def replan(
+        self,
+        *,
+        pipeline_version: int,
+        cancel_event: Event,
+    ) -> ResearchFlowViews:
+        return self._replan_to(
+            pipeline_version=pipeline_version,
+            cancel_event=cancel_event,
+            next_state=ResearchFlowState.INTAKE_CAUSAL,
+        )
+
+    def reframe_noncausal(
+        self,
+        *,
+        pipeline_version: int,
+        cancel_event: Event,
+    ) -> ResearchFlowViews:
+        return self._replan_to(
+            pipeline_version=pipeline_version,
+            cancel_event=cancel_event,
+            next_state=ResearchFlowState.INTAKE_PROFILE,
+            require_causal_abstention=True,
+        )
 
     def prepare(
         self,
@@ -1705,6 +1762,27 @@ class ResearchFlowController(QObject):
                 cancel_event=cancel_event,
             ),
         )
+
+    @Slot(result=bool)
+    def reframeNoncausal(self) -> bool:
+        action = self.current_view.primary_action
+        if (
+            self.current_view.state is not ResearchFlowState.ABSTAIN_READY
+            or action is None
+            or action.command is not ResearchUiCommand.REFRAME_NONCAUSAL
+        ):
+            return False
+        submitted = self._submit_runtime(
+            ResearchFlowState.FINGERPRINTING,
+            lambda version, cancel_event: self._runtime.reframe_noncausal(
+                pipeline_version=version,
+                cancel_event=cancel_event,
+            ),
+        )
+        if submitted:
+            self._selected_profile = None
+            self._pending_roles = None
+        return submitted
 
     @Slot(result=bool)
     def prepare(self) -> bool:

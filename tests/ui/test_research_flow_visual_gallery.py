@@ -175,6 +175,28 @@ def test_gallery_warning_copy_matches_the_guided_mode_contract() -> None:
         )
 
 
+def test_causal_abstention_fixture_has_reason_and_explicit_recovery() -> None:
+    fixture = _manifest()["fixtures"]["abstain_ready_ko"]["state_model"]
+
+    assert fixture["title"] == "인과 효과 요청은 현재 지원 범위 밖입니다"
+    assert fixture["primaryAction"] == {
+        "command": "reframe_noncausal",
+        "label": "인과 효과 대신 변수 간 관계 확인",
+        "enabled": True,
+    }
+    assert fixture["secondaryActions"][0]["command"] == "replan"
+    assert fixture["evidenceRows"] == [
+        {
+            "label": "기권 이유",
+            "value": "요청이 인과 효과 해석을 요구하지만 현재 Research OS는 비인과 과업만 지원합니다.",
+        }
+    ]
+    item = next(
+        item for item in _manifest()["items"] if item["id"] == "recorded-abstention-ko"
+    )
+    assert "researchAbstentionReason" in item["expected_present"]
+
+
 def test_manifest_fixture_content_is_synthetic_and_privacy_closed() -> None:
     manifest = _manifest()
     privacy = manifest["privacy"]

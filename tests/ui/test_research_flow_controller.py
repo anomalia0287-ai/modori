@@ -28,7 +28,8 @@ from modori.research_flow import (
     build_variable_meaning_review,
     preflight_mapped_step,
 )
-from modori.research_os import Language
+from modori.research_memory import ResearchTaskIndex, ResearchTaskState
+from modori.research_os import CausalIntent, Language
 from modori.ui.contracts import ControllerMode, ReportExportOptions
 from modori.ui.controller import UiController
 from modori.ui.controller_services import UiControllerServices
@@ -48,7 +49,9 @@ from modori.ui.research_flow_presenter import (
 )
 from modori.ui.worker import EngineJobResult
 from tests.ui.test_research_flow_presenter import (
+    _abstain_record,
     _clarify_record,
+    _generic_abstain_record,
     _labels,
     _preflight,
     _terminal_record,
@@ -129,6 +132,24 @@ def _clarify_views() -> ResearchFlowViews:
     )
 
 
+def _abstain_views(record=None) -> ResearchFlowViews:
+    record = _abstain_record() if record is None else record
+    return ResearchFlowViews(
+        guided=present_durable_record(
+            record,
+            mode=ControllerMode.GUIDED,
+            language=Language.KO,
+            preflight=None,
+        ),
+        standard=present_durable_record(
+            record,
+            mode=ControllerMode.STANDARD,
+            language=Language.KO,
+            preflight=None,
+        ),
+    )
+
+
 class FakeRuntime:
     def __init__(
         self,
@@ -193,6 +214,10 @@ class FakeRuntime:
 
     def replan(self, **kwargs: object) -> ResearchFlowViews:
         self.calls.append(("replan", kwargs))
+        return self.start_result
+
+    def reframe_noncausal(self, **kwargs: object) -> ResearchFlowViews:
+        self.calls.append(("reframe_noncausal", kwargs))
         return self.start_result
 
     def prepare(self, **kwargs: object) -> ResearchFlowViews:
@@ -1145,6 +1170,128 @@ def test_real_runtime_commits_then_recovers_multi_round_candidate(
     assert replanned.standard.state is ResearchFlowState.INTAKE_CAUSAL
 
 
+def test_real_runtime_reframe_preserves_causal_abstention_and_starts_noncausal_intake(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv(
+        "LOCALAPPDATA",
+        str((tmp_path / "local-app-data").resolve()),
+    )
+    dataset = _small_dataset()
+    snapshot = ResearchFlowPipelineSnapshot(
+        dataset=dataset,
+        source_schema=SourceSchemaDescriptor(
+            source_type="csv",
+            sheet_name=None,
+            header_row_index=0,
+            header_row_count=1,
+            data_start_row_index=1,
+            source_columns=("outcome", "group"),
+            included_columns=("outcome", "group"),
+        ),
+        variable_labels={"outcome": "결과 점수", "group": "집단"},
+    )
+    runtime = ResearchFlowRuntime(
+        pipeline_access=SnapshotAccess(snapshot),
+        pipeline_version_provider=lambda: 1,
+        session_store=ResearchTaskSessionStore(
+            task_id_factory=_queue("task:causal:1", "task:noncausal:2"),
+            utc_clock=lambda: "2026-07-20T00:00:00Z",
+        ),
+        coordinator=LiveResearchFlowCoordinator(
+            event_id_factory=_queue(
+                "event:passport:causal:1",
+                "event:passport:noncausal:2",
+            ),
+            passport_object_id_factory=_queue(
+                "passport:causal:1",
+                "passport:noncausal:2",
+            ),
+            utc_clock=lambda: "2026-07-20T00:00:00Z",
+        ),
+        initial_event_id_factory=_queue(
+            "event:initial:causal:1",
+            "event:initial:noncausal:2",
+        ),
+        answer_event_id_factory=_queue("event:answer:unused"),
+        language=Language.KO,
+    )
+
+    assert runtime.start(
+        pipeline_version=1,
+        cancel_event=Event(),
+    ).standard.state is ResearchFlowState.INTAKE_CAUSAL
+    abstained = runtime.commit_causal_boundary(
+        pipeline_version=1,
+        cancel_event=Event(),
+    )
+    assert abstained.standard.state is ResearchFlowState.ABSTAIN_READY
+    causal_record = runtime._record
+    causal_handle = runtime._handle
+    assert causal_record is not None
+    assert causal_handle is not None
+    causal_digest = causal_record.passport_digest
+    assert causal_record.passport.abstain is not None
+    assert causal_record.passport.abstain.reason_codes == (
+        "unsupported_causal_target",
+    )
+
+    object.__setattr__(causal_record, "passport_digest", "0" * 64)
+    rejected = runtime.reframe_noncausal(
+        pipeline_version=1,
+        cancel_event=Event(),
+    )
+    assert rejected.standard.state is ResearchFlowState.CORRUPTION
+    assert runtime._record is causal_record
+    assert runtime._handle is causal_handle
+    object.__setattr__(causal_record, "passport_digest", causal_digest)
+
+    reframed = runtime.reframe_noncausal(
+        pipeline_version=1,
+        cancel_event=Event(),
+    )
+
+    assert reframed.standard.state is ResearchFlowState.INTAKE_PROFILE
+    assert reframed.standard.decision_identity_digest == ""
+    assert runtime._record is None
+    assert runtime._handle is not None
+    assert (
+        runtime._handle.record.task_project_id
+        != causal_handle.record.task_project_id
+    )
+    with ResearchTaskIndex.open_or_create() as index:
+        assert (
+            index.get(causal_handle.record.task_project_id).state
+            is ResearchTaskState.READONLY
+        )
+    assert causal_record.passport_digest == causal_digest
+
+    meaning = runtime.review_variable_meanings(
+        profile=P1TaskProfile.NUMERIC_DISTRIBUTION,
+        roles=P1RoleBindings(outcome=("outcome",)),
+        pipeline_version=1,
+        cancel_event=Event(),
+    )
+    assert meaning.meaning_review is not None
+    committed = runtime.commit_initial(
+        profile=P1TaskProfile.NUMERIC_DISTRIBUTION,
+        roles=P1RoleBindings(outcome=("outcome",)),
+        meaning_review=meaning.meaning_review,
+        pipeline_version=1,
+        cancel_event=Event(),
+    )
+    assert committed.standard.state in {
+        ResearchFlowState.CLARIFY_READY,
+        ResearchFlowState.CANDIDATE_READY,
+    }
+    noncausal_record = runtime._record
+    assert noncausal_record is not None
+    assert noncausal_record.request.question.causal_intent.value is CausalIntent.NONCAUSAL
+    assert noncausal_record.passport_digest != causal_digest
+    assert causal_record.passport_digest == causal_digest
+
+
 def test_controller_queues_only_typed_durable_commands() -> None:
     cases = (
         (
@@ -1178,6 +1325,31 @@ def test_controller_queues_only_typed_durable_commands() -> None:
         assert len(worker.submissions) == 1
         worker.execute()
         assert runtime.calls[0][0] == expected_call
+
+
+def test_controller_queues_explicit_noncausal_reframe_only_from_causal_abstention() -> None:
+    runtime = FakeRuntime(_transient_views(ResearchFlowState.INTAKE_PROFILE))
+    worker = ControllableWorker()
+    controller = _controller(runtime, worker, [9])
+    controller._views = _abstain_views()
+
+    assert controller.current_view.primary_action is not None
+    assert (
+        controller.current_view.primary_action.command
+        is ResearchUiCommand.REFRAME_NONCAUSAL
+    )
+    assert controller.reframeNoncausal() is True
+    assert controller.stateModel["state"] == "fingerprinting"
+    assert len(worker.submissions) == 1
+
+    payload = worker.execute()
+    assert runtime.calls[0][0] == "reframe_noncausal"
+    worker.finish(payload)
+    assert controller.stateModel["state"] == "intake_profile"
+
+    controller._views = _abstain_views(_generic_abstain_record())
+    assert controller.reframeNoncausal() is False
+    assert len(worker.submissions) == 1
 
 
 def test_prepare_reviews_exact_settings_and_confirm_never_submits_run() -> None:
