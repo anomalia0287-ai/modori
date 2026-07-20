@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import hashlib
+from pathlib import Path
+
 from docx import Document
 
 from modori.steps.reporting import RESEARCH_OS_SELECTION_DISCLOSURE
@@ -206,3 +209,140 @@ def test_experimental_report_export_fails_closed_when_docx_cannot_hold_disclosur
     assert result.error_code == "engine_error"
     assert output_path.exists() is False
     assert list(tmp_path.iterdir()) == []
+
+
+def _sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def test_report_export_rejects_existing_destination_before_exporter_runs(
+    tmp_path,
+) -> None:
+    output_path = tmp_path / "report.docx"
+    output_path.write_bytes(b"original-report")
+    before = _sha256(output_path)
+    calls: list[bool] = []
+
+    def exporter(pipeline, options):
+        calls.append(True)
+        output_path.write_bytes(b"replacement")
+        return output_path
+
+    result = ReportExportService().export(
+        pipeline=object(),
+        options=ReportExportOptions(),
+        exporter=exporter,
+        pipeline_version=8,
+        expected_output_path=output_path,
+    )
+
+    assert result.ok is False
+    assert result.error_code == "report_destination_exists"
+    assert result.result_ids == [str(output_path.resolve())]
+    assert calls == []
+    assert _sha256(output_path) == before
+
+
+def test_approved_replacement_restores_original_when_exporter_fails(
+    tmp_path,
+) -> None:
+    output_path = tmp_path / "report.docx"
+    output_path.write_bytes(b"original-report")
+    before = _sha256(output_path)
+
+    def failing_exporter(pipeline, options):
+        output_path.write_bytes(b"partial-new-report")
+        raise RuntimeError("failed after mutation")
+
+    result = ReportExportService().export(
+        pipeline=object(),
+        options=ReportExportOptions(replace_existing=True),
+        exporter=failing_exporter,
+        pipeline_version=9,
+        expected_output_path=output_path,
+    )
+
+    assert result.ok is False
+    assert result.error_code == "engine_error"
+    assert _sha256(output_path) == before
+    assert not list(tmp_path.glob(".*.backup"))
+
+
+def test_approved_replacement_commits_valid_docx_and_discards_backup(
+    tmp_path,
+) -> None:
+    output_path = tmp_path / "report.docx"
+    output_path.write_bytes(b"original-report")
+
+    def exporter(pipeline, options):
+        document = Document()
+        document.add_paragraph("replacement")
+        document.save(output_path)
+        return output_path
+
+    result = ReportExportService().export(
+        pipeline=object(),
+        options=ReportExportOptions(replace_existing=True),
+        exporter=exporter,
+        pipeline_version=10,
+        expected_output_path=output_path,
+    )
+
+    assert result.ok is True
+    assert [paragraph.text for paragraph in Document(output_path).paragraphs] == [
+        "replacement"
+    ]
+    assert not list(tmp_path.glob(".*.backup"))
+
+
+def test_approved_replacement_restores_original_when_disclosure_fails(
+    tmp_path,
+) -> None:
+    output_path = tmp_path / "report.docx"
+    output_path.write_bytes(b"original-report")
+    before = _sha256(output_path)
+
+    def invalid_exporter(pipeline, options):
+        output_path.write_bytes(b"not-a-docx")
+        return output_path
+
+    result = ReportExportService().export(
+        pipeline=object(),
+        options=ReportExportOptions(
+            selection_provenance="experimental_candidate_assisted",
+            replace_existing=True,
+        ),
+        exporter=invalid_exporter,
+        pipeline_version=11,
+        expected_output_path=output_path,
+    )
+
+    assert result.ok is False
+    assert result.error_code == "engine_error"
+    assert _sha256(output_path) == before
+    assert not list(tmp_path.glob(".*.backup"))
+
+
+def test_approved_replacement_rejects_unexpected_export_path(tmp_path) -> None:
+    expected_path = tmp_path / "report.docx"
+    unexpected_path = tmp_path / "other.docx"
+    expected_path.write_bytes(b"original-report")
+    before = _sha256(expected_path)
+
+    def exporter(pipeline, options):
+        Document().save(unexpected_path)
+        return unexpected_path
+
+    result = ReportExportService().export(
+        pipeline=object(),
+        options=ReportExportOptions(replace_existing=True),
+        exporter=exporter,
+        pipeline_version=12,
+        expected_output_path=expected_path,
+    )
+
+    assert result.ok is False
+    assert result.error_code == "engine_error"
+    assert _sha256(expected_path) == before
+    assert unexpected_path.exists() is True
+    assert not list(tmp_path.glob(".*.backup"))

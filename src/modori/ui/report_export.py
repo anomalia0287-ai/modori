@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import zipfile
 from pathlib import Path
+from shutil import copyfile
 from tempfile import NamedTemporaryFile
 from typing import Callable
 
@@ -111,6 +112,27 @@ def _publish_with_selection_disclosure(
         raise
 
 
+def _backup_existing(path: Path) -> Path:
+    with NamedTemporaryFile(
+        dir=path.parent,
+        prefix=f".{path.name}.",
+        suffix=".backup",
+        delete=False,
+    ) as backup_file:
+        backup_path = Path(backup_file.name)
+    try:
+        copyfile(path, backup_path)
+    except Exception:
+        backup_path.unlink(missing_ok=True)
+        raise
+    return backup_path
+
+
+def _restore_backup(backup_path: Path | None, output_path: Path) -> None:
+    if backup_path is not None and backup_path.exists():
+        backup_path.replace(output_path)
+
+
 class ReportExportService:
     def export(
         self,
@@ -119,6 +141,7 @@ class ReportExportService:
         options: ReportExportOptions,
         exporter: Callable[[object, ReportExportOptions], str | Path],
         pipeline_version: int,
+        expected_output_path: Path | None = None,
     ) -> CommandResult:
         if pipeline is None:
             return CommandResult(
@@ -127,16 +150,57 @@ class ReportExportService:
                 error_code="no_pipeline",
                 pipeline_version=pipeline_version,
             )
+        expected_path = (
+            expected_output_path.resolve() if expected_output_path is not None else None
+        )
+        backup_path: Path | None = None
+        if expected_path is not None and expected_path.exists():
+            if not options.replace_existing:
+                return CommandResult(
+                    ok=False,
+                    message_ko=(
+                        "같은 이름의 보고서가 이미 있습니다. "
+                        "기존 파일을 바꿀지 확인해 주세요."
+                    ),
+                    error_code="report_destination_exists",
+                    pipeline_version=pipeline_version,
+                    result_ids=[str(expected_path)],
+                )
+            try:
+                backup_path = _backup_existing(expected_path)
+            except Exception:
+                return CommandResult(
+                    ok=False,
+                    message_ko="기존 보고서를 안전하게 보관하지 못했습니다.",
+                    error_code="engine_error",
+                    pipeline_version=pipeline_version,
+                )
         try:
             output_path = Path(exporter(pipeline, options))
         except Exception:
+            if expected_path is not None:
+                _restore_backup(backup_path, expected_path)
             return CommandResult(
                 ok=False,
                 message_ko="보고서를 내보내지 못했습니다.",
                 error_code="engine_error",
                 pipeline_version=pipeline_version,
             )
+        if (
+            backup_path is not None
+            and expected_path is not None
+            and output_path.resolve() != expected_path
+        ):
+            _restore_backup(backup_path, expected_path)
+            return CommandResult(
+                ok=False,
+                message_ko="보고서 저장 경로를 확인하지 못했습니다.",
+                error_code="engine_error",
+                pipeline_version=pipeline_version,
+            )
         if not output_path.exists():
+            if expected_path is not None:
+                _restore_backup(backup_path, expected_path)
             return CommandResult(
                 ok=False,
                 message_ko="보고서 파일이 생성되지 않았습니다.",
@@ -146,12 +210,16 @@ class ReportExportService:
         try:
             _publish_with_selection_disclosure(output_path, options)
         except Exception:
+            if expected_path is not None:
+                _restore_backup(backup_path, expected_path)
             return CommandResult(
                 ok=False,
                 message_ko="보고서에 선택 경로 안내를 기록하지 못했습니다.",
                 error_code="engine_error",
                 pipeline_version=pipeline_version,
             )
+        if backup_path is not None:
+            backup_path.unlink(missing_ok=True)
         return CommandResult(
             ok=True,
             message_ko="보고서를 내보냈습니다.",
