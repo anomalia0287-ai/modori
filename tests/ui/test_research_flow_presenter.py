@@ -410,6 +410,71 @@ def test_generic_abstention_never_inherits_the_causal_reframe() -> None:
     )
 
 
+def test_abstention_diagnostics_are_bounded_and_long_ids_are_safely_elided() -> None:
+    causal = _abstain_record(Language.EN)
+    reason_codes = tuple(
+        f"unsupported_reason_{index}_" + "x" * 96 for index in range(7)
+    )
+    recovery_ids = tuple(
+        f"recovery_requirement_{index}_" + "y" * 96 for index in range(6)
+    )
+    passport = replace(
+        causal.passport,
+        abstain=AbstainPayload(
+            reason_codes=reason_codes,
+            recovery_requirement_ids=recovery_ids,
+        ),
+    )
+    record = _durable(causal.request, passport)
+
+    guided = present_durable_record(
+        record,
+        mode=ControllerMode.GUIDED,
+        language=Language.EN,
+        preflight=None,
+    )
+    standard = present_durable_record(
+        record,
+        mode=ControllerMode.STANDARD,
+        language=Language.EN,
+        preflight=None,
+    )
+    copy = RESEARCH_FLOW_STRINGS["en"]
+
+    assert guided.evidence_rows == (
+        (
+            copy["abstention.reason_label"],
+            copy["abstention.reason.unsupported"],
+        ),
+    )
+    reason_rows = tuple(
+        row
+        for row in standard.evidence_rows
+        if row[0] == copy["abstention.reason_code"]
+    )
+    recovery_rows = tuple(
+        row
+        for row in standard.evidence_rows
+        if row[0] == copy["abstention.recovery_requirement"]
+    )
+    assert len(reason_rows) == 3
+    assert len(recovery_rows) == 3
+    assert all(len(value) <= 64 and value.endswith("…") for _, value in reason_rows)
+    assert all(
+        len(value) <= 64 and value.endswith("…") for _, value in recovery_rows
+    )
+    assert (
+        copy["abstention.additional_reason_codes"],
+        "4",
+    ) in standard.evidence_rows
+    assert (
+        copy["abstention.additional_recovery_requirements"],
+        "3",
+    ) in standard.evidence_rows
+    assert standard.primary_action is not None
+    assert standard.primary_action.command is ResearchUiCommand.REPLAN
+
+
 def test_abstain_pending_and_retracted_are_distinct_closed_states() -> None:
     abstain = _abstain_record()
     pending_request = _request(P1TaskProfile.NUMERIC_DISTRIBUTION)

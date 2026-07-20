@@ -78,7 +78,7 @@ def test_gallery_manifest_freezes_the_approved_matrix_before_capture() -> None:
     assert isinstance(items, list)
     assert isinstance(fixtures, dict)
     ids = [item["id"] for item in items]
-    assert len(ids) == len(set(ids)) == 30
+    assert len(ids) == len(set(ids)) == 31
     required_fields = {
         "id",
         "capture_kind",
@@ -195,6 +195,21 @@ def test_causal_abstention_fixture_has_reason_and_explicit_recovery() -> None:
         item for item in _manifest()["items"] if item["id"] == "recorded-abstention-ko"
     )
     assert "researchAbstentionReason" in item["expected_present"]
+    pro_item = next(
+        item
+        for item in _manifest()["items"]
+        if item["id"] == "recorded-abstention-standard-en"
+    )
+    assert pro_item["mode"] == "standard"
+    assert pro_item["viewport"] == "minimum"
+    assert pro_item["scale_factor"] == 1.5
+    pro_fixture = _manifest()["fixtures"]["abstain_ready_standard_en"][
+        "state_model"
+    ]
+    assert pro_fixture["evidenceRows"][-1] == {
+        "label": "Recovery requirement ID",
+        "value": "declare_noncausal_or_use_external_causal_workflow",
+    }
 
 
 def test_manifest_fixture_content_is_synthetic_and_privacy_closed() -> None:
@@ -351,7 +366,7 @@ def test_full_matrix_renders_the_production_component_contract(
     )
     assert gallery["schema_id"] == "modori.research-flow.rendered-gallery"
     assert gallery["source_commit"]
-    assert len(gallery["items"]) == 30
+    assert len(gallery["items"]) == 31
     assert {item["scale_factor"] for item in gallery["items"]} == {
         1.0,
         1.25,

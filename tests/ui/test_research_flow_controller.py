@@ -28,7 +28,11 @@ from modori.research_flow import (
     build_variable_meaning_review,
     preflight_mapped_step,
 )
-from modori.research_memory import ResearchTaskIndex, ResearchTaskState
+from modori.research_memory import (
+    DecisionLedgerStore,
+    ResearchTaskIndex,
+    ResearchTaskState,
+)
 from modori.research_os import CausalIntent, Language
 from modori.ui.contracts import ControllerMode, ReportExportOptions
 from modori.ui.controller import UiController
@@ -1170,10 +1174,10 @@ def test_real_runtime_commits_then_recovers_multi_round_candidate(
     assert replanned.standard.state is ResearchFlowState.INTAKE_CAUSAL
 
 
-def test_real_runtime_reframe_preserves_causal_abstention_and_starts_noncausal_intake(
+def _started_causal_runtime(
     tmp_path: Path,
-    monkeypatch,
-) -> None:
+    monkeypatch: pytest.MonkeyPatch,
+) -> tuple[ResearchFlowRuntime, SnapshotAccess]:
     monkeypatch.setenv(
         "LOCALAPPDATA",
         str((tmp_path / "local-app-data").resolve()),
@@ -1192,8 +1196,9 @@ def test_real_runtime_reframe_preserves_causal_abstention_and_starts_noncausal_i
         ),
         variable_labels={"outcome": "결과 점수", "group": "집단"},
     )
+    access = SnapshotAccess(snapshot)
     runtime = ResearchFlowRuntime(
-        pipeline_access=SnapshotAccess(snapshot),
+        pipeline_access=access,
         pipeline_version_provider=lambda: 1,
         session_store=ResearchTaskSessionStore(
             task_id_factory=_queue("task:causal:1", "task:noncausal:2"),
@@ -1227,6 +1232,14 @@ def test_real_runtime_reframe_preserves_causal_abstention_and_starts_noncausal_i
         cancel_event=Event(),
     )
     assert abstained.standard.state is ResearchFlowState.ABSTAIN_READY
+    return runtime, access
+
+
+def test_real_runtime_reframe_preserves_causal_abstention_and_starts_noncausal_intake(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    runtime, _access = _started_causal_runtime(tmp_path, monkeypatch)
     causal_record = runtime._record
     causal_handle = runtime._handle
     assert causal_record is not None
@@ -1236,6 +1249,13 @@ def test_real_runtime_reframe_preserves_causal_abstention_and_starts_noncausal_i
     assert causal_record.passport.abstain.reason_codes == (
         "unsupported_causal_target",
     )
+    with DecisionLedgerStore.open(
+        causal_handle.ledger_path,
+        causal_handle.record.task_project_id,
+    ) as causal_ledger:
+        causal_head = causal_ledger.head
+        causal_events = causal_ledger.events()
+        causal_artifacts = causal_ledger.artifacts()
 
     object.__setattr__(causal_record, "passport_digest", "0" * 64)
     rejected = runtime.reframe_noncausal(
@@ -1254,6 +1274,8 @@ def test_real_runtime_reframe_preserves_causal_abstention_and_starts_noncausal_i
 
     assert reframed.standard.state is ResearchFlowState.INTAKE_PROFILE
     assert reframed.standard.decision_identity_digest == ""
+    assert reframed.standard.candidate is None
+    assert reframed.preparation is None
     assert runtime._record is None
     assert runtime._handle is not None
     assert (
@@ -1290,6 +1312,74 @@ def test_real_runtime_reframe_preserves_causal_abstention_and_starts_noncausal_i
     assert noncausal_record.request.question.causal_intent.value is CausalIntent.NONCAUSAL
     assert noncausal_record.passport_digest != causal_digest
     assert causal_record.passport_digest == causal_digest
+    with DecisionLedgerStore.open(
+        causal_handle.ledger_path,
+        causal_handle.record.task_project_id,
+    ) as causal_ledger:
+        assert causal_ledger.verify(full_integrity=True).head == causal_head
+        assert causal_ledger.events() == causal_events
+        assert causal_ledger.artifacts() == causal_artifacts
+
+
+def test_real_runtime_reframe_rejects_same_version_data_drift_without_mutation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    runtime, access = _started_causal_runtime(tmp_path, monkeypatch)
+    causal_record = runtime._record
+    causal_handle = runtime._handle
+    assert causal_record is not None
+    assert causal_handle is not None
+
+    drifted = _small_dataset()
+    drifted.df.loc[0, "outcome"] = 99.0
+    access.snapshot = ResearchFlowPipelineSnapshot(
+        dataset=drifted,
+        source_schema=access.snapshot.source_schema,
+        variable_labels=access.snapshot.variable_labels,
+    )
+
+    rejected = runtime.reframe_noncausal(
+        pipeline_version=1,
+        cancel_event=Event(),
+    )
+
+    assert rejected.standard.state is ResearchFlowState.REPLAN_REQUIRED
+    assert runtime._record is causal_record
+    assert runtime._handle is causal_handle
+    with ResearchTaskIndex.open_or_create() as index:
+        assert index.get(causal_handle.record.task_project_id).state is (
+            ResearchTaskState.ACTIVE
+        )
+        assert index.verify(full_integrity=True).row_count == 1
+
+
+def test_real_runtime_reframe_rejects_changed_ledger_head_without_mutation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    runtime, _access = _started_causal_runtime(tmp_path, monkeypatch)
+    causal_record = runtime._record
+    causal_handle = runtime._handle
+    assert causal_record is not None
+    assert causal_handle is not None
+
+    retracted = runtime._coordinator.retract_current(causal_handle)
+    assert retracted.retracted_passport_digest == causal_record.passport_digest
+
+    rejected = runtime.reframe_noncausal(
+        pipeline_version=1,
+        cancel_event=Event(),
+    )
+
+    assert rejected.standard.state is ResearchFlowState.REPLAN_REQUIRED
+    assert runtime._record is causal_record
+    assert runtime._handle is causal_handle
+    with ResearchTaskIndex.open_or_create() as index:
+        assert index.get(causal_handle.record.task_project_id).state is (
+            ResearchTaskState.ACTIVE
+        )
+        assert index.verify(full_integrity=True).row_count == 1
 
 
 def test_controller_queues_only_typed_durable_commands() -> None:
@@ -1340,6 +1430,8 @@ def test_controller_queues_explicit_noncausal_reframe_only_from_causal_abstentio
     )
     assert controller.reframeNoncausal() is True
     assert controller.stateModel["state"] == "fingerprinting"
+    assert len(worker.submissions) == 1
+    assert controller.reframeNoncausal() is False
     assert len(worker.submissions) == 1
 
     payload = worker.execute()

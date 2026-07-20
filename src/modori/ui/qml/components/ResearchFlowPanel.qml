@@ -466,7 +466,7 @@ ColumnLayout {
                         required property var modelData
                         text: String(modelData.label) + ": " + String(modelData.value)
                         color: theme.textBody
-                        wrapMode: Text.WordWrap
+                        wrapMode: Text.Wrap
                         Layout.fillWidth: true
                     }
                 }

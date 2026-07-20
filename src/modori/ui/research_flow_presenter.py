@@ -375,6 +375,8 @@ _CAUSAL_ABSTENTION_REASON = "unsupported_causal_target"
 _CAUSAL_ABSTENTION_RECOVERY = (
     "declare_noncausal_or_use_external_causal_workflow"
 )
+_MAX_ABSTENTION_DIAGNOSTIC_IDS = 3
+_MAX_ABSTENTION_DIAGNOSTIC_ID_CHARS = 64
 
 
 def _validate_context(
@@ -441,6 +443,12 @@ def _abstention_reason_copy_key(reason_code: str) -> str:
     return "abstention.reason.unsupported"
 
 
+def _bounded_abstention_identifier(value: str) -> str:
+    if len(value) <= _MAX_ABSTENTION_DIAGNOSTIC_ID_CHARS:
+        return value
+    return value[: _MAX_ABSTENTION_DIAGNOSTIC_ID_CHARS - 1] + "…"
+
+
 def _abstention_projection(
     record: DurableDecision,
     *,
@@ -457,25 +465,60 @@ def _abstention_projection(
         payload.reason_codes == (_CAUSAL_ABSTENTION_REASON,)
         and payload.recovery_requirement_ids == (_CAUSAL_ABSTENTION_RECOVERY,)
     )
+    reason_copy_keys = tuple(
+        dict.fromkeys(
+            _abstention_reason_copy_key(reason_code)
+            for reason_code in payload.reason_codes
+        )
+    )
     rows = [
         (
             _copy(language, "abstention.reason_label"),
-            _copy(language, _abstention_reason_copy_key(reason_code)),
+            _copy(language, reason_copy_key),
         )
-        for reason_code in payload.reason_codes
+        for reason_copy_key in reason_copy_keys
     ]
     if mode is ControllerMode.STANDARD:
         rows.extend(
-            (_copy(language, "abstention.reason_code"), reason_code)
-            for reason_code in payload.reason_codes
+            (
+                _copy(language, "abstention.reason_code"),
+                _bounded_abstention_identifier(reason_code),
+            )
+            for reason_code in payload.reason_codes[
+                :_MAX_ABSTENTION_DIAGNOSTIC_IDS
+            ]
         )
+        hidden_reasons = len(payload.reason_codes) - _MAX_ABSTENTION_DIAGNOSTIC_IDS
+        if hidden_reasons > 0:
+            rows.append(
+                (
+                    _copy(language, "abstention.additional_reason_codes"),
+                    str(hidden_reasons),
+                )
+            )
         rows.extend(
             (
                 _copy(language, "abstention.recovery_requirement"),
-                requirement_id,
+                _bounded_abstention_identifier(requirement_id),
             )
-            for requirement_id in payload.recovery_requirement_ids
+            for requirement_id in payload.recovery_requirement_ids[
+                :_MAX_ABSTENTION_DIAGNOSTIC_IDS
+            ]
         )
+        hidden_recoveries = (
+            len(payload.recovery_requirement_ids)
+            - _MAX_ABSTENTION_DIAGNOSTIC_IDS
+        )
+        if hidden_recoveries > 0:
+            rows.append(
+                (
+                    _copy(
+                        language,
+                        "abstention.additional_recovery_requirements",
+                    ),
+                    str(hidden_recoveries),
+                )
+            )
     return can_reframe_noncausal, tuple(rows)
 
 

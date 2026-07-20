@@ -1175,6 +1175,9 @@ class ResearchFlowRuntime:
         require_causal_abstention: bool = False,
     ) -> ResearchFlowViews:
         try:
+            causal_record: DurableDecision | None = None
+            causal_handle: object | None = None
+            previous_identity: DatasetIdentity | None = None
             if require_causal_abstention:
                 record = self._record
                 if isinstance(record, DurableDecision):
@@ -1195,6 +1198,13 @@ class ResearchFlowRuntime:
                     raise ResearchFlowControllerError(
                         "noncausal reframe requires the exact durable causal abstention"
                     )
+                causal_record = record
+                causal_handle = self._handle
+                previous_identity = self._identity
+                if previous_identity is None or self._snapshot is None:
+                    raise ResearchFlowStaleError(
+                        "causal abstention has no current dataset identity"
+                    )
             snapshot = self._pipeline_access.capture()
             identity = self._identity_for(
                 snapshot,
@@ -1206,6 +1216,27 @@ class ResearchFlowRuntime:
                 raise FingerprintCancelled("replan was cancelled")
             if not self._pipeline_is_current(pipeline_version):
                 raise ResearchFlowStaleError("pipeline changed during fresh replanning")
+            if require_causal_abstention:
+                if (
+                    causal_record is None
+                    or causal_handle is None
+                    or previous_identity is None
+                    or not self._same_identity(identity, previous_identity)
+                    or causal_record.request.current_dataset_fingerprint
+                    != identity.dataset_fingerprint
+                    or causal_record.request.study.source_schema_fingerprint
+                    != identity.source_schema_fingerprint
+                    or causal_record.request.available_variable_ids
+                    != identity.variable_ids
+                ):
+                    raise ResearchFlowStaleError(
+                        "causal abstention no longer binds the current data"
+                    )
+                current = self._coordinator.recover_current_or_none(causal_handle)
+                if current != causal_record:
+                    raise ResearchFlowStaleError(
+                        "causal abstention is no longer the current durable record"
+                    )
             if self._handle is not None:
                 self._handle = self._session_store.start_replan(
                     self._handle,
