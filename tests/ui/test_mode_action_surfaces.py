@@ -101,6 +101,14 @@ def test_one_quiet_experimental_status_stays_outside_the_scrolling_form() -> Non
     assert "research.no_auto_run" not in work
 
 
+def test_research_rail_toggle_accessibility_matches_open_and_close_state() -> None:
+    work = qml_text("screens/WorkScreen.qml")
+
+    assert "root.researchRailOpen" in work
+    assert 'appBootstrap.text("research.close_description", appBootstrap.language)' in work
+    assert 'appBootstrap.text("research.open_description", appBootstrap.language)' in work
+
+
 def test_guide_has_explicit_fail_closed_reset_and_provenance_calls() -> None:
     guide = qml_text("components/GuideRail.qml")
 

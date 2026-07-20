@@ -262,6 +262,11 @@ def test_preflight_block_preserves_exact_method_and_says_no_analysis_ran(
     assert view.state is ResearchFlowState.PREPARATION_BLOCKED
     assert view.candidate is not None
     assert view.primary_action is None
+    copy = RESEARCH_FLOW_STRINGS[Language.EN.value]
+    assert view.badge_text == copy["candidate.blocked_badge"]
+    assert view.badge_text != copy["candidate.ready_badge"]
+    assert view.candidate.persistent_boundary == copy["candidate.blocked_boundary"]
+    assert view.candidate.persistent_boundary != copy["candidate.prepare_boundary"]
     assert "No analysis was run" in view.body
     payload = record.passport.recommend_local
     assert payload is not None

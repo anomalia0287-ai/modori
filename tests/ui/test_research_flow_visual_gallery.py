@@ -162,6 +162,12 @@ def test_gallery_warning_copy_matches_the_guided_mode_contract() -> None:
         "Next, review variable roles and settings."
     )
 
+    blocked = fixtures["preparation_blocked_ko"]["state_model"]
+    assert blocked["badgeText"] == "설정 준비 안 됨"
+    assert blocked["candidate"]["persistentBoundary"] == (
+        "현재 데이터에서는 이 후보의 설정을 준비할 수 없습니다."
+    )
+
     for fixture_id in ("prepare_review_ko", "confirmed_en"):
         rows = fixtures[fixture_id]["state_model"]["preparationReview"]["settingsRows"]
         assert {row["label"] for row in rows}.isdisjoint(

@@ -14,7 +14,7 @@ from PySide6.QtCore import (
     QUrl,
     qInstallMessageHandler,
 )
-from PySide6.QtGui import QFont, QGuiApplication
+from PySide6.QtGui import QAccessible, QFont, QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine, QQmlComponent, QQmlEngine
 from PySide6.QtQuick import QQuickItem
 from PySide6.QtTest import QTest
@@ -116,6 +116,10 @@ def test_guided_work_runtime_shows_one_quiet_experimental_status() -> None:
         status = statuses[0]
         assert status.property("visible") is True
         assert status.property("label") == "실험적 가이드"
+        accessible = QAccessible.queryAccessibleInterface(status)
+        assert accessible is not None
+        assert accessible.role() is QAccessible.Role.StaticText
+        assert accessible.text(QAccessible.Text.Name) == "실험적 가이드"
         assert _significant_warnings(messages) == []
     finally:
         root.deleteLater()

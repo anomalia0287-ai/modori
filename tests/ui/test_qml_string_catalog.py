@@ -151,4 +151,12 @@ def test_research_os_surface_uses_experimental_and_no_auto_run_vocabulary() -> N
     assert UI_STRINGS_EN["research.confirm_description"] == (
         "Confirms only the displayed setup."
     )
+    assert UI_STRINGS_KO["research.open_description"] == "로컬 연구과업 안내를 엽니다."
+    assert UI_STRINGS_KO["research.close_description"] == "로컬 연구과업 안내를 닫습니다."
+    assert UI_STRINGS_EN["research.open_description"] == (
+        "Opens the local research-task guide."
+    )
+    assert UI_STRINGS_EN["research.close_description"] == (
+        "Closes the local research-task guide."
+    )
     assert UI_STRINGS_KO["research.legacy.title"] == "데이터 모양 기반 빠른 후보"

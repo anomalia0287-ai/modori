@@ -584,7 +584,7 @@
         "title": "현재 데이터로는 구성을 준비할 수 없습니다",
         "body": "패스포트와 실제 설정이 달라 후보를 자동으로 대체하지 않습니다.",
         "stageText": "",
-        "badgeText": "재검토 필요",
+        "badgeText": "설정 준비 안 됨",
         "visiblePassportDigest": "SYNTHETIC-03",
         "primaryAction": null,
         "secondaryActions": [],
@@ -596,7 +596,7 @@
           "claimBoundary": "관측된 차이이며 인과효과로 해석하지 않습니다.",
           "roleRows": [],
           "reviewStatus": "현재 데이터에서는 구성을 준비할 수 없음",
-          "persistentBoundary": "자동 대체하지 않음 · 다시 계획 필요"
+          "persistentBoundary": "현재 데이터에서는 이 후보의 설정을 준비할 수 없습니다."
         },
         "evidenceRows": [
           {"label": "차단 조건", "value": "변수 역할이 현재 데이터와 일치하지 않음"}

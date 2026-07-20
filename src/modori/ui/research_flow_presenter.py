@@ -698,7 +698,10 @@ def _candidate_projection(
             language,
             "candidate.blocked_review_status" if blocked else "candidate.review_status",
         ),
-        persistent_boundary=_copy(language, "candidate.prepare_boundary"),
+        persistent_boundary=_copy(
+            language,
+            "candidate.blocked_boundary" if blocked else "candidate.prepare_boundary",
+        ),
     )
     if mode is ControllerMode.GUIDED:
         return candidate, ()
@@ -884,7 +887,14 @@ def present_durable_record(
         language=language,
         title=title,
         body=body,
-        badge_text=_copy(language, "candidate.ready_badge"),
+        badge_text=_copy(
+            language,
+            (
+                "candidate.blocked_badge"
+                if state is ResearchFlowState.PREPARATION_BLOCKED
+                else "candidate.ready_badge"
+            ),
+        ),
         decision_identity_digest=digest,
         visible_passport_digest=visible_digest,
         primary_action=primary,

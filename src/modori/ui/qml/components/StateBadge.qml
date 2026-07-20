@@ -13,6 +13,8 @@ Rectangle {
     color: root.backgroundColor()
     border.color: root.foregroundColor()
     border.width: theme.borderWidth
+    Accessible.role: Accessible.StaticText
+    Accessible.name: root.label
 
     function foregroundColor() {
         if (root.state === "error") {
