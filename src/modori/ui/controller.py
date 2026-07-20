@@ -159,6 +159,8 @@ class UiController(
         self._last_message = ""
         self._result_state = UiResultState()
         self._report_path = ""
+        self._pending_report_options: ReportExportOptions | None = None
+        self._pending_report_path = ""
         self._pipeline_state = UiPipelineState.initial(
             self._services.pipeline_ops,
             status="empty" if pipeline is None else "ready",
@@ -250,6 +252,14 @@ class UiController(
     @Property(str, notify=stateChanged)
     def reportPath(self) -> str:
         return self._report_path
+
+    @Property(bool, notify=stateChanged)
+    def reportReplacementPending(self) -> bool:
+        return self._pending_report_options is not None
+
+    @Property(str, notify=stateChanged)
+    def reportConflictPath(self) -> str:
+        return self._pending_report_path
 
     @Property(str, notify=stateChanged)
     def importPreviewText(self) -> str:
@@ -410,6 +420,7 @@ class UiController(
         self._last_error = ""
         self._last_message = load_result.command.message_ko
         self._report_path = ""
+        self._clear_pending_report_replacement()
         self.stateChanged.emit()
         return CommandResult(
             ok=True,
@@ -527,18 +538,31 @@ class UiController(
             selection_provenance=selection_origin,
             selection_origin=selection_origin,
         )
+        expected_output_path = self._services.pipeline_ops.report_output_path(
+            effective_options
+        )
         result = self._services.report_export_service.export(
             pipeline=self.pipeline,
             options=effective_options,
             exporter=exporter,
             pipeline_version=self._pipeline_state.pipeline_version,
+            expected_output_path=expected_output_path,
         )
         if not result.ok:
-            self._last_error = result.message_ko
+            if result.error_code == "report_destination_exists":
+                self._pending_report_options = effective_options
+                self._pending_report_path = (
+                    result.result_ids[0] if result.result_ids else ""
+                )
+                self._last_error = ""
+            else:
+                self._clear_pending_report_replacement()
+                self._last_error = result.message_ko
             self._last_message = ""
             self._pipeline_state.mark_ready_unless_empty()
             self.stateChanged.emit()
             return result
+        self._clear_pending_report_replacement()
         self._report_path = result.result_ids[0]
         self._last_error = ""
         self._last_message = result.message_ko

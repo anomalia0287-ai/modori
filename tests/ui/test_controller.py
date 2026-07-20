@@ -432,6 +432,136 @@ def test_export_report_with_selections_passes_expanded_family_options(tmp_path) 
     ]
 
 
+def test_controller_requires_explicit_word_replacement_and_can_cancel(
+    tmp_path,
+) -> None:
+    from docx import Document
+
+    from modori.ui.controller import UiController
+
+    output_path = tmp_path / "report.docx"
+    output_path.write_bytes(b"original")
+    calls = []
+    pipeline = ImportablePipeline(["import"])
+    pipeline.steps.append(
+        {
+            "id": "report",
+            "step_type": "report.apa",
+            "params": {"output_dir": str(tmp_path), "filename": "report.docx"},
+        }
+    )
+
+    def exporter(pipeline, options):
+        calls.append(options)
+        Document().save(output_path)
+        return output_path
+
+    controller = UiController(pipeline=pipeline, report_exporter=exporter)
+
+    assert controller.exportReportWithOptions("ko", False) is False
+    assert controller.reportReplacementPending is True
+    assert controller.reportConflictPath == str(output_path.resolve())
+    assert controller.lastError == ""
+    assert calls == []
+    assert controller.cancelPendingReportReplacement() is True
+    assert controller.reportReplacementPending is False
+    assert output_path.read_bytes() == b"original"
+
+
+def test_controller_replays_exact_pending_options_after_replace_confirmation(
+    tmp_path,
+) -> None:
+    from docx import Document
+
+    from modori.ui.contracts import ReportExportOptions
+    from modori.ui.controller import UiController
+
+    output_path = tmp_path / "report.docx"
+    output_path.write_bytes(b"original")
+    seen = []
+    pipeline = ImportablePipeline(["import"])
+    pipeline.steps.append(
+        {
+            "id": "report",
+            "step_type": "report.apa",
+            "params": {"output_dir": str(tmp_path), "filename": "report.docx"},
+        }
+    )
+
+    def exporter(pipeline, options):
+        seen.append(options)
+        Document().save(output_path)
+        return output_path
+
+    controller = UiController(pipeline=pipeline, report_exporter=exporter)
+
+    assert (
+        controller.exportReportWithSelections(
+            "en",
+            False,
+            True,
+            False,
+            True,
+            False,
+            True,
+            True,
+            False,
+        )
+        is False
+    )
+    assert controller.replacePendingReport() is True
+    assert seen == [
+        ReportExportOptions(
+            language="en",
+            include_descriptives=False,
+            include_reliability=True,
+            include_comparison=False,
+            include_association=True,
+            include_group_models=False,
+            include_dimension_reduction=True,
+            include_regression=True,
+            include_figures=False,
+            replace_existing=True,
+        )
+    ]
+    assert controller.reportReplacementPending is False
+    assert controller.reportPath == str(output_path)
+
+
+def test_dataset_replacement_clears_pending_report_replacement(tmp_path) -> None:
+    from pathlib import Path
+
+    from modori.ui.contracts import ImportOptions
+    from modori.ui.controller import UiController
+
+    output_path = tmp_path / "report.docx"
+    output_path.write_bytes(b"original")
+    pipeline = ImportablePipeline(["import"])
+    pipeline.steps.append(
+        {
+            "id": "report",
+            "step_type": "report.apa",
+            "params": {"output_dir": str(tmp_path), "filename": "report.docx"},
+        }
+    )
+
+    def exporter(pipeline, options):
+        raise AssertionError("conflict preflight must run before export")
+
+    controller = UiController(pipeline=pipeline, report_exporter=exporter)
+    assert controller.exportReportWithOptions("ko", False) is False
+    assert controller.reportReplacementPending is True
+
+    opened = controller.openDataFile(
+        Path("tests/fixtures/psych_bfi.csv"),
+        ImportOptions(confirm_new_session=True),
+    )
+
+    assert opened.ok is True
+    assert controller.reportReplacementPending is False
+    assert controller.reportConflictPath == ""
+
+
 def test_dataset_replacement_clears_but_direct_mode_retains_applied_provenance(
     tmp_path,
 ) -> None:

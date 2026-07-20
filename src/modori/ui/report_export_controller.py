@@ -1,11 +1,17 @@
 from __future__ import annotations
 
+from dataclasses import replace
+
 from PySide6.QtCore import Slot
 
 from modori.ui.contracts import ReportExportOptions
 
 
 class ReportExportControllerMixin:
+    def _clear_pending_report_replacement(self) -> None:
+        self._pending_report_options = None
+        self._pending_report_path = ""
+
     @Slot(result=bool)
     def exportReportNow(self) -> bool:
         return self.exportReport(ReportExportOptions(language="ko")).ok
@@ -51,3 +57,18 @@ class ReportExportControllerMixin:
                 include_figures=bool(include_figures),
             )
         ).ok
+
+    @Slot(result=bool)
+    def cancelPendingReportReplacement(self) -> bool:
+        changed = self._pending_report_options is not None
+        self._clear_pending_report_replacement()
+        if changed:
+            self.stateChanged.emit()
+        return changed
+
+    @Slot(result=bool)
+    def replacePendingReport(self) -> bool:
+        pending = self._pending_report_options
+        if pending is None:
+            return False
+        return self.exportReport(replace(pending, replace_existing=True)).ok
