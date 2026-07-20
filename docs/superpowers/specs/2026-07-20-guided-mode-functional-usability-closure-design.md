@@ -1,7 +1,7 @@
 # Guided Mode Functional Usability Closure Design
 
 **Date:** 2026-07-20
-**Status:** In progress; U-01 through U-05 verified closed, U-06 active P0
+**Status:** In progress; U-01 through U-06 functionally verified closed, U-07 active P0
 **Baseline:** `b368cdcf208d04509717826bc6b0ab7e7b72ba7e` on `codex/research-os-functional-usability`
 **Release boundary:** no push, merge, default-branch change, or frozen Build Week artifact replacement
 
@@ -72,12 +72,13 @@ Implementation order follows user cost of failure:
 | U-03 | `CASUAL MODE` misstates the contract | **Verified closed / guided contract named accurately** | Every user-facing selector says `GUIDED MODE`; internal `guided` remains compatible |
 | U-04 | Experimental/no-auto warnings repeat | **Verified closed / warning fatigue removed** | One entry disclosure plus one quiet status; no duplicate warning in one decision context |
 | U-05 | Abstention looks arbitrary | **Verified closed / reason and bounded recovery visible** | Typed reason is visible; causal abstention offers explicit non-causal reframe and direct analysis without changing intent silently |
-| U-06 | Research OS failure hides cause and next action | **Active P0 / required functional recovery** | Sanitized reason, explanation, and state-valid recovery action are visible |
-| U-07 | Long cells and headers cannot be read or resized | **Required inspectability fix** | Bounded auto-fit, manual resize, keyboard fit/reset, and full-text access work in both grids |
+| U-06 | Research OS failure hides cause and next action | **Verified functional closure / actionable recovery** | Sanitized reason, explanation, and state-valid recovery action are visible |
+| U-07 | Long cells and headers cannot be read or resized | **Active P0 / required inspectability fix** | Bounded auto-fit, manual resize, keyboard fit/reset, and full-text access work in both grids |
 | U-08 | `데이터 넓게 보기` is vague; `데이터 원본 보기` would be false | **Required terminology fix** | Copy is `데이터 시트 열기` / `Open data sheet`; no immutable-raw claim |
 | U-09 | Meaning Gate identifies missing metadata but cannot repair it | **Required gate completion** | User reaches the relevant variable setting, saves supported metadata, and receives a newly bound review |
 | U-10 | Individual erroneous cells cannot be corrected | **Required follow-up; deferred, not abandoned** | Separate approved design supplies previewed, reversible, provenance-bound correction without raw mutation |
 | U-11 | External Fable 5 participation validation is absent | **Separate submission owner; unverified, not abandoned** | Real external outcome is recorded; this branch never fabricates it |
+| U-12 | Production-Windows WorkScreen render p95 is unstable above the 250 ms gallery gate | **Required performance follow-up; retained, not a U-06 semantic regression** | The unchanged 250 ms gate passes reproducibly under a controlled Windows run without weakening fixtures, platform fidelity, or thresholds |
 
 Items may move forward when new evidence makes them blockers. They do not disappear
 because a deadline passes.
@@ -248,6 +249,53 @@ This is branch evidence only. No wheel, one-folder launcher, frozen Build Week
 artifact, push, merge, or default branch changed. U-06 is now the sole active P0;
 U-07 through U-11 remain retained follow-ups, and U-10 remains deferred rather than
 abandoned.
+
+### 4.6 U-06 closure evidence
+
+Verified on implementation commit `7c7b7dd` and independent-review correction
+`9b1a3e9` in this branch.
+
+- A closed `ResearchFailureReason` catalog now maps exception classes, preflight issue
+  codes, preparation-review failures, and serialized-worker failures to localized
+  reason and next-step rows. No exception message, traceback, source path, raw value,
+  or free-form diagnostic enters the QML state model. Pro Mode adds only a stable
+  bounded reason ID; Guided and Pro retain identical state and command authority.
+- Data/record staleness remains `REPLAN_REQUIRED`. A task-session or live-flow writer
+  conflict is separately classified as `local_record_conflict`, reloads the local
+  record, and does not falsely claim that the dataset changed. Integrity failures
+  remain fail-closed and expose only a write-free return to the safe start surface.
+- Deterministic preflight failures expose `REPLAN`, not a looping Resume action. The
+  public controller rejects a hidden Resume bypass whenever the displayed primary
+  action is not `RESUME`.
+- Independent review found that all error-state Resume actions previously called the
+  pending-transition runtime, which could retry a pending commit instead of reopening
+  the record. The correction routes only `RECOVERY_PENDING` to `runtime.resume()`;
+  failure, memory-unavailable, and cancelled recovery use `runtime.start()` to reread
+  the latest verified local state. Follow-up review reported no remaining Critical,
+  Important, or Minor finding and approved functional closure.
+- Final clean-commit non-gallery UI gate on `9b1a3e9`: `824 passed in 69.21s`, exit 0.
+  Research OS/flow/memory regression gate with the historical integration-blob
+  ledger test explicitly excluded: `789 passed in 84.49s`, exit 0. The excluded test
+  intentionally binds the original Royal Blue integration file blobs and therefore
+  rejects every later usability edit; it was not rewritten to manufacture a pass.
+  Ruff, compileall, and `git diff --check`: exit 0.
+- Three actual production-Windows failure renders (Korean local-record unavailable,
+  English worker failure, and English stale replan) had no horizontal overflow or
+  clipped header and showed the exact contextual action. The complete 31-item gallery
+  passed its functional, privacy, metadata, region, catalog, and image checks, but its
+  unchanged 250 ms state-render p95 gate failed twice at `285.947 ms` and
+  `309.743 ms`. The same four WorkScreen fixtures measured `301-419 ms` from an
+  untouched `4ed738d` archive, while three current-source repeats measured
+  `266-325 ms`; the failure surfaces themselves rendered around `150-170 ms`.
+  Therefore no U-06 performance-pass claim is made, no threshold or fixture was
+  weakened, and the pre-existing Windows WorkScreen variance is retained as U-12.
+- The exact exception behind the user's captured generic failure remains unverified
+  because no production-safe debug record exists for that event. The closed taxonomy
+  fixes the observable dead end without inventing that missing cause.
+
+This is branch evidence only. No wheel, one-folder launcher, frozen Build Week
+artifact, push, merge, or default branch changed. U-07 is now the sole active P0;
+U-08 through U-12 remain retained, and U-10 remains deferred rather than abandoned.
 
 ## 5. Guided Mode Contract
 
