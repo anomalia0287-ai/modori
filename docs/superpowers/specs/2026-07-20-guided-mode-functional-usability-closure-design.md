@@ -1,7 +1,7 @@
 # Guided Mode Functional Usability Closure Design
 
 **Date:** 2026-07-20
-**Status:** In progress; U-01/U-02 verified closed, U-03 active P0
+**Status:** In progress; U-01 through U-03 verified closed, U-04 active P0
 **Baseline:** `b368cdcf208d04509717826bc6b0ab7e7b72ba7e` on `codex/research-os-functional-usability`
 **Release boundary:** no push, merge, default-branch change, or frozen Build Week artifact replacement
 
@@ -24,7 +24,8 @@ workflow.
 ## 2. Confirmed Repository State
 
 - Controller modes are `guided` and `standard`; each process starts in `standard`.
-- User-facing copy currently says `CASUAL MODE` and `PRO MODE`.
+- User-facing copy says `GUIDED MODE` and `PRO MODE`; internal values remain `guided`
+  and `standard`.
 - Guided and standard Research OS views retain equivalent state, actions, options, and
   decision authority. Standard exposes more role/evidence detail.
 - Guided mode does not automatically select, prepare, confirm, or run an analysis.
@@ -67,8 +68,8 @@ Implementation order follows user cost of failure:
 | --- | --- | --- | --- |
 | U-01 | Word export can silently overwrite | **Verified closed / data loss prevented** | Existing target never changes without explicit replace consent; safe copy is available; DOCX is verified |
 | U-02 | Excel cannot reach sheet selection after a bad default-sheet preview | **Verified closed / import blocker removed** | A parseable workbook retains its path and exposes sheet selection; corrupt input still fails closed |
-| U-03 | `CASUAL MODE` misstates the contract | **Active P0 / approved quality fix** | Every user-facing selector says `GUIDED MODE`; internal `guided` remains compatible |
-| U-04 | Experimental/no-auto warnings repeat | **Approved warning-fatigue fix** | One entry disclosure plus one quiet status; no duplicate warning in one decision context |
+| U-03 | `CASUAL MODE` misstates the contract | **Verified closed / guided contract named accurately** | Every user-facing selector says `GUIDED MODE`; internal `guided` remains compatible |
+| U-04 | Experimental/no-auto warnings repeat | **Active P0 / approved warning-fatigue fix** | One entry disclosure plus one quiet status; no duplicate warning in one decision context |
 | U-05 | Abstention looks arbitrary | **Required functional recovery** | Typed reason is visible; causal abstention offers explicit non-causal reframe and direct analysis without changing intent silently |
 | U-06 | Research OS failure hides cause and next action | **Required functional recovery** | Sanitized reason, explanation, and state-valid recovery action are visible |
 | U-07 | Long cells and headers cannot be read or resized | **Required inspectability fix** | Bounded auto-fit, manual resize, keyboard fit/reset, and full-text access work in both grids |
@@ -133,6 +134,26 @@ which were required after the full suite exposed transient file locks.
 
 This evidence applies to the branch only. No frozen wheel, one-folder launcher,
 default branch, or release artifact was replaced.
+
+### 4.3 U-03 closure evidence
+
+Verified on implementation commit `3e1c391` in this branch.
+
+- TDD RED: the three changed naming contracts failed against the previous
+  `CASUAL MODE` copy before implementation.
+- Korean and English entry/workspace catalog values are exactly `GUIDED MODE`; a
+  catalog regression rejects any remaining user-facing `CASUAL MODE` value.
+- Internal QML/controller requests remain `chooseMode("guided")` and
+  `chooseMode("standard")`; no controller, presenter, recommendation, or execution
+  implementation changed.
+- Mode, controller, presenter, recommendation, privacy, catalog, and QML runtime
+  regression slice: `189 passed in 46.48s`, exit 0.
+- Final non-gallery UI gate: `785 passed in 121.26s`, exit 0, with workspace-local
+  `--basetemp`.
+- Ruff, compileall, and `git diff --check`: exit 0.
+
+This closes the misleading name only. Warning consolidation remains U-04; no claim is
+made here that the repeated experimental/no-auto-run copy has already been removed.
 
 ## 5. Guided Mode Contract
 
