@@ -349,7 +349,7 @@ UI_STRINGS_KO = {
     "work.reconfirmation_required": "구성 재확인 필요",
     "work.data": "데이터 열기",
     "work.data_menu": "데이터 메뉴",
-    "work.data_sheet_window": "데이터 넓게 보기",
+    "work.data_sheet_window": "데이터 시트 열기",
     "work.data_view": "데이터",
     "work.guided": "GUIDED MODE",
     "work.report": "보고서",

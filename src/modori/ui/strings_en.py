@@ -229,7 +229,7 @@ UI_STRINGS_EN = {
     "work.reconfirmation_required": "Configuration review required",
     "work.data": "Open data",
     "work.data_menu": "Data menu",
-    "work.data_sheet_window": "Open wide data view",
+    "work.data_sheet_window": "Open data sheet",
     "work.data_view": "Data",
     "work.guided": "GUIDED MODE",
     "work.report": "Report",

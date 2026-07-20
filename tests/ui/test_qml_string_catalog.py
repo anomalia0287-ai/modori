@@ -112,6 +112,18 @@ def test_recommendation_surface_uses_one_persistent_experimental_status() -> Non
     assert "분석 자동 추천" not in UI_STRINGS_KO.values()
 
 
+def test_data_sheet_action_names_the_current_sheet_without_raw_or_wide_claim() -> None:
+    korean = UI_STRINGS_KO["work.data_sheet_window"]
+    english = UI_STRINGS_EN["work.data_sheet_window"]
+
+    assert korean == "데이터 시트 열기"
+    assert english == "Open data sheet"
+    assert "넓게" not in korean
+    assert "원본" not in korean
+    assert "wide" not in english.casefold()
+    assert "raw" not in english.casefold()
+
+
 def test_report_replacement_copy_names_the_destructive_action() -> None:
     assert UI_STRINGS_KO["dialog.report.conflict_title"] == (
         "같은 이름의 보고서가 있습니다"
