@@ -241,7 +241,7 @@ of:
 - broad social-science coverage or complete numerical correctness;
 - complete bilingual or accessibility support;
 - a passed B5 low-cost HP measurement; or
-- a public executable or binary-distribution audit.
+- a published executable or an audit of a public binary distribution.
 
 ## Final paste checklist
 
@@ -255,7 +255,8 @@ of:
 - [ ] YouTube URL works in a signed-out browser and resolves as **Public**.
 - [ ] `/feedback` Session ID is from the primary core-build thread, not this release
       audit or a side thread.
-- [ ] Fable-edited story passed the fact-check above.
+- [ ] If a Fable-edited story is used, it passed the fact-check above; otherwise the
+      repository-grounded story above is used unchanged.
 - [ ] Screenshot captions match the claim matrix and contain no private information.
 - [ ] Final testing instructions point to the exact README commands.
 - [ ] No prebuilt binary, HP pass, full-bilingual, recommendation-accuracy,

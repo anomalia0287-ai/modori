@@ -138,7 +138,8 @@ Fable-edited story to this lane as soon as it is available; repository evidence 
 - [x] Mixed cold-render observations remain explicitly uncharacterized; neither the
       roughly 200–217 ms passes nor the roughly 292–303 ms failures are hidden, and the
       250 ms gate is unchanged.
-- [x] No new feature work was introduced during release closure.
+- [x] No scope-expanding feature work was introduced; the sole source change after
+      the historical freeze was the bounded claim-fidelity correction at `4253844`.
 
 ## Post-P0 lane
 
