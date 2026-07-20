@@ -281,6 +281,47 @@ def test_fitted_column_width_reads_at_most_forty_rows() -> None:
     _close_grid(view)
 
 
+def test_explicit_column_width_controls_actual_width_with_bounds() -> None:
+    view, root, body = _render_grid(_GridFixtureModel(), width=520, height=240)
+    horizontal, _vertical = _grid_headers(root)
+
+    actual = float(_qml_value(
+        body,
+        "(setColumnWidth(0, 260), forceLayout(), columnWidth(0))",
+    ))
+    lower = float(_qml_value(
+        body,
+        "(setColumnWidth(0, 12), forceLayout(), columnWidth(0))",
+    ))
+    upper = float(_qml_value(
+        body,
+        "(setColumnWidth(0, 900), forceLayout(), columnWidth(0))",
+    ))
+
+    assert bool(_qml_value(horizontal, "Boolean(resizableColumns)")) is True
+    assert actual == pytest.approx(260, abs=0.5)
+    assert lower == pytest.approx(72, abs=0.5)
+    assert upper == pytest.approx(640, abs=0.5)
+    _close_grid(view)
+
+
+def test_model_replacement_clears_widths_and_stale_current_cell() -> None:
+    first = _GridFixtureModel(rows=6, columns=2)
+    second = _GridFixtureModel(rows=2, columns=2)
+    view, root, body = _render_grid(first, width=520, height=240)
+    root.setProperty("currentRow", 5)
+    root.setProperty("currentColumn", 1)
+    _qml_value(body, "(setColumnWidth(0, 300), forceLayout(), explicitColumnWidth(0))")
+
+    root.setProperty("model", second)
+    _process_events()
+
+    assert float(_qml_value(body, "explicitColumnWidth(0)")) == -1
+    assert root.property("currentRow") == 0
+    assert root.property("currentColumn") == 0
+    _close_grid(view)
+
+
 def test_data_grid_uses_virtualized_table_with_synchronized_headers() -> None:
     qml = qml_text("components/DataGridView.qml")
 
@@ -652,7 +693,8 @@ def test_data_grid_runtime_settles_wide_model_to_clamped_cell_boundaries() -> No
     app.processEvents()
 
     body = _quick_item(root, "dataGridBody")
-    body.setProperty("contentX", (42 * root.property("cellWidth")) + 37)
+    requested_x = (42 * root.property("cellWidth")) + 37
+    body.setProperty("contentX", requested_x)
     body.setProperty("contentY", (15 * root.property("cellHeight")) + 11)
 
     assert QMetaObject.invokeMethod(root, "settleViewport")
@@ -663,7 +705,7 @@ def test_data_grid_runtime_settles_wide_model_to_clamped_cell_boundaries() -> No
     maximum_x = max(0.0, float(body.property("contentWidth")) - body.width())
     maximum_y = max(0.0, float(body.property("contentHeight")) - body.height())
 
-    assert content_x % root.property("cellWidth") == pytest.approx(0, abs=0.5)
+    assert content_x == pytest.approx(min(requested_x, maximum_x), abs=0.5)
     assert content_y % root.property("cellHeight") == pytest.approx(0, abs=0.5)
     assert 0 <= content_x <= maximum_x + 0.5
     assert 0 <= content_y <= maximum_y + 0.5

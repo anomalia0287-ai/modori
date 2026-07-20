@@ -93,6 +93,23 @@ Item {
         return width
     }
 
+    function clearColumnWidths(resetCurrentCell) {
+        root.automaticColumnWidths = ({})
+        if (resetCurrentCell) {
+            root.currentRow = 0
+            root.currentColumn = 0
+        }
+        if (!body) {
+            return
+        }
+        body.clearColumnWidths()
+        Qt.callLater(function() {
+            body.forceLayout()
+        })
+    }
+
+    onModelChanged: root.clearColumnWidths(true)
+
     function moveCurrent(rowDelta, columnDelta) {
         currentRow = clamp(currentRow + rowDelta, 0, Math.max(0, body.rows - 1))
         currentColumn = clamp(currentColumn + columnDelta, 0, Math.max(0, body.columns - 1))
@@ -137,7 +154,7 @@ Item {
 
         var maximumX = Math.max(0, body.contentWidth - body.width)
         var maximumY = Math.max(0, body.contentHeight - body.height)
-        var targetX = clampedSnap(body.contentX, root.cellWidth, maximumX)
+        var targetX = root.clamp(body.contentX, 0, maximumX)
         var targetY = clampedSnap(body.contentY, root.cellHeight, maximumY)
 
         if (root.reduceEffects) {
@@ -202,6 +219,7 @@ Item {
                 HorizontalHeaderView {
                     id: horizontalHeader
                     syncView: body
+                    resizableColumns: true
                     boundsBehavior: Flickable.StopAtBounds
                     boundsMovement: Flickable.StopAtBounds
                     Layout.fillWidth: true
@@ -303,7 +321,16 @@ Item {
                     pixelAligned: true
                     model: root.model
                     columnWidthProvider: function(column) {
-                        return root.automaticColumnWidth(column)
+                        var explicitWidth = body.explicitColumnWidth(column)
+                        if (explicitWidth >= 0) {
+                            return root.clamp(
+                                explicitWidth,
+                                theme.gridColumnManualMinWidth,
+                                theme.gridColumnManualMaxWidth
+                            )
+                        }
+                        var automaticWidth = root.automaticColumnWidth(column)
+                        return automaticWidth > 0 ? automaticWidth : root.cellWidth
                     }
                     rowHeightProvider: function(row) { return root.cellHeight }
 
