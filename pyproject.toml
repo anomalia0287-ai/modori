@@ -2,6 +2,8 @@
 name = "modori"
 version = "0.1.0"
 description = "Replayable statistical analysis pipeline for Modori."
+readme = "README.md"
+license = "GPL-3.0-only"
 requires-python = ">=3.11"
 dependencies = [
     "defusedxml>=0.7",
@@ -39,7 +41,7 @@ typing = [
 modori = "modori.app:main"
 
 [build-system]
-requires = ["setuptools>=69", "wheel"]
+requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
