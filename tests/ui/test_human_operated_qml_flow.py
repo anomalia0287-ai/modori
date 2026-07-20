@@ -88,6 +88,17 @@ def test_work_qml_wires_rerun_results_explain_and_report() -> None:
     assert "rerunRequested" in pipeline
 
 
+def test_report_dialog_confirms_only_destructive_replacement() -> None:
+    dialog = qml_text("dialogs/ReportExportDialog.qml")
+
+    assert "uiController.reportReplacementPending" in dialog
+    assert "uiController.reportConflictPath" in dialog
+    assert "uiController.cancelPendingReportReplacement()" in dialog
+    assert "uiController.replacePendingReport()" in dialog
+    assert "dialog.report.keep_existing" in dialog
+    assert "dialog.report.replace_existing" in dialog
+
+
 def test_import_dialog_keeps_long_preview_scrollable_and_actions_fixed() -> None:
     dialog = qml_text("dialogs/ImportDialog.qml")
 
@@ -264,8 +275,19 @@ def test_controller_bridge_runs_reference_flow_from_path(tmp_path) -> None:
     assert controller.variableModel.rowCount() >= 9
     assert controller.resultSummary
     assert controller.exportReportNow() is True
-    assert controller.reportPath.endswith("report.docx")
-    assert Path(controller.reportPath).exists()
+    report_path = Path(controller.reportPath)
+    assert report_path.name == "report.docx"
+    assert report_path.exists()
+    original_bytes = report_path.read_bytes()
+
+    assert controller.exportReportNow() is False
+    assert controller.reportReplacementPending is True
+    assert Path(controller.reportConflictPath) == report_path
+    assert report_path.read_bytes() == original_bytes
+
+    assert controller.replacePendingReport() is True
+    assert controller.reportReplacementPending is False
+    assert report_path.exists()
     assert "Cronbach" in controller.explainPlainText("ui.result.cronbach_alpha", "ko")
 
 

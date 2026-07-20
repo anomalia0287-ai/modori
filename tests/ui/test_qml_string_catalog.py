@@ -4,6 +4,7 @@ import re
 from pathlib import Path
 
 from modori.ui.strings import UI_STRINGS_KO
+from modori.ui.strings_en import UI_STRINGS_EN
 
 
 QML_ROOT = Path("src/modori/ui/qml")
@@ -83,6 +84,19 @@ def test_recommendation_surface_uses_one_persistent_experimental_status() -> Non
         "현재 규칙으로 표시할 분석 후보가 없습니다. 수동 분석을 사용할 수 있습니다."
     )
     assert "분석 자동 추천" not in UI_STRINGS_KO.values()
+
+
+def test_report_replacement_copy_names_the_destructive_action() -> None:
+    assert UI_STRINGS_KO["dialog.report.conflict_title"] == (
+        "같은 이름의 보고서가 있습니다"
+    )
+    assert UI_STRINGS_KO["dialog.report.keep_existing"] == "기존 파일 유지"
+    assert UI_STRINGS_KO["dialog.report.replace_existing"] == "기존 파일 바꾸기"
+    assert UI_STRINGS_EN["dialog.report.conflict_title"] == (
+        "A report with this name already exists"
+    )
+    assert UI_STRINGS_EN["dialog.report.keep_existing"] == "Keep existing file"
+    assert UI_STRINGS_EN["dialog.report.replace_existing"] == "Replace existing file"
 
 
 def test_research_os_surface_uses_experimental_and_no_auto_run_vocabulary() -> None:

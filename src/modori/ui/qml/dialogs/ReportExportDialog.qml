@@ -51,6 +51,7 @@ Dialog {
         }
 
         PearlSurface {
+            visible: !uiController.reportReplacementPending
             Layout.fillWidth: true
             Layout.preferredHeight: languageContent.implicitHeight + theme.spaceContent * 2
             fillColor: theme.surfaceQuiet
@@ -94,6 +95,7 @@ Dialog {
         }
 
         PearlSurface {
+            visible: !uiController.reportReplacementPending
             Layout.fillWidth: true
             Layout.preferredHeight: sectionsContent.implicitHeight + theme.spaceContent * 2
             fillColor: theme.surfaceQuiet
@@ -196,6 +198,69 @@ Dialog {
             Layout.fillWidth: true
         }
 
+        PearlSurface {
+            objectName: "reportReplacementDecision"
+            visible: uiController.reportReplacementPending
+            Layout.fillWidth: true
+            Layout.preferredHeight: visible
+                ? replacementContent.implicitHeight + theme.spaceContent * 2
+                : theme.spaceNone
+            fillColor: theme.surfaceQuiet
+            outlined: true
+            outlineColor: theme.warning
+
+            ColumnLayout {
+                id: replacementContent
+                anchors.fill: parent
+                anchors.margins: theme.spaceContent
+                spacing: theme.spaceSm
+
+                Label {
+                    text: appBootstrap.text("dialog.report.conflict_title", appBootstrap.language)
+                    color: theme.textStrong
+                    font.bold: true
+                    wrapMode: Text.WordWrap
+                    Layout.fillWidth: true
+                }
+
+                Label {
+                    text: appBootstrap.text("dialog.report.conflict_body", appBootstrap.language)
+                    color: theme.textBody
+                    wrapMode: Text.WordWrap
+                    Layout.fillWidth: true
+                }
+
+                Label {
+                    text: uiController.reportConflictPath
+                    Accessible.name: text
+                    color: theme.textSecondary
+                    wrapMode: Text.WrapAnywhere
+                    Layout.fillWidth: true
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: theme.spaceSm
+
+                    AppButton {
+                        text: appBootstrap.text("dialog.report.keep_existing", appBootstrap.language)
+                        Accessible.name: text
+                        variant: "primary"
+                        Layout.fillWidth: true
+                        onClicked: uiController.cancelPendingReportReplacement()
+                    }
+
+                    AppButton {
+                        text: appBootstrap.text("dialog.report.replace_existing", appBootstrap.language)
+                        Accessible.name: text
+                        variant: "secondary"
+                        Layout.fillWidth: true
+                        onClicked: uiController.replacePendingReport()
+                    }
+                }
+            }
+        }
+
         Label {
             text: uiController.reportPath
             visible: uiController.reportPath.length > 0
@@ -223,6 +288,7 @@ Dialog {
                 Accessible.name: text
                 variant: "primary"
                 semanticLight: enabled
+                visible: !uiController.reportReplacementPending
                 enabled: uiController.resultSummary.length > 0
                     && !uiController.selectionConfirmationRequired
                 onClicked: uiController.exportReportWithSelections(
