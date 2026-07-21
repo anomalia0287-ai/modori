@@ -4,9 +4,9 @@ Date: 2026-07-21 KST
 
 ## Outcome
 
-The committed UCI Student Performance demo data completed the English Guided-mode Research OS path through the production QML component and `UiController`. The test proved full-file import, variable-meaning review, bounded clarification, a ledger-backed local recommendation, passport-bound preparation, confirmation without execution, a separate Run, numerical agreement with an independent SciPy calculation, English Word export, and recovery after a meaning-changing metadata edit.
+The committed UCI Student Performance demo data completed the English Guided-mode Research OS path through both the production QML component and the exact freshly built Windows one-folder executable. The source-under-test commit is `ca379fd9bb907eeff04c0be7c1412a2e0f73f11b`. The audits proved full-file import, variable-meaning review, bounded clarification, a ledger-backed local recommendation, passport-bound preparation, confirmation without execution, a separate Run, numerical agreement with an independent SciPy calculation, readable English Word export, and recovery after invalid variable-role input.
 
-This is source-level actual-QML evidence. It does not replace the still-pending audit of the freshly packaged Windows executable.
+This document separates automated actual-QML evidence from direct observation of the exact packaged executable. It does not infer provenance or successful transitions from visible recommendation copy.
 
 ## Audited path
 
@@ -27,11 +27,15 @@ The automated audit uses `examples/build-week-demo/student-study-and-grades.csv`
 13. inspect the displayed result and export an English Word report;
 14. change the study-time measure after the run, verify that the old confirmation cannot be reused, and invoke the explicit replan recovery path.
 
+The separate exact-package audit repeated the user-visible path with Windows controls. It also submitted the invalid outcome key `not_a_variable`, observed the bounded `Research OS operation failed` surface, selected `Return to the last verified state`, corrected the key to `final_grade`, and reached the Variable Meaning Gate again. No automatic retry or calculation occurred during this recovery check.
+
 ## Provenance and transition evidence
 
 The Variable Meaning Gate completed before the local recommendation was committed. Both role facts contain the exact `variable-meaning-review:v1:<digest>` provenance reference. The terminal durable record has action `RECOMMEND_LOCAL`; its passport digest equals the displayed decision identity digest.
 
-The audit opens the SQLite ledger read-only and observes eight committed ledger events and four `analysis_passport` artifacts. It does not infer provenance from visible recommendation wording.
+After the packaged run closed, the audit opened its isolated SQLite ledger and called `DecisionLedgerStore.verify(full_integrity=True)`. The result was eight committed events, 20 artifacts, four `analysis_passport` artifacts, no derived-state rebuild, and head `473eeba90f365ce5471ed997025a5ea919bf83fb871f5b53337dfda964ec5e0a`. `PassportHistory.inspect` reconstructed the action sequence `clarify`, `clarify`, `clarify`, `recommend_local`.
+
+The terminal durable passport grants only the `association` claim class, identifies the Spearman capability, is `experimental: true`, is `auto_selected: false`, and retains `requires_explicit_configure_confirm_run: true`. This evidence comes from the decoded committed artifact and verified event chain, not the recommendation wording.
 
 The sealed preparation is experimental and requires configure-confirm-run. Its exact canonical parameters are:
 
@@ -59,7 +63,9 @@ The acceptance test independently reads the demo CSV and calls SciPy `spearmanr`
 | Complete pairs | 649 | 649 |
 | Excluded rows | 0 | 0 |
 
-The display rounds the coefficient to `0.275` and the p-value to `0.000`, while retaining the full numerical values in the engine result. The English table preserves the tied-rank caution rather than hiding it. The Word file contains Research OS, Spearman, both English variable labels, the rounded coefficient, and the recommendation-validity boundary; no Korean product prose is present.
+The display rounds the coefficient to `0.275` and the p-value to `0.000`, while retaining the full numerical values in the engine result. The English table preserves the tied-rank caution rather than hiding it. The exact packaged run generated a `37,343`-byte Word file with SHA-256 `6343649e5fbf39adf1c212ac2495e8e59e8490494b57b35f562a3e5719651d31`. It contains Spearman, both English variable labels, the rounded coefficient, sample and exclusion counts, the tied-rank caution, and the recommendation-validity boundary; no Korean product prose is present.
+
+The Word file was inspected structurally and opened in Microsoft Word. Its single section is landscape (`11.0 × 8.5` inches), with `0.45`-inch horizontal margins and `0.55`-inch vertical margins. The 10-column result table has fixed weighted widths, `autofit: false`, and 8-point table text. All headers, the coefficient, p-value, `n`, excluded-row count, and wrapped warning fit on one visible page.
 
 ## Defects exposed by the real-data path
 
@@ -76,6 +82,14 @@ The actual Spearman result exposed a Korean tied-rank warning inside an otherwis
 The fix keeps the caution, derives its English form only when the structured method details prove SciPy Spearman with tied ranks and asymptotic p-values, stores optional English table rows, applies them during live language binding, and passes the selected language into Word reporting. Unknown warnings are not silently discarded.
 
 Focused result: `11 passed in 3.71s`.
+
+### Wide Word result table
+
+The real correlation row has 10 columns. The previous portrait Word export compressed those columns into an unreadable table even though the values were technically present. The reporting tests were first extended to require landscape orientation, bounded margins, fixed weighted widths, top-aligned cells, 8-point text, and extra room for the warning column. The implementation then satisfied those contracts without changing the analysis result or warning content.
+
+Focused report result: `52 passed`.
+
+The final package-generated report was then opened in Microsoft Word and visually checked at 100% zoom. The table remained on one page and its full numerical row and wrapped caution were readable.
 
 ## Test evidence
 
@@ -105,8 +119,26 @@ exit 0
 
 The explicit `PYTHONPATH` is required only for a preflight test that launches a clean child interpreter from this uninstalled `src`-layout worktree. Reproducing that child process without the source path fails before importing Modori; with the source path it prints the required `False False False`, proving that base Research Flow import does not eagerly load the inference stack.
 
+The final full non-gallery source suite for `ca379fd9bb907eeff04c0be7c1412a2e0f73f11b` completed with:
+
+```text
+3393 passed, 5 skipped in 526.41s
+exit 0
+```
+
+Ruff, compileall, Bandit, source launch, and `pip check` also exited zero. The fresh wheel is `663,415` bytes with SHA-256 `30f17c2ea96128f12786b4593c9d48ea0b103059cc45f72f549784b8862b43fb`; its metadata is version 2.4 with `GPL-3.0-only` and it contains 227 files.
+
+The final one-folder contains 4,491 files totaling `625,478,586` bytes. Its launcher is `31,494,275` bytes with SHA-256 `f539c9ae698fcc2f7b6cc5a0bc634aa9607a415993ccb4e83d5e8a507770c8d5`. The packaged launch, engine, and public-data smokes all exited zero in `7.258 s`, `23.43 s`, and `3.174 s` respectively.
+
+The exact launcher then completed two isolated visible sessions:
+
+1. the successful 649-row import → metadata → Variable Meaning Gate → three clarifications → candidate → exact configuration → confirm → separate Run → result → English Word path; and
+2. the invalid-role failure → last-verified-state recovery → corrected role → Variable Meaning Gate path.
+
+Accepted screenshots are stored under `.visual-qa/build-week-real-data-candidate-2026-07-21/screenshots/final-package-ca379fd/`. They are supporting visual evidence; the numerical, document, and ledger claims above are independently checked from the generated artifacts and verified SQLite records.
+
 ## Remaining boundary
 
-Verified here: source code, production QML component, production controller/import/report paths, isolated local ledger, independent numerical reference, and generated Word content.
+Verified here: source code, production QML component, production controller/import/report paths, isolated local ledger, decoded passport provenance, independent numerical reference, fresh wheel, fresh one-folder executable, package smokes, direct Windows interaction, error recovery, generated Word structure, and the visible Microsoft Word page.
 
-Not yet verified here: a fresh wheel, a fresh one-folder executable, package smokes, cold visible Windows interaction, screenshot fidelity, and the final recording sequence. Those remain mandatory before a submission-ready claim.
+Not verified here: the final edited 2:55 recording, its exact subtitle synchronization, YouTube upload visibility, or the external submission form. Those are submission operations, not product-function claims, and must be checked against the canonical recording script before publication.
