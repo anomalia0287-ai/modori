@@ -1,0 +1,23 @@
+slug: homogeneity-of-regression-slopes
+kind: assumption
+title_ko: "회귀기울기 동질성"
+title_en: "Homogeneity of regression slopes"
+summary_ko: "ANCOVA에서 공변량과 결과 변수의 관계가 집단마다 크게 다르지 않아야 한다는 가정입니다."
+summary_en: "An ANCOVA assumption that the relationship between covariate and outcome should not differ substantially across groups."
+interpretation_ko: null
+interpretation_en: null
+when_to_use_ko: null
+when_to_use_en: null
+how_to_report_ko: "집단×공변량 상호작용 검정 결과를 보고하고, 기준을 넘기면 표준 ANCOVA 집단 효과 해석을 닫습니다."
+how_to_report_en: "Report the group-by-covariate interaction check and avoid interpreting the standard ANCOVA group effect when the threshold is exceeded."
+pitfalls_ko: "이 가정이 깨진 상태에서 조정평균이나 표준 집단 효과를 그대로 해석하면 오해를 만들 수 있습니다."
+pitfalls_en: "Interpreting adjusted means or the standard group effect after violation can be misleading."
+assumptions: []
+alternatives: []
+related:
+  - ancova
+references:
+  - citation: "Field, A. (2018). Discovering Statistics Using IBM SPSS Statistics (5th ed.). SAGE."
+    locator: null
+    verified: true
+verification_status: needs_review

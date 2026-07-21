@@ -1,0 +1,23 @@
+slug: communality
+kind: statistic
+title_ko: "공통성"
+title_en: "Communality"
+summary_ko: "요인들이 한 변수의 분산 중 설명하는 비율입니다."
+summary_en: "The proportion of a variable's variance explained by the retained factors."
+interpretation_ko: "값이 클수록 보존한 요인들이 해당 변수 분산을 더 많이 설명합니다."
+interpretation_en: "Larger values mean that the retained factors explain more of that variable's variance."
+when_to_use_ko: "EFA 결과에서 각 문항이 요인 구조에 얼마나 잘 설명되는지 확인할 때 봅니다."
+when_to_use_en: "Use it in EFA to review how well each item is explained by the factor structure."
+how_to_report_ko: "변수별 공통성을 적재량 표에 함께 보고할 수 있습니다."
+how_to_report_en: "Report communalities alongside the loading table when useful."
+pitfalls_ko: "낮은 공통성은 문항 재검토 신호일 수 있지만 자동 삭제 기준은 아닙니다."
+pitfalls_en: "Low communality may flag an item for review, but it is not an automatic deletion rule."
+assumptions: []
+alternatives: []
+related:
+  - factor-loading
+references:
+  - citation: "Fabrigar, L. R., & Wegener, D. T. (2012). Exploratory Factor Analysis. Oxford University Press."
+    locator: null
+    verified: true
+verification_status: needs_review

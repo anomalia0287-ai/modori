@@ -1,0 +1,36 @@
+{
+  "dataset": "Wampler1",
+  "source": "NIST/ITL Statistical Reference Datasets",
+  "dataset_url": "https://www.itl.nist.gov/div898/strd/lls/data/Wampler1.shtml",
+  "ascii_url": "https://www.itl.nist.gov/div898/strd/lls/data/LINKS/DATA/Wampler1.dat",
+  "certified_values_url": "https://www.itl.nist.gov/div898/strd/lls/data/LINKS/v-Wampler1.shtml",
+  "coefficient_names": ["(Intercept)", "x1", "x2", "x3", "x4", "x5"],
+  "coefficient_estimates": [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+  ],
+  "standard_errors": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "residual_standard_deviation": 0.0,
+  "r_squared": 1.0,
+  "anova": {
+    "regression_df": 5,
+    "residual_df": 15,
+    "regression_sum_squares": 18814317208116.7,
+    "residual_sum_squares": 0.0,
+    "regression_mean_square": 3762863441623.33,
+    "residual_mean_square": 0.0,
+    "f_statistic": "Infinity"
+  },
+  "modori_policy": "fail_closed_zero_residual_variance"
+}

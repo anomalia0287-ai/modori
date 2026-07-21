@@ -1,0 +1,37 @@
+{
+  "dataset": "Longley",
+  "source": "NIST/ITL Statistical Reference Datasets",
+  "dataset_url": "https://www.itl.nist.gov/div898/strd/lls/data/Longley.shtml",
+  "ascii_url": "https://www.itl.nist.gov/div898/strd/lls/data/LINKS/DATA/Longley.dat",
+  "certified_values_url": "https://www.itl.nist.gov/div898/strd/lls/data/LINKS/v-Longley.shtml",
+  "coefficient_names": ["(Intercept)", "x1", "x2", "x3", "x4", "x5", "x6"],
+  "coefficient_estimates": [
+    -3482258.63459582,
+    15.0618722713733,
+    -0.035819179292591,
+    -2.02022980381683,
+    -1.03322686717359,
+    -0.0511041056535807,
+    1829.15146461355
+  ],
+  "standard_errors": [
+    890420.383607373,
+    84.9149257747669,
+    0.0334910077722432,
+    0.488399681651699,
+    0.214274163161675,
+    0.22607320006937,
+    455.478499142212
+  ],
+  "residual_standard_deviation": 304.854073561965,
+  "r_squared": 0.995479004577296,
+  "anova": {
+    "regression_df": 6,
+    "residual_df": 9,
+    "regression_sum_squares": 184172401.944494,
+    "residual_sum_squares": 836424.055505915,
+    "regression_mean_square": 30695400.3240823,
+    "residual_mean_square": 92936.0061673238,
+    "f_statistic": 330.285339234588
+  }
+}

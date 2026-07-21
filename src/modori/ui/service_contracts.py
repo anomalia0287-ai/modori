@@ -8,6 +8,8 @@ class AnalysisPipelineOps(Protocol):
 
     def known_variable_keys(self) -> set[str] | None: ...
 
+    def current_dataset(self) -> object | None: ...
+
     def edit_params(self, step_id: str, params: dict[str, object]) -> None: ...
 
 
@@ -18,9 +20,28 @@ class MetadataPipelineOps(Protocol):
 
     def has_step(self, step_id: str) -> bool: ...
 
-    def edit_params(self, step_id: str, params: dict[str, object]) -> None: ...
+    def edit_metadata_params(
+        self,
+        step_id: str,
+        params: dict[str, object],
+    ) -> None: ...
 
     def insert_metadata_step(self, variable_key: str, step: object) -> None: ...
+
+
+class DataTransformPipelineOps(Protocol):
+    def has_pipeline(self) -> bool: ...
+
+    def has_variable(self, variable_key: str) -> bool: ...
+
+    def any_output_exists(
+        self,
+        output_keys: list[str],
+        *,
+        exclude_step_id: str | None = None,
+    ) -> bool: ...
+
+    def insert_or_replace_transform_step(self, step: object) -> None: ...
 
 
 class DataSessionPipelineOps(Protocol):

@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from modori.ui.contracts import ImportOptions
-from modori.ui.data_session import DataSessionLoader
+from modori.ui.data_session import DataSessionLoader, ImportSessionPipelineFactory
 
 
 class FakePipelineOps:
@@ -74,3 +74,96 @@ def test_data_session_loader_returns_replacement_pipeline_on_success(tmp_path) -
     assert result.command.pipeline_version == 2
     assert result.pipeline is pipeline
     assert result.path == data_path
+
+
+def test_import_session_pipeline_factory_persists_table_layout_options(tmp_path) -> None:
+    data_path = tmp_path / "manual-layout.csv"
+    data_path.write_text(
+        "\n".join(
+            [
+                "다운로드 조건,2026-07-06",
+                "이 행은 표가 아닙니다,확인용",
+                "city,value",
+                "Seoul,10",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    pipeline = ImportSessionPipelineFactory()(
+        data_path,
+        ImportOptions(
+            confirm_new_session=True,
+            table_layout={
+                "header_row_index": 2,
+                "header_row_count": 1,
+            },
+        ),
+    )
+
+    import_step = pipeline.steps[0]
+    assert import_step.params["table_layout"] == {
+        "header_row_index": 2,
+        "header_row_count": 1,
+    }
+    assert pipeline.current_dataset.df.columns.tolist() == ["city", "value"]
+
+
+def test_import_session_pipeline_factory_persists_aggregate_row_option(tmp_path) -> None:
+    data_path = tmp_path / "aggregate-row.csv"
+    data_path.write_text("지역,인구\n합 계,300\n종로구,100\n", encoding="utf-8")
+
+    pipeline = ImportSessionPipelineFactory()(
+        data_path,
+        ImportOptions(confirm_new_session=True, drop_aggregate_rows=True),
+    )
+
+    import_step = pipeline.steps[0]
+    assert import_step.params["drop_aggregate_rows"] is True
+    assert pipeline.current_dataset.df.to_dict(orient="records") == [{"지역": "종로구", "인구": 100}]
+
+
+def test_import_session_pipeline_factory_persists_duplicate_row_option(tmp_path) -> None:
+    data_path = tmp_path / "dupes.csv"
+    data_path.write_text("지역,인구\n종로구,100\n종로구,100\n", encoding="utf-8")
+
+    pipeline = ImportSessionPipelineFactory()(
+        data_path,
+        ImportOptions(confirm_new_session=True, drop_duplicate_rows=True),
+    )
+
+    import_step = pipeline.steps[0]
+    assert import_step.params["drop_duplicate_rows"] is True
+    assert pipeline.current_dataset.df.to_dict(orient="records") == [{"지역": "종로구", "인구": 100}]
+
+
+def test_import_session_pipeline_factory_persists_import_selection(tmp_path) -> None:
+    from modori.table_io import ImportSelection, read_schema
+
+    data_path = tmp_path / "curated.csv"
+    data_path.write_text("지역,인구,비고\n종로구,100,메모\n", encoding="utf-8")
+    schema = read_schema(data_path, "csv")
+    selection = ImportSelection(
+        source_columns=schema.columns,
+        included_columns=("지역", "인구"),
+        schema_fingerprint=schema.fingerprint,
+    )
+
+    pipeline = ImportSessionPipelineFactory()(
+        data_path,
+        ImportOptions(
+            confirm_new_session=True,
+            import_selection={
+                "schema_version": selection.schema_version,
+                "source_columns": list(selection.source_columns),
+                "included_columns": list(selection.included_columns),
+                "schema_fingerprint": selection.schema_fingerprint,
+                "created_from": selection.created_from,
+            },
+        ),
+    )
+
+    import_step = pipeline.steps[0]
+    assert import_step.params["import_selection"]["included_columns"] == ["지역", "인구"]
+    assert pipeline.current_dataset.df.columns.tolist() == ["지역", "인구"]

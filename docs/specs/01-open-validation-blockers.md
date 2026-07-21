@@ -30,16 +30,16 @@ Closure evidence:
 - Captured value:
   `0.971547833066`
 - Non-skipped pytest gate:
-  `TONGTONG_RSCRIPT=.tools\r-env\Scripts\Rscript.exe .venv\Scripts\python.exe -m pytest -q -rs -p no:cacheprovider tests\test_reliability_step.py::test_mcdonald_omega_matches_r_psych_when_r_is_available`
+  `MODORI_RSCRIPT=.tools\r-env\Scripts\Rscript.exe .venv\Scripts\python.exe -m pytest -q -rs -p no:cacheprovider tests\test_reliability_step.py::test_mcdonald_omega_matches_r_psych_when_r_is_available`
 - Result:
   `1 passed`.
 
 Current status:
 
-- Closed when `TONGTONG_RSCRIPT` points to the workspace-local portable
+- Closed when `MODORI_RSCRIPT` points to the workspace-local portable
   `Rscript.exe`.
 - The test remains conditional only for environments that do not provide
-  `Rscript` or `TONGTONG_RSCRIPT`.
+  `Rscript` or `MODORI_RSCRIPT`.
 
 ## 2. Formal delegated Codex Security Deep Security Scan
 

@@ -1,0 +1,32 @@
+{
+  "adjusted_branch_only_paths": [
+    "docs/superpowers/plans/2026-07-16-research-os-release-integration.md",
+    "docs/superpowers/specs/2026-07-16-research-os-release-integration-design.md",
+    "scripts/package_launch_smoke.py",
+    "scripts/verify_release_integration.py",
+    "tests/test_knowledge_library.py",
+    "tests/test_package_launch_smoke_script.py",
+    "tests/test_verify_release_integration_script.py",
+    "tests/ui/test_experimental_guidance_boundary.py",
+    "tests/ui/test_experimental_recommendation_flow.py",
+    "tests/ui/test_qml_string_catalog.py"
+  ],
+  "branch_only_adjustment_count": 10,
+  "branch_only_blob_mismatches": [],
+  "merge_base": "4e1170c58af35edc20e172f616b51d3464a5a2ef",
+  "merge_residue": [],
+  "merge_sha": "c67b81af432a14aeb9a29d6dddc79eb90510a82b",
+  "merged_test_id_count": 1896,
+  "missing_test_ids": [],
+  "ok": true,
+  "parents": [
+    "ca40471297da5f69e90c4519a28ecf0864fd1c08",
+    "247f8f5d80c8045080510cdffa12fe88f1271cbb"
+  ],
+  "release_only_path_count": 127,
+  "required_parent_test_id_count": 1881,
+  "research_only_path_count": 268,
+  "schema_id": "modori.release-integration-verification",
+  "schema_version": 1,
+  "shared_path_count": 38
+}

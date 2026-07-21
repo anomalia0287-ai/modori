@@ -11,8 +11,15 @@ def test_splash_screen_exists_and_is_wired() -> None:
 
     assert splash.is_file()
     text = splash.read_text(encoding="utf-8")
-    assert "splash.subtitle" in text
-    assert "privacy.local" in text
+    assert "import QtQuick.Controls.Basic" in text
+    assert "PearlSurface" in text
+    assert "theme.orange" not in text
+    assert "GradientStop" not in text
+    assert "theme.splashProgressWidth" in text
+    assert "theme.splashProgressHeight" in text
+    assert "root.reduceEffects" in text
+    assert 'appBootstrap.text("splash.subtitle", appBootstrap.language)' in text
+    assert 'appBootstrap.text("privacy.local", appBootstrap.language)' in text
     assert "SplashScreen" in main
 
 
@@ -26,22 +33,27 @@ def test_recent_files_surface_updates_after_import(tmp_path, monkeypatch) -> Non
     controller = UiController()
 
     assert controller.recentFilesText == ""
+    assert controller.recentFilesModel is controller.recentFilesModel
     assert controller.openDataFilePath(str(data_path)) is True
 
     assert "survey.csv" in controller.recentFilesText
+    assert controller.recentFilesModel.rowCount() == 1
+    assert controller.recentFilesModel.data(controller.recentFilesModel.index(0, 0)) == "survey.csv"
+    assert controller.recentFilesModel is controller.recentFilesModel
 
 
 def test_entry_screen_displays_recent_files() -> None:
     entry = qml_text("screens/EntryScreen.qml")
 
-    assert "uiController.recentFilesText" in entry
+    assert "uiController.recentFilesModel" in entry
+    assert "recentFilesText.split" not in entry
     assert "entry.recent" in entry
 
 
 def test_data_table_discloses_read_only_edit_policy() -> None:
     data_table = qml_text("components/DataTable.qml")
 
-    assert "셀 직접 수정은 재현 가능한 편집 단계가 준비된 뒤 활성화됩니다." in data_table
+    assert 'appBootstrap.text("data.edit_policy", appBootstrap.language)' in data_table
 
 
 def test_qa_document_records_current_verdict() -> None:

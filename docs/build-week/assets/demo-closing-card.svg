@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" role="img" aria-labelledby="title desc">
+  <title id="title">Modori demo closing card</title>
+  <desc id="desc">Three lines state the bounded task scope, experimental no-auto-run boundary, and location of public evidence.</desc>
+  <rect width="1920" height="1080" fill="#17302d"/>
+  <rect x="118" y="126" width="1684" height="828" rx="38" fill="#f8f4ea"/>
+  <rect x="118" y="126" width="24" height="828" rx="12" fill="#c08342"/>
+  <g font-family="Segoe UI, Arial, sans-serif" fill="#17302d" text-anchor="middle">
+    <text x="960" y="386" font-size="72" font-weight="760">6 bounded local tasks</text>
+    <text x="960" y="542" font-size="58" font-weight="660">Experimental recommendations · no auto-run</text>
+    <text x="960" y="696" font-size="38" font-weight="520">Source, setup, tests, and limitations</text>
+    <text x="960" y="750" font-size="38" font-weight="520">in the public repository</text>
+  </g>
+</svg>

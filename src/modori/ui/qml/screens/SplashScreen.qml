@@ -1,50 +1,94 @@
 import QtQuick
-import QtQuick.Controls
+import QtQuick.Controls.Basic as Basic
 import QtQuick.Layouts
+import "../components"
+import "../theme"
 
-Pane {
+Basic.Pane {
     id: root
     property bool reduceEffects: false
+    padding: theme.spaceNone
 
-    background: Rectangle {
-        gradient: Gradient {
-            GradientStop { position: 0.0; color: "#0B4A43" }
-            GradientStop { position: 1.0; color: root.reduceEffects ? "#0F6E56" : "#D88A2D" }
-        }
+    Theme {
+        id: theme
+    }
+
+    background: PearlSurface {
+        fillColor: theme.surfaceCream
+        ambient: true
+        reduceEffects: root.reduceEffects
+        radius: theme.spaceNone
+        border.width: theme.spaceNone
     }
 
     ColumnLayout {
         anchors.centerIn: parent
-        spacing: 16
+        spacing: theme.spaceMd
 
-        Label {
-            text: appBootstrap.text("app.title")
-            color: "white"
-            font.pixelSize: 46
-            font.bold: true
+        BrandWordmark {
+            text: appBootstrap.text("app.title", appBootstrap.language)
+            font.pixelSize: theme.fontSplashTitle
             Layout.alignment: Qt.AlignHCenter
         }
 
-        Label {
-            text: appBootstrap.text("splash.subtitle")
-            color: "white"
-            font.pixelSize: 18
+        Basic.Label {
+            text: appBootstrap.text("splash.subtitle", appBootstrap.language)
+            color: theme.textBody
+            font.pixelSize: theme.fontSplashSubtitle
             Layout.alignment: Qt.AlignHCenter
         }
 
-        ProgressBar {
+        Basic.ProgressBar {
+            id: progress
+            objectName: "splashProgress"
             indeterminate: !root.reduceEffects
             from: 0
             to: 1
             value: root.reduceEffects ? 1 : 0
-            Layout.preferredWidth: 280
+            padding: theme.spaceNone
+            Layout.preferredWidth: theme.splashProgressWidth
+            Layout.preferredHeight: theme.splashProgressHeight
+            Layout.topMargin: theme.spaceSm
             Layout.alignment: Qt.AlignHCenter
+
+            background: Rectangle {
+                implicitWidth: theme.splashProgressWidth
+                implicitHeight: theme.splashProgressHeight
+                radius: theme.splashProgressHeight / 2
+                color: theme.surfaceRaised
+            }
+
+            contentItem: Item {
+                implicitWidth: theme.splashProgressWidth
+                implicitHeight: theme.splashProgressHeight
+                clip: true
+
+                Rectangle {
+                    id: progressSegment
+                    objectName: "splashProgressSegment"
+                    x: root.reduceEffects ? theme.spaceNone : -width
+                    width: root.reduceEffects ? parent.width : theme.splashProgressSegmentWidth
+                    height: parent.height
+                    radius: theme.splashProgressHeight / 2
+                    color: theme.bronzeAction
+
+                    NumberAnimation on x {
+                        running: !root.reduceEffects
+                        loops: Animation.Infinite
+                        from: -progressSegment.width
+                        to: progressSegment.parent.width
+                        duration: theme.splashProgressCycleMs
+                        easing.type: Easing.InOutSine
+                    }
+                }
+            }
         }
 
-        Label {
-            text: appBootstrap.text("privacy.local")
-            color: "white"
-            opacity: 0.85
+        Basic.Label {
+            text: appBootstrap.text("privacy.local", appBootstrap.language)
+            color: theme.textMuted
+            font.pixelSize: theme.fontCaption
+            opacity: theme.opacityPrivacy
             Layout.alignment: Qt.AlignHCenter
         }
     }

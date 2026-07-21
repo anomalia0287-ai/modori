@@ -7,6 +7,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import pytest
+import statsmodels.api as sm
 
 from modori.core import Dataset, Measure, Pipeline, Variable
 from modori.results import RegressionResult
@@ -61,6 +62,37 @@ def regression_step(policy: dict | None = None, predictors: list[str] | None = N
     )
 
 
+def test_regression_schema_migrates_legacy_params_and_policy_alias() -> None:
+    migrated = MultipleRegressionStep.migrate_params(
+        {"dv": "mpg", "predictors": ["wt"], "policy": {"preset": "classic"}}
+    )
+
+    assert MultipleRegressionStep.validate_params(migrated) == {
+        "schema_version": MultipleRegressionStep.CURRENT_SCHEMA_VERSION,
+        "dv": "mpg",
+        "predictors": ["wt"],
+        "regression_policy": {"preset": "classic"},
+    }
+
+
+def test_regression_schema_rejects_newer_and_unknown_current_params() -> None:
+    with pytest.raises(ValueError, match="newer schema_version"):
+        MultipleRegressionStep.migrate_params(
+            {"schema_version": 999, "dv": "mpg", "predictors": ["wt"]}
+        )
+
+    with pytest.raises(ValueError, match="unknown regression_ols params"):
+        MultipleRegressionStep.validate_params(
+            {
+                "schema_version": MultipleRegressionStep.CURRENT_SCHEMA_VERSION,
+                "dv": "mpg",
+                "predictors": ["wt"],
+                "regression_policy": {"preset": "classic"},
+                "extra": "bad",
+            }
+        )
+
+
 def test_regression_import_writes_reads_only_csv_header(tmp_path, monkeypatch) -> None:
     path = tmp_path / "regression.csv"
     path.write_text("y,x\n1,2\n3,4\n", encoding="utf-8")
@@ -79,6 +111,82 @@ def test_regression_import_writes_reads_only_csv_header(tmp_path, monkeypatch) -
 
     assert step.writes() == {"y", "x"}
     assert calls == [{"nrows": 0}]
+
+
+def test_regression_import_step_drops_aggregate_rows_when_requested(tmp_path) -> None:
+    path = tmp_path / "regression-public.csv"
+    path.write_text(
+        "\n".join(
+            [
+                "지역,y,x",
+                "합 계,30,3",
+                "종로구,10,1",
+                "중구,20,2",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    step = RegressionCsvImportStep(
+        id="reg-import",
+        title="Regression import",
+        params={
+            "path": str(path),
+            "file_type": "csv",
+            "scale_columns": ["y", "x"],
+            "drop_aggregate_rows": True,
+        },
+    )
+
+    result = step.compute_context_free(Dataset.empty())
+
+    assert result.new_columns["지역"].tolist() == ["종로구", "중구"]
+    assert result.new_columns["y"].tolist() == [10, 20]
+    assert result.notes == [
+        "Imported 2 rows and 3 columns for regression.",
+        "집계/합계 행 1개를 제외했습니다.",
+    ]
+
+
+def test_regression_import_step_honors_duplicate_and_column_selection(tmp_path) -> None:
+    from modori.table_io import ImportSelection, read_schema
+
+    path = tmp_path / "regression.csv"
+    path.write_text("y,x,note\n1,2,a\n1,2,b\n3,4,c\n", encoding="utf-8")
+    schema = read_schema(path, "csv")
+    selection = ImportSelection(
+        source_columns=schema.columns,
+        included_columns=("y", "x"),
+        schema_fingerprint=schema.fingerprint,
+    )
+    pipeline = Pipeline(Dataset.empty())
+    pipeline.add(
+        RegressionCsvImportStep(
+            id="import-data",
+            title="Import regression data",
+            params={
+                "path": str(path),
+                "file_type": "csv",
+                "scale_columns": ["y", "x"],
+                "drop_duplicate_rows": True,
+                "import_selection": {
+                    "schema_version": 1,
+                    "source_columns": list(selection.source_columns),
+                    "included_columns": list(selection.included_columns),
+                    "schema_fingerprint": selection.schema_fingerprint,
+                    "created_from": "preview",
+                },
+            },
+        )
+    )
+
+    pipeline.recompute(dirty_from=None)
+
+    assert pipeline.current_dataset.df.to_dict(orient="records") == [
+        {"y": 1, "x": 2},
+        {"y": 3, "x": 4},
+    ]
+    assert "note" not in pipeline.current_dataset.df.columns
 
 
 def numpy_ols_reference(frame: pd.DataFrame, dv: str, predictors: list[str]) -> dict[str, np.ndarray | float]:
@@ -140,6 +248,42 @@ def test_regression_results_are_stable_when_rows_are_shuffled() -> None:
     assert reordered.r_squared == pytest.approx(result.r_squared, abs=1e-12)
 
 
+def test_regression_inference_is_invariant_to_large_outcome_offset() -> None:
+    frame = mtcars_frame()
+    offset_frame = frame.copy()
+    offset_frame["mpg"] = offset_frame["mpg"] + 1e12
+
+    base = regression_step().compute_context_free(regression_dataset(frame)).analysis
+    offset = regression_step().compute_context_free(regression_dataset(offset_frame)).analysis
+
+    assert offset.r_squared == pytest.approx(base.r_squared, rel=1e-6, abs=1e-6)
+    assert offset.adj_r_squared == pytest.approx(
+        base.adj_r_squared,
+        rel=1e-6,
+        abs=1e-6,
+    )
+    assert offset.f_statistic == pytest.approx(base.f_statistic, rel=1e-5, abs=1e-5)
+    assert offset.f_p_value == pytest.approx(base.f_p_value, rel=1e-5, abs=1e-12)
+    assert offset.coefficients[0].b == pytest.approx(
+        base.coefficients[0].b + 1e12,
+        rel=1e-12,
+        abs=1e-6,
+    )
+    for offset_row, base_row in zip(
+        offset.coefficients[1:],
+        base.coefficients[1:],
+        strict=True,
+    ):
+        assert offset_row.b == pytest.approx(base_row.b, rel=5e-5, abs=1e-5)
+        assert offset_row.se == pytest.approx(base_row.se, rel=5e-5, abs=1e-5)
+        assert offset_row.t == pytest.approx(base_row.t, rel=5e-5, abs=1e-5)
+        assert offset_row.p_value == pytest.approx(
+            base_row.p_value,
+            rel=1e-4,
+            abs=1e-12,
+        )
+
+
 def test_regression_reports_missing_data_counts_and_warning() -> None:
     frame = mtcars_frame()
     frame.loc[:4, "hp"] = np.nan
@@ -152,6 +296,33 @@ def test_regression_reports_missing_data_counts_and_warning() -> None:
     assert result.n_dropped == 5
     assert any("missing" in warning.lower() for warning in result.warnings)
     assert any("threshold" in warning.lower() for warning in result.warnings)
+
+
+def test_regression_missing_rows_match_complete_case_reference() -> None:
+    frame = mtcars_frame()
+    frame.loc[0, "mpg"] = np.nan
+    frame.loc[3, "wt"] = np.nan
+    frame.loc[8, "hp"] = np.nan
+    frame.loc[12, "cyl"] = np.nan
+    complete = frame.dropna(axis=0, how="any").copy()
+
+    result = regression_step(
+        {"preset": "classic", "missing_warning_threshold": 0.10}
+    ).compute_context_free(regression_dataset(frame)).analysis
+    reference = numpy_ols_reference(complete, "mpg", ["wt", "hp", "cyl"])
+
+    assert result.n_total == 32
+    assert result.n_obs == 28
+    assert result.n_dropped == 4
+    assert [row.b for row in result.coefficients] == pytest.approx(
+        reference["b"],
+        abs=1e-10,
+    )
+    assert [row.se for row in result.coefficients] == pytest.approx(
+        reference["se"],
+        abs=1e-10,
+    )
+    assert result.r_squared == pytest.approx(reference["r_squared"], abs=1e-12)
 
 
 @pytest.mark.parametrize(
@@ -239,6 +410,20 @@ def test_vif_warnings_have_moderate_and_severe_tiers() -> None:
     assert any("severe" in warning.lower() and "VIF" in warning for warning in severe.warnings)
 
 
+def test_regression_rejects_ill_conditioned_design_matrix() -> None:
+    x1 = np.linspace(-3.0, 3.0, 40)
+    x2 = x1 + (1e-12 * np.sin(np.arange(len(x1)) * 1.7))
+    y = 2.0 + (0.4 * x1) + (0.1 * np.cos(np.arange(len(x1))))
+    step = MultipleRegressionStep(
+        id="reg-conditioned",
+        title="Ill-conditioned regression",
+        params={"dv": "y", "predictors": ["x1", "x2"], "regression_policy": {"preset": "classic"}},
+    )
+
+    with pytest.raises(ValueError, match="ill-conditioned"):
+        step.compute_context_free(regression_dataset(pd.DataFrame({"y": y, "x1": x1, "x2": x2})))
+
+
 def test_small_sample_non_normal_residuals_emit_diagnostic_warning() -> None:
     x = np.arange(1, 13, dtype=float)
     residual_shock = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8.0], dtype=float)
@@ -281,6 +466,40 @@ def test_modern_policy_switches_to_hc3_and_uses_robust_model_f_test() -> None:
     assert any("variance" in item for item in result.educational_interpretation)
     assert any(item.startswith("Diagnostic note:") for item in result.educational_interpretation)
     assert any(spec.type == "residual_vs_fitted" for spec in result.diagnostic_chart_specs)
+
+
+def test_hc3_coefficients_match_statsmodels_robust_reference() -> None:
+    dataset = heteroscedastic_dataset()
+    result = MultipleRegressionStep(
+        id="reg-hc3-reference",
+        title="HC3 regression reference",
+        params={
+            "dv": "y",
+            "predictors": ["x", "z"],
+            "regression_policy": {"preset": "custom", "se_type": "HC3"},
+        },
+    ).compute_context_free(dataset).analysis
+
+    x = sm.add_constant(dataset.df[["x", "z"]], has_constant="add")
+    reference = sm.OLS(dataset.df["y"], x).fit().get_robustcov_results(cov_type="HC3")
+
+    assert result.se_type == "HC3"
+    assert [row.b for row in result.coefficients] == pytest.approx(
+        reference.params,
+        abs=1e-10,
+    )
+    assert [row.se for row in result.coefficients] == pytest.approx(
+        reference.bse,
+        abs=1e-10,
+    )
+    assert [row.t for row in result.coefficients] == pytest.approx(
+        reference.tvalues,
+        abs=1e-10,
+    )
+    assert [row.p_value for row in result.coefficients] == pytest.approx(
+        reference.pvalues,
+        abs=1e-10,
+    )
 
 
 def test_classic_policy_warns_but_keeps_classical_standard_errors() -> None:
@@ -357,18 +576,22 @@ def test_regression_writes_analysis_by_stable_step_id_for_pipeline_and_report(tm
 
 
 def test_regression_matches_committed_r_reference_when_r_is_available() -> None:
-    rscript = os.environ.get("MODORI_RSCRIPT") or shutil.which("Rscript")
+    rscript = os.environ.get("MODORI_RSCRIPT")
+    if not rscript:
+        local = Path(__file__).resolve().parents[1] / ".tools" / "r-env" / "Scripts" / "Rscript.exe"
+        rscript = str(local) if local.exists() else shutil.which("Rscript")
     if rscript is None:
         pytest.skip("Rscript is not installed; R regression reference check cannot run here.")
+    rscript = str(Path(rscript).resolve())
 
     script = Path(__file__).parent / "r" / "regression_reference.R"
     expected_stdout = (Path(__file__).parent / "r" / "regression_reference.stdout.txt").read_text(
         encoding="utf-8"
     ).strip()
     env = os.environ.copy()
-    explicit_rscript = os.environ.get("MODORI_RSCRIPT")
-    if explicit_rscript:
-        prefix = Path(explicit_rscript).resolve().parents[1]
+    explicit_or_local_rscript = rscript
+    if explicit_or_local_rscript:
+        prefix = Path(explicit_or_local_rscript).resolve().parents[1]
         r_paths = [
             prefix / "Library" / "bin",
             prefix / "Scripts",

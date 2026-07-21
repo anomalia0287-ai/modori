@@ -1,0 +1,229 @@
+# Release Manual QA Matrix
+
+Status: release QA evidence for the `release/readiness-1-9` lane.
+
+Date: 2026-06-29.
+
+Latest supplemental evidence: 2026-07-07, recorded below. Earlier 2026-07-05
+evidence is recorded in
+`docs\superpowers\handoffs\2026-07-05-release-lane-chart-vm-handoff.md`.
+
+Environment:
+
+- OS shell: Windows PowerShell.
+- Workspace: `C:\Users\V\Desktop\TongTong`.
+- App runtime: packaged `dist\Modori\Modori.exe` plus PySide6/QML source smoke.
+- Product Design saved context: none configured for this workspace.
+- Local evidence folder: `.visual-qa\release-manual-qa-2026-06-29`.
+
+## Matrix
+
+| Item | Status | Evidence |
+| --- | --- | --- |
+| Korean Windows path | Pass for controller/report flow | A reference CSV was created under `.visual-qa\release-manual-qa-2026-06-29\한글 경로 QA`; `UiController` opened it, ran analysis, and exported `modori-output\report.docx`. |
+| long filename | Pass for controller/report flow | The same probe used a CSV named `설문_` plus repeated `긴파일명` text. Report export succeeded from that path. |
+| high DPI | Pass for offscreen launch smoke only | `QT_SCALE_FACTOR=1.5`, `QT_QPA_PLATFORM=offscreen`, and `MODORI_REDUCE_EFFECTS=1` with `scripts\launch_smoke.py` returned `launch-smoke-ok`. Visible layout inspection is still separate. |
+| low GPU / reduce-effects | Pass for automated contract | `tests\ui\test_security_privacy.py::test_controller_reduce_effects_toggle_persists_to_settings` and `test_work_screen_exposes_reduce_effects_toggle` passed. Launch smoke also passed with `MODORI_REDUCE_EFFECTS=1`. |
+| broken input file | Pass for visible error contract | Opening a missing CSV path creates a session, then `rerunNow` fails through the worker path with `status=error`, `stale=True`, and Korean `lastError` text. |
+| report export failure | Pass for visible error contract | A failing report exporter returned `error_code=engine_error` and set `lastError` to `보고서를 내보내지 못했습니다.` |
+| accessibility smoke | Pass for source/static contract | `tests\ui\test_security_privacy.py::test_core_qml_buttons_have_accessible_names` passed. Existing QML controls include Korean `Accessible.name` bindings. |
+| screenshot evidence | Pass for packaged visible walkthrough | Codex Computer Use Windows.Graphics.Capture captured packaged `dist\Modori\Modori.exe` entry, Excel import preview, and final work screen. Final screen showed `가져온 데이터: 20행 · 12열`, `분석 결과가 업데이트되었습니다.`, reliability/comparison result text, result tables, and enabled `Word 내보내기`. |
+
+## Commands Run
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest tests\ui -q -p no:cacheprovider
+```
+
+Result:
+
+```text
+188 passed in 9.45s
+```
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest -q -p no:cacheprovider
+```
+
+Result:
+
+```text
+418 passed, 2 skipped in 40.59s
+```
+
+```powershell
+$env:QT_QPA_PLATFORM='offscreen'
+.\.venv\Scripts\python.exe scripts\launch_smoke.py
+```
+
+Result:
+
+```text
+launch-smoke-ok
+```
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest tests\test_launch_smoke_script.py tests\test_package_launch_smoke_script.py -q -p no:cacheprovider
+```
+
+Result:
+
+```text
+4 passed in 4.00s
+```
+
+```powershell
+$env:QT_QPA_PLATFORM='offscreen'
+$env:QT_SCALE_FACTOR='1.5'
+$env:MODORI_REDUCE_EFFECTS='1'
+.\.venv\Scripts\python.exe scripts\launch_smoke.py
+```
+
+Result:
+
+```text
+launch-smoke-ok
+```
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest tests\ui\test_security_privacy.py::test_core_qml_buttons_have_accessible_names tests\ui\test_security_privacy.py::test_controller_reduce_effects_toggle_persists_to_settings tests\ui\test_security_privacy.py::test_work_screen_exposes_reduce_effects_toggle -q -p no:cacheprovider
+```
+
+Result:
+
+```text
+3 passed in 3.87s
+```
+
+```powershell
+.\.venv\Scripts\python.exe scripts\quality_gate.py --with-package-build --with-packaged-launch
+```
+
+Result:
+
+```text
+compileall passed
+ruff check src tests scripts passed
+bandit -q -r src passed
+launch-smoke-ok
+418 passed, 2 skipped
+pip check: No broken requirements found.
+dist\Modori\Modori.exe
+package-launch-smoke-ok
+```
+
+```powershell
+dist\Modori\Modori.exe --engine-smoke .visual-qa\release-manual-qa-2026-06-29\visible-import-reference.xlsx .tmp\packaged-engine-smoke.json
+```
+
+Result:
+
+```json
+{
+  "data_columns": 12,
+  "data_rows": 20,
+  "last_error": "",
+  "ok": true,
+  "opened": true,
+  "rerun": true,
+  "result_summary_present": true,
+  "status": "ready",
+  "waited": true
+}
+```
+
+## Screenshot Capture Attempts
+
+Attempt 1: QML offscreen `window.grabWindow()` with `QT_QPA_PLATFORM=offscreen`.
+
+- Result: timed out before a screenshot was saved.
+
+Attempt 2: QML offscreen `processEvents()` with `QT_QUICK_BACKEND=software`.
+
+- Result: exited nonzero without an accepted screenshot.
+
+Attempt 3: visible app launch plus Windows `CopyFromScreen`.
+
+- Result: failed with `Exception calling "CopyFromScreen" with "3" argument(s): "핸들이 잘못되었습니다."`
+
+Attempt 4: packaged `dist\Modori\Modori.exe` visible launch plus Python
+`PIL.ImageGrab.grab(all_screens=True)`.
+
+- Result: failed with `OSError: screen grab failed`.
+
+Attempt 5: Codex Computer Use Windows.Graphics.Capture path against packaged
+`dist\Modori\Modori.exe`.
+
+- Result: blocked by Computer Use app approval timeout before a targetable
+  Modori window capture could be accepted.
+
+Attempt 6: Codex Computer Use Windows.Graphics.Capture path against rebuilt
+packaged `dist\Modori\Modori.exe`.
+
+- Result: accepted screenshots captured. Entry screen exposed guided/standard
+  modes, data-open action, and recent items. Excel import preview for
+  `visible-import-reference.xlsx` showed `20 cases previewed · 9 variables`,
+  sheet `Responses`, and sample rows with fixed visible `취소` / `가져오기`
+  actions. Final work screen showed imported data, result summary text, result
+  tables, and enabled report export.
+
+## Issue Closed During Visible QA
+
+- Import preview dialog previously let long Excel previews push the confirm
+  action out of clear view. It now uses a scrollable preview body and fixed
+  Korean `취소` / `가져오기` actions.
+- Work screen previously did not make imported content easy to identify before
+  analysis completed. It now binds preview/full data models and shows a data
+  notice such as `가져온 데이터 미리보기: 20행 · 9열` or `가져온 데이터: 20행 · 12열`.
+- Packaged analysis previously failed at chart/report rendering because
+  PyInstaller omitted Matplotlib SVG/PS backends. The package build now includes
+  `matplotlib.backends.backend_agg`, `backend_svg`, and `backend_ps`; packaged
+  engine smoke covers this path.
+
+## 2026-07-05 Supplemental VM QA
+
+| Item | Status | Evidence |
+| --- | --- | --- |
+| automatic analysis chart display | Pass for current release-lane package | Commit `53f8335` renders analysis `chart_spec` into managed cache PNG paths for the result panel. Local default gate reported `527 passed, 2 skipped`; packaged gate reported `package-tool-ok`, `package-launch-smoke-ok`, and `package-engine-smoke-ok`. |
+| clean VM payload refresh | Pass for host attach evidence | `C:\VM\ModoriPayload\attach-payload-v2.log` recorded `VM: Modori-CleanWin-QA-Direct / Off`, payload rebuild, `Path: C:\VM\ModoriPayload\ModoriPayloadV2.vhdx`, and `Done` ending at `2026-07-05 17:04:42` local time. |
+| clean VM visible UI | Pass for user-operated manual evidence | After the payload rebuild, the user reported the VM app flow works. This is manual UI evidence; the post-`53f8335` inside-VM JSON was not pasted into this document. |
+
+Current package SHA256:
+
+```text
+A4FE941EF6170E735B107D75244A4A2562722E881F293224B576A517E0796888
+```
+
+## 2026-07-07 Feature-Build Clean VM QA
+
+| Item | Status | Evidence |
+| --- | --- | --- |
+| package gate for feature build | Pass | Commit `6603bab` package hash `8D04E358637BF69F86B1657B47D1F1EC2E841B2F51F108BC70418C98397DEF57`; `scripts/quality_gate.py --with-package-check --with-packaged-launch` reported `673 passed, 2 skipped`, `package-launch-smoke-ok`, `package-engine-smoke-ok`, and `package-public-data-smoke-ok`. |
+| clean VM payload regeneration and rerun | Pass for owner-operated VM evidence | The owner confirmed the Payload V2 administrator regeneration and clean-VM rerun were completed for the build containing categorical recoding, visible grid work, and import column selection. VM: `Modori-CleanWin-QA-Direct`; payload label: `MODORIQA2`; result: exit code 0. |
+| release evidence blocker from prior runbook | Closed for this feature build | The remaining clean-VM evidence item is no longer pending for the 2026-07-07 feature build. Console text was not pasted here; the recorded basis is owner-operated VM confirmation plus the host/package gate above. |
+
+## 2026-07-08 Statistical Coverage Host Package QA
+
+| Item | Status | Evidence |
+| --- | --- | --- |
+| integrated V1 statistical coverage host gate | Pass | `scripts\quality_gate.py --with-package-check --with-package-build --with-packaged-launch` rebuilt the package and reported `896 passed, 3 skipped`, `package-tool-ok`, `package-launch-smoke-ok`, `package-engine-smoke-ok`, and `package-public-data-smoke-ok`. After payload preparation updates, `scripts\quality_gate.py --with-package-check --with-packaged-launch` reported `897 passed, 3 skipped` against the same packaged executable. The packaged engine smoke JSON includes 16 V1 statistical checks, all `ok: true`: descriptives/Table 1, reliability, frequency, crosstab/Fisher, Pearson, Spearman, Welch t, Mann-Whitney, paired t, Wilcoxon, one-way ANOVA, Kruskal-Wallis, ANCOVA, PCA, EFA, and regression categorical interaction. |
+| rebuilt host package | Pass | Packaged executable: `C:\Users\V\Desktop\TongTong\dist\Modori\Modori.exe`; SHA256 `894D040B19943079879610627DBDE16C3A8DB5C3EE6298501D2F956E7644C6E3`. |
+| clean VM preparation for this feature set | Ready for owner-operated VM execution | Payload V2 was rebuilt from the latest host package while `Modori-CleanWin-QA-Direct` was `Off`. `C:\VM\ModoriPayload\attach-payload-v2.log` records `Payload rebuild requested`, `Validate new payload contents`, `Attach payload disk to VM`, and `Done`, ending at `2026-07-08 05:47:48` local time. Current file evidence shows `C:\VM\ModoriPayload\ModoriPayloadV2.vhdx` was last written at `2026-07-08 05:52:08`, after the `2026-07-08 01:49:09` host package build. The prior payload was backed up to `C:\VM\ModoriPayload\ModoriPayloadV2.before-rebuild-20260708-054731.vhdx`. |
+
+## 2026-07-08 Statistics Bundle Merge Host Package QA
+
+| Item | Status | Evidence |
+| --- | --- | --- |
+| merge commit host gate | Pass | Commit `c1ae5f3 merge: integrate statistics module bundle` in `C:\Users\V\Desktop\TongTong\.worktrees\statistics-release-integration`; baseline full pytest before merge reported `674 passed, 2 skipped`; post-merge full pytest reported `946 passed, 3 skipped`. |
+| advanced recommendation bridge | Pass | Commit `7b20521 fix: run advanced statistics recommendations` connects repeated-measures ANOVA, Friedman, mediation, and moderated mediation candidates to the existing analysis editor/controller command path. Focused regression coverage reported `7 passed`; full pytest reported `947 passed, 3 skipped`. |
+| packaged statistics bundle gate | Pass | After release-lane fast-forward to `7ff7ee8`, `scripts\quality_gate.py --with-package-check --with-package-build --with-packaged-launch` reported `947 passed, 3 skipped`, `package-tool-ok`, `package-launch-smoke-ok`, `package-engine-smoke-ok`, and `package-public-data-smoke-ok`. |
+| rebuilt release-lane package | Pass | Packaged executable: `C:\Users\V\Desktop\TongTong\dist\Modori\Modori.exe`; build time `2026-07-08 11:23:37 +09:00`; SHA256 `4BF611DE876C497BD9BC4AD0CACCB081BDF66A89658A5E6D423D2864F994CB3C`. |
+| clean VM payload rebuild | Pass | `RUN_ATTACH_PAYLOAD_AS_ADMIN.cmd` rebuilt Payload V2 while `Modori-CleanWin-QA-Direct` was `Off`; log path `C:\VM\ModoriPayload\attach-payload-v2.log`; backup `C:\VM\ModoriPayload\ModoriPayloadV2.before-rebuild-20260708-114550.vhdx`; attached `C:\VM\ModoriPayload\ModoriPayloadV2.vhdx` at SCSI controller 0 location 1; attach exit code `0`; transcript ended `2026-07-08 11:46:02 +09:00`. |
+| clean VM scripted smoke evidence for current release-lane package | Pass | Owner-run VM smoke on `MODORIQA2` reported no VM execution anomalies in this rerun. `Run-Public-Data-Smoke.bat` returned exit code `0`, evidence `C:\Users\modoriqa\Desktop\Modori-QA-Evidence\public-data-smoke-2026-07-08-11-48-11-44`, result JSON `ok: true`, `case_count: 10`, all listed cases `ok: true`, including selected-column import, aggregate-row drop, CP949, deep preamble, text-XLS, merged-header, and expected-reject coverage. `Run-Engine-Smoke-XLSX.bat` returned exit code `0`, output `C:\Users\modoriqa\Desktop\modori-engine-smoke.json`, `ok: true`, `status: ready`, and `v1_statistics_smoke.ok: true` across 20 checks including repeated-measures ANOVA, Friedman, mediation, moderated mediation, PCA/EFA, and categorical-interaction regression. |
+| clean VM visible app check | Pass with environment limitation | `Run-Modori.bat` opened the Modori app normally in the clean VM. The VM environment does not have Microsoft Word installed, so Word application integration was not manually verified in this VM run. Statistical result-value correctness remains covered by automated reference tests and package smoke, not by manual visual inspection. |
+
+## Release Interpretation
+
+This document records an accepted target-machine visible walkthrough for the
+packaged Windows app. It does not by itself certify installer signing,
+distribution trust, or broader SPSS-equivalent feature completeness.

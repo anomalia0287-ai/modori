@@ -1,0 +1,25 @@
+slug: principal-component-analysis
+kind: method
+title_ko: "주성분분석"
+title_en: "Principal component analysis"
+summary_ko: "변수들의 공통된 변동을 직교 성분으로 재표현해 차원 축소를 돕는 방법입니다."
+summary_en: "A dimension-reduction method that re-expresses shared variation among variables as orthogonal components."
+interpretation_ko: "큰 고유값과 누적 설명분산은 주요 변동 축을 보여 주지만, 성분을 잠재요인이나 구성개념으로 단정하지 않습니다."
+interpretation_en: "Large eigenvalues and cumulative explained variance show major axes of variation, but components should not be treated as latent factors or constructs by default."
+when_to_use_ko: "문항 묶음의 주요 변동 축을 탐색하거나 변수 수를 줄이고 싶을 때 사용합니다."
+when_to_use_en: "Use it to explore major axes of variation or reduce the number of variables."
+how_to_report_ko: "고유값, 설명분산비율, 누적 설명분산, 성분 적재량을 보고합니다."
+how_to_report_en: "Report eigenvalues, explained variance ratios, cumulative variance, and component loadings."
+pitfalls_ko: "PCA 성분은 잠재요인 자체가 아니며 구성개념 명명에는 연구자 판단이 필요합니다."
+pitfalls_en: "PCA components are not latent factors by themselves; naming them requires researcher judgment."
+assumptions: []
+alternatives:
+  - exploratory-factor-analysis
+related:
+  - factor-loading
+  - parallel-analysis
+references:
+  - citation: "Jolliffe, I. T., & Cadima, J. (2016). Principal component analysis: a review and recent developments. Philosophical Transactions of the Royal Society A, 374(2065), 20150202."
+    locator: null
+    verified: true
+verification_status: needs_review

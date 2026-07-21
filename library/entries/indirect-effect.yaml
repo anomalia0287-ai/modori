@@ -1,0 +1,21 @@
+slug: indirect-effect
+kind: statistic
+title_ko: "간접효과"
+title_en: "Indirect effect"
+summary_ko: "매개모형에서 a 경로와 b 경로의 곱으로 계산되는 X-M-Y 관련성 요약값입니다."
+summary_en: "In a mediation model, the product of the a and b paths summarizing the X-M-Y association."
+interpretation_ko: "양수 값은 a와 b 경로의 곱이 양의 방향임을, 음수 값은 음의 방향임을 뜻합니다. 신뢰구간이 0을 포함하는지와 연구설계를 함께 봐야 합니다."
+interpretation_en: "A positive value means the product of paths a and b is positive; a negative value means it is negative. Interpret it with whether the interval includes 0 and with the study design."
+when_to_use_ko: "매개분석 결과의 핵심 추정값으로 사용합니다."
+when_to_use_en: "Use it as the key estimate in mediation analysis."
+how_to_report_ko: "점추정값과 bootstrap 신뢰구간을 함께 보고합니다."
+how_to_report_en: "Report the point estimate with a bootstrap confidence interval."
+pitfalls_ko: "간접효과가 있다고 해서 연구설계 없이 인과 경로가 입증되는 것은 아닙니다."
+pitfalls_en: "An indirect effect does not prove a causal pathway without supporting design."
+assumptions: []
+alternatives: []
+related:
+  - mediation-analysis
+  - bootstrap-ci
+references: []
+verification_status: needs_review

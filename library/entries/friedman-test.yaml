@@ -1,0 +1,21 @@
+slug: friedman-test
+kind: method
+title_ko: "Friedman 검정"
+title_en: "Friedman test"
+summary_ko: "같은 참여자에게서 얻은 세 개 이상 반복 조건의 순위 차이를 검정하는 비모수 방법입니다."
+summary_en: "A nonparametric method for comparing ranks across three or more repeated levels from the same participants."
+interpretation_ko: null
+interpretation_en: null
+when_to_use_ko: "반복측정 ANOVA 가정이 부담스럽거나 서열형 반복자료일 때 사용합니다."
+when_to_use_en: "Use it for ordinal repeated data or when repeated-measures ANOVA assumptions are unsuitable."
+how_to_report_ko: "Q 또는 카이제곱 통계량, 자유도, p값, Kendall's W, 사용 및 제외 사례 수를 보고합니다."
+how_to_report_en: "Report Q or chi-square, degrees of freedom, p-value, Kendall's W, cases used, and cases excluded."
+pitfalls_ko: "검증된 사후검정과 p값 보정 없이 쌍별 차이를 단정하지 않습니다."
+pitfalls_en: "Do not claim pairwise differences without verified post-hoc tests and p-value adjustment."
+assumptions: []
+alternatives:
+  - repeated-measures-anova
+related:
+  - kendalls-w
+references: []
+verification_status: needs_review

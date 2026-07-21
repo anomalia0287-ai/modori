@@ -1,0 +1,27 @@
+slug: descriptives-table1
+kind: method
+title_ko: "기술통계 표 1"
+title_en: "Descriptives Table 1"
+summary_ko: "가져온 데이터셋의 척도형 변수는 N, 결측 N, 평균, 표준편차, 중앙값, 최솟값, 최댓값으로 요약하고, 명목·서열 변수는 범주별 빈도와 비율로 요약하는 표입니다."
+summary_en: "A descriptive summary table for imported datasets: scale variables are summarized with N, missing N, mean, standard deviation, median, minimum, and maximum; nominal and ordinal variables are summarized with category counts and percentages."
+interpretation_ko: null
+interpretation_en: null
+when_to_use_ko: "분석을 시작하기 전에 표본과 주요 변수의 분포를 확인하거나, 보고서의 Table 1처럼 기술통계 요약을 제시하고 싶을 때 사용합니다. 이 표는 요약용이며 차이 검정, 유의성 검정, 인과 효과, 처치·통제 해석을 수행하지 않습니다."
+when_to_use_en: "Use this before inferential analysis to inspect the sample and variable distributions, or when producing a descriptive Table 1 for a report. It is descriptive only and does not run difference tests, significance tests, causal-effect claims, or treatment/control interpretation."
+how_to_report_ko: "척도형 변수는 비결측 관측치 기준으로 평균과 표본 표준편차를 보고합니다. 명목·서열 변수의 비율은 해당 변수의 비결측 N을 분모로 계산하며, 결측 N은 별도 열로 보고합니다."
+how_to_report_en: "For scale variables, report mean and sample standard deviation over non-missing observations. For nominal and ordinal variables, percentages use the non-missing N for that variable as the denominator, with missing N reported separately."
+pitfalls_ko: "가중치, 복합표본, 다중대체, 표준화 평균차, baseline imbalance 주장, 인과 또는 처치 효과 언어는 이 V1 표에서 지원하지 않습니다. 집단별 요약은 집단 간 차이를 증명하지 않습니다."
+pitfalls_en: "Weights, complex samples, multiple imputation, standardized mean differences, baseline imbalance claims, and causal or treatment-effect language are not supported in this V1 table. Grouped summaries do not prove between-group differences."
+assumptions: []
+alternatives: []
+related:
+  - listwise-deletion
+  - statistical-significance
+references:
+  - citation: "Field, A. (2018). Discovering Statistics Using IBM SPSS Statistics (5th ed.). SAGE."
+    locator: null
+    verified: true
+  - citation: "Tabachnick, B. G., & Fidell, L. S. (2019). Using Multivariate Statistics (7th ed.). Pearson."
+    locator: null
+    verified: true
+verification_status: needs_review

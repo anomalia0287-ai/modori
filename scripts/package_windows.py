@@ -2,10 +2,16 @@ from __future__ import annotations
 
 import argparse
 import importlib.util
+import os
 import subprocess
 import sys
 from collections.abc import Sequence
 from pathlib import Path
+
+if __package__:
+    from scripts.package_environment import without_workspace_reference_runtime
+else:
+    from package_environment import without_workspace_reference_runtime
 
 
 def pyinstaller_available() -> bool:
@@ -13,6 +19,19 @@ def pyinstaller_available() -> bool:
 
 
 def build_pyinstaller_command() -> list[str]:
+    hidden_imports = [
+        "matplotlib.backends.backend_agg",
+        "matplotlib.backends.backend_ps",
+        "matplotlib.backends.backend_svg",
+        "PySide6.QtCore",
+        "PySide6.QtGui",
+        "PySide6.QtQml",
+        "PySide6.QtQuick",
+        "PySide6.QtQuickControls2",
+    ]
+    hidden_import_args = [
+        item for module in hidden_imports for item in ("--hidden-import", module)
+    ]
     return [
         sys.executable,
         "-m",
@@ -22,16 +41,35 @@ def build_pyinstaller_command() -> list[str]:
         "--name",
         "Modori",
         "--windowed",
-        "--collect-all",
-        "PySide6",
+        *hidden_import_args,
         "--add-data",
         "src/modori/ui/qml;modori/ui/qml",
+        "--add-data",
+        "library/entries;library/entries",
         "src/modori/app.py",
     ]
 
 
+def build_package_environment() -> dict[str, str]:
+    env = without_workspace_reference_runtime(os.environ)
+    workspace_src = str((Path(__file__).resolve().parents[1] / "src").resolve())
+    existing_pythonpath = env.get("PYTHONPATH")
+    env["PYTHONPATH"] = (
+        workspace_src
+        if not existing_pythonpath
+        else os.pathsep.join((workspace_src, existing_pythonpath))
+    )
+    env["MPLCONFIGDIR"] = str(Path(".tmp") / "pyinstaller-matplotlib")
+    env["MODORI_CACHE_DIR"] = str(Path(".tmp") / "pyinstaller-modori-cache")
+    Path(env["MPLCONFIGDIR"]).mkdir(parents=True, exist_ok=True)
+    Path(env["MODORI_CACHE_DIR"]).mkdir(parents=True, exist_ok=True)
+    return env
+
+
 def main(argv: Sequence[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Build the Windows Modori desktop package.")
+    parser = argparse.ArgumentParser(
+        description="Build the Windows Modori desktop package."
+    )
     parser.add_argument(
         "--check",
         action="store_true",
@@ -51,13 +89,15 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     command = build_pyinstaller_command()
     print("$ " + " ".join(command), flush=True)
-    completed = subprocess.run(command, check=False)
+    completed = subprocess.run(command, check=False, env=build_package_environment())
     if completed.returncode != 0:
         return completed.returncode
 
     exe_path = Path("dist") / "Modori" / "Modori.exe"
     if not exe_path.is_file():
-        print(f"Expected packaged executable was not created: {exe_path}", file=sys.stderr)
+        print(
+            f"Expected packaged executable was not created: {exe_path}", file=sys.stderr
+        )
         return 1
     print(exe_path)
     return 0

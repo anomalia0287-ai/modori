@@ -1,0 +1,23 @@
+slug: adjusted-mean
+kind: statistic
+title_ko: "조정평균"
+title_en: "Adjusted mean"
+summary_ko: "공변량을 특정 기준값으로 맞춘 선형모형에서 추정한 집단별 평균입니다."
+summary_en: "A group mean estimated from a linear model after setting covariates to a reference value."
+interpretation_ko: "ANCOVA에서는 보통 공변량 평균값에서 각 집단의 조건부 평균을 요약합니다."
+interpretation_en: "In ANCOVA, it typically summarizes each group's conditional mean at the covariate mean."
+when_to_use_ko: null
+when_to_use_en: null
+how_to_report_ko: "집단별 원평균, 표준편차, 조정평균을 구분해 보고합니다."
+how_to_report_en: "Distinguish raw means, standard deviations, and adjusted means by group."
+pitfalls_ko: "조정평균은 모형 기반 추정값이며 공변량 선택과 가정에 의존합니다."
+pitfalls_en: "Adjusted means are model-based estimates and depend on covariate choice and assumptions."
+assumptions: []
+alternatives: []
+related:
+  - ancova
+references:
+  - citation: "Field, A. (2018). Discovering Statistics Using IBM SPSS Statistics (5th ed.). SAGE."
+    locator: null
+    verified: true
+verification_status: needs_review

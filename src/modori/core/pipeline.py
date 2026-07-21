@@ -9,8 +9,10 @@ from modori.core.model import Dataset, DatasetShapeLimits, PipelineContext, Step
 
 _WriteKey: TypeAlias = str | tuple[str, str]
 DEFAULT_UNTRUSTED_DATASET_LIMITS = DatasetShapeLimits(
+    max_json_bytes=512 * 1024 * 1024,
     max_rows=100_000,
     max_columns=1_000,
+    max_variables=1_000,
     max_cells=5_000_000,
 )
 
@@ -25,6 +27,20 @@ class _PipelineStateSnapshot:
     writes_cache: dict[str, set[_WriteKey]]
     dirty_keys_cache: dict[str, set[str]]
     step_results: dict[str, StepResult]
+
+
+def _validate_pipeline_json_size(
+    payload: str,
+    limits: DatasetShapeLimits | None,
+) -> None:
+    if limits is None or limits.max_json_bytes is None:
+        return
+    payload_bytes = len(payload) if payload.isascii() else len(payload.encode("utf-8"))
+    if payload_bytes > limits.max_json_bytes:
+        raise ValueError(
+            f"Pipeline JSON byte length {payload_bytes} exceeds the configured "
+            f"JSON byte limit of {limits.max_json_bytes}."
+        )
 
 
 class Pipeline:
@@ -173,6 +189,11 @@ class Pipeline:
         trust_project_file: bool = False,
         dataset_limits: DatasetShapeLimits | None = None,
     ) -> Pipeline:
+        effective_dataset_limits = dataset_limits
+        if effective_dataset_limits is None and not trust_project_file:
+            effective_dataset_limits = DEFAULT_UNTRUSTED_DATASET_LIMITS
+        _validate_pipeline_json_size(payload, effective_dataset_limits)
+
         import modori.steps  # noqa: F401  # Registers built-in Step types.
 
         try:
@@ -190,9 +211,6 @@ class Pipeline:
             if not isinstance(step_payload, Mapping):
                 raise ValueError("Pipeline JSON step entries must be objects")
 
-        effective_dataset_limits = dataset_limits
-        if effective_dataset_limits is None and not trust_project_file:
-            effective_dataset_limits = DEFAULT_UNTRUSTED_DATASET_LIMITS
         pipeline = cls(
             Dataset.from_dict(data["source_dataset"], limits=effective_dataset_limits)
         )

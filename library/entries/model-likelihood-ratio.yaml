@@ -1,0 +1,28 @@
+slug: model-likelihood-ratio
+kind: statistic
+title_ko: "모형 우도비 검정"
+title_en: "Model likelihood-ratio test"
+summary_ko: "예측변수를 포함한 로지스틱 모형이 절편만 있는 모형보다 자료의 우도를 얼마나 개선했는지 비교하는 전체 모형 검정이에요."
+summary_en: "An omnibus test of whether a logistic model with predictors improves likelihood over an intercept-only model."
+interpretation_ko: "LR 카이제곱이 크고 p값이 작으면 모든 비절편 계수가 0이라는 귀무가설에 반하는 증거가 있습니다. 자유도는 추가된 비절편 모수 수입니다."
+interpretation_en: "A large LR chi-square with a small p-value is evidence against the null that all non-intercept coefficients are zero. Its degrees of freedom equal the added non-intercept parameters."
+when_to_use_ko: null
+when_to_use_en: null
+how_to_report_ko: "예: \"LR χ²(3) = 12.48, p = .006\"처럼 자유도와 p값을 함께 보고합니다."
+how_to_report_en: "Report the degrees of freedom and p-value, e.g., \"LR χ²(3) = 12.48, p = .006.\""
+pitfalls_ko: "유의한 우도비 검정은 모형 전체가 절편만 모형보다 낫다는 뜻일 뿐, 적합이 충분하거나 보정·판별·외부 예측 성능이 좋다는 증거는 아닙니다."
+pitfalls_en: "A significant likelihood-ratio test only says the full model improves on the intercept-only model; it does not prove adequate fit, calibration, discrimination, or external predictive performance."
+assumptions: []
+alternatives: []
+related:
+  - chi-square-test
+  - degrees-of-freedom
+  - p-value
+references:
+  - citation: "R Core Team. Fitting Generalized Linear Models: stats::glm."
+    locator: "https://stat.ethz.ch/R-manual/R-devel/library/stats/html/glm.html"
+    verified: true
+  - citation: "SAS Institute. PROC LOGISTIC: Model Fitting Information and Testing Global Null Hypothesis BETA=0."
+    locator: "https://support.sas.com/documentation/cdl/en/statug/63962/HTML/default/statug_logistic_sect037.htm"
+    verified: true
+verification_status: verified

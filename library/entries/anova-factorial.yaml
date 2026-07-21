@@ -1,0 +1,32 @@
+slug: anova-factorial
+kind: method
+title_ko: "완전 셀 이원 Type III 분산분석"
+title_en: "Complete-cell two-factor Type III ANOVA"
+summary_ko: "두 고정 요인의 모든 조합 셀이 관측된 자료에서, 다른 요인의 수준을 동일 가중하여 두 주효과와 상호작용을 검정하는 방법입니다."
+summary_en: "A method for complete-cell data with two fixed factors that tests both main effects and their interaction while assigning equal weight to every level of the other factor."
+interpretation_ko: null
+interpretation_en: null
+when_to_use_ko: "하나의 척도형 결과, 서로 다른 두 범주형 고정 요인, 독립 행이 있고 두 요인의 완전 셀 교차표에서 각 셀에 최소 3개의 완전 관측값이 있을 때 사용합니다."
+when_to_use_en: "Use it with one scale outcome, two distinct categorical fixed factors, independent rows, a complete-cell cross-product, and at least three complete observations in every cell."
+how_to_report_ko: "완전 관측 수, 동일 셀 가중 Type III 정의, 상호작용, 필요한 Holm 보정 단순효과, 주효과, partial eta squared, 무가중 주변평균, 셀 평균, 점별 신뢰구간과 진단을 함께 보고합니다."
+how_to_report_en: "Report complete cases, the equal-cell-weight Type III definition, the interaction, any Holm-adjusted simple effects, main effects, partial eta squared, unweighted marginal means, cell means, pointwise intervals, and diagnostics."
+pitfalls_ko: "빈 셀, 반복·군집·가중·공변량·임의효과 설계는 지원하지 않고 실패로 종료합니다. 등분산과 잔차 정규성 경고를 확인해야 하며, 관측된 차이는 인과를 뜻하지 않습니다."
+pitfalls_en: "Empty cells and repeated, clustered, weighted, covariate, or random-effects designs are unsupported and fail closed. Review variance-homogeneity and residual-normality warnings; observed differences do not imply causality."
+assumptions:
+  - homogeneity-of-variance
+  - normality
+  - independence-of-errors
+alternatives: []
+related:
+  - type-iii-equal-cell-weight
+  - interaction-gated-simple-effects
+  - partial-eta-squared
+  - confidence-interval
+references:
+  - citation: "NIST/SEMATECH. Multi-factor Analysis of Variance. e-Handbook of Statistical Methods."
+    locator: "Section 1.3.5.5"
+    verified: true
+  - citation: "SAS Institute. PROC GLM for Unbalanced ANOVA. SAS/STAT User's Guide."
+    locator: "PROC GLM: Unbalanced ANOVA"
+    verified: true
+verification_status: needs_review

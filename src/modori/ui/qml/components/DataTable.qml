@@ -1,25 +1,52 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Layouts
+import "../theme"
 
-TableView {
+Item {
     id: root
-    clip: true
-    reuseItems: true
-    model: uiController.dataModel
-    property string editPolicyText: "셀 직접 수정은 재현 가능한 편집 단계가 준비된 뒤 활성화됩니다."
-    ToolTip.text: editPolicyText
+    property string editPolicyText: appBootstrap.text("data.edit_policy", appBootstrap.language)
 
-    delegate: Rectangle {
-        implicitWidth: 120
-        implicitHeight: 32
-        color: "#FFFFFF"
-        border.color: "#E4ECE8"
+    Theme {
+        id: theme
+    }
 
-        Text {
-            anchors.centerIn: parent
-            text: model.display ?? ""
-            color: "#17211D"
+    ColumnLayout {
+        anchors.fill: parent
+        spacing: theme.spaceNone
+
+        Label {
+            text: appBootstrap.text("transform.source_protected", appBootstrap.language)
+            color: theme.textSecondary
+            wrapMode: Text.WordWrap
+            Layout.fillWidth: true
+            Layout.leftMargin: theme.spaceMd
+            Layout.rightMargin: theme.spaceMd
+            Layout.topMargin: theme.spaceSm
+            Layout.bottomMargin: theme.spaceXs
+        }
+
+        Label {
+            text: uiController.dataViewNotice
+            color: theme.textSecondary
+            visible: uiController.dataViewNotice.length > 0
             elide: Text.ElideRight
+            Layout.fillWidth: true
+            Layout.leftMargin: theme.spaceMd
+            Layout.rightMargin: theme.spaceMd
+            Layout.topMargin: theme.spaceSm
+            Layout.bottomMargin: theme.spaceSm
+        }
+
+        DataGridView {
+            model: uiController.dataModel
+            reduceEffects: uiController.reduceEffects
+            cellWidth: theme.tableCellWidth
+            cellHeight: theme.tableCellHeight
+            emptyText: appBootstrap.text("data.grid_empty", appBootstrap.language)
+            ToolTip.text: root.editPolicyText
+            Layout.fillWidth: true
+            Layout.fillHeight: true
         }
     }
 }

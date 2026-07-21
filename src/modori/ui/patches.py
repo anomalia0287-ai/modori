@@ -77,16 +77,28 @@ def parse_step_patch(
             clean,
             {
                 "language",
+                "include_descriptives",
                 "include_reliability",
                 "include_comparison",
+                "include_association",
+                "include_group_models",
+                "include_dimension_reduction",
                 "include_regression",
                 "include_figures",
             },
         )
         return ReportPatch(
             language=_required_language(clean, "language"),
+            include_descriptives=_optional_bool(clean, "include_descriptives", True),
             include_reliability=_required_bool(clean, "include_reliability"),
             include_comparison=_required_bool(clean, "include_comparison"),
+            include_association=_optional_bool(clean, "include_association", True),
+            include_group_models=_optional_bool(clean, "include_group_models", True),
+            include_dimension_reduction=_optional_bool(
+                clean,
+                "include_dimension_reduction",
+                True,
+            ),
             include_regression=_required_bool(clean, "include_regression"),
             include_figures=_required_bool(clean, "include_figures"),
         )
@@ -191,6 +203,12 @@ def _required_bool(payload: Mapping[str, Any], key: str) -> bool:
     if not isinstance(value, bool):
         raise PatchValidationError(f"{key} 필드는 boolean이어야 합니다.")
     return value
+
+
+def _optional_bool(payload: Mapping[str, Any], key: str, default: bool) -> bool:
+    if key not in payload:
+        return default
+    return _required_bool(payload, key)
 
 
 def _required_scalar(payload: Mapping[str, Any], key: str) -> str | int | float:

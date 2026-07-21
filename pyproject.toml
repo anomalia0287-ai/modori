@@ -2,8 +2,11 @@
 name = "modori"
 version = "0.1.0"
 description = "Replayable statistical analysis pipeline for Modori."
+readme = "README.md"
+license = "GPL-3.0-only"
 requires-python = ">=3.11"
 dependencies = [
+    "defusedxml>=0.7",
     "factor_analyzer>=0.5",
     "matplotlib>=3.8",
     "openpyxl>=3.1",
@@ -16,11 +19,13 @@ dependencies = [
     "scikit-learn>=1.2.2,<1.8",
     "scipy>=1.11",
     "statsmodels>=0.14",
+    "xlrd>=2.0.1,<3",
 ]
 
 [project.optional-dependencies]
 dev = [
     "bandit>=1.9",
+    "mpmath>=1.3",
     "pip-audit>=2.10",
     "pytest>=8.0",
     "ruff>=0.15",
@@ -36,7 +41,7 @@ typing = [
 modori = "modori.app:main"
 
 [build-system]
-requires = ["setuptools>=69", "wheel"]
+requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
@@ -49,11 +54,18 @@ where = ["src"]
     "qml/dialogs/*.qml",
     "qml/screens/*.qml",
     "qml/theme/*.qml",
+    "qml/assets/fonts/*.ttf",
+    "qml/assets/fonts/*.txt",
+    "qml/assets/icons/*.svg",
+    "qml/assets/icons/*.txt",
 ]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
+markers = [
+    "slow_stats: long-running statistical adequacy checks excluded from the default gate",
+]
 
 [tool.ruff]
 target-version = "py311"

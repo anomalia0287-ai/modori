@@ -1,0 +1,25 @@
+slug: spearman-correlation
+kind: statistic
+title_ko: "Spearman 순위상관"
+title_en: "Spearman rank correlation"
+summary_ko: "값의 순위를 사용해 두 변수의 단조 관련성 정도를 나타내는 상관계수입니다."
+summary_en: "A rank-based coefficient that describes monotonic association between two variables."
+interpretation_ko: "절댓값이 클수록 순위 기준 관련성이 강합니다. 서열형 변수나 비정규·비선형 경향에서 Pearson보다 적절할 수 있습니다."
+interpretation_en: "Larger absolute values indicate stronger rank-based association. It can be more suitable than Pearson for ordinal data or monotonic non-normal patterns."
+when_to_use_ko: null
+when_to_use_en: null
+how_to_report_ko: "ρ 또는 rho, p값, N을 보고하고, 상관을 인과 표현으로 쓰지 않습니다."
+how_to_report_en: "Report ρ or rho, p-value, and N, without causal wording."
+pitfalls_ko: "Spearman도 인과를 증명하지 않으며, 동점이 많은 자료에서는 해석에 주의가 필요합니다."
+pitfalls_en: "Spearman does not prove causality, and heavy ties require caution."
+assumptions: []
+alternatives:
+  - pearson-correlation
+related:
+  - correlation-analysis
+  - p-value
+references:
+  - citation: "Spearman, C. (1904). The proof and measurement of association between two things. The American Journal of Psychology, 15(1), 72-101."
+    locator: "15(1), 72-101"
+    verified: true
+verification_status: needs_review

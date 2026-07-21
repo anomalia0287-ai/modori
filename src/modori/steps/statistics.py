@@ -2,13 +2,16 @@ from __future__ import annotations
 
 import os
 import warnings
+from collections.abc import Mapping
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 import pandas as pd
 from scipy import stats
 
 from modori.cache import matplotlib_cache_dir
+from modori.statistics_numerics import require_well_conditioned_correlation_matrix
 
 _matplotlib_cache = matplotlib_cache_dir()
 os.environ["MPLCONFIGDIR"] = str(_matplotlib_cache)
@@ -18,11 +21,18 @@ from factor_analyzer import FactorAnalyzer
 
 from modori.core import PipelineContext, Step, StepResult
 from modori.results import ChartSpec, ComparisonResult, GroupDesc, ReliabilityResult
+from modori.steps.input_validation import (
+    group_labels,
+    ordered_group_values,
+    raise_for_step_input_issues,
+    validate_step_input,
+)
 
 
 STATISTICS_ENGINE_VOCABULARY = frozenset(
     {
         "alpha_if_deleted",
+        "cohen_dz",
         "cohen_d",
         "confidence_interval",
         "corrected_item_total_correlation",
@@ -32,22 +42,139 @@ STATISTICS_ENGINE_VOCABULARY = frozenset(
         "mann_whitney",
         "mcdonald_omega",
         "p_value",
+        "paired_t",
         "rank_biserial",
         "shapiro_wilk",
         "statistic",
         "student_t",
         "welch_t",
+        "wilcoxon",
     }
 )
+_MANN_WHITNEY_EXACT_MAX_MIN_N = 25
+
+
+def _require_schema_version(
+    params: Mapping[str, object],
+    *,
+    current: int,
+    module_key: str,
+) -> int | None:
+    version = params.get("schema_version")
+    if version is None:
+        return None
+    if not isinstance(version, int) or isinstance(version, bool):
+        raise ValueError(f"{module_key} schema_version must be an integer")
+    if version > current:
+        raise ValueError(f"{module_key} params use a newer schema_version")
+    if version < current:
+        raise ValueError(f"unsupported {module_key} schema_version: {version}")
+    return version
+
+
+def _reject_unknown_params(
+    params: Mapping[str, object],
+    *,
+    allowed: set[str],
+    module_key: str,
+) -> None:
+    unknown = set(params) - allowed
+    if unknown:
+        names = ", ".join(sorted(unknown))
+        raise ValueError(f"unknown {module_key} params: {names}")
+
+
+def _string_param(params: Mapping[str, object], key: str, module_key: str) -> str:
+    value = params.get(key)
+    if not isinstance(value, str) or not value:
+        raise ValueError(f"{module_key} param {key} must be a non-empty string")
+    return value
+
+
+def _string_list_param(
+    params: Mapping[str, object],
+    key: str,
+    module_key: str,
+) -> list[str]:
+    value = params.get(key)
+    if (
+        not isinstance(value, list)
+        or not value
+        or not all(isinstance(item, str) and item for item in value)
+    ):
+        raise ValueError(
+            f"{module_key} param {key} must be a non-empty list of strings"
+        )
+    return list(value)
+
+
+def _policy_param(
+    params: Mapping[str, object],
+    key: str,
+    default: dict[str, object],
+    module_key: str,
+) -> dict[str, object]:
+    value = params.get(key, default)
+    if not isinstance(value, Mapping):
+        raise ValueError(f"{module_key} param {key} must be an object")
+    return dict(value)
 
 
 @dataclass
 class ReliabilityStep(Step):
     step_type = "stats.reliability"
     produces_analysis = True
+    CURRENT_SCHEMA_VERSION = 1
+    CONTRACT_PARAM_EXAMPLES = {
+        "current": {
+            "schema_version": 1,
+            "items": ["q1", "q2", "q3"],
+            "scale_name": "scale",
+        },
+        "legacy": {"items": ["q1", "q2", "q3"], "scale_name": "scale"},
+        "newer": {"schema_version": 999, "items": ["q1", "q2", "q3"]},
+        "unknown_current": {
+            "schema_version": 1,
+            "items": ["q1", "q2", "q3"],
+            "extra": "bad",
+        },
+    }
+
+    @classmethod
+    def migrate_params(cls, params: dict[str, object]) -> dict[str, object]:
+        version = _require_schema_version(
+            params,
+            current=cls.CURRENT_SCHEMA_VERSION,
+            module_key="reliability",
+        )
+        if version is None:
+            return {"schema_version": cls.CURRENT_SCHEMA_VERSION, **params}
+        return params
+
+    @classmethod
+    def validate_params(cls, params: dict[str, object]) -> dict[str, object]:
+        _reject_unknown_params(
+            params,
+            allowed={"schema_version", "items", "scale_name"},
+            module_key="reliability",
+        )
+        if params.get("schema_version") != cls.CURRENT_SCHEMA_VERSION:
+            raise ValueError(
+                "reliability params were not migrated to the current schema"
+            )
+        items = _string_list_param(params, "items", "reliability")
+        scale_name = params.get("scale_name", "scale")
+        if not isinstance(scale_name, str) or not scale_name:
+            raise ValueError("reliability param scale_name must be a non-empty string")
+        return {
+            "schema_version": cls.CURRENT_SCHEMA_VERSION,
+            "items": items,
+            "scale_name": scale_name,
+        }
 
     def compute(self, ctx: PipelineContext) -> StepResult:
-        items = list(self.params["items"])
+        params = self.validate_params(self.migrate_params(dict(self.params)))
+        items = list(params["items"])
         if len(set(items)) != len(items):
             raise ValueError("Reliability items must be unique")
         if len(items) < 3:
@@ -55,7 +182,7 @@ class ReliabilityStep(Step):
                 "Reliability requires at least three items because "
                 "alpha-if-deleted is undefined for two-item scales."
             )
-        scale_name = str(self.params.get("scale_name", "scale"))
+        scale_name = str(params["scale_name"])
         frame = ctx.dataset.frame_for_compute(items).dropna(axis=0, how="any")
         if len(frame) < 2:
             raise ValueError("Reliability requires at least two complete cases.")
@@ -66,8 +193,7 @@ class ReliabilityStep(Step):
         ]
         if non_numeric_items:
             raise ValueError(
-                "Reliability items must be numeric: "
-                f"{', '.join(non_numeric_items)}"
+                f"Reliability items must be numeric: {', '.join(non_numeric_items)}"
             )
         zero_variance_items = [
             column for column in frame.columns if frame[column].nunique(dropna=True) < 2
@@ -104,7 +230,9 @@ class ReliabilityStep(Step):
             new_columns={},
             new_variables={},
             analysis=result,
-            notes=[f"Cronbach's alpha indicates {self._alpha_grade(alpha)} internal consistency."],
+            notes=[
+                f"Cronbach's alpha indicates {self._alpha_grade(alpha)} internal consistency."
+            ],
         )
 
     @staticmethod
@@ -130,6 +258,18 @@ class ReliabilityStep(Step):
         and applies omega-total as (sum(lambda))^2 /
         ((sum(lambda))^2 + sum(uniqueness)).
         """
+        corr = frame.corr().to_numpy(dtype=float)
+        if corr.shape[0] != corr.shape[1] or not np.all(np.isfinite(corr)):
+            raise ValueError(
+                "McDonald's omega could not be estimated because the item "
+                "correlation matrix is not finite."
+            )
+        if np.linalg.matrix_rank(corr) < corr.shape[0]:
+            raise ValueError(
+                "McDonald's omega could not be estimated because the item "
+                "correlation matrix is singular."
+            )
+        require_well_conditioned_correlation_matrix(corr, label="McDonald's omega")
         analyzer = FactorAnalyzer(n_factors=1, rotation=None, method="ml")
         with warnings.catch_warnings():
             warnings.filterwarnings(
@@ -137,15 +277,31 @@ class ReliabilityStep(Step):
                 message="'force_all_finite' was renamed to 'ensure_all_finite'",
                 category=FutureWarning,
             )
+            warnings.simplefilter("error", RuntimeWarning)
+            warnings.simplefilter("error", UserWarning)
             try:
                 analyzer.fit(frame)
-            except np.linalg.LinAlgError as exc:
+            except (np.linalg.LinAlgError, RuntimeWarning, UserWarning) as exc:
                 raise ValueError(
                     "McDonald's omega could not be estimated because the item "
-                    "correlation matrix is singular."
+                    "factor model is numerically unstable."
                 ) from exc
         loadings = analyzer.loadings_.ravel()
         uniquenesses = analyzer.get_uniquenesses()
+        if not np.all(np.isfinite(loadings)) or not np.all(np.isfinite(uniquenesses)):
+            raise ValueError(
+                "McDonald's omega produced non-finite factor estimates; "
+                "inference is undefined."
+            )
+        if (
+            np.any(np.abs(loadings) > 1.0)
+            or np.any(uniquenesses <= 0.0)
+            or np.any(uniquenesses > 1.0)
+        ):
+            raise ValueError(
+                "McDonald's omega produced invalid Heywood-like factor estimates; "
+                "inference is undefined."
+            )
         common_variance = float(loadings.sum() ** 2)
         error_variance = float(uniquenesses.sum())
         return common_variance / (common_variance + error_variance)
@@ -161,14 +317,17 @@ class ReliabilityStep(Step):
         return "low (caution)"
 
     def reads(self) -> set[str]:
-        return set(self.params["items"])
+        params = self.validate_params(self.migrate_params(dict(self.params)))
+        return set(params["items"])
 
     def writes(self) -> set[str]:
-        scale_name = str(self.params.get("scale_name", "scale"))
+        params = self.validate_params(self.migrate_params(dict(self.params)))
+        scale_name = str(params["scale_name"])
         return {f"reliability:{scale_name}"}
 
     def provenance(self) -> str:
-        return f"computed reliability for {self.params.get('scale_name', 'scale')}"
+        params = self.validate_params(self.migrate_params(dict(self.params)))
+        return f"computed reliability for {params['scale_name']}"
 
 
 Step.register_type(ReliabilityStep.step_type, ReliabilityStep)
@@ -178,35 +337,89 @@ Step.register_type(ReliabilityStep.step_type, ReliabilityStep)
 class CompareGroupsStep(Step):
     step_type = "stats.compare_groups"
     produces_analysis = True
+    CURRENT_SCHEMA_VERSION = 1
+    CONTRACT_PARAM_EXAMPLES = {
+        "current": {
+            "schema_version": 1,
+            "dv": "score",
+            "group": "group",
+            "routing_policy": {"preset": "modern"},
+        },
+        "legacy": {
+            "dv": "score",
+            "group": "group",
+            "routing_policy": {"preset": "modern"},
+        },
+        "newer": {"schema_version": 999, "dv": "score", "group": "group"},
+        "unknown_current": {
+            "schema_version": 1,
+            "dv": "score",
+            "group": "group",
+            "routing_policy": {"preset": "modern"},
+            "extra": "bad",
+        },
+    }
+
+    @classmethod
+    def migrate_params(cls, params: dict[str, object]) -> dict[str, object]:
+        version = _require_schema_version(
+            params,
+            current=cls.CURRENT_SCHEMA_VERSION,
+            module_key="compare_groups",
+        )
+        if version is None:
+            return {"schema_version": cls.CURRENT_SCHEMA_VERSION, **params}
+        return params
+
+    @classmethod
+    def validate_params(cls, params: dict[str, object]) -> dict[str, object]:
+        _reject_unknown_params(
+            params,
+            allowed={"schema_version", "dv", "group", "routing_policy"},
+            module_key="compare_groups",
+        )
+        if params.get("schema_version") != cls.CURRENT_SCHEMA_VERSION:
+            raise ValueError(
+                "compare_groups params were not migrated to the current schema"
+            )
+        return {
+            "schema_version": cls.CURRENT_SCHEMA_VERSION,
+            "dv": _string_param(params, "dv", "compare_groups"),
+            "group": _string_param(params, "group", "compare_groups"),
+            "routing_policy": _policy_param(
+                params,
+                "routing_policy",
+                {"preset": "modern"},
+                "compare_groups",
+            ),
+        }
 
     def compute(self, ctx: PipelineContext) -> StepResult:
-        dv = str(self.params["dv"])
-        group_var = str(self.params["group"])
-        if dv == group_var:
-            raise ValueError(
-                "CompareGroupsStep dependent variable and group variable must differ."
-            )
-        frame = ctx.dataset.frame_for_compute([dv, group_var]).dropna(axis=0, how="any")
-        if not pd.api.types.is_numeric_dtype(frame[dv]):
-            raise ValueError("CompareGroupsStep dependent variable must be numeric.")
-        group_values = sorted(
-            list(pd.unique(frame[group_var])),
-            key=self._group_sort_key,
-        )
-        if len(group_values) != 2:
-            raise ValueError("CompareGroupsStep requires exactly two groups.")
+        params = self.validate_params(self.migrate_params(dict(self.params)))
+        issues = validate_step_input(ctx.dataset, self.step_type, params)
+        raise_for_step_input_issues(self.step_type, issues)
+        dv = str(params["dv"])
+        group_var = str(params["group"])
+        source_frame = ctx.dataset.frame_for_compute([dv, group_var])
+        n_total = len(source_frame)
+        frame = source_frame.dropna(axis=0, how="any")
+        n_obs = len(frame)
+        n_dropped = n_total - n_obs
+        group_values = ordered_group_values(frame, group_var)
 
         first_value, second_value = group_values
         first = frame.loc[frame[group_var] == first_value, dv]
         second = frame.loc[frame[group_var] == second_value, dv]
-        self._validate_group_sizes(first, second)
-        labels = self._group_labels(ctx, group_var, group_values)
-        if labels[0] == labels[1]:
-            raise ValueError("CompareGroupsStep group labels must be unique.")
+        labels = group_labels(ctx.dataset, group_var, group_values)
         dv_label = ctx.dataset.variables[dv].label or dv
         group_label = ctx.dataset.variables[group_var].label or group_var
         assumptions = self._assumptions(first, second)
-        route, route_reason = self._route(first, second, assumptions)
+        route, route_reason = self._route(
+            first,
+            second,
+            assumptions,
+            policy=dict(params["routing_policy"]),
+        )
 
         if route == "mann_whitney":
             analysis = self._mann_whitney_result(
@@ -218,7 +431,10 @@ class CompareGroupsStep(Step):
                 first,
                 second,
                 assumptions,
-                route_reason,
+                route_reason=route_reason,
+                n_obs=n_obs,
+                n_total=n_total,
+                n_dropped=n_dropped,
             )
             note_test_name = "Mann-Whitney U"
         else:
@@ -233,8 +449,13 @@ class CompareGroupsStep(Step):
                 assumptions,
                 correction=(route == "welch_t"),
                 route_reason=route_reason,
+                n_obs=n_obs,
+                n_total=n_total,
+                n_dropped=n_dropped,
             )
-            note_test_name = "Welch's t-test" if route == "welch_t" else "Student's t-test"
+            note_test_name = (
+                "Welch's t-test" if route == "welch_t" else "Student's t-test"
+            )
 
         return StepResult(
             new_columns={},
@@ -248,8 +469,15 @@ class CompareGroupsStep(Step):
         first: pd.Series,
         second: pd.Series,
         assumptions: dict[str, float],
+        policy: dict[str, Any] | None = None,
     ) -> tuple[str, str]:
-        policy = dict(self.params.get("routing_policy", {"preset": "modern"}))
+        policy = dict(
+            self.validate_params(self.migrate_params(dict(self.params)))[
+                "routing_policy"
+            ]
+            if policy is None
+            else policy
+        )
         preset = str(policy.get("preset", "modern"))
         if preset not in {"modern", "always_welch", "classic", "custom"}:
             raise ValueError(f"Unsupported routing_policy preset: {preset}")
@@ -270,15 +498,25 @@ class CompareGroupsStep(Step):
             or assumptions["shapiro_g2_p"] < normality_threshold
         )
         variance_unequal = use_levene and assumptions["levene_p"] < 0.05
-        if allow_nonparametric and normality_violated and min(len(first), len(second)) < nonparametric_cutoff:
+        if (
+            allow_nonparametric
+            and normality_violated
+            and min(len(first), len(second)) < nonparametric_cutoff
+        ):
             return "mann_whitney", "normality violated + small sample"
-        if variance_unequal:
-            return "welch_t", "unequal variance -> Welch correction"
-        if normality_violated and preset == "classic":
-            return "student_t", "classic policy: nonparametric auto-reroute off"
-        if normality_violated and preset == "custom":
-            return "student_t", "custom policy: nonparametric cutoff not met"
-        return "student_t", "assumptions met"
+        if preset == "classic":
+            if variance_unequal:
+                return "welch_t", "unequal variance -> Welch correction"
+            if normality_violated:
+                return "student_t", "classic policy: nonparametric auto-reroute off"
+            return "student_t", "assumptions met"
+        if preset == "custom" and policy.get("default_test") == "student_t":
+            if variance_unequal:
+                return "welch_t", "unequal variance -> Welch correction"
+            if normality_violated:
+                return "student_t", "custom policy: nonparametric cutoff not met"
+            return "student_t", "custom policy: default_test student_t"
+        return "welch_t", "Welch-first policy"
 
     @staticmethod
     def _assumptions(first: pd.Series, second: pd.Series) -> dict[str, float]:
@@ -293,13 +531,6 @@ class CompareGroupsStep(Step):
             "levene_p": float(homoscedasticity.loc["levene", "pval"]),
         }
 
-    @staticmethod
-    def _validate_group_sizes(first: pd.Series, second: pd.Series) -> None:
-        if len(first) < 3 or len(second) < 3:
-            raise ValueError("CompareGroupsStep requires at least three valid cases per group.")
-        if first.nunique(dropna=True) < 2 or second.nunique(dropna=True) < 2:
-            raise ValueError("CompareGroupsStep requires non-zero variance in each group.")
-
     def _t_result(
         self,
         dv: str,
@@ -313,8 +544,14 @@ class CompareGroupsStep(Step):
         *,
         correction: bool,
         route_reason: str,
+        n_obs: int,
+        n_total: int,
+        n_dropped: int,
     ) -> ComparisonResult:
-        test = pg.ttest(first, second, correction=correction).iloc[0]
+        pooled_offset = float(pd.concat([first, second]).mean())
+        first_for_test = first.astype(float) - pooled_offset
+        second_for_test = second.astype(float) - pooled_offset
+        test = pg.ttest(first_for_test, second_for_test, correction=correction).iloc[0]
         test_name = "welch_t" if correction else "student_t"
         ci = tuple(float(value) for value in test["CI95"])
         return ComparisonResult(
@@ -334,13 +571,13 @@ class CompareGroupsStep(Step):
             chart_spec=ChartSpec(
                 type="mean_ci_jitter",
                 title="Group means with 95% CI",
-                data={
-                    labels[0]: first.tolist(),
-                    labels[1]: second.tolist(),
-                },
+                data=self._group_chart_payload(labels, first, second, include_ci=True),
                 x_label=group_var,
                 y_label=dv,
             ),
+            n_obs=n_obs,
+            n_total=n_total,
+            n_dropped=n_dropped,
             dv_label=dv_label,
             group_label=group_label,
         )
@@ -355,9 +592,20 @@ class CompareGroupsStep(Step):
         first: pd.Series,
         second: pd.Series,
         assumptions: dict[str, float],
+        *,
         route_reason: str,
+        n_obs: int,
+        n_total: int,
+        n_dropped: int,
     ) -> ComparisonResult:
-        test = pg.mwu(first, second).iloc[0]
+        method_details = self._mann_whitney_method_details(first, second)
+        test = pg.mwu(
+            first,
+            second,
+            alternative="two-sided",
+            method=str(method_details["method"]),
+            use_continuity=bool(method_details["use_continuity"]),
+        ).iloc[0]
         return ComparisonResult(
             dv=dv,
             group_var=group_var,
@@ -375,16 +623,39 @@ class CompareGroupsStep(Step):
             chart_spec=ChartSpec(
                 type="box",
                 title="Group distributions",
-                data={
-                    labels[0]: first.tolist(),
-                    labels[1]: second.tolist(),
-                },
+                data=self._group_chart_payload(labels, first, second),
                 x_label=group_var,
                 y_label=dv,
             ),
+            n_obs=n_obs,
+            n_total=n_total,
+            n_dropped=n_dropped,
             dv_label=dv_label,
             group_label=group_label,
+            method_details=method_details,
         )
+
+    @staticmethod
+    def _mann_whitney_method_details(
+        first: pd.Series, second: pd.Series
+    ) -> dict[str, object]:
+        first_values = first.to_numpy(dtype=float)
+        second_values = second.to_numpy(dtype=float)
+        combined = np.concatenate([first_values, second_values])
+        ties_present = len(np.unique(combined)) < len(combined)
+        method = (
+            "asymptotic"
+            if ties_present
+            or min(len(first_values), len(second_values))
+            > _MANN_WHITNEY_EXACT_MAX_MIN_N
+            else "exact"
+        )
+        return {
+            "method": method,
+            "ties_present": bool(ties_present),
+            "use_continuity": True,
+            "alternative": "two-sided",
+        }
 
     @staticmethod
     def _group_descriptions(
@@ -408,30 +679,27 @@ class CompareGroupsStep(Step):
         }
 
     @staticmethod
-    def _group_labels(
-        ctx: PipelineContext,
-        group_var: str,
-        group_values: list[object],
-    ) -> tuple[str, str]:
-        value_labels = ctx.dataset.variables[group_var].value_labels
-        labels = []
-        missing_label = object()
-        for value in group_values:
-            label = value_labels.get(value, missing_label)
-            if label is missing_label:
-                try:
-                    label = value_labels.get(float(value), missing_label)
-                except (TypeError, ValueError):
-                    label = missing_label
-            labels.append(str(value) if label is missing_label else str(label))
-        return labels[0], labels[1]
-
-    @staticmethod
-    def _group_sort_key(value: object) -> tuple[int, float | str]:
-        try:
-            return (0, float(value))
-        except (TypeError, ValueError):
-            return (1, str(value))
+    def _group_chart_payload(
+        labels: tuple[str, str],
+        first: pd.Series,
+        second: pd.Series,
+        *,
+        include_ci: bool = False,
+    ) -> dict[str, list[dict[str, object]]]:
+        groups: list[dict[str, object]] = []
+        for label, values in ((labels[0], first), (labels[1], second)):
+            numeric = [float(value) for value in values.tolist()]
+            mean = float(values.mean())
+            payload: dict[str, object] = {
+                "label": label,
+                "values": numeric,
+                "mean": mean,
+            }
+            if include_ci and len(values) > 1:
+                margin = float(stats.t.ppf(0.975, len(values) - 1) * stats.sem(values))
+                payload["ci95"] = (mean - margin, mean + margin)
+            groups.append(payload)
+        return {"groups": groups}
 
     @staticmethod
     def _signed_cohen_d(magnitude: float, first: pd.Series, second: pd.Series) -> float:
@@ -441,13 +709,375 @@ class CompareGroupsStep(Step):
         return abs(magnitude) if mean_difference > 0 else -abs(magnitude)
 
     def reads(self) -> set[str]:
-        return {str(self.params["dv"]), str(self.params["group"])}
+        params = self.validate_params(self.migrate_params(dict(self.params)))
+        return {str(params["dv"]), str(params["group"])}
 
     def writes(self) -> set[str]:
-        return {f"comparison:{self.params['dv']}:{self.params['group']}"}
+        params = self.validate_params(self.migrate_params(dict(self.params)))
+        return {f"comparison:{params['dv']}:{params['group']}"}
 
     def provenance(self) -> str:
-        return f"compared {self.params['dv']} by {self.params['group']}"
+        params = self.validate_params(self.migrate_params(dict(self.params)))
+        return f"compared {params['dv']} by {params['group']}"
 
 
 Step.register_type(CompareGroupsStep.step_type, CompareGroupsStep)
+
+
+@dataclass
+class PairedComparisonStep(Step):
+    step_type = "stats.paired_comparison"
+    produces_analysis = True
+    CURRENT_SCHEMA_VERSION = 1
+    CONTRACT_PARAM_EXAMPLES = {
+        "current": {
+            "schema_version": 1,
+            "before": "pre",
+            "after": "post",
+            "routing_policy": {"preset": "modern"},
+        },
+        "legacy": {"before": "pre", "after": "post"},
+        "newer": {"schema_version": 999, "before": "pre", "after": "post"},
+        "unknown_current": {
+            "schema_version": 1,
+            "before": "pre",
+            "after": "post",
+            "routing_policy": {"preset": "modern"},
+            "extra": "bad",
+        },
+    }
+
+    @classmethod
+    def migrate_params(cls, params: dict[str, object]) -> dict[str, object]:
+        version = _require_schema_version(
+            params,
+            current=cls.CURRENT_SCHEMA_VERSION,
+            module_key="paired_comparison",
+        )
+        if version is None:
+            return {"schema_version": cls.CURRENT_SCHEMA_VERSION, **params}
+        return params
+
+    @classmethod
+    def validate_params(cls, params: dict[str, object]) -> dict[str, object]:
+        _reject_unknown_params(
+            params,
+            allowed={"schema_version", "before", "after", "routing_policy"},
+            module_key="paired_comparison",
+        )
+        if params.get("schema_version") != cls.CURRENT_SCHEMA_VERSION:
+            raise ValueError(
+                "paired_comparison params were not migrated to the current schema"
+            )
+        return {
+            "schema_version": cls.CURRENT_SCHEMA_VERSION,
+            "before": _string_param(params, "before", "paired_comparison"),
+            "after": _string_param(params, "after", "paired_comparison"),
+            "routing_policy": _policy_param(
+                params,
+                "routing_policy",
+                {"preset": "modern"},
+                "paired_comparison",
+            ),
+        }
+
+    def compute(self, ctx: PipelineContext) -> StepResult:
+        params = self.validate_params(self.migrate_params(dict(self.params)))
+        issues = validate_step_input(ctx.dataset, self.step_type, params)
+        raise_for_step_input_issues(self.step_type, issues)
+        before = str(params["before"])
+        after = str(params["after"])
+
+        source_frame = ctx.dataset.frame_for_compute([before, after])
+        n_total = len(source_frame)
+
+        frame = source_frame.dropna(axis=0, how="any")
+        n_obs = len(frame)
+        n_dropped = n_total - n_obs
+
+        before_scores = frame[before]
+        after_scores = frame[after]
+        differences = after_scores - before_scores
+
+        assumptions = {
+            "shapiro_diff_p": float(stats.shapiro(differences).pvalue),
+        }
+        route, route_reason = self._route(
+            n_obs,
+            assumptions,
+            policy=dict(params["routing_policy"]),
+        )
+        before_label = ctx.dataset.variables[before].label or before
+        after_label = ctx.dataset.variables[after].label or after
+
+        if route == "wilcoxon":
+            analysis = self._wilcoxon_result(
+                before,
+                after,
+                before_label,
+                after_label,
+                before_scores,
+                after_scores,
+                assumptions,
+                route_reason=route_reason,
+                n_obs=n_obs,
+                n_total=n_total,
+                n_dropped=n_dropped,
+            )
+            note_test_name = "Wilcoxon signed-rank test"
+        else:
+            analysis = self._paired_t_result(
+                before,
+                after,
+                before_label,
+                after_label,
+                before_scores,
+                after_scores,
+                assumptions,
+                route_reason=route_reason,
+                n_obs=n_obs,
+                n_total=n_total,
+                n_dropped=n_dropped,
+            )
+            note_test_name = "paired t-test"
+
+        return StepResult(
+            new_columns={},
+            new_variables={},
+            analysis=analysis,
+            notes=[f"Selected {note_test_name} because {analysis.route_reason}."],
+        )
+
+    def _route(
+        self,
+        n_obs: int,
+        assumptions: dict[str, float],
+        policy: dict[str, Any] | None = None,
+    ) -> tuple[str, str]:
+        policy = dict(
+            self.validate_params(self.migrate_params(dict(self.params)))[
+                "routing_policy"
+            ]
+            if policy is None
+            else policy
+        )
+        preset = str(policy.get("preset", "modern"))
+        if preset not in {"modern", "always_wilcoxon", "classic"}:
+            raise ValueError(f"Unsupported routing_policy preset: {preset}")
+
+        normality_threshold = float(policy.get("normality_p", 0.05))
+        nonparametric_cutoff = int(policy.get("nonparametric_n_cutoff", 30))
+        if not 0 < normality_threshold < 1:
+            raise ValueError("normality_p must be greater than 0 and less than 1")
+        if nonparametric_cutoff < 3:
+            raise ValueError("nonparametric_n_cutoff must be at least 3")
+
+        if preset == "always_wilcoxon":
+            return "wilcoxon", "always_wilcoxon policy"
+        if preset == "classic":
+            return "paired_t", "classic policy"
+        if (
+            assumptions["shapiro_diff_p"] < normality_threshold
+            and n_obs < nonparametric_cutoff
+        ):
+            return "wilcoxon", "non-normal paired differences + small sample"
+        return "paired_t", "paired differences compatible with t-test"
+
+    def _paired_t_result(
+        self,
+        before: str,
+        after: str,
+        before_label: str,
+        after_label: str,
+        before_scores: pd.Series,
+        after_scores: pd.Series,
+        assumptions: dict[str, float],
+        *,
+        route_reason: str,
+        n_obs: int,
+        n_total: int,
+        n_dropped: int,
+    ) -> ComparisonResult:
+        test = pg.ttest(after_scores, before_scores, paired=True).iloc[0]
+        ci = tuple(float(value) for value in test["CI95"])
+        return ComparisonResult(
+            dv=after,
+            group_var=before,
+            test_name="paired_t",
+            route_reason=route_reason,
+            groups=self._paired_descriptions(
+                (before_label, after_label),
+                before_scores,
+                after_scores,
+            ),
+            statistic=float(test["T"]),
+            df=float(test["dof"]),
+            p_value=float(test["p_val"]),
+            effect_name="cohen_dz",
+            effect_value=float(test["T"]) / float(np.sqrt(n_obs)),
+            mean_diff_ci=(ci[0], ci[1]),
+            assumptions=assumptions,
+            apa_template_id="paired_t.v1",
+            chart_spec=self._paired_chart(
+                before,
+                after,
+                before_label,
+                after_label,
+                before_scores,
+                after_scores,
+            ),
+            n_obs=n_obs,
+            n_total=n_total,
+            n_dropped=n_dropped,
+            dv_label=after_label,
+            group_label=before_label,
+            paired=True,
+            before_label=before_label,
+            after_label=after_label,
+        )
+
+    def _wilcoxon_result(
+        self,
+        before: str,
+        after: str,
+        before_label: str,
+        after_label: str,
+        before_scores: pd.Series,
+        after_scores: pd.Series,
+        assumptions: dict[str, float],
+        *,
+        route_reason: str,
+        n_obs: int,
+        n_total: int,
+        n_dropped: int,
+    ) -> ComparisonResult:
+        method_details = self._wilcoxon_method_details(before_scores, after_scores)
+        test = pg.wilcoxon(
+            after_scores,
+            before_scores,
+            alternative="two-sided",
+            correction=bool(method_details["correction"]),
+            method=str(method_details["method"]),
+            zero_method=str(method_details["zero_method"]),
+        ).iloc[0]
+        return ComparisonResult(
+            dv=after,
+            group_var=before,
+            test_name="wilcoxon",
+            route_reason=route_reason,
+            groups=self._paired_descriptions(
+                (before_label, after_label),
+                before_scores,
+                after_scores,
+            ),
+            statistic=float(test["W_val"]),
+            df=None,
+            p_value=float(test["p_val"]),
+            effect_name="rank_biserial",
+            effect_value=float(test["RBC"]),
+            mean_diff_ci=None,
+            assumptions=assumptions,
+            apa_template_id="wilcoxon.v1",
+            chart_spec=self._paired_chart(
+                before,
+                after,
+                before_label,
+                after_label,
+                before_scores,
+                after_scores,
+            ),
+            n_obs=n_obs,
+            n_total=n_total,
+            n_dropped=n_dropped,
+            dv_label=after_label,
+            group_label=before_label,
+            paired=True,
+            before_label=before_label,
+            after_label=after_label,
+            method_details=method_details,
+        )
+
+    @staticmethod
+    def _wilcoxon_method_details(
+        before_scores: pd.Series,
+        after_scores: pd.Series,
+    ) -> dict[str, object]:
+        differences = after_scores.to_numpy(dtype=float) - before_scores.to_numpy(
+            dtype=float
+        )
+        zeros_present = bool(np.any(differences == 0.0))
+        nonzero_abs = np.abs(differences[differences != 0.0])
+        ties_present = len(np.unique(nonzero_abs)) < len(nonzero_abs)
+        method = (
+            "asymptotic"
+            if zeros_present or ties_present or len(nonzero_abs) > 50
+            else "exact"
+        )
+        return {
+            "method": method,
+            "zero_method": "wilcox",
+            "zeros_present": zeros_present,
+            "ties_present": bool(ties_present),
+            "correction": True,
+            "alternative": "two-sided",
+        }
+
+    @staticmethod
+    def _paired_descriptions(
+        labels: tuple[str, str],
+        before_scores: pd.Series,
+        after_scores: pd.Series,
+    ) -> dict[str, GroupDesc]:
+        return {
+            labels[0]: GroupDesc(
+                n=int(before_scores.count()),
+                mean=float(before_scores.mean()),
+                sd=float(before_scores.std(ddof=1)),
+                median=float(before_scores.median()),
+            ),
+            labels[1]: GroupDesc(
+                n=int(after_scores.count()),
+                mean=float(after_scores.mean()),
+                sd=float(after_scores.std(ddof=1)),
+                median=float(after_scores.median()),
+            ),
+        }
+
+    @staticmethod
+    def _paired_chart(
+        before: str,
+        after: str,
+        before_label: str,
+        after_label: str,
+        before_scores: pd.Series,
+        after_scores: pd.Series,
+    ) -> ChartSpec:
+        return ChartSpec(
+            type="paired_line",
+            title="Paired scores",
+            data={
+                "before": before_scores.tolist(),
+                "after": after_scores.tolist(),
+                "before_variable": before,
+                "after_variable": after,
+                "before_label": before_label,
+                "after_label": after_label,
+            },
+            x_label="Time",
+            y_label="Score",
+        )
+
+    def reads(self) -> set[str]:
+        params = self.validate_params(self.migrate_params(dict(self.params)))
+        return {str(params["before"]), str(params["after"])}
+
+    def writes(self) -> set[str]:
+        params = self.validate_params(self.migrate_params(dict(self.params)))
+        return {f"comparison:{params['before']}:{params['after']}:paired"}
+
+    def provenance(self) -> str:
+        params = self.validate_params(self.migrate_params(dict(self.params)))
+        return f"compared paired {params['before']} and {params['after']}"
+
+
+Step.register_type(PairedComparisonStep.step_type, PairedComparisonStep)

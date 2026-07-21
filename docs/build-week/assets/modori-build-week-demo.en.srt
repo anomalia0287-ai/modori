@@ -1,0 +1,43 @@
+1
+00:00:00,000 --> 00:00:09,000
+Modori is a local desktop research workflow for making a limited set of statistical choices visible before calculation.
+
+2
+00:00:09,000 --> 00:00:27,000
+This was an existing project. During Build Week, I used Codex with GPT-5.6 to revise the Windows research surface, extend deterministic clarification and passport authority, add a variable-meaning review, and harden release evidence.
+
+3
+00:00:27,000 --> 00:00:39,000
+GPT-5.6 was a build-time engineering collaborator, not a runtime model. I retained the product, licensing, claim, hardware, and release decisions.
+
+4
+00:00:39,000 --> 00:00:55,000
+I select English and Casual Mode, then open a deterministic synthetic file with stress and sleep hours. It contains no real respondent records.
+
+5
+00:00:55,000 --> 00:01:10,000
+Modori previews the table before import. Source cells are read-only; transformations become recorded steps and new variables. The current runtime has no configured hosted analysis, network client, or telemetry route.
+
+6
+00:01:10,000 --> 00:01:34,000
+Research OS P1 supports exactly six bounded tasks. I accept the noncausal boundary, choose linear co-movement, and draft both variable roles for this exact dataset.
+
+7
+00:01:34,000 --> 00:01:49,000
+Before any durable request is created, the Variable Meaning Gate shows the current labels, measurement levels, missing codes, and any definition or unit that is not recorded.
+
+8
+00:01:49,000 --> 00:02:07,000
+After I confirm those meanings, bounded clarification records my answers. A deterministic policy can explain its question order, and the AnalysisPassport stays bound to the data and decision state.
+
+9
+00:02:07,000 --> 00:02:29,000
+The Pearson candidate is experimental, not an accuracy ranking, and cannot run automatically. I review and confirm its exact configuration; confirmation adds no result and the separate Run action is now available.
+
+10
+00:02:29,000 --> 00:02:44,000
+Only Run starts the calculation. For this synthetic file, Modori reports an association of negative point nine nine five across sixteen rows, not a causal conclusion or validated recommendation.
+
+11
+00:02:44,000 --> 00:02:55,000
+I save this English report locally after Run. This bounded walkthrough does not establish full bilingual coverage or recommendation validity.

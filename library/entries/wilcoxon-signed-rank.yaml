@@ -1,0 +1,28 @@
+slug: wilcoxon-signed-rank
+kind: method
+title_ko: "Wilcoxon 부호순위검정"
+title_en: "Wilcoxon signed-rank test"
+summary_ko: "같은 사람이나 같은 단위에서 두 번 측정한 점수의 차이를 순위로 비교하는 비모수 방법이에요. 대응표본 t검정의 정규성 가정이 부담될 때 씁니다."
+summary_en: "A nonparametric test that compares two linked measurements from the same people or units by ranking paired differences."
+interpretation_ko: "p값이 .05보다 작으면 두 시점 또는 두 조건의 점수 차이가 우연으로 보기 어렵다는 뜻입니다. 효과크기는 순위양분상관(r)로 함께 제시합니다."
+interpretation_en: "A p-value below .05 means the paired difference is unlikely to be due to chance. Report the rank-biserial correlation (r) as the effect size."
+when_to_use_ko: "동일한 응답자나 단위의 두 점수를 비교하는데 차이값이 정규분포를 따르지 않거나 표본이 작은 경우."
+when_to_use_en: "When comparing two linked scores from the same respondents or units and paired differences are non-normal or the sample is small."
+how_to_report_ko: "예: \"W = 12.00, p = .031, r = .45\" 형식으로 보고합니다. 분석에 사용된 완전한 짝 수를 함께 제시하세요."
+how_to_report_en: "Report as, e.g., \"W = 12.00, p = .031, r = .45\". Include the number of complete pairs used."
+pitfalls_ko: "두 독립 집단 비교에는 Mann-Whitney U 검정을 사용하세요. 이 검정은 평균 차이를 직접 검정하는 것이 아니라 짝지은 차이의 순위 정보를 사용합니다."
+pitfalls_en: "Use Mann-Whitney U for two independent groups. This test uses rank information from paired differences rather than directly testing a mean difference."
+assumptions: []
+alternatives:
+  - paired-samples-t-test
+related:
+  - rank-biserial
+  - p-value
+references:
+  - citation: "Wilcoxon, F. (1945). Individual comparisons by ranking methods. Biometrics Bulletin, 1(6), 80-83."
+    locator: "1(6), 80-83"
+    verified: false
+  - citation: "Field, A. (2018). Discovering Statistics Using IBM SPSS Statistics (5th ed.). SAGE."
+    locator: null
+    verified: true
+verification_status: needs_review

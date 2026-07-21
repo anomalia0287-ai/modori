@@ -1,0 +1,28 @@
+slug: odds-ratio
+kind: statistic
+title_ko: "승산비 (odds ratio)"
+title_en: "Odds ratio"
+summary_ko: "다른 변수를 고정할 때, 선택한 사건의 승산이 예측변수 1단위 증가 또는 범주 변화에 따라 몇 배가 되는지를 나타내는 값이에요."
+summary_en: "Holding other model variables fixed, how many times the odds of the selected event change for a one-unit predictor increase or a category change."
+interpretation_ko: "OR = 1이면 승산 변화가 없고, 1보다 크면 사건 승산이 높으며, 1보다 작으면 낮습니다. 범주형 예측변수의 OR은 반드시 표시된 기준범주와 비교해 해석합니다."
+interpretation_en: "OR = 1 means no change in odds; values above 1 indicate higher event odds and values below 1 lower event odds. For a categorical predictor, interpret the OR against its displayed reference category."
+when_to_use_ko: null
+when_to_use_en: null
+how_to_report_ko: "선택한 사건과 기준범주를 밝히고, 예: \"OR = 1.45, 95% CI [1.12, 1.88]\"처럼 보고합니다."
+how_to_report_en: "State the selected event and reference category, then report, e.g., \"OR = 1.45, 95% CI [1.12, 1.88].\""
+pitfalls_ko: "승산비는 확률비(위험비)가 아니며, 관찰자료의 회귀계수만으로 인과효과를 뜻하지 않습니다. 사건 코딩이나 기준범주를 바꾸면 해석 방향도 바뀝니다."
+pitfalls_en: "An odds ratio is not a probability ratio (risk ratio), and a regression association alone is not a causal effect. Reversing the event or reference category reverses the interpretation."
+assumptions: []
+alternatives: []
+related:
+  - confidence-interval
+  - p-value
+  - unstandardized-coefficient
+references:
+  - citation: "Easter, C., & Hemming, K. (2021). What are the odds? Interpretation of odds ratios from a logistic regression model. BJOG, 128(11), 1835."
+    locator: "https://doi.org/10.1111/1471-0528.16704"
+    verified: true
+  - citation: "Davies, H. T. O., Crombie, I. K., & Tavakoli, M. (1998). When can odds ratios mislead? BMJ, 316, 989-991."
+    locator: "https://www.bmj.com/content/316/7136/989"
+    verified: true
+verification_status: verified

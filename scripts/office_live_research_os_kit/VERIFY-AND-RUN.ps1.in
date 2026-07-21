@@ -1,0 +1,215 @@
+$ErrorActionPreference = 'Stop'
+$KitRoot = [System.IO.Path]::GetFullPath($PSScriptRoot).TrimEnd([System.IO.Path]::DirectorySeparatorChar)
+$Results = Join-Path $KitRoot 'results'
+$ExpectedManifestDigest = '__MANIFEST_SHA256__'
+$ExpectedIdentityDigest = '__IDENTITY_SHA256__'
+$VerifiedStreams = New-Object 'System.Collections.Generic.List[System.IO.FileStream]'
+
+function Open-ModoriVerifiedStream([string]$LiteralPath) {
+    $stream = [System.IO.File]::Open(
+        $LiteralPath,
+        [System.IO.FileMode]::Open,
+        [System.IO.FileAccess]::Read,
+        [System.IO.FileShare]::Read
+    )
+    [void]$VerifiedStreams.Add($stream)
+    return $stream
+}
+
+function Get-ModoriSha256([System.IO.Stream]$Stream) {
+    $Stream.Position = 0
+    try {
+        $algorithm = [System.Security.Cryptography.SHA256]::Create()
+        try {
+            return ([System.BitConverter]::ToString($algorithm.ComputeHash($Stream))).Replace('-', '').ToLowerInvariant()
+        } finally {
+            $algorithm.Dispose()
+        }
+    } finally {
+        $Stream.Position = 0
+    }
+}
+
+function Stop-ModoriKit([string]$Code, [bool]$WriteDiagnostic = $true) {
+    Write-Host ("오류 코드: " + $Code)
+    try {
+        if ($WriteDiagnostic -and (Test-Path -LiteralPath $Results -PathType Container)) {
+            $stamp = [DateTime]::UtcNow.ToString('yyyyMMddTHHmmssZ')
+            $diagnostic = Join-Path $Results ("bootstrap-error-" + $stamp + ".txt")
+            if (-not (Test-Path -LiteralPath $diagnostic)) {
+                [System.IO.File]::WriteAllText(
+                    $diagnostic,
+                    ("Modori live Research OS benchmark bootstrap error`r`nreason_code: " + $Code + "`r`nresult_json_created: false`r`n"),
+                    [System.Text.UTF8Encoding]::new($false)
+                )
+            }
+        }
+    } catch {
+    }
+    exit 1
+}
+
+function Assert-ModoriPlainDirectory([string]$LiteralPath, [string]$Code) {
+    if (-not (Test-Path -LiteralPath $LiteralPath -PathType Container)) {
+        Stop-ModoriKit $Code
+    }
+    $item = Get-Item -LiteralPath $LiteralPath -Force
+    if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+        Stop-ModoriKit $Code
+    }
+}
+
+function Assert-ModoriPlainFile([string]$LiteralPath, [string]$Code) {
+    if (-not (Test-Path -LiteralPath $LiteralPath -PathType Leaf)) {
+        Stop-ModoriKit $Code
+    }
+    $item = Get-Item -LiteralPath $LiteralPath -Force
+    if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $item.PSIsContainer) {
+        Stop-ModoriKit $Code
+    }
+    $parent = $item.Directory
+    while ($null -ne $parent -and -not $parent.FullName.Equals($KitRoot, [StringComparison]::OrdinalIgnoreCase)) {
+        if (($parent.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+            Stop-ModoriKit $Code
+        }
+        $parent = $parent.Parent
+    }
+    if ($null -eq $parent) {
+        Stop-ModoriKit $Code
+    }
+    return $item
+}
+
+function Assert-ModoriInventory([System.Collections.Generic.HashSet[string]]$Declared) {
+    foreach ($directory in Get-ChildItem -LiteralPath $KitRoot -Directory -Recurse -Force) {
+        if (($directory.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+            Stop-ModoriKit 'undeclared_reparse_directory'
+        }
+    }
+    $bootstrapNames = @(
+        'MANIFEST.json',
+        'RUN-MODORI-LIVE-RESEARCH-OS-BENCHMARK.cmd',
+        'VERIFY-AND-RUN.ps1'
+    )
+    foreach ($item in Get-ChildItem -LiteralPath $KitRoot -File -Recurse -Force) {
+        $full = [System.IO.Path]::GetFullPath($item.FullName)
+        if (
+            $full.StartsWith($Results + [System.IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)
+        ) {
+            continue
+        }
+        $relative = $full.Substring($KitRoot.Length + 1).Replace([System.IO.Path]::DirectorySeparatorChar, '/')
+        if ($bootstrapNames -contains $relative) {
+            continue
+        }
+        if (-not $Declared.Contains($relative)) {
+            Stop-ModoriKit 'undeclared_file_present'
+        }
+    }
+}
+
+try {
+    Assert-ModoriPlainDirectory $KitRoot 'kit_root_invalid'
+    Assert-ModoriPlainDirectory $Results 'results_root_invalid'
+    $obsoleteWork = Join-Path $KitRoot 'work'
+    if (Test-Path -LiteralPath $obsoleteWork) {
+        Stop-ModoriKit 'obsolete_work_root_present'
+    }
+
+    $manifestPath = Join-Path $KitRoot 'MANIFEST.json'
+    $identityPath = Join-Path $KitRoot 'KIT-IDENTITY.json'
+    [void](Assert-ModoriPlainFile $manifestPath 'manifest_missing')
+    [void](Assert-ModoriPlainFile $identityPath 'identity_missing')
+    $manifestStream = Open-ModoriVerifiedStream $manifestPath
+    $identityStream = Open-ModoriVerifiedStream $identityPath
+    if ((Get-ModoriSha256 $manifestStream) -ne $ExpectedManifestDigest) {
+        Stop-ModoriKit 'manifest_digest_mismatch'
+    }
+    if ((Get-ModoriSha256 $identityStream) -ne $ExpectedIdentityDigest) {
+        Stop-ModoriKit 'identity_digest_mismatch'
+    }
+
+    $strictUtf8 = [System.Text.UTF8Encoding]::new($false, $true)
+    $reader = [System.IO.StreamReader]::new($manifestStream, $strictUtf8, $false, 4096, $true)
+    try {
+        $manifestText = $reader.ReadToEnd()
+    } finally {
+        $reader.Dispose()
+        $manifestStream.Position = 0
+    }
+    $manifest = $manifestText | ConvertFrom-Json
+    $declared = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+    foreach ($entry in $manifest.entries) {
+        $relative = [string]$entry.path
+        if (
+            [string]::IsNullOrWhiteSpace($relative) -or
+            $relative.Contains('\') -or
+            $relative.Contains(':') -or
+            $relative.StartsWith('/') -or
+            $relative.Contains('../') -or
+            $relative.Contains('/..') -or
+            -not $declared.Add($relative)
+        ) {
+            Stop-ModoriKit 'manifest_path_invalid'
+        }
+        $candidate = [System.IO.Path]::GetFullPath((Join-Path $KitRoot $relative))
+        if ($candidate.Length -gt 230) {
+            Stop-ModoriKit 'kit_path_too_long'
+        }
+        if (-not $candidate.StartsWith($KitRoot + [System.IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
+            Stop-ModoriKit 'manifest_path_escape'
+        }
+        [void](Assert-ModoriPlainFile $candidate 'manifest_member_invalid')
+        $verifiedStream = Open-ModoriVerifiedStream $candidate
+        if ([int64]$verifiedStream.Length -ne [int64]$entry.size_bytes) {
+            Stop-ModoriKit 'manifest_size_mismatch'
+        }
+        if ((Get-ModoriSha256 $verifiedStream) -ne [string]$entry.sha256) {
+            Stop-ModoriKit 'manifest_file_digest_mismatch'
+        }
+    }
+
+    Assert-ModoriInventory $declared
+
+    $executable = Join-Path $KitRoot 'runtime\ModoriLiveResearchOSBenchmark.exe'
+    [void](Assert-ModoriPlainFile $executable 'runtime_executable_missing')
+    & $executable --verify-kit-identity
+    if ($LASTEXITCODE -ne 0) {
+        Stop-ModoriKit 'runtime_identity_mismatch'
+    }
+    Assert-ModoriInventory $declared
+    $BeforeRunnerDiagnostics = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+    foreach ($diagnostic in Get-ChildItem -LiteralPath $Results -File -Force) {
+        if (
+            $diagnostic.Name -match '^bootstrap-error-\d{8}T\d{6}Z\.txt$' -and
+            ($diagnostic.Attributes -band [IO.FileAttributes]::ReparsePoint) -eq 0
+        ) {
+            [void]$BeforeRunnerDiagnostics.Add($diagnostic.Name)
+        }
+    }
+    & $executable --release
+    $RunnerExitCode = $LASTEXITCODE
+    if ($RunnerExitCode -ne 0) {
+        $NewRunnerDiagnosticCount = 0
+        foreach ($diagnostic in Get-ChildItem -LiteralPath $Results -File -Force) {
+            if (
+                $diagnostic.Name -match '^bootstrap-error-\d{8}T\d{6}Z\.txt$' -and
+                ($diagnostic.Attributes -band [IO.FileAttributes]::ReparsePoint) -eq 0 -and
+                -not $BeforeRunnerDiagnostics.Contains($diagnostic.Name)
+            ) {
+                $NewRunnerDiagnosticCount += 1
+            }
+        }
+        if ($NewRunnerDiagnosticCount -eq 1) {
+            Stop-ModoriKit ("runner_exit_" + $RunnerExitCode) $false
+        }
+        Stop-ModoriKit ("runner_exit_" + $RunnerExitCode)
+    }
+    exit 0
+} catch {
+    Stop-ModoriKit 'bootstrap_unhandled_error'
+} finally {
+    foreach ($stream in $VerifiedStreams) {
+        $stream.Dispose()
+    }
+}

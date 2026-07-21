@@ -1,0 +1,21 @@
+slug: huynh-feldt
+kind: statistic
+title_ko: "Huynh-Feldt 보정"
+title_en: "Huynh-Feldt correction"
+summary_ko: "반복측정 ANOVA의 구형성 보정 중 하나로 Greenhouse-Geisser보다 덜 보수적일 수 있습니다."
+summary_en: "A repeated-measures ANOVA sphericity correction that can be less conservative than Greenhouse-Geisser."
+interpretation_ko: "epsilon으로 자유도를 조정해 구형성 위반의 영향을 줄입니다. 일반적으로 Greenhouse-Geisser보다 덜 보수적일 수 있습니다."
+interpretation_en: "It adjusts degrees of freedom by epsilon to reduce the impact of sphericity violations. It can be less conservative than Greenhouse-Geisser."
+when_to_use_ko: "분석 정책에서 Huynh-Feldt 보정을 명시한 경우 사용합니다."
+when_to_use_en: "Use it when the analysis policy explicitly selects Huynh-Feldt correction."
+how_to_report_ko: "보정 방법, 보정 자유도, 보정 p값을 명시합니다."
+how_to_report_en: "Report the correction method, corrected degrees of freedom, and corrected p-value."
+pitfalls_ko: "보정 방법을 사후적으로 임의 선택하지 말고 분석 정책에 따라 고정해야 합니다."
+pitfalls_en: "Do not choose the correction opportunistically after seeing results; fix the policy beforehand."
+assumptions: []
+alternatives:
+  - greenhouse-geisser
+related:
+  - repeated-measures-anova
+references: []
+verification_status: needs_review

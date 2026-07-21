@@ -37,7 +37,7 @@
 - Create: `tests/test_release_baseline.py`
 - Modify: none initially
 
-- [ ] **Step 1: Write the failing baseline test**
+- [x] **Step 1: Write the failing baseline test**
 
 Create `tests/test_release_baseline.py`:
 
@@ -67,7 +67,7 @@ def test_gitignore_exists_and_excludes_generated_roots() -> None:
         assert pattern in text
 ```
 
-- [ ] **Step 2: Run the test to verify RED**
+- [x] **Step 2: Run the test to verify RED**
 
 Run:
 
@@ -77,7 +77,7 @@ Run:
 
 Expected: FAIL because `.gitignore` does not exist.
 
-- [ ] **Step 3: Add `.gitignore`**
+- [x] **Step 3: Add `.gitignore`**
 
 Create `.gitignore`:
 
@@ -110,7 +110,7 @@ build/
 dist/
 ```
 
-- [ ] **Step 4: Verify GREEN**
+- [x] **Step 4: Verify GREEN**
 
 Run:
 
@@ -120,7 +120,7 @@ Run:
 
 Expected: PASS.
 
-- [ ] **Step 5: Decide repository recovery path**
+- [x] **Step 5: Decide repository recovery path**
 
 Run:
 
@@ -148,7 +148,7 @@ Expected after recovery: Git recognizes the repository and generated roots are n
 - Modify: `scripts/quality_gate.py`
 - Create later: packaging script after tool choice is selected
 
-- [ ] **Step 1: Preserve current development launch smoke**
+- [x] **Step 1: Preserve current development launch smoke**
 
 Run:
 
@@ -159,7 +159,7 @@ $env:QT_QPA_PLATFORM='offscreen'
 
 Expected: `launch-smoke-ok`.
 
-- [ ] **Step 2: Add packaged artifact launch smoke after packaging tool selection**
+- [x] **Step 2: Add packaged artifact launch smoke after packaging tool selection**
 
 Candidate tool choice must be made explicitly among PyInstaller, Nuitka, or another Windows desktop packager. The chosen tool must produce an artifact that launches from outside `C:\Users\V\Desktop\TongTong`.
 
@@ -169,7 +169,7 @@ Candidate tool choice must be made explicitly among PyInstaller, Nuitka, or anot
 - Modify: `scripts/quality_gate.py`
 - Test: `tests/test_quality_gate_script.py`
 
-- [ ] **Step 1: Keep local gate deterministic**
+- [x] **Step 1: Keep local gate deterministic**
 
 Run:
 
@@ -179,7 +179,7 @@ Run:
 
 Expected: compileall, ruff, bandit, launch smoke, pytest, and pip check all pass.
 
-- [ ] **Step 2: Add packaged-artifact gate only after Task 2 has an artifact**
+- [x] **Step 2: Add packaged-artifact gate only after Task 2 has an artifact**
 
 The gate must fail if the packaged artifact cannot load QML root, cannot construct `UiController`, or exits immediately before the event loop can start.
 
@@ -192,11 +192,11 @@ The gate must fail if the packaged artifact cannot load QML root, cannot constru
 - Test: `tests/test_pipeline_core.py`
 - Test: `tests/test_table_io.py`
 
-- [ ] **Step 1: Add RED tests for JSON pre-load byte limits and variables pre-count limits**
+- [x] **Step 1: Add RED tests for JSON pre-load byte limits and variables pre-count limits**
 
 The tests must prove oversized JSON and oversized variables payloads fail before full object expansion is trusted.
 
-- [ ] **Step 2: Add RED tests for XLSX/SAV full-import limit semantics**
+- [x] **Step 2: Add RED tests for XLSX/SAV full-import limit semantics**
 
 The tests must distinguish preview limits from full import limits and document where true streaming is supported.
 
@@ -206,7 +206,7 @@ The tests must distinguish preview limits from full import limits and document w
 - Modify only files with direct `Path.write_text`, `mkdir`, `unlink`, `replace`, or `resolve` usage after audit.
 - Test files must be adjacent to the affected module.
 
-- [ ] **Step 1: Generate audit inventory**
+- [x] **Step 1: Generate audit inventory**
 
 Run:
 
@@ -223,11 +223,11 @@ Expected: every production filesystem mutation is reviewed against `modori.path_
 - Test: `tests/test_quality_gate_script.py`
 - Docs: release checklist document
 
-- [ ] **Step 1: Keep default gate offline**
+- [x] **Step 1: Keep default gate offline**
 
 Default `quality_gate.py` must not contact network services.
 
-- [ ] **Step 2: Add explicit release mode for advisory scan**
+- [x] **Step 2: Add explicit release mode for advisory scan**
 
 Run:
 
@@ -244,11 +244,11 @@ Expected: pip-audit runs only when explicitly requested.
 - Test: `tests/test_reliability_step.py`
 - Test: `tests/test_regression_step.py`
 
-- [ ] **Step 1: Record R dependency prerequisites**
+- [x] **Step 1: Record R dependency prerequisites**
 
 Document exact R packages needed: `psych` for omega and `sandwich` for robust regression reference checks.
 
-- [ ] **Step 2: Run R-gated tests in an environment where prerequisites exist**
+- [x] **Step 2: Run R-gated tests in an environment where prerequisites exist**
 
 Expected: R-gated tests pass rather than skip.
 
@@ -257,11 +257,11 @@ Expected: R-gated tests pass rather than skip.
 **Files:**
 - Create or modify: `docs/specs/release-manual-qa.md`
 
-- [ ] **Step 1: Define manual QA matrix**
+- [x] **Step 1: Define manual QA matrix**
 
 Include Korean Windows path, long filenames, high DPI, low GPU/reduce-effects, broken input file, report export failure, and accessibility smoke.
 
-- [ ] **Step 2: Capture evidence**
+- [x] **Step 2: Capture evidence**
 
 Record exact date, environment, steps, pass/fail, and screenshots where useful.
 
@@ -272,11 +272,11 @@ Record exact date, environment, steps, pass/fail, and screenshots where useful.
 - Create: `tests/test_stress_matrix_script.py`
 - Docs: release checklist document
 
-- [ ] **Step 1: Define local synthetic datasets**
+- [x] **Step 1: Define local synthetic datasets**
 
 Use deterministic generated CSV/XLSX shapes that do not require external data.
 
-- [ ] **Step 2: Measure import, preview, analysis, and report-export timings**
+- [x] **Step 2: Measure import, preview, analysis, and report-export timings**
 
 The output must record dataset shape, command, elapsed time, and pass/fail status.
 

@@ -1,4 +1,5 @@
 from pathlib import Path
+from dataclasses import fields
 
 import pandas as pd
 
@@ -53,6 +54,34 @@ def test_guided_and_standard_regression_modes_create_same_engine_steps(tmp_path:
     assert [step.step_type for step in guided.steps] == [step.step_type for step in standard.steps]
     assert guided.steps[1].params == standard.steps[1].params
     assert guided.steps[2].params["include"] == ["regression-main"]
+
+
+def test_analysis_preferences_declares_regression_fields_without_runtime_patching() -> None:
+    field_names = {field.name for field in fields(AnalysisPreferences)}
+    prefs = AnalysisPreferences(
+        regression_policy={"preset": "classic"},
+        custom_regression={"use_hc3": False},
+        ordered_data=True,
+        order_var="wave",
+    )
+
+    assert {
+        "regression_policy",
+        "custom_regression",
+        "ordered_data",
+        "order_var",
+    }.issubset(field_names)
+    assert prefs.regression_policy == {"preset": "classic"}
+    assert prefs.custom_regression == {"use_hc3": False}
+    assert prefs.ordered_data is True
+    assert prefs.order_var == "wave"
+
+
+def test_workflow_does_not_patch_analysis_preferences_constructor() -> None:
+    source = Path("src/modori/workflow.py").read_text(encoding="utf-8")
+
+    assert "AnalysisPreferences.__init__ =" not in source
+    assert "object.__setattr__" not in source
 
 
 def test_regression_slice_predictor_edit_reruns_report_without_breaking_include(tmp_path: Path) -> None:

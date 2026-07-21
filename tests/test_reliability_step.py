@@ -3,6 +3,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import pingouin as pg
 import pytest
@@ -38,6 +39,48 @@ def reliability_dataset() -> Dataset:
         df=frame,
         variables={column: variable(column) for column in frame.columns},
     )
+
+
+def near_singular_reliability_dataset() -> Dataset:
+    rng = np.random.default_rng(20260708)
+    base = rng.normal(size=100)
+    frame = pd.DataFrame(
+        {
+            "q1": base,
+            "q2": base + rng.normal(scale=1e-3, size=len(base)),
+            "q3": (0.7 * base) + rng.normal(scale=0.3, size=len(base)),
+            "q4": rng.normal(size=len(base)),
+            "q5": rng.normal(size=len(base)),
+        }
+    )
+    return Dataset(
+        df=frame,
+        variables={column: variable(column) for column in frame.columns},
+    )
+
+
+def test_reliability_schema_migrates_legacy_params_and_rejects_unknown_current_params() -> None:
+    migrated = ReliabilityStep.migrate_params(
+        {"items": ["q1", "q2", "q3"], "scale_name": "job_sat"}
+    )
+
+    assert ReliabilityStep.validate_params(migrated) == {
+        "schema_version": ReliabilityStep.CURRENT_SCHEMA_VERSION,
+        "items": ["q1", "q2", "q3"],
+        "scale_name": "job_sat",
+    }
+
+    with pytest.raises(ValueError, match="newer schema_version"):
+        ReliabilityStep.migrate_params({"schema_version": 999, "items": ["q1", "q2", "q3"]})
+
+    with pytest.raises(ValueError, match="unknown reliability params"):
+        ReliabilityStep.validate_params(
+            {
+                "schema_version": ReliabilityStep.CURRENT_SCHEMA_VERSION,
+                "items": ["q1", "q2", "q3"],
+                "extra": "bad",
+            }
+        )
 
 
 def _omega_total(loadings, uniquenesses) -> float:
@@ -147,18 +190,22 @@ def test_reliability_step_matches_pingouin_documented_cronbach_dataset() -> None
 
 
 def test_mcdonald_omega_matches_r_psych_when_r_is_available() -> None:
-    rscript = os.environ.get("MODORI_RSCRIPT") or shutil.which("Rscript")
+    rscript = os.environ.get("MODORI_RSCRIPT")
+    if not rscript:
+        local = Path(__file__).resolve().parents[1] / ".tools" / "r-env" / "Scripts" / "Rscript.exe"
+        rscript = str(local) if local.exists() else shutil.which("Rscript")
     if rscript is None:
         pytest.skip("Rscript is not installed; R psych omega check cannot run here.")
+    rscript = str(Path(rscript).resolve())
 
     script = Path(__file__).parent / "r" / "omega_reference.R"
     expected_stdout = (Path(__file__).parent / "r" / "omega_reference.stdout.txt").read_text(
         encoding="utf-8"
     ).strip()
     env = os.environ.copy()
-    explicit_rscript = os.environ.get("MODORI_RSCRIPT")
-    if explicit_rscript:
-        prefix = Path(explicit_rscript).resolve().parents[1]
+    explicit_or_local_rscript = rscript
+    if explicit_or_local_rscript:
+        prefix = Path(explicit_or_local_rscript).resolve().parents[1]
         r_paths = [
             prefix / "Library" / "bin",
             prefix / "Scripts",
@@ -217,6 +264,45 @@ def test_reliability_step_reports_singular_omega_matrix_clearly() -> None:
 
     with pytest.raises(ValueError, match="omega could not be estimated"):
         step.compute_context_free(dataset)
+
+
+def test_reliability_step_rejects_ill_conditioned_omega_matrix() -> None:
+    dataset = near_singular_reliability_dataset()
+    step = ReliabilityStep(
+        id="reliability",
+        title="Reliability",
+        params={
+            "items": ["q1", "q2", "q3", "q4", "q5"],
+            "scale_name": "near_duplicate",
+        },
+    )
+
+    with pytest.raises(ValueError, match="ill-conditioned"):
+        step.compute_context_free(dataset)
+
+
+def test_reliability_step_rejects_heywood_like_omega_estimates(monkeypatch) -> None:
+    class HeywoodFactorAnalyzer:
+        def __init__(self, *args, **kwargs) -> None:
+            self.loadings_ = pd.DataFrame([[1.05], [0.90], [0.85], [0.80]]).to_numpy()
+
+        def fit(self, frame: pd.DataFrame) -> None:
+            return None
+
+        def get_uniquenesses(self):
+            return pd.Series([-0.1025, 0.19, 0.2775, 0.36]).to_numpy()
+
+    import modori.steps.statistics as statistics_step
+
+    monkeypatch.setattr(statistics_step, "FactorAnalyzer", HeywoodFactorAnalyzer)
+    step = ReliabilityStep(
+        id="reliability",
+        title="Reliability",
+        params={"items": ["q1", "q2", "q3", "q4"], "scale_name": "job_sat"},
+    )
+
+    with pytest.raises(ValueError, match="Heywood|invalid"):
+        step.compute_context_free(reliability_dataset())
 
 
 def test_reliability_step_rejects_fewer_than_three_items() -> None:

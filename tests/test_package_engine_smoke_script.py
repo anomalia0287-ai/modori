@@ -1,0 +1,464 @@
+from __future__ import annotations
+
+import json
+import os
+from pathlib import Path
+import subprocess
+
+import pytest
+
+from scripts import package_engine_smoke
+
+
+@pytest.fixture(autouse=True)
+def _isolate_workspace_smoke_outputs(monkeypatch, tmp_path: Path):
+    original_directory = Path.cwd()
+    monkeypatch.chdir(tmp_path)
+    try:
+        yield
+    finally:
+        monkeypatch.chdir(original_directory)
+
+
+def _factorial_check() -> dict[str, object]:
+    return {
+        "key": "anova_factorial",
+        "ok": True,
+        "analysis_type": "FactorialAnovaResult",
+        "evidence": {
+            "analysis_key": "anova_factorial",
+            "cell_count": 6,
+            "chart_type": "factorial_interaction",
+            "effect_count": 3,
+            "finite_effect_statistics": True,
+            "level_counts": [2, 3],
+            "marginal_count": 5,
+            "method": "type_iii_equal_cell_weight",
+            "simple_effect_count": 5,
+        },
+    }
+
+
+def _valid_payload(*, cache_dir: Path | None = None) -> dict[str, object]:
+    payload: dict[str, object] = {
+        "ok": True,
+        "opened": True,
+        "rerun": True,
+        "waited": True,
+        "status": "ready",
+        "v1_statistics_smoke": {
+            "ok": True,
+            "checks": [
+                {
+                    "key": "logistic_regression",
+                    "ok": True,
+                    "analysis_type": "LogisticRegressionResult",
+                },
+                _factorial_check(),
+            ],
+        },
+    }
+    if cache_dir is not None:
+        payload["cache_dir"] = str(cache_dir)
+    return payload
+
+
+def test_package_engine_smoke_reports_missing_executable(capsys) -> None:
+    result = package_engine_smoke.main(["does-not-exist.exe"])
+
+    captured = capsys.readouterr()
+    assert result == 2
+    assert "Packaged executable does not exist" in captured.err
+
+
+def test_package_engine_smoke_passes_when_payload_is_ok(monkeypatch, tmp_path) -> None:
+    exe = tmp_path / "Modori.exe"
+    exe.write_text("", encoding="utf-8")
+    state_root = tmp_path / "state"
+
+    r_root = tmp_path / ".tools" / "r-env"
+    r_bin = r_root / "Library" / "bin"
+    monkeypatch.setenv("MODORI_RSCRIPT", str(r_root / "Scripts" / "Rscript.exe"))
+    monkeypatch.setenv("PATH", os.pathsep.join([str(r_bin), "C:\\Windows"]))
+    captured_environment = {}
+
+    def fake_run(command, check, timeout, env):
+        captured_environment.update(env)
+        cache_path = Path(env["MODORI_CACHE_DIR"])
+        assert not cache_path.exists()
+        cache_path.mkdir(parents=True)
+        output_path = command[3]
+        with open(output_path, "w", encoding="utf-8") as handle:
+            json.dump(_valid_payload(cache_dir=cache_path.resolve()), handle)
+        return subprocess.CompletedProcess(command, 0)
+
+    monkeypatch.setattr(package_engine_smoke.subprocess, "run", fake_run)
+
+    result = package_engine_smoke.run_engine_smoke(
+        exe,
+        timeout_seconds=0.01,
+        state_root=state_root,
+    )
+
+    assert result == 0
+    assert "MODORI_RSCRIPT" not in captured_environment
+    assert str(r_root).casefold() not in captured_environment["PATH"].casefold()
+    assert captured_environment["MPLCONFIGDIR"]
+    assert captured_environment["MODORI_CACHE_DIR"]
+    assert captured_environment["MODORI_SETTINGS_PATH"]
+
+
+def test_package_engine_smoke_isolates_workspace_reference_runtime(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    exe = tmp_path / "Modori.exe"
+    exe.write_text("", encoding="utf-8")
+    r_root = tmp_path / ".tools" / "r-env"
+    r_bin = r_root / "Library" / "bin"
+    monkeypatch.setenv("MODORI_RSCRIPT", str(r_root / "Scripts" / "Rscript.exe"))
+    monkeypatch.setenv("PATH", os.pathsep.join([str(r_bin), "C:\\Windows"]))
+    captured_environment: dict[str, str] = {}
+    state_root = tmp_path / "state"
+
+    def fake_run(command, check, timeout, env=None):
+        if env is not None:
+            captured_environment.update(env)
+        cache_path = Path(env["MODORI_CACHE_DIR"])
+        assert not cache_path.exists()
+        cache_path.mkdir(parents=True)
+        output_path = command[3]
+        with open(output_path, "w", encoding="utf-8") as handle:
+            json.dump(_valid_payload(cache_dir=cache_path.resolve()), handle)
+        return subprocess.CompletedProcess(command, 0)
+
+    monkeypatch.setattr(package_engine_smoke.subprocess, "run", fake_run)
+
+    result = package_engine_smoke.run_engine_smoke(
+        exe,
+        timeout_seconds=0.01,
+        state_root=state_root,
+    )
+
+    assert result == 0
+    assert captured_environment
+    assert "MODORI_RSCRIPT" not in captured_environment
+    assert str(r_root).casefold() not in captured_environment["PATH"].casefold()
+    assert captured_environment["MPLCONFIGDIR"]
+    assert captured_environment["MODORI_CACHE_DIR"]
+    assert captured_environment["MODORI_SETTINGS_PATH"]
+
+
+def test_package_engine_smoke_cli_routes_exact_state_paths(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    original_directory = Path.cwd()
+    monkeypatch.chdir(tmp_path)
+    exe = tmp_path / "Modori.exe"
+    exe.write_text("", encoding="utf-8")
+    state_root = tmp_path / "state-parent" / ".." / "state"
+    state_root.mkdir(parents=True)
+    evidence_dir = tmp_path / "engine-evidence"
+    evidence_dir.mkdir()
+    captured_environment: dict[str, str] = {}
+    subprocess_outputs: list[Path] = []
+    subprocess_inputs: list[Path] = []
+
+    def fake_run(command, check, timeout, env):
+        captured_environment.update(env)
+        cache_path = Path(env["MODORI_CACHE_DIR"])
+        assert not cache_path.exists()
+        cache_path.mkdir(parents=True)
+        input_path = Path(command[2])
+        subprocess_inputs.append(input_path)
+        assert input_path.read_bytes() == (
+            evidence_dir / "reference.xlsx"
+        ).read_bytes()
+        report_dir = input_path.parent / "modori-output"
+        report_dir.mkdir()
+        (report_dir / "report.docx").write_bytes(b"report")
+        output_path = Path(command[3])
+        subprocess_outputs.append(output_path)
+        with open(output_path, "w", encoding="utf-8") as handle:
+            json.dump(_valid_payload(cache_dir=cache_path.resolve()), handle)
+        return subprocess.CompletedProcess(command, 0)
+
+    monkeypatch.setattr(package_engine_smoke.subprocess, "run", fake_run)
+
+    try:
+        result = package_engine_smoke.main(
+            [
+                str(exe),
+                "--state-root",
+                str(state_root),
+                "--evidence-dir",
+                str(evidence_dir),
+                "--timeout",
+                "0.01",
+            ]
+        )
+    finally:
+        monkeypatch.chdir(original_directory)
+
+    resolved_root = state_root.resolve()
+    assert result == 0
+    assert captured_environment["MODORI_CACHE_DIR"] == str(resolved_root / "cache")
+    assert captured_environment["MODORI_SETTINGS_PATH"] == str(
+        resolved_root / "settings.json"
+    )
+    assert captured_environment["MPLCONFIGDIR"] == str(resolved_root / "matplotlib")
+    assert captured_environment["QT_QPA_PLATFORM"] == "offscreen"
+    assert len(subprocess_inputs) == 1
+    assert subprocess_inputs[0].parent.parent == resolved_root
+    assert subprocess_inputs[0].parent.name.startswith("engine-smoke-input-")
+    assert subprocess_inputs[0].parent != evidence_dir
+    assert (subprocess_inputs[0].parent / "modori-output" / "report.docx").is_file()
+    assert len(subprocess_outputs) == 1
+    assert subprocess_outputs[0].parent == evidence_dir
+    assert subprocess_outputs[0].name.startswith(".result-")
+    assert sorted(path.name for path in evidence_dir.iterdir()) == [
+        "reference.xlsx",
+        "result.json",
+    ]
+
+
+def test_package_engine_smoke_requires_existing_explicit_evidence_directory(
+    tmp_path: Path,
+) -> None:
+    exe = tmp_path / "Modori.exe"
+    exe.write_text("", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="directory does not exist"):
+        package_engine_smoke.run_engine_smoke(
+            exe,
+            evidence_dir=tmp_path / "missing-evidence",
+        )
+
+
+@pytest.mark.parametrize(
+    "cache_evidence",
+    ["missing", "mismatch", "not-created"],
+)
+def test_package_engine_smoke_rejects_invalid_cache_evidence(
+    monkeypatch,
+    tmp_path: Path,
+    cache_evidence: str,
+) -> None:
+    exe = tmp_path / "Modori.exe"
+    exe.write_text("", encoding="utf-8")
+    state_root = tmp_path / "state"
+
+    def fake_run(command, check, timeout, env):
+        cache_path = Path(env["MODORI_CACHE_DIR"])
+        assert not cache_path.exists()
+        if cache_evidence != "not-created":
+            cache_path.mkdir(parents=True)
+        payload: dict[str, object] = {
+            "ok": True,
+            "v1_statistics_smoke": {"ok": True},
+        }
+        if cache_evidence == "mismatch":
+            payload["cache_dir"] = str((state_root / "other-cache").resolve())
+        elif cache_evidence == "not-created":
+            payload["cache_dir"] = str(cache_path.resolve())
+        output_path = command[3]
+        Path(output_path).write_text(json.dumps(payload), encoding="utf-8")
+        return subprocess.CompletedProcess(command, 0)
+
+    monkeypatch.setattr(package_engine_smoke.subprocess, "run", fake_run)
+
+    result = package_engine_smoke.run_engine_smoke(
+        exe,
+        timeout_seconds=0.01,
+        state_root=state_root,
+    )
+
+    assert result == 1
+
+
+def test_package_engine_smoke_rejects_linked_cache(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    exe = tmp_path / "Modori.exe"
+    exe.write_text("", encoding="utf-8")
+    state_root = tmp_path / "state"
+    cache_path = state_root / "cache"
+    outside = tmp_path / "outside-cache"
+    outside.mkdir()
+    cache_path.parent.mkdir(parents=True)
+    try:
+        cache_path.symlink_to(outside, target_is_directory=True)
+    except OSError as exc:
+        pytest.skip(f"directory symlinks are unavailable: {exc}")
+
+    def fake_run(command, check, timeout, env):
+        assert Path(env["MODORI_CACHE_DIR"]) == cache_path
+        output_path = command[3]
+        Path(output_path).write_text(
+            json.dumps(
+                {
+                    "ok": True,
+                    "cache_dir": str(outside.resolve()),
+                    "v1_statistics_smoke": {"ok": True},
+                }
+            ),
+            encoding="utf-8",
+        )
+        return subprocess.CompletedProcess(command, 0)
+
+    monkeypatch.setattr(package_engine_smoke.subprocess, "run", fake_run)
+
+    result = package_engine_smoke.run_engine_smoke(
+        exe,
+        timeout_seconds=0.01,
+        state_root=state_root,
+    )
+
+    assert result == 1
+
+
+def test_package_engine_smoke_rejects_linked_state_ancestor_before_subprocess(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    exe = tmp_path / "Modori.exe"
+    exe.write_text("", encoding="utf-8")
+    outside = tmp_path / "outside-state"
+    outside.mkdir()
+    state_link = tmp_path / "state-link"
+    try:
+        state_link.symlink_to(outside, target_is_directory=True)
+    except OSError as exc:
+        pytest.skip(f"directory symlinks are unavailable: {exc}")
+    calls: list[list[str]] = []
+
+    def fake_run(command, check, timeout, env):
+        calls.append(command)
+        return subprocess.CompletedProcess(command, 0)
+
+    monkeypatch.setattr(package_engine_smoke.subprocess, "run", fake_run)
+
+    with pytest.raises(ValueError, match="link or junction/reparse"):
+        package_engine_smoke.run_engine_smoke(
+            exe,
+            timeout_seconds=0.01,
+            state_root=state_link / "missing-child",
+        )
+
+    assert calls == []
+    assert list(outside.iterdir()) == []
+
+
+def test_package_engine_smoke_rejects_missing_logistic_evidence(
+    monkeypatch,
+    tmp_path,
+    capsys,
+) -> None:
+    exe = tmp_path / "Modori.exe"
+    exe.write_text("", encoding="utf-8")
+
+    def fake_run(command, check, timeout, env):
+        cache_path = Path(env["MODORI_CACHE_DIR"])
+        cache_path.mkdir(parents=True, exist_ok=True)
+        output_path = command[3]
+        payload = _valid_payload(cache_dir=cache_path.resolve())
+        payload["v1_statistics_smoke"] = {
+            "ok": True,
+            "checks": [_factorial_check()],
+        }
+        Path(output_path).write_text(json.dumps(payload), encoding="utf-8")
+        return subprocess.CompletedProcess(command, 0)
+
+    monkeypatch.setattr(package_engine_smoke.subprocess, "run", fake_run)
+
+    result = package_engine_smoke.run_engine_smoke(exe, timeout_seconds=0.01)
+
+    captured = capsys.readouterr()
+    assert result == 1
+    assert "logistic_regression" in captured.err
+
+
+def test_package_engine_smoke_rejects_missing_factorial_evidence(
+    monkeypatch,
+    tmp_path,
+    capsys,
+) -> None:
+    exe = tmp_path / "Modori.exe"
+    exe.write_text("", encoding="utf-8")
+
+    def fake_run(command, check, timeout, env):
+        cache_path = Path(env["MODORI_CACHE_DIR"])
+        cache_path.mkdir(parents=True, exist_ok=True)
+        output_path = command[3]
+        payload = _valid_payload(cache_dir=cache_path.resolve())
+        payload["v1_statistics_smoke"] = {
+            "ok": True,
+            "checks": [
+                {
+                    "key": "logistic_regression",
+                    "ok": True,
+                    "analysis_type": "LogisticRegressionResult",
+                }
+            ],
+        }
+        Path(output_path).write_text(json.dumps(payload), encoding="utf-8")
+        return subprocess.CompletedProcess(command, 0)
+
+    monkeypatch.setattr(package_engine_smoke.subprocess, "run", fake_run)
+
+    result = package_engine_smoke.run_engine_smoke(exe, timeout_seconds=0.01)
+
+    captured = capsys.readouterr()
+    assert result == 1
+    assert "anova_factorial" in captured.err
+
+
+def test_package_engine_smoke_fails_when_payload_is_not_ok(
+    monkeypatch, tmp_path, capsys
+) -> None:
+    exe = tmp_path / "Modori.exe"
+    exe.write_text("", encoding="utf-8")
+
+    def fake_run(command, check, timeout, env):
+        output_path = command[3]
+        with open(output_path, "w", encoding="utf-8") as handle:
+            json.dump({"ok": False, "last_error": "engine"}, handle)
+        return subprocess.CompletedProcess(command, 0)
+
+    monkeypatch.setattr(package_engine_smoke.subprocess, "run", fake_run)
+
+    result = package_engine_smoke.run_engine_smoke(exe, timeout_seconds=0.01)
+
+    captured = capsys.readouterr()
+    assert result == 1
+    assert "engine" in captured.err
+
+
+def test_package_engine_smoke_rejects_stale_output(
+    monkeypatch,
+    tmp_path,
+    capsys,
+) -> None:
+    original_directory = Path.cwd()
+    monkeypatch.chdir(tmp_path)
+    exe = tmp_path / "Modori.exe"
+    exe.write_text("", encoding="utf-8")
+    output = Path(".tmp") / "packaged-engine-smoke" / "result.json"
+    output.parent.mkdir(parents=True)
+    output.write_text(
+        json.dumps(_valid_payload()),
+        encoding="utf-8",
+    )
+
+    def fake_run(command, check, timeout, env):
+        return subprocess.CompletedProcess(command, 0)
+
+    monkeypatch.setattr(package_engine_smoke.subprocess, "run", fake_run)
+
+    result = package_engine_smoke.run_engine_smoke(exe, timeout_seconds=0.01)
+    monkeypatch.chdir(original_directory)
+
+    assert result == 1
+    assert "did not produce a fresh result" in capsys.readouterr().err

@@ -51,8 +51,15 @@ class ComparisonResult:
     assumptions: dict[str, float]
     apa_template_id: str
     chart_spec: ChartSpec
+    n_obs: int
+    n_total: int
+    n_dropped: int
     dv_label: str | None = None
     group_label: str | None = None
+    paired: bool = False
+    before_label: str | None = None
+    after_label: str | None = None
+    method_details: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -62,6 +69,7 @@ class ReportResult:
     docx_path: str
     figure_paths: dict[str, list[str]]
     apa_template_id: str
+
 
 @dataclass(frozen=True)
 class CoefficientRow:
@@ -74,6 +82,25 @@ class CoefficientRow:
     p_value: float
     ci: tuple[float, float]
     vif: float | None
+    term_type: str = "term"
+    source_variable: str | None = None
+    level: str | None = None
+    reference_level: str | None = None
+    components: tuple[str, ...] = field(default_factory=tuple)
+
+
+@dataclass(frozen=True)
+class SimpleSlopeRow:
+    focal_predictor: str
+    moderator: str
+    moderator_value: float | str
+    moderator_label: str
+    slope: float
+    se: float
+    t: float
+    p_value: float
+    ci: tuple[float, float]
+    interaction_term: str
 
 
 @dataclass(frozen=True)
@@ -97,3 +124,4 @@ class RegressionResult:
     chart_spec: ChartSpec
     educational_interpretation: list[str] = field(default_factory=list)
     diagnostic_chart_specs: list[ChartSpec] = field(default_factory=list)
+    simple_slopes: list[SimpleSlopeRow] = field(default_factory=list)

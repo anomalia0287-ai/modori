@@ -1,6 +1,7 @@
 import pandas as pd
 import pingouin as pg
 import pytest
+from scipy import stats
 
 from modori.core import Dataset, Measure, Pipeline, Variable
 from modori.results import ComparisonResult
@@ -103,17 +104,54 @@ def compare_step_with_policy(policy: dict) -> CompareGroupsStep:
     )
 
 
-def test_compare_groups_routes_to_student_t_when_assumptions_hold() -> None:
-    result = compare_step().compute_context_free(
-        comparison_dataset(
-            [10, 11, 9, 10, 12, 11, 10, 9, 11, 10],
-            [12, 13, 11, 12, 14, 13, 12, 11, 13, 12],
+def test_compare_groups_schema_migrates_legacy_params_and_rejects_unknown_current_params() -> None:
+    migrated = CompareGroupsStep.migrate_params(
+        {
+            "dv": "job_sat",
+            "group": "group",
+            "routing_policy": {"preset": "classic"},
+        }
+    )
+
+    assert CompareGroupsStep.validate_params(migrated) == {
+        "schema_version": CompareGroupsStep.CURRENT_SCHEMA_VERSION,
+        "dv": "job_sat",
+        "group": "group",
+        "routing_policy": {"preset": "classic"},
+    }
+
+    with pytest.raises(ValueError, match="newer schema_version"):
+        CompareGroupsStep.migrate_params(
+            {"schema_version": 999, "dv": "job_sat", "group": "group"}
         )
-    ).analysis
+
+    with pytest.raises(ValueError, match="unknown compare_groups params"):
+        CompareGroupsStep.validate_params(
+            {
+                "schema_version": CompareGroupsStep.CURRENT_SCHEMA_VERSION,
+                "dv": "job_sat",
+                "group": "group",
+                "routing_policy": {"preset": "modern"},
+                "extra": "bad",
+            }
+        )
+
+
+def test_compare_groups_routes_to_welch_when_assumptions_hold() -> None:
+    result = (
+        compare_step()
+        .compute_context_free(
+            comparison_dataset(
+                [10, 11, 9, 10, 12, 11, 10, 9, 11, 10],
+                [12, 13, 11, 12, 14, 13, 12, 11, 13, 12],
+            )
+        )
+        .analysis
+    )
 
     assert isinstance(result, ComparisonResult)
-    assert result.test_name == "student_t"
-    assert result.route_reason == "assumptions met"
+    assert result.test_name == "welch_t"
+    assert result.route_reason == "Welch-first policy"
     assert result.statistic == pytest.approx(-4.714, abs=0.001)
     assert result.df == pytest.approx(18.0, abs=0.001)
     assert result.p_value == pytest.approx(0.000173, abs=0.000001)
@@ -122,7 +160,27 @@ def test_compare_groups_routes_to_student_t_when_assumptions_hold() -> None:
     assert sign(result.effect_value) == sign(result.statistic)
     assert result.mean_diff_ci == pytest.approx((-2.89, -1.11), abs=0.001)
     assert result.chart_spec.type == "mean_ci_jitter"
+    chart_groups = result.chart_spec.data["groups"]
+    assert [group["label"] for group in chart_groups] == ["control", "treatment"]
+    assert chart_groups[0]["values"] == [10, 11, 9, 10, 12, 11, 10, 9, 11, 10]
+    assert chart_groups[1]["values"] == [12, 13, 11, 12, 14, 13, 12, 11, 13, 12]
+    assert chart_groups[0]["mean"] == pytest.approx(10.3)
+    assert chart_groups[1]["mean"] == pytest.approx(12.3)
     assert result.apa_template_id == "ttest.v1"
+
+
+def test_compare_groups_records_analysis_case_counts_after_listwise_deletion() -> None:
+    dataset = comparison_dataset(
+        [10, 11, 9, 10, 12],
+        [12, 13, 11, 12, 14],
+    )
+    dataset.df.loc[9, "job_sat"] = float("nan")
+
+    result = compare_step().compute_context_free(dataset).analysis
+
+    assert result.n_total == 10
+    assert result.n_obs == 9
+    assert result.n_dropped == 1
 
 
 def test_compare_groups_matches_pingouin_mixed_anova_public_dataset() -> None:
@@ -165,32 +223,74 @@ def test_compare_groups_matches_pingouin_mixed_anova_public_dataset() -> None:
 
     result = step.compute_context_free(dataset).analysis
 
+    control = frame.loc[frame["Group"] == "Control", "Scores"]
+    meditation = frame.loc[frame["Group"] == "Meditation", "Scores"]
+    reference = pg.ttest(control, meditation, correction=True).iloc[0]
+
     # Pingouin packaged dataset reference: mixed_anova, August scores,
-    # Control vs Meditation, pg.ttest(correction=False).
-    assert result.test_name == "student_t"
-    assert result.route_reason == "assumptions met"
-    assert result.statistic == pytest.approx(0.31602196533393784, abs=1e-12)
-    assert result.df == pytest.approx(58.0, abs=1e-12)
-    assert result.p_value == pytest.approx(0.7531203054939072, abs=1e-12)
+    # Control vs Meditation, pg.ttest(correction=True).
+    assert result.test_name == "welch_t"
+    assert result.route_reason == "Welch-first policy"
+    assert result.statistic == pytest.approx(reference["T"], abs=1e-12)
+    assert result.df == pytest.approx(reference["dof"], abs=1e-12)
+    assert result.p_value == pytest.approx(reference["p_val"], abs=1e-12)
     assert result.effect_value == pytest.approx(0.08159652058493858, abs=1e-12)
 
 
 def test_compare_groups_routes_to_welch_when_variance_is_unequal() -> None:
-    result = compare_step().compute_context_free(
-        comparison_dataset(
-            [9, 10, 11] * 10,
-            [0, 5, 10, 15, 20, 25] * 5,
+    result = (
+        compare_step()
+        .compute_context_free(
+            comparison_dataset(
+                [9, 10, 11] * 10,
+                [0, 5, 10, 15, 20, 25] * 5,
+            )
         )
-    ).analysis
+        .analysis
+    )
 
     assert result.test_name == "welch_t"
-    assert result.route_reason == "unequal variance -> Welch correction"
+    assert result.route_reason == "Welch-first policy"
     assert result.statistic == pytest.approx(-1.569, abs=0.001)
     assert result.df == pytest.approx(29.530, abs=0.001)
     assert result.p_value == pytest.approx(0.127196, abs=0.000001)
     assert result.effect_value == pytest.approx(-0.405, abs=0.001)
     assert sign(result.effect_value) == sign(result.statistic)
     assert result.mean_diff_ci == pytest.approx((-5.76, 0.76), abs=0.001)
+
+
+def test_welch_t_large_common_offset_matches_formula_oracle() -> None:
+    offset = 1e12
+    first_base = [-0.50, -0.25, 0.00, 0.25, 0.50, -0.25, 0.25, 0.00]
+    second_base = [-0.50, 0.50, 1.00, 1.50, 2.00, 2.50, 1.00, 2.00, 3.00, 1.50, 2.50]
+    first = [offset + value for value in first_base]
+    second = [offset + value for value in second_base]
+
+    result = compare_step().compute_context_free(comparison_dataset(first, second)).analysis
+
+    first_series = pd.Series(first_base, dtype=float)
+    second_series = pd.Series(second_base, dtype=float)
+    first_var = float(first_series.var(ddof=1))
+    second_var = float(second_series.var(ddof=1))
+    first_n = len(first_series)
+    second_n = len(second_series)
+    mean_difference = float(first_series.mean() - second_series.mean())
+    se_squared = (first_var / first_n) + (second_var / second_n)
+    se = se_squared**0.5
+    df = (se_squared**2) / (
+        ((first_var / first_n) ** 2 / (first_n - 1))
+        + ((second_var / second_n) ** 2 / (second_n - 1))
+    )
+    statistic = mean_difference / se
+    p_value = 2.0 * stats.t.sf(abs(statistic), df)
+    critical = stats.t.ppf(0.975, df)
+    ci = (mean_difference - critical * se, mean_difference + critical * se)
+
+    assert result.test_name == "welch_t"
+    assert result.statistic == pytest.approx(statistic, abs=1e-10)
+    assert result.df == pytest.approx(df, abs=1e-10)
+    assert result.p_value == pytest.approx(p_value, abs=1e-12)
+    assert result.mean_diff_ci == pytest.approx((round(ci[0], 2), round(ci[1], 2)))
 
 
 def test_compare_groups_results_are_stable_when_rows_are_shuffled() -> None:
@@ -220,12 +320,16 @@ def test_compare_groups_results_are_stable_when_rows_are_shuffled() -> None:
 
 
 def test_compare_groups_accepts_string_group_codes_without_value_labels() -> None:
-    result = compare_step().compute_context_free(
-        string_group_dataset(
-            [10, 11, 9, 10, 12, 11, 10, 9, 11, 10],
-            [12, 13, 11, 12, 14, 13, 12, 11, 13, 12],
+    result = (
+        compare_step()
+        .compute_context_free(
+            string_group_dataset(
+                [10, 11, 9, 10, 12, 11, 10, 9, 11, 10],
+                [12, 13, 11, 12, 14, 13, 12, 11, 13, 12],
+            )
         )
-    ).analysis
+        .analysis
+    )
 
     assert list(result.groups) == ["control", "treatment"]
     assert result.statistic == pytest.approx(-4.714, abs=0.001)
@@ -254,7 +358,9 @@ def test_compare_groups_rejects_same_dependent_and_group_variable() -> None:
         },
     )
 
-    with pytest.raises(ValueError, match="dependent variable and group variable must differ"):
+    with pytest.raises(
+        ValueError, match="dependent variable and group variable must differ"
+    ):
         step.compute_context_free(comparison_dataset([1, 2, 3], [4, 5, 6]))
 
 
@@ -304,17 +410,23 @@ def test_compare_groups_rejects_non_numeric_dependent_variable() -> None:
         },
     )
 
-    with pytest.raises(ValueError, match="CompareGroupsStep dependent variable must be numeric"):
+    with pytest.raises(
+        ValueError, match="CompareGroupsStep dependent variable must be numeric"
+    ):
         compare_step().compute_context_free(dataset)
 
 
 def test_compare_groups_routes_to_mann_whitney_for_small_nonnormal_groups() -> None:
-    result = compare_step().compute_context_free(
-        comparison_dataset(
-            [1, 1, 1, 1, 10, 10],
-            [5, 6, 7, 8, 9, 10],
+    result = (
+        compare_step()
+        .compute_context_free(
+            comparison_dataset(
+                [1, 1, 1, 1, 10, 10],
+                [5, 6, 7, 8, 9, 10],
+            )
         )
-    ).analysis
+        .analysis
+    )
 
     assert result.test_name == "mann_whitney"
     assert result.route_reason == "normality violated + small sample"
@@ -326,7 +438,87 @@ def test_compare_groups_routes_to_mann_whitney_for_small_nonnormal_groups() -> N
     assert sign(result.effect_value) == -1
     assert result.mean_diff_ci is None
     assert result.chart_spec.type == "box"
+    chart_groups = result.chart_spec.data["groups"]
+    assert [group["label"] for group in chart_groups] == ["control", "treatment"]
+    assert chart_groups[0]["values"] == [1, 1, 1, 1, 10, 10]
+    assert chart_groups[1]["values"] == [5, 6, 7, 8, 9, 10]
     assert result.apa_template_id == "mwu.v1"
+
+
+def test_mann_whitney_records_tie_policy_and_uses_asymptotic_method() -> None:
+    dataset = comparison_dataset(
+        [1, 1, 1, 1, 10, 10],
+        [5, 6, 7, 8, 9, 10],
+    )
+    result = compare_step().compute_context_free(dataset).analysis
+    reference = stats.mannwhitneyu(
+        [1, 1, 1, 1, 10, 10],
+        [5, 6, 7, 8, 9, 10],
+        alternative="two-sided",
+        method="asymptotic",
+        use_continuity=True,
+    )
+
+    assert result.test_name == "mann_whitney"
+    assert result.method_details == {
+        "method": "asymptotic",
+        "ties_present": True,
+        "use_continuity": True,
+        "alternative": "two-sided",
+    }
+    assert result.statistic == pytest.approx(reference.statistic, abs=1e-12)
+    assert result.p_value == pytest.approx(reference.pvalue, abs=1e-12)
+
+
+def test_mann_whitney_records_exact_method_when_small_samples_have_no_ties() -> None:
+    step = compare_step_with_policy(
+        {
+            "preset": "custom",
+            "normality_p": 0.99,
+            "nonparametric_n_cutoff": 30,
+        }
+    )
+    first = [1, 2, 3, 20, 30]
+    second = [4, 5, 6, 7, 8]
+    result = step.compute_context_free(comparison_dataset(first, second)).analysis
+    reference = stats.mannwhitneyu(
+        first,
+        second,
+        alternative="two-sided",
+        method="exact",
+        use_continuity=True,
+    )
+
+    assert result.test_name == "mann_whitney"
+    assert result.method_details["method"] == "exact"
+    assert result.method_details["ties_present"] is False
+    assert result.p_value == pytest.approx(reference.pvalue, abs=1e-12)
+
+
+def test_mann_whitney_uses_exact_method_for_mid_small_untied_samples() -> None:
+    step = compare_step_with_policy(
+        {
+            "preset": "custom",
+            "normality_p": 0.99,
+            "nonparametric_n_cutoff": 30,
+        }
+    )
+    first = [1, 2, 3, 4, 5, 6, 7, 28, 29]
+    second = [8, 9, 10, 11, 12, 13, 14, 15, 16]
+
+    result = step.compute_context_free(comparison_dataset(first, second)).analysis
+    reference = stats.mannwhitneyu(
+        first,
+        second,
+        alternative="two-sided",
+        method="exact",
+        use_continuity=True,
+    )
+
+    assert result.test_name == "mann_whitney"
+    assert result.method_details["method"] == "exact"
+    assert result.method_details["ties_present"] is False
+    assert result.p_value == pytest.approx(reference.pvalue, abs=1e-12)
 
 
 def test_mann_whitney_effect_is_stable_when_rows_are_shuffled() -> None:
@@ -354,43 +546,56 @@ def test_mann_whitney_effect_is_stable_when_rows_are_shuffled() -> None:
 
 
 def test_compare_groups_always_welch_policy_ignores_assumption_rerouting() -> None:
-    result = compare_step_with_policy({"preset": "always_welch"}).compute_context_free(
-        comparison_dataset(
-            [1, 1, 1, 1, 10, 10],
-            [5, 6, 7, 8, 9, 10],
+    result = (
+        compare_step_with_policy({"preset": "always_welch"})
+        .compute_context_free(
+            comparison_dataset(
+                [1, 1, 1, 1, 10, 10],
+                [5, 6, 7, 8, 9, 10],
+            )
         )
-    ).analysis
+        .analysis
+    )
 
     assert result.test_name == "welch_t"
     assert result.route_reason == "always_welch policy"
 
 
 def test_compare_groups_classic_policy_disables_nonparametric_auto_reroute() -> None:
-    result = compare_step_with_policy({"preset": "classic"}).compute_context_free(
-        comparison_dataset(
-            [1, 1, 1, 1, 10, 10],
-            [5, 6, 7, 8, 9, 10],
+    result = (
+        compare_step_with_policy({"preset": "classic"})
+        .compute_context_free(
+            comparison_dataset(
+                [1, 1, 1, 1, 10, 10],
+                [5, 6, 7, 8, 9, 10],
+            )
         )
-    ).analysis
+        .analysis
+    )
 
     assert result.test_name == "student_t"
     assert result.route_reason == "classic policy: nonparametric auto-reroute off"
 
 
 def test_compare_groups_custom_policy_uses_custom_nonparametric_cutoff() -> None:
-    result = compare_step_with_policy(
-        {
-            "preset": "custom",
-            "normality_p": 0.05,
-            "nonparametric_n_cutoff": 5,
-            "use_levene": True,
-        }
-    ).compute_context_free(
-        comparison_dataset(
-            [1, 1, 1, 1, 10, 10],
-            [5, 6, 7, 8, 9, 10],
+    result = (
+        compare_step_with_policy(
+            {
+                "preset": "custom",
+                "normality_p": 0.05,
+                "nonparametric_n_cutoff": 5,
+                "use_levene": True,
+                "default_test": "student_t",
+            }
         )
-    ).analysis
+        .compute_context_free(
+            comparison_dataset(
+                [1, 1, 1, 1, 10, 10],
+                [5, 6, 7, 8, 9, 10],
+            )
+        )
+        .analysis
+    )
 
     assert result.test_name == "student_t"
     assert result.route_reason == "custom policy: nonparametric cutoff not met"
@@ -443,7 +648,7 @@ def test_modern_routing_uses_nonparametric_cutoff_boundary() -> None:
         "mann_whitney",
         "normality violated + small sample",
     )
-    assert (route_30, reason_30) == ("student_t", "assumptions met")
+    assert (route_30, reason_30) == ("welch_t", "Welch-first policy")
 
 
 def test_modern_routing_uses_strict_p_value_boundaries() -> None:
@@ -468,16 +673,16 @@ def test_modern_routing_uses_strict_p_value_boundaries() -> None:
     }
 
     assert step._route(first, second, normality_at_threshold) == (
-        "student_t",
-        "assumptions met",
+        "welch_t",
+        "Welch-first policy",
     )
     assert step._route(first, second, levene_at_threshold) == (
-        "student_t",
-        "assumptions met",
+        "welch_t",
+        "Welch-first policy",
     )
     assert step._route(first, second, levene_below_threshold) == (
         "welch_t",
-        "unequal variance -> Welch correction",
+        "Welch-first policy",
     )
 
 
@@ -493,7 +698,9 @@ def test_compare_groups_writes_analysis_object_for_pipeline() -> None:
     pipeline.recompute(dirty_from=None)
 
     assert "comparison:job_sat:group" in pipeline.analysis_objects
-    assert pipeline.analysis_objects["comparison:job_sat:group"].groups["control"].n == 10
+    assert (
+        pipeline.analysis_objects["comparison:job_sat:group"].groups["control"].n == 10
+    )
     assert pipeline.step_results["compare"].notes == [
-        "Selected Student's t-test because assumptions met."
+        "Selected Welch's t-test because Welch-first policy."
     ]

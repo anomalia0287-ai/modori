@@ -1,0 +1,25 @@
+slug: chi-square-test
+kind: method
+title_ko: "Pearson 카이제곱 검정"
+title_en: "Pearson chi-square test"
+summary_ko: "두 범주형 변수가 독립이라고 볼 수 있는지 교차표의 관측빈도와 기대빈도를 비교하는 검정입니다."
+summary_en: "A test that compares observed and expected counts in a crosstab to assess independence between two categorical variables."
+interpretation_ko: null
+interpretation_en: null
+when_to_use_ko: "두 명목·서열 변수의 관련성을 교차표에서 검토할 때 사용합니다."
+when_to_use_en: "Use it to examine association between two nominal or ordinal variables in a crosstab."
+how_to_report_ko: "χ², 자유도(df), p값, 표본 수를 보고하고, 기대빈도 조건이 약하면 경고나 대체 검정을 함께 제시합니다."
+how_to_report_en: "Report χ², degrees of freedom, p-value, and sample size; include warnings or an alternative test when expected-count conditions are weak."
+pitfalls_ko: "p값은 관련성의 크기를 말하지 않습니다. 효과크기인 Cramer's V와 함께 해석해야 합니다."
+pitfalls_en: "The p-value does not describe association strength. Interpret it with an effect size such as Cramer's V."
+assumptions: []
+alternatives:
+  - fisher-exact-test
+related:
+  - cramers-v
+  - p-value
+references:
+  - citation: "Agresti, A. (2018). Statistical Methods for the Social Sciences (5th ed.). Pearson."
+    locator: null
+    verified: true
+verification_status: needs_review

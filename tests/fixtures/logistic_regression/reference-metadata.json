@@ -1,0 +1,178 @@
+{
+  "measured_on": "2026-07-10",
+  "environment": {
+    "r": "R 4.5.3 (2026-03-11 ucrt)",
+    "mpmath": "1.4.1",
+    "numpy": "2.5.0",
+    "scipy": "1.18.0",
+    "statsmodels": "0.14.6"
+  },
+  "sha256": {
+    "continuous.csv": "b564b35ef24748d4a83c3fcffd5f9c47d3c8cd2f552f1b1371c62088e3de2607",
+    "categorical.csv": "6ea049ee84be9f313a189967db5e64ef92a290f1be081c74c040fac08d5222d4",
+    "logistic_regression_reference.R": "da129bf3e286b9ef441b869f278ae0c009c10083f027845343d3e612282bd47e"
+  },
+  "test_tolerances": {
+    "r_final_fisher": 1e-10,
+    "r_summary_diagnostic": 1e-6,
+    "mpmath_80_digit": 1e-11
+  },
+  "measurements": {
+    "continuous": {
+      "coefficients": {
+        "max_abs": 3.425038030968608e-13,
+        "max_rel": 5.44254469431333e-13
+      },
+      "standard_errors_final_fisher": {
+        "max_abs": 3.341771304121721e-14,
+        "max_rel": 1.0484009298267398e-13
+      },
+      "r_summary_se_vs_final_fisher": {
+        "max_abs": 3.341771304121721e-14,
+        "max_rel": 1.0484009298267398e-13
+      },
+      "fitted_probabilities": {
+        "max_abs": 1.092459456231154e-13,
+        "max_rel": 5.959628632265597e-13
+      },
+      "log_likelihood": {
+        "max_abs": 7.105427357601002e-15,
+        "max_rel": 1.9153588361050322e-16
+      },
+      "null_log_likelihood": {
+        "max_abs": 7.105427357601002e-15,
+        "max_rel": 1.7098648412276785e-16
+      },
+      "deviance": {
+        "max_abs": 1.4210854715202004e-14,
+        "max_rel": 1.9153588361050322e-16
+      },
+      "aic": {
+        "max_abs": 1.4210854715202004e-14,
+        "max_rel": 1.7720548225028448e-16
+      },
+      "likelihood_ratio": {
+        "max_abs": 2.842170943040401e-14,
+        "max_rel": 3.1874456809751584e-15
+      },
+      "likelihood_ratio_p": {
+        "max_abs": 1.5785983631388945e-16,
+        "max_rel": 1.3630849731535451e-14
+      }
+    },
+    "complete_case": {
+      "coefficients": {
+        "max_abs": 1.3877787807814457e-16,
+        "max_rel": 6.909358088327517e-16
+      },
+      "standard_errors_final_fisher": {
+        "max_abs": 1.1102230246251565e-16,
+        "max_rel": 3.7249888869150295e-16
+      },
+      "r_summary_se_vs_final_fisher": {
+        "max_abs": 2.20258575267529e-8,
+        "max_rel": 5.71969776746576e-8
+      },
+      "fitted_probabilities": {
+        "max_abs": 1.1102230246251565e-16,
+        "max_rel": 3.370168102042415e-16
+      },
+      "log_likelihood": {
+        "max_abs": 7.105427357601002e-15,
+        "max_rel": 2.1615477007219468e-16
+      },
+      "null_log_likelihood": {
+        "max_abs": 0.0,
+        "max_rel": 0.0
+      },
+      "deviance": {
+        "max_abs": 1.4210854715202004e-14,
+        "max_rel": 2.1615477007219468e-16
+      },
+      "aic": {
+        "max_abs": 1.4210854715202004e-14,
+        "max_rel": 1.9807756963145883e-16
+      },
+      "likelihood_ratio": {
+        "max_abs": 1.4210854715202004e-14,
+        "max_rel": 1.4144193803647321e-15
+      },
+      "likelihood_ratio_p": {
+        "max_abs": 4.683753385137379e-17,
+        "max_rel": 7.117057515247916e-15
+      }
+    },
+    "categorical": {
+      "coefficients": {
+        "max_abs": 4.475309012264006e-13,
+        "max_rel": 5.435845421520297e-13
+      },
+      "standard_errors_final_fisher": {
+        "max_abs": 4.951594689828198e-14,
+        "max_rel": 1.1127403557441015e-13
+      },
+      "r_summary_se_vs_final_fisher": {
+        "max_abs": 4.973799150320701e-14,
+        "max_rel": 1.1100395296379266e-13
+      },
+      "fitted_probabilities": {
+        "max_abs": 1.1324274851176597e-13,
+        "max_rel": 6.645869912359196e-13
+      },
+      "log_likelihood": {
+        "max_abs": 0.0,
+        "max_rel": 0.0
+      },
+      "null_log_likelihood": {
+        "max_abs": 7.105427357601002e-15,
+        "max_rel": 1.7098648412276785e-16
+      },
+      "deviance": {
+        "max_abs": 0.0,
+        "max_rel": 0.0
+      },
+      "aic": {
+        "max_abs": 0.0,
+        "max_rel": 0.0
+      },
+      "likelihood_ratio": {
+        "max_abs": 1.4210854715202004e-14,
+        "max_rel": 1.568600675618029e-15
+      },
+      "likelihood_ratio_p": {
+        "max_abs": 2.1163626406917047e-16,
+        "max_rel": 7.423435459646798e-15
+      }
+    },
+    "mpmath_80_digit": {
+      "coefficients": {
+        "max_abs": 3.423927807943983e-13,
+        "max_rel": 5.46757610880753e-13
+      },
+      "standard_errors": {
+        "max_abs": 3.341771304121721e-14,
+        "max_rel": 1.0511064806133891e-13
+      },
+      "fitted_probabilities": {
+        "max_abs": 1.092459456231154e-13,
+        "max_rel": 5.95810247896668e-13
+      },
+      "log_likelihood": {
+        "max_abs": 7.105427357601002e-15,
+        "max_rel": 1.9153588361050322e-16
+      }
+    }
+  },
+  "large_offset_reference_boundary": {
+    "offset": 1000000000000.0,
+    "strict_r_glm_status": "nonconverged",
+    "r_control_epsilon": 1e-14,
+    "product_evidence": "shift invariance and scaled-path fixtures",
+    "claim": "Direct original-scale R glm is not used as a large-offset coefficient oracle."
+  },
+  "notes": [
+    "Product standard errors use Fisher information recomputed from final fitted probabilities with an SVD covariance path.",
+    "R emits both its summary(glm) standard errors and a final-probability Fisher reconstruction; product parity uses the latter.",
+    "The complete-case R summary standard error lag was measured before setting the 1e-6 diagnostic-only ceiling."
+  ]
+}

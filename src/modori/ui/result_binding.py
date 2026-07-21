@@ -8,6 +8,7 @@ from PySide6.QtCore import QUrl
 
 from modori.cache import cache_dir
 from modori.path_policy import is_link_or_junction
+from modori.ui.localization import localize_message
 
 
 @dataclass(frozen=True)
@@ -21,13 +22,14 @@ class ResultBindingState:
 
 
 class ResultBindingPresenter:
-    def bind(self, results: list[Any]) -> ResultBindingState:
+    def bind(self, results: list[Any], *, language: str = "ko") -> ResultBindingState:
+        selected_language = "en" if language == "en" else "ko"
         chart_paths = self._chart_paths(results)
         chart_paths_text = "\n".join(chart_paths)
         return ResultBindingState(
-            summary_text=self._summarize(results),
-            table_text=self._format_tables(results),
-            notes_text=self._format_notes(results),
+            summary_text=self._summarize(results, selected_language),
+            table_text=self._format_tables(results, selected_language),
+            notes_text=self._format_notes(results, selected_language),
             chart_paths_text=chart_paths_text,
             chart_source_text=self._format_chart_source(chart_paths),
             chart_paths=chart_paths,
@@ -59,11 +61,11 @@ class ResultBindingPresenter:
                 continue
 
     @staticmethod
-    def _summarize(results: list[Any]) -> str:
+    def _summarize(results: list[Any], language: str) -> str:
         summaries: list[str] = []
         for result in results:
-            prose = getattr(result, "prose_ko", "")
-            title = getattr(result, "title_ko", "")
+            prose = getattr(result, f"prose_{language}", "")
+            title = getattr(result, f"title_{language}", "")
             if title and prose:
                 summaries.append(f"{title}\n{prose}")
             elif prose:
@@ -71,23 +73,28 @@ class ResultBindingPresenter:
         return "\n\n".join(summaries)
 
     @staticmethod
-    def _format_tables(results: list[Any]) -> str:
+    def _format_tables(results: list[Any], language: str) -> str:
         blocks: list[str] = []
         for result in results:
             for table in getattr(result, "tables", []):
                 columns = [column.label for column in table.columns]
-                lines = [table.caption_ko, "\t".join(columns)]
+                caption = getattr(table, f"caption_{language}", "")
+                lines = [caption, "\t".join(columns)]
                 lines.extend("\t".join(row) for row in table.rows)
                 blocks.append("\n".join(lines))
         return "\n\n".join(blocks)
 
     @staticmethod
-    def _format_notes(results: list[Any]) -> str:
+    def _format_notes(results: list[Any], language: str) -> str:
         blocks: list[str] = []
         for result in results:
             for note in getattr(result, "notes", []):
-                title = str(getattr(note, "title", "") or "알림")
-                body = str(getattr(note, "body", "") or "")
+                fallback_title = "Notice" if language == "en" else "알림"
+                title = localize_message(
+                    str(getattr(note, "title", "") or fallback_title),
+                    language,
+                )
+                body = localize_message(str(getattr(note, "body", "") or ""), language)
                 if body:
                     blocks.append(f"{title}: {body}")
         return "\n".join(blocks)

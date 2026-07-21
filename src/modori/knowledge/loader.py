@@ -9,7 +9,15 @@ from modori.knowledge.models import LibraryEntry, LibraryLoadError, Verification
 from modori.knowledge.registry import HELP_KEYS, normalize_help_key
 
 
-DEFAULT_ENTRIES_DIR = Path(__file__).resolve().parents[3] / "library" / "entries"
+def _default_entries_dir(module_file: str | Path) -> Path:
+    module_path = Path(module_file).resolve()
+    packaged_entries = module_path.parents[2] / "library" / "entries"
+    if packaged_entries.is_dir():
+        return packaged_entries
+    return module_path.parents[3] / "library" / "entries"
+
+
+DEFAULT_ENTRIES_DIR = _default_entries_dir(__file__)
 
 
 class Library:

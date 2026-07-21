@@ -16,10 +16,12 @@ from modori.steps import (
     CompareGroupsStep,
     ComposeScaleStep,
     ImportStep,
+    PairedComparisonStep,
     RecodeReverseStep,
     ReliabilityStep,
     ReportStep,
 )
+from modori.steps.anova_factorial import FactorialAnovaStep
 
 
 def report_dataset() -> Dataset:
@@ -102,14 +104,284 @@ def reliability_result_with_chart(chart_type: str) -> ReliabilityResult:
     )
 
 
+def _report_for_selection_origin(
+    tmp_path: Path,
+    *,
+    selection_origin: str,
+    language: str,
+) -> ReportResult:
+    step = ReportStep(
+        id="report",
+        title="APA report",
+        params={
+            "include": ["reliability"],
+            "output_dir": str(tmp_path),
+            "filename": f"{selection_origin}-{language}.docx",
+            "language": language,
+            "include_figures": False,
+            "selection_origin": selection_origin,
+        },
+    )
+    result = step.compute(
+        PipelineContext(
+            dataset=Dataset.empty(),
+            analyses={"reliability": reliability_result_with_chart("horizontal_bar")},
+        )
+    )
+    assert isinstance(result.analysis, ReportResult)
+    return result.analysis
+
+
+@pytest.mark.parametrize(
+    ("language", "expected"),
+    [
+        (
+            "ko",
+            "분석 방법 선택에 실험적 후보 안내가 사용되었습니다. "
+            "계산 모듈의 수치 검증 범위와 추천 타당성은 별개입니다.",
+        ),
+        (
+            "en",
+            "An experimental analysis-candidate aid was used to select this method. "
+            "Numerical validation of the calculation module and validity of the "
+            "recommendation are separate.",
+        ),
+    ],
+)
+def test_assisted_report_discloses_selection_origin_once(
+    tmp_path: Path,
+    language: str,
+    expected: str,
+) -> None:
+    report = _report_for_selection_origin(
+        tmp_path,
+        selection_origin="experimental_candidate_assisted",
+        language=language,
+    )
+
+    assert report.prose[0] == expected
+    assert report.prose.count(expected) == 1
+    document = Document(report.docx_path)
+    assert [paragraph.text for paragraph in document.paragraphs].count(expected) == 1
+
+
+@pytest.mark.parametrize(
+    ("language", "expected"),
+    [
+        (
+            "ko",
+            "분석 방법 선택에 로컬 Research OS의 실험적 후보가 사용되었습니다. "
+            "이 기록은 설정의 출처를 표시할 뿐 추천 타당성을 보증하지 않습니다.",
+        ),
+        (
+            "en",
+            "A local Research OS experimental candidate was used to select this "
+            "method. This records the setting's origin; it does not guarantee "
+            "recommendation validity.",
+        ),
+    ],
+)
+def test_research_os_report_uses_distinct_nonvalidity_disclosure(
+    tmp_path: Path,
+    language: str,
+    expected: str,
+) -> None:
+    report = _report_for_selection_origin(
+        tmp_path,
+        selection_origin="research_os_assisted",
+        language=language,
+    )
+
+    assert report.prose[0] == expected
+    assert report.prose.count(expected) == 1
+    document = Document(report.docx_path)
+    assert [paragraph.text for paragraph in document.paragraphs].count(expected) == 1
+
+
+def test_selection_origin_does_not_change_analysis_tables(
+    tmp_path: Path,
+) -> None:
+    manual = _report_for_selection_origin(
+        tmp_path,
+        selection_origin="manual",
+        language="ko",
+    )
+    assisted = _report_for_selection_origin(
+        tmp_path,
+        selection_origin="experimental_candidate_assisted",
+        language="ko",
+    )
+
+    assert assisted.prose[1:] == manual.prose
+    assert assisted.tables == manual.tables
+    assert assisted.figure_paths == manual.figure_paths
+
+
+def test_report_rejects_unknown_selection_origin_before_writing(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="Unsupported selection origin"):
+        _report_for_selection_origin(
+            tmp_path,
+            selection_origin="unknown",
+            language="ko",
+        )
+
+    assert not (tmp_path / "unknown-ko.docx").exists()
+
+
+def factorial_report_dataset() -> Dataset:
+    rows: list[dict[str, object]] = []
+    for (treatment, site), mean in (
+        (("control", 1), 1.0),
+        (("control", 2), 2.0),
+        (("active", 1), 3.0),
+        (("active", 2), 8.0),
+    ):
+        for offset in (-0.3, -0.1, 0.1, 0.3):
+            rows.append(
+                {
+                    "score": mean + offset,
+                    "treatment": treatment,
+                    "site": site,
+                }
+            )
+    frame = pd.DataFrame(rows)
+    return Dataset(
+        df=frame,
+        variables={
+            "score": Variable(
+                name="score",
+                label="Score",
+                measure=Measure.SCALE,
+                value_labels={},
+                missing_values=[],
+                dtype=str(frame["score"].dtype),
+                origin_step_id="fixture",
+            ),
+            "treatment": Variable(
+                name="treatment",
+                label="Treatment",
+                measure=Measure.NOMINAL,
+                value_labels={},
+                missing_values=[],
+                dtype=str(frame["treatment"].dtype),
+                origin_step_id="fixture",
+            ),
+            "site": Variable(
+                name="site",
+                label="Site",
+                measure=Measure.ORDINAL,
+                value_labels={1.0: "North", 2.0: "South"},
+                missing_values=[],
+                dtype=str(frame["site"].dtype),
+                origin_step_id="fixture",
+            ),
+        },
+    )
+
+
+def test_report_step_exports_factorial_type_iii_table_plot_and_docx(
+    tmp_path: Path,
+) -> None:
+    pipeline = Pipeline(factorial_report_dataset())
+    pipeline.add(
+        FactorialAnovaStep(
+            id="factorial",
+            title="Factorial ANOVA",
+            params={
+                "schema_version": 1,
+                "dv": "score",
+                "factor_a": "treatment",
+                "factor_b": "site",
+                "factor_a_levels": ["control", "active"],
+                "factor_b_levels": [1, 2],
+                "factorial_policy": {
+                    "sum_of_squares": "type_iii_equal_cell_weight",
+                    "simple_effects": "interaction_gated_holm",
+                    "alpha": 0.05,
+                },
+                "language": "ko",
+            },
+        )
+    )
+    pipeline.add(
+        ReportStep(
+            id="factorial-report",
+            title="Factorial report",
+            params={
+                "include": ["factorial"],
+                "output_dir": str(tmp_path),
+                "filename": "factorial-report.docx",
+                "language": "ko",
+            },
+        )
+    )
+
+    pipeline.recompute(dirty_from=None)
+
+    report = pipeline.analysis_objects["factorial-report"]
+    assert isinstance(report, ReportResult)
+    assert "동일 셀 가중 Type III" in report.prose[0]
+    assert [row["section"] for row in report.tables["factorial"]][0] == "interaction"
+    assert "marginal_mean" in {row["section"] for row in report.tables["factorial"]}
+    figure_paths = [Path(path) for path in report.figure_paths["factorial"]]
+    assert sorted(path.suffix for path in figure_paths) == [".eps", ".png", ".svg"]
+    assert all(path.stat().st_size > 0 for path in figure_paths)
+
+    document = Document(report.docx_path)
+    assert len(document.inline_shapes) == 1
+    assert any(
+        "동일 셀 가중 Type III" in paragraph.text for paragraph in document.paragraphs
+    )
+    table_cells = [
+        cell.text
+        for table in document.tables
+        for row in table.rows
+        for cell in row.cells
+    ]
+    assert "interaction" in table_cells
+    assert "marginal_mean" in table_cells
+
+
+def paired_report_dataset() -> Dataset:
+    frame = pd.DataFrame(
+        {
+            "pre": [10, 11, 12, 13, 14, 15],
+            "post": [11, 12, 13, 14, 24, 25],
+        }
+    )
+    return Dataset(
+        df=frame,
+        variables={
+            "pre": Variable(
+                name="pre",
+                label="Pre score",
+                measure=Measure.SCALE,
+                value_labels={},
+                missing_values=[],
+                dtype=str(frame["pre"].dtype),
+                origin_step_id=None,
+            ),
+            "post": Variable(
+                name="post",
+                label="Post score",
+                measure=Measure.SCALE,
+                value_labels={},
+                missing_values=[],
+                dtype=str(frame["post"].dtype),
+                origin_step_id=None,
+            ),
+        },
+    )
+
+
 def _png_pixels_per_meter(path: Path) -> tuple[int, int, int]:
     data = path.read_bytes()
     assert data.startswith(b"\x89PNG\r\n\x1a\n")
     index = 8
     while index < len(data):
-        length = struct.unpack(">I", data[index:index + 4])[0]
-        chunk_type = data[index + 4:index + 8]
-        chunk_data = data[index + 8:index + 8 + length]
+        length = struct.unpack(">I", data[index : index + 4])[0]
+        chunk_type = data[index + 4 : index + 8]
+        chunk_data = data[index + 8 : index + 8 + length]
         if chunk_type == b"pHYs":
             x_ppm, y_ppm, unit = struct.unpack(">IIB", chunk_data)
             return x_ppm, y_ppm, unit
@@ -145,15 +417,19 @@ def test_report_step_generates_korean_apa_prose_figures_and_docx(tmp_path) -> No
     assert isinstance(report, ReportResult)
     assert Path(report.docx_path).exists()
     assert any("Cronbach's \u03b1 = .97" in sentence for sentence in report.prose)
-    assert any("독립표본 t검정 결과" in sentence for sentence in report.prose)
+    assert any(
+        "독립표본 t검정(Welch 보정) 결과" in sentence for sentence in report.prose
+    )
     assert any("직무만족 점수 차이" in sentence for sentence in report.prose)
     assert any("p < .001" in sentence for sentence in report.prose)
     assert any("Cohen's d = -2.11" in sentence for sentence in report.prose)
     assert "reliability:job_sat" in report.tables
     assert report.tables["reliability:job_sat"][0]["item"] == "q1"
     assert "comparison:job_sat:group" in report.tables
-    assert report.tables["comparison:job_sat:group"][0]["test"] == "student_t"
-    assert sorted(Path(path).suffix for paths in report.figure_paths.values() for path in paths) == [
+    assert report.tables["comparison:job_sat:group"][0]["test"] == "welch_t"
+    assert sorted(
+        Path(path).suffix for paths in report.figure_paths.values() for path in paths
+    ) == [
         ".eps",
         ".eps",
         ".png",
@@ -161,8 +437,14 @@ def test_report_step_generates_korean_apa_prose_figures_and_docx(tmp_path) -> No
         ".svg",
         ".svg",
     ]
-    assert all(Path(path).exists() for paths in report.figure_paths.values() for path in paths)
-    assert all(Path(path).stat().st_size > 0 for paths in report.figure_paths.values() for path in paths)
+    assert all(
+        Path(path).exists() for paths in report.figure_paths.values() for path in paths
+    )
+    assert all(
+        Path(path).stat().st_size > 0
+        for paths in report.figure_paths.values()
+        for path in paths
+    )
     png_paths = [
         Path(path)
         for paths in report.figure_paths.values()
@@ -186,7 +468,10 @@ def test_report_step_generates_korean_apa_prose_figures_and_docx(tmp_path) -> No
     assert all(image.shape[0] >= 100 and image.shape[1] >= 100 for image in png_images)
     assert all(_png_pixels_per_meter(path) == (11811, 11811, 1) for path in png_paths)
     assert all(ET.parse(path).getroot().tag.endswith("svg") for path in svg_paths)
-    assert all(path.read_text(encoding="utf-8", errors="ignore").startswith("%!PS-Adobe") for path in eps_paths)
+    assert all(
+        path.read_text(encoding="utf-8", errors="ignore").startswith("%!PS-Adobe")
+        for path in eps_paths
+    )
     document = Document(report.docx_path)
     assert len(document.inline_shapes) == len(png_paths)
     assert all(shape.width > 0 and shape.height > 0 for shape in document.inline_shapes)
@@ -198,15 +483,84 @@ def test_report_step_generates_korean_apa_prose_figures_and_docx(tmp_path) -> No
         for row in table.rows
         for cell in row.cells
     ]
-    assert "student_t" in table_cells
+    assert "welch_t" in table_cells
     assert "cohen_d" in table_cells
     with ZipFile(report.docx_path) as docx_archive:
         embedded_media = [
-            name
-            for name in docx_archive.namelist()
-            if name.startswith("word/media/")
+            name for name in docx_archive.namelist() if name.startswith("word/media/")
         ]
     assert len(embedded_media) == len(png_paths)
+
+
+def test_report_step_renders_paired_wilcoxon_figures_by_default(tmp_path) -> None:
+    pipeline = Pipeline(paired_report_dataset())
+    pipeline.add(
+        PairedComparisonStep(
+            id="paired",
+            title="Compare paired scores",
+            params={"before": "pre", "after": "post"},
+        )
+    )
+    pipeline.add(
+        ReportStep(
+            id="report",
+            title="APA report",
+            params={
+                "include": ["comparison:pre:post:paired"],
+                "output_dir": str(tmp_path),
+                "filename": "paired-report.docx",
+                "language": "en",
+            },
+        )
+    )
+
+    pipeline.recompute(dirty_from=None)
+
+    comparison = pipeline.analysis_objects["comparison:pre:post:paired"]
+    report = pipeline.analysis_objects["report"]
+    figure_paths = report.figure_paths["comparison:pre:post:paired"]
+
+    assert comparison.test_name == "wilcoxon"
+    assert isinstance(report, ReportResult)
+    assert Path(report.docx_path).exists()
+    assert sorted(Path(path).suffix for path in figure_paths) == [
+        ".eps",
+        ".png",
+        ".svg",
+    ]
+    assert all(Path(path).exists() for path in figure_paths)
+    assert all(Path(path).stat().st_size > 0 for path in figure_paths)
+
+
+def test_report_step_can_export_without_figures(tmp_path) -> None:
+    pipeline = Pipeline(report_dataset())
+    pipeline.add(
+        ReliabilityStep(
+            id="reliability",
+            title="Reliability",
+            params={"items": ["q1", "q2", "q3", "q4"], "scale_name": "job_sat"},
+        )
+    )
+    pipeline.add(
+        ReportStep(
+            id="report",
+            title="APA report",
+            params={
+                "include": ["reliability:job_sat"],
+                "output_dir": str(tmp_path),
+                "filename": "report-no-figures.docx",
+                "language": "ko",
+                "include_figures": False,
+            },
+        )
+    )
+
+    pipeline.recompute(dirty_from=None)
+
+    report = pipeline.analysis_objects["report"]
+    assert report.figure_paths == {"reliability:job_sat": []}
+    assert Path(report.docx_path).exists()
+    assert not list(tmp_path.glob("reliability_job_sat.*"))
 
 
 def test_report_step_recomputes_after_import_data_changes(tmp_path) -> None:
@@ -277,6 +631,9 @@ def test_public_reference_data_runs_from_csv_import_to_report(tmp_path) -> None:
         .loc[lambda frame: frame["Time"] == "August", ["Scores", "Group"]]
         .reset_index(drop=True)
     )
+    control = august_scores.loc[august_scores["Group"] == "Control", "Scores"]
+    meditation = august_scores.loc[august_scores["Group"] == "Meditation", "Scores"]
+    ttest_reference = pg.ttest(control, meditation, correction=True).iloc[0]
     repeated_items = pd.concat([cronbach_wide] * 4, ignore_index=True).iloc[
         : len(august_scores)
     ]
@@ -339,9 +696,11 @@ def test_public_reference_data_runs_from_csv_import_to_report(tmp_path) -> None:
         abs=1e-12,
     )
     assert reliability.alpha_ci == pytest.approx((0.418, 0.730), abs=0.001)
-    assert comparison.test_name == "student_t"
-    assert comparison.statistic == pytest.approx(0.31602196533393784, abs=1e-12)
-    assert comparison.p_value == pytest.approx(0.7531203054939072, abs=1e-12)
+    assert comparison.test_name == "welch_t"
+    assert comparison.route_reason == "Welch-first policy"
+    assert comparison.statistic == pytest.approx(ttest_reference["T"], abs=1e-12)
+    assert comparison.df == pytest.approx(ttest_reference["dof"], abs=1e-12)
+    assert comparison.p_value == pytest.approx(ttest_reference["p_val"], abs=1e-12)
     assert Path(report.docx_path).exists()
     assert any("Cronbach's \u03b1 = .59" in sentence for sentence in report.prose)
     assert any("통계적으로 유의하지 않았다" in sentence for sentence in report.prose)
@@ -354,8 +713,8 @@ def test_psych_bfi_public_survey_runs_from_csv_import_to_report(tmp_path) -> Non
     keyed_frame["A1_R"] = 7 - keyed_frame["A1"]
     agree_items = ["A1_R", "A2", "A3", "A4", "A5"]
     valid_agree = keyed_frame[agree_items].notna().sum(axis=1) >= 4
-    keyed_frame["agree"] = keyed_frame[agree_items].mean(axis=1, skipna=True).where(
-        valid_agree
+    keyed_frame["agree"] = (
+        keyed_frame[agree_items].mean(axis=1, skipna=True).where(valid_agree)
     )
 
     complete_reliability = keyed_frame[agree_items].dropna()
@@ -372,14 +731,10 @@ def test_psych_bfi_public_survey_runs_from_csv_import_to_report(tmp_path) -> Non
     first_term = first_variance / len(gender_1)
     second_term = second_variance / len(gender_2)
     welch_df = (first_term + second_term) ** 2 / (
-        first_term**2 / (len(gender_1) - 1)
-        + second_term**2 / (len(gender_2) - 1)
+        first_term**2 / (len(gender_1) - 1) + second_term**2 / (len(gender_2) - 1)
     )
     pooled_sd = (
-        (
-            (len(gender_1) - 1) * first_variance
-            + (len(gender_2) - 1) * second_variance
-        )
+        ((len(gender_1) - 1) * first_variance + (len(gender_2) - 1) * second_variance)
         / (len(gender_1) + len(gender_2) - 2)
     ) ** 0.5
     signed_cohen_d = (gender_1.mean() - gender_2.mean()) / pooled_sd
@@ -453,7 +808,7 @@ def test_psych_bfi_public_survey_runs_from_csv_import_to_report(tmp_path) -> Non
     assert reliability.cronbach_alpha == pytest.approx(alpha_manual, abs=1e-12)
     assert reliability.cronbach_alpha == pytest.approx(0.7037558943748362, abs=1e-12)
     assert comparison.test_name == "welch_t"
-    assert comparison.route_reason == "unequal variance -> Welch correction"
+    assert comparison.route_reason == "Welch-first policy"
     assert comparison.statistic == pytest.approx(welch.statistic, abs=1e-12)
     assert comparison.df == pytest.approx(welch_df, abs=1e-9)
     assert comparison.effect_value == pytest.approx(signed_cohen_d, abs=1e-12)
@@ -515,11 +870,15 @@ def test_report_step_rejects_output_filename_path_traversal(tmp_path) -> None:
         )
     )
 
-    with pytest.raises(ValueError, match="Report filename must not contain path separators"):
+    with pytest.raises(
+        ValueError, match="Report filename must not contain path separators"
+    ):
         pipeline.recompute(dirty_from=None)
 
 
-@pytest.mark.parametrize("filename", ["../escape.docx", "/escape.docx", "C:/escape.docx"])
+@pytest.mark.parametrize(
+    "filename", ["../escape.docx", "/escape.docx", "C:/escape.docx"]
+)
 def test_report_step_rejects_absolute_or_forward_slash_filenames(
     tmp_path,
     filename,
@@ -545,7 +904,9 @@ def test_report_step_rejects_absolute_or_forward_slash_filenames(
         )
     )
 
-    with pytest.raises(ValueError, match="Report filename must not contain path separators"):
+    with pytest.raises(
+        ValueError, match="Report filename must not contain path separators"
+    ):
         pipeline.recompute(dirty_from=None)
 
 
@@ -573,7 +934,9 @@ def test_report_step_rejects_output_dir_that_is_an_existing_file(tmp_path) -> No
         )
     )
 
-    with pytest.raises(ValueError, match="Report output_dir exists and is not a directory"):
+    with pytest.raises(
+        ValueError, match="Report output_dir exists and is not a directory"
+    ):
         pipeline.recompute(dirty_from=None)
 
 
@@ -608,7 +971,9 @@ def test_report_step_rejects_existing_docx_symlink_destination(tmp_path) -> None
         )
     )
 
-    with pytest.raises(ValueError, match="Report output path must not be a symbolic link"):
+    with pytest.raises(
+        ValueError, match="Report output path must not be a symbolic link"
+    ):
         pipeline.recompute(dirty_from=None)
 
     assert outside.read_text(encoding="utf-8") == "outside"
@@ -643,7 +1008,9 @@ def test_report_step_rejects_symlink_output_dir(tmp_path) -> None:
         )
     )
 
-    with pytest.raises(ValueError, match="Report output_dir must not be a symbolic link"):
+    with pytest.raises(
+        ValueError, match="Report output_dir must not be a symbolic link"
+    ):
         pipeline.recompute(dirty_from=None)
 
     assert not (outside_dir / "report.docx").exists()
@@ -690,7 +1057,9 @@ def test_report_step_reports_missing_upstream_analysis_key_clearly(tmp_path) -> 
         )
     )
 
-    with pytest.raises(ValueError, match="Missing analysis result: reliability:missing"):
+    with pytest.raises(
+        ValueError, match="Missing analysis result: reliability:missing"
+    ):
         pipeline.recompute(dirty_from=None)
 
 
@@ -888,12 +1257,17 @@ def test_report_step_uses_distinct_figure_paths_across_recompute(tmp_path) -> No
         )
     )
     pipeline.recompute(dirty_from=None)
-    first_paths = set(pipeline.analysis_objects["report"].figure_paths["reliability:job_sat"])
+    first_paths = set(
+        pipeline.analysis_objects["report"].figure_paths["reliability:job_sat"]
+    )
 
     pipeline.recompute(dirty_from="report")
-    second_paths = set(pipeline.analysis_objects["report"].figure_paths["reliability:job_sat"])
+    second_paths = set(
+        pipeline.analysis_objects["report"].figure_paths["reliability:job_sat"]
+    )
 
     assert first_paths.isdisjoint(second_paths)
+
 
 @pytest.mark.parametrize("param_name", ["output_docx", "docx_path", "output_path"])
 def test_report_step_rejects_direct_output_path_aliases(param_name, tmp_path) -> None:

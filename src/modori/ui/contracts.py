@@ -6,8 +6,14 @@ from typing import Any, Literal
 
 
 Language = Literal["ko", "en"]
+SelectionOrigin = Literal[
+    "manual",
+    "experimental_candidate_assisted",
+    "research_os_assisted",
+]
 ControllerModeValue = Literal["guided", "standard"]
 RunStatusValue = Literal["empty", "ready", "running", "error"]
+SelectionProvenance = SelectionOrigin
 
 
 class ControllerMode(str, Enum):
@@ -47,15 +53,40 @@ class ExplainResult:
 class ImportOptions:
     preserve_sav_metadata: bool = True
     confirm_new_session: bool = False
+    table_layout: dict[str, Any] | None = None
+    drop_aggregate_rows: bool = False
+    drop_duplicate_rows: bool = False
+    import_selection: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True)
 class ReportExportOptions:
     language: Language = "ko"
+    include_descriptives: bool = True
     include_reliability: bool = True
     include_comparison: bool = True
+    include_association: bool = True
+    include_group_models: bool = True
+    include_dimension_reduction: bool = True
     include_regression: bool = True
     include_figures: bool = True
+    selection_provenance: SelectionProvenance = "manual"
+    selection_origin: SelectionOrigin = "manual"
+
+    def __post_init__(self) -> None:
+        origin: SelectionOrigin = (
+            "research_os_assisted"
+            if "research_os_assisted"
+            in {self.selection_provenance, self.selection_origin}
+            else (
+                "experimental_candidate_assisted"
+                if "experimental_candidate_assisted"
+                in {self.selection_provenance, self.selection_origin}
+                else "manual"
+            )
+        )
+        object.__setattr__(self, "selection_provenance", origin)
+        object.__setattr__(self, "selection_origin", origin)
 
 
 @dataclass(frozen=True)
@@ -83,7 +114,25 @@ class DisplayNote:
 @dataclass(frozen=True)
 class DisplayResult:
     result_id: str
-    kind: Literal["reliability", "comparison", "regression", "report"]
+    kind: Literal[
+        "descriptives",
+        "reliability",
+        "comparison",
+        "regression",
+        "logistic_regression",
+        "frequency_crosstab",
+        "correlation",
+        "anova_oneway",
+        "anova_factorial",
+        "kruskal_wallis",
+        "ancova",
+        "factor_pca",
+        "repeated_measures_anova",
+        "friedman",
+        "mediation",
+        "moderated_mediation",
+        "report",
+    ]
     title_ko: str
     title_en: str
     prose_ko: str
@@ -119,8 +168,12 @@ class RegressionPatch:
 @dataclass(frozen=True)
 class ReportPatch:
     language: Language
+    include_descriptives: bool
     include_reliability: bool
     include_comparison: bool
+    include_association: bool
+    include_group_models: bool
+    include_dimension_reduction: bool
     include_regression: bool
     include_figures: bool
 

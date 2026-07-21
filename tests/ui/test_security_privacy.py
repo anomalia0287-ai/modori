@@ -28,6 +28,29 @@ def test_ui_network_guard_has_no_runtime_network_imports() -> None:
     assert violations == []
 
 
+def test_research_flow_has_no_process_dynamic_loader_or_network_boundary() -> None:
+    path = Path("src/modori/ui/research_flow_controller.py")
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    forbidden = {
+        "ctypes",
+        "http",
+        "importlib",
+        "multiprocessing",
+        "requests",
+        "socket",
+        "subprocess",
+        "urllib",
+    }
+    imported: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            imported.update(alias.name.split(".")[0] for alias in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.module:
+            imported.add(node.module.split(".")[0])
+
+    assert imported.isdisjoint(forbidden)
+
+
 def test_qml_has_no_remote_assets_or_web_engine() -> None:
     forbidden = ("http://", "https://", "WebEngine", "XmlHttpRequest", "fetch(")
     violations = [
@@ -48,7 +71,9 @@ def test_app_bootstrap_exposes_reduce_effects_from_env(monkeypatch) -> None:
     assert AppBootstrap().reduceEffects is True
 
 
-def test_controller_reduce_effects_toggle_persists_to_settings(tmp_path, monkeypatch) -> None:
+def test_controller_reduce_effects_toggle_persists_to_settings(
+    tmp_path, monkeypatch
+) -> None:
     from modori.ui.controller import UiController
 
     settings_path = tmp_path / "settings.json"
@@ -61,13 +86,20 @@ def test_controller_reduce_effects_toggle_persists_to_settings(tmp_path, monkeyp
     assert reloaded.reduceEffects is True
 
 
-def test_work_screen_exposes_reduce_effects_toggle() -> None:
-    work = Path("src/modori/ui/qml/screens/WorkScreen.qml").read_text(encoding="utf-8")
+def test_settings_surface_exposes_reduce_effects_toggle() -> None:
+    settings = Path("src/modori/ui/qml/dialogs/SettingsDialog.qml").read_text(
+        encoding="utf-8"
+    )
     main = Path("src/modori/ui/qml/Main.qml").read_text(encoding="utf-8")
 
-    assert "work.reduce_effects" in work
-    assert "uiController.setReduceEffects" in work
+    assert "settings.reduce_effects" in settings
+    assert "uiController.setReduceEffects" in settings
     assert "property bool reduceEffects: uiController.reduceEffects" in main
+
+
+def test_work_screen_exposes_reduce_effects_toggle() -> None:
+    """Retain the research regression ID after the toggle moved to Settings."""
+    test_settings_surface_exposes_reduce_effects_toggle()
 
 
 def test_app_bootstrap_exposes_string_catalog() -> None:
@@ -75,7 +107,10 @@ def test_app_bootstrap_exposes_string_catalog() -> None:
 
     bootstrap = AppBootstrap()
 
-    assert bootstrap.text("entry.guided") == "안내 모드"
+    assert bootstrap.text("entry.guided") == "CASUAL MODE"
+    assert bootstrap.text("entry.guided_description") == (
+        "검증 중인 분석 후보를 단계별로 살펴봅니다. 자동 실행하지 않습니다."
+    )
     assert bootstrap.text("privacy.local") == "데이터는 이 컴퓨터를 떠나지 않습니다"
     assert bootstrap.text("missing.key") == "missing.key"
 

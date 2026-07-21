@@ -1,0 +1,24 @@
+slug: omega-squared
+kind: effect_size
+title_ko: "omega squared"
+title_en: "Omega squared"
+summary_ko: "분산분석에서 모집단 수준의 설명 비율을 더 보수적으로 추정하려는 효과크기입니다."
+summary_en: "A more conservative ANOVA effect-size estimate for the proportion of variance associated with a factor."
+interpretation_ko: "eta squared보다 보수적으로 해석되며, 값이 클수록 집단 구분과 관련된 변동 비율이 큽니다."
+interpretation_en: "It is usually interpreted more conservatively than eta squared; larger values indicate more variance associated with the factor."
+when_to_use_ko: null
+when_to_use_en: null
+how_to_report_ko: "예: omega squared = .18처럼 ANOVA 결과와 함께 보고합니다."
+how_to_report_en: "Report with ANOVA results, e.g., omega squared = .18."
+pitfalls_ko: "효과크기만으로 실질적 중요성을 단정하지 말고 연구 맥락과 측정 단위를 함께 봐야 합니다."
+pitfalls_en: "Do not infer practical importance from effect size alone; review context and measurement scale."
+assumptions: []
+alternatives:
+  - eta-squared
+related:
+  - anova-oneway
+references:
+  - citation: "Field, A. (2018). Discovering Statistics Using IBM SPSS Statistics (5th ed.). SAGE."
+    locator: null
+    verified: true
+verification_status: needs_review

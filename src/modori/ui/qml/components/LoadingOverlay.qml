@@ -1,14 +1,36 @@
 import QtQuick
-import QtQuick.Controls
+import QtQuick.Controls.Basic
+import QtQuick.Layouts
+import "../theme"
 
 Rectangle {
-    color: "#800B4A43"
+    id: root
 
-    Label {
+    property bool reduceEffects: false
+
+    color: theme.brandScrim
+    Accessible.name: appBootstrap.text("loading.calculating", appBootstrap.language)
+
+    Theme {
+        id: theme
+    }
+
+    ColumnLayout {
         anchors.centerIn: parent
-        text: appBootstrap.text("loading.calculating")
-        color: "white"
-        font.pixelSize: 22
-        font.bold: true
+        spacing: theme.spaceSm
+
+        BusyIndicator {
+            visible: !root.reduceEffects
+            running: root.visible && !root.reduceEffects
+            Layout.alignment: Qt.AlignHCenter
+        }
+
+        Label {
+            text: appBootstrap.text("loading.calculating", appBootstrap.language)
+            color: theme.onBrand
+            font.pixelSize: theme.fontOverlay
+            font.bold: true
+            Layout.alignment: Qt.AlignHCenter
+        }
     }
 }

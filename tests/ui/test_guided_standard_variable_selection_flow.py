@@ -9,6 +9,19 @@ from modori.steps import CompareGroupsStep, ImportStep, ReliabilityStep
 from modori.ui.controller import UiController
 
 
+def _qml_block_at(source: str, opening_brace: int) -> str:
+    depth = 0
+    for index in range(opening_brace, len(source)):
+        char = source[index]
+        if char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if depth == 0:
+                return source[opening_brace : index + 1]
+    raise AssertionError("QML block was not closed")
+
+
 def _write_selection_csv(path: Path) -> None:
     pd.DataFrame(
         {
@@ -76,23 +89,30 @@ def test_controller_applies_comparison_selection_to_existing_step(tmp_path) -> N
     result = controller.configureComparisonSelection("q4", "group")
 
     assert result.ok is True
-    assert pipeline.steps[2].params["dv"] == "q4"
-    assert pipeline.steps[2].params["group"] == "group"
-    assert pipeline.steps[2].params["routing_policy"] == {"preset": "always_welch"}
+    comparison = next(step for step in pipeline.steps if step.id == "comparison")
+    assert comparison.params["dv"] == "q4"
+    assert comparison.params["group"] == "group"
+    assert comparison.params["routing_policy"] == {"preset": "always_welch"}
+    assert [step.id for step in pipeline.steps] == ["import", "comparison", "report"]
     assert controller.pipeline_version == 1
     assert controller.stale is True
 
 
-def test_controller_rejects_regression_selection_without_regression_step(tmp_path) -> None:
+def test_controller_creates_regression_selection_without_existing_regression_step(tmp_path) -> None:
     data_path = tmp_path / "survey.csv"
     _write_selection_csv(data_path)
-    controller = UiController(pipeline=_selection_pipeline(data_path))
+    pipeline = _selection_pipeline(data_path)
+    controller = UiController(pipeline=pipeline)
 
     result = controller.configureRegressionSelection("q4", "q1, q2")
 
-    assert result.ok is False
-    assert result.error_code == "step_not_available"
-    assert controller.pipeline_version == 0
+    assert result.ok is True
+    regression = next(step for step in pipeline.steps if step.id == "regression")
+    assert regression.step_type == "stats.regression_ols"
+    assert regression.params["dv"] == "q4"
+    assert regression.params["predictors"] == ["q1", "q2"]
+    assert [step.id for step in pipeline.steps] == ["import", "regression", "report"]
+    assert controller.pipeline_version == 1
 
 
 def test_guide_and_standard_rails_commit_variable_selections() -> None:
@@ -104,3 +124,69 @@ def test_guide_and_standard_rails_commit_variable_selections() -> None:
     assert "uiController.configureRegressionFromText" in guide
     assert "uiController.configureReliabilityFromText" in rail
     assert "uiController.configureComparisonFromText" in rail
+
+
+def test_guided_and_standard_apply_buttons_require_complete_fields() -> None:
+    guide = Path("src/modori/ui/qml/components/GuideRail.qml").read_text(encoding="utf-8")
+    rail = Path("src/modori/ui/qml/components/PipelineRail.qml").read_text(encoding="utf-8")
+
+    assert "property bool canCommitSelection" in guide
+    assert 'property bool canEditSelection: uiController.status !== "empty" && uiController.status !== "running"' in guide
+    assert "enabled: root.canRunReviewedSelection()" in guide
+    assert "function canCommitManualSelection()" in guide
+    assert "if (!root.canEditSelection)" in guide
+    assert 'root.selectedIntent === "reliability"' in guide
+    assert "root.isVariableListIntent(root.selectedIntent)" in guide
+    assert 'root.selectedIntent === "mediation"' in guide
+    assert 'root.selectedIntent === "moderated_mediation"' in guide
+    assert "root.hasText(reliabilityItemsField.text)" in guide
+    assert "root.hasText(outcomeKeyField.text)" in guide
+    assert "root.hasText(groupKeyField.text)" in guide
+    assert "root.hasText(predictorKeysField.text)" in guide
+    assert 'property bool canEditSelection: uiController.status !== "empty" && uiController.status !== "running"' in rail
+    assert "enabled: root.canEditSelection && root.hasText(reliabilityItemsField.text)" in rail
+    assert (
+        "enabled: root.canEditSelection && root.hasText(comparisonOutcomeField.text) "
+        "&& root.hasText(comparisonGroupField.text)"
+    ) in rail
+    assert (
+        "enabled: root.canEditSelection && root.hasText(regressionOutcomeField.text) "
+        "&& root.hasText(regressionPredictorsField.text)"
+    ) in rail
+
+
+def test_guide_rail_shows_recommendations_without_auto_running() -> None:
+    guide = Path("src/modori/ui/qml/components/GuideRail.qml").read_text(encoding="utf-8")
+
+    assert "ScrollView" in guide
+    assert 'appBootstrap.text("guide.experimental_status", appBootstrap.language)' in guide
+    assert 'appBootstrap.text("guide.order_disclaimer", appBootstrap.language)' in guide
+    assert "uiController.recommendationTitle" in guide
+    assert "uiController.recommendationReason" in guide
+    assert "uiController.recommendationAlternativesText" not in guide
+    assert "uiController.recommendationCount" in guide
+    assert (
+        "uiController.recommendationCandidateTitleAtFor(index, appBootstrap.language)"
+        in guide
+    )
+    assert "uiController.selectRecommendationAt" in guide
+    assert 'appBootstrap.text("guide.candidate_list", appBootstrap.language)' in guide
+    assert 'appBootstrap.text("guide.other_recommendations", appBootstrap.language)' in guide
+    assert 'appBootstrap.text("guide.manual_selection", appBootstrap.language)' in guide
+    assert "uiController.runPreparedRecommendationNow()" not in guide
+    assert "uiController.runPreparedRecommendation()" not in guide
+    assert "uiController.applySelectedRecommendation" not in guide
+    assert "uiController.recommendationLevel" not in guide
+    assert "uiController.recommendationCandidateLevelAt(index)" not in guide
+    assert "uiController.prepareSelectedRecommendationNow()" in guide
+    assert "uiController.experimentalRecommendationConfirmed" in guide
+    assert "runPreparedRecommendation" not in guide
+
+    selection_call = guide.index("uiController.selectRecommendationAt")
+    selection_handler_start = guide.rfind("onClicked: {", 0, selection_call)
+    assert selection_handler_start != -1
+    selection_block = _qml_block_at(guide, guide.index("{", selection_handler_start))
+
+    assert "uiController.selectRecommendationAt(index)" in selection_block
+    assert "uiController.rerunNow()" not in selection_block
+    assert "uiController.prepareSelectedRecommendationNow()" not in selection_block

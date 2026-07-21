@@ -1,0 +1,22 @@
+slug: mauchly-sphericity
+kind: assumption
+title_ko: "Mauchly 구형성 검정"
+title_en: "Mauchly's test of sphericity"
+summary_ko: "반복측정 수준 간 차이점수의 분산이 유사한지 확인하는 진단입니다."
+summary_en: "A diagnostic for whether variances of repeated-level differences are sufficiently similar."
+interpretation_ko: null
+interpretation_en: null
+when_to_use_ko: "세 개 이상 반복측정 수준이 있는 반복측정 분산분석에서 확인합니다."
+when_to_use_en: "Use it in repeated-measures ANOVA with three or more repeated levels."
+how_to_report_ko: "W, 카이제곱, 자유도, p값과 보정 적용 여부를 함께 보고합니다."
+how_to_report_en: "Report W, chi-square, degrees of freedom, p-value, and whether a correction was applied."
+pitfalls_ko: "구형성 위반 시 보정 자유도나 비모수 대안을 함께 검토해야 합니다."
+pitfalls_en: "When sphericity is violated, corrected degrees of freedom or a nonparametric alternative should be considered."
+assumptions: []
+alternatives:
+  - greenhouse-geisser
+  - friedman-test
+related:
+  - repeated-measures-anova
+references: []
+verification_status: needs_review

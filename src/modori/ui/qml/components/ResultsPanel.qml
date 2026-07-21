@@ -2,9 +2,18 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import "../dialogs"
+import "../theme"
 
-Rectangle {
-    color: "#F8FBF9"
+PearlSurface {
+    id: root
+
+    fillColor: theme.workspaceCard
+    radius: theme.radiusSmall
+    Accessible.name: appBootstrap.text("results.title", appBootstrap.language)
+
+    Theme {
+        id: theme
+    }
 
     ExplainPopover {
         id: explainPopover
@@ -14,103 +23,287 @@ Rectangle {
         id: reportExportDialog
     }
 
+    ResultDetailDialog {
+        id: resultDetailDialog
+    }
+
+    function hasResults() {
+        return uiController.resultSummary.length > 0
+    }
+
+    function stateKind() {
+        if (uiController.lastError.length > 0) {
+            return "error"
+        }
+        if (uiController.status === "running") {
+            return "running"
+        }
+        if (uiController.stale && root.hasResults()) {
+            return "stale"
+        }
+        if (root.hasResults()) {
+            return "latest"
+        }
+        return "empty"
+    }
+
+    function stateLabel() {
+        if (uiController.lastError.length > 0) {
+            return appBootstrap.text("results.error_prefix", appBootstrap.language).trim()
+        }
+        if (uiController.status === "running") {
+            return appBootstrap.text("results.running", appBootstrap.language)
+        }
+        if (uiController.stale && root.hasResults()) {
+            return appBootstrap.text("results.stale", appBootstrap.language)
+        }
+        if (root.hasResults()) {
+            return appBootstrap.text("results.latest", appBootstrap.language)
+        }
+        return appBootstrap.text("results.empty", appBootstrap.language)
+    }
+
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 18
-        spacing: 12
+        anchors.margins: theme.spaceNone
+        spacing: theme.spaceNone
 
-        Label {
-            text: appBootstrap.text("results.title")
-            font.bold: true
-            color: "#0B4A43"
-        }
-
-        Label {
-            text: appBootstrap.text("results.stale")
-            visible: uiController.stale && uiController.resultSummary.length > 0
-            color: "#A86700"
-            font.bold: true
+        Item {
+            objectName: "resultsReportPreview"
             Layout.fillWidth: true
-        }
+            Layout.fillHeight: true
 
-        Label {
-            text: appBootstrap.text("results.error_prefix") + uiController.lastError
-            visible: uiController.lastError.length > 0
-            color: "#B00020"
-            font.bold: true
-            wrapMode: Text.WordWrap
-            Layout.fillWidth: true
-        }
+            ColumnLayout {
+                anchors.fill: parent
+                anchors.margins: theme.spaceLg
+                spacing: theme.spaceMd
 
-        Label {
-            text: uiController.resultSummary.length > 0
-                ? uiController.resultSummary
-                : "분석을 실행하면 결과가 여기에 표시됩니다."
-            color: "#4B5A54"
-            wrapMode: Text.WordWrap
-            Layout.fillWidth: true
-        }
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: theme.spaceSm
 
-        TextArea {
-            text: uiController.resultTableText
-            visible: uiController.resultTableText.length > 0
-            readOnly: true
-            wrapMode: TextEdit.NoWrap
-            font.family: "Consolas"
-            Layout.fillWidth: true
-            Layout.preferredHeight: 180
-        }
+                    Label {
+                        text: appBootstrap.text("results.report_preview", appBootstrap.language)
+                        color: theme.workspaceBrand
+                        font.pixelSize: theme.fontSection
+                        font.bold: true
+                    }
 
-        Image {
-            source: uiController.chartSourceText
-            visible: uiController.chartPathsText.length > 0
-            fillMode: Image.PreserveAspectFit
-            Layout.fillWidth: true
-            Layout.preferredHeight: 180
-        }
+                    StateBadge {
+                        objectName: "resultStateBadge"
+                        state: root.stateKind()
+                        label: root.stateLabel()
+                    }
 
-        Label {
-            text: uiController.chartPathsText
-            visible: uiController.chartPathsText.length > 0
-            color: "#4B5A54"
-            wrapMode: Text.WordWrap
-            Layout.fillWidth: true
-        }
+                    Item {
+                        Layout.fillWidth: true
+                    }
 
-        Label {
-            text: uiController.resultNotesText
-            visible: uiController.resultNotesText.length > 0
-            color: "#A86700"
-            wrapMode: Text.WordWrap
-            Layout.fillWidth: true
-        }
+                    AppButton {
+                        text: appBootstrap.text("dialog.report.export_word", appBootstrap.language)
+                        Accessible.name: text
+                        variant: enabled ? "primary" : "secondary"
+                        semanticLight: enabled
+                        enabled: root.hasResults()
+                        onClicked: reportExportDialog.open()
+                    }
+                }
 
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 8
+                ScrollView {
+                    id: resultScroll
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    contentWidth: availableWidth
+                    clip: true
+                    ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
 
-            Button {
-                text: appBootstrap.text("results.why_this_test")
-                Accessible.name: appBootstrap.text("results.why_this_test")
-                onClicked: {
-                    explainPopover.bodyText = uiController.explainRichText("ui.result.cronbach_alpha", "ko")
-                    explainPopover.open()
+                    ColumnLayout {
+                        width: resultScroll.availableWidth
+                        spacing: theme.spaceMd
+
+                        Label {
+                            text: appBootstrap.text("results.stale", appBootstrap.language)
+                            visible: uiController.stale && root.hasResults()
+                            color: theme.warning
+                            font.bold: true
+                            wrapMode: Text.WordWrap
+                            Layout.fillWidth: true
+                        }
+
+                        Label {
+                            text: appBootstrap.text("results.error_prefix", appBootstrap.language)
+                                + appBootstrap.localize(uiController.lastError, appBootstrap.language)
+                            visible: uiController.lastError.length > 0
+                            color: theme.danger
+                            font.bold: true
+                            wrapMode: Text.WordWrap
+                            Layout.fillWidth: true
+                        }
+
+                        Label {
+                            text: appBootstrap.localize(uiController.lastMessage, appBootstrap.language)
+                            visible: uiController.lastMessage.length > 0
+                            color: theme.workspaceBrand
+                            font.bold: true
+                            wrapMode: Text.WordWrap
+                            Layout.fillWidth: true
+                        }
+
+                        Label {
+                            text: uiController.resultSummary.length > 0
+                                ? uiController.resultSummary
+                                : appBootstrap.text("results.empty_message", appBootstrap.language)
+                            color: theme.textBody
+                            font.pixelSize: theme.fontBody
+                            lineHeight: theme.resultSummaryLineHeight
+                            wrapMode: Text.WordWrap
+                            Layout.fillWidth: true
+                        }
+
+                        PearlSurface {
+                            objectName: "resultTableFrame"
+                            visible: uiController.resultTableText.length > 0
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: theme.tablePreviewHeight
+                            fillColor: theme.subtleSurface
+
+                            ColumnLayout {
+                                anchors.fill: parent
+                                anchors.margins: theme.spaceSm
+                                spacing: theme.spaceSm
+
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: theme.spaceSm
+
+                                    Label {
+                                        text: appBootstrap.text("results.table", appBootstrap.language)
+                                        color: theme.textMuted
+                                        font.pixelSize: theme.fontCaption
+                                        font.italic: true
+                                    }
+
+                                    Item {
+                                        Layout.fillWidth: true
+                                    }
+
+                                    AppButton {
+                                        text: appBootstrap.text("results.view_wide", appBootstrap.language)
+                                        Accessible.name: text
+                                        variant: "quiet"
+                                        visible: uiController.resultTableText.length > 0
+                                        onClicked: resultDetailDialog.open()
+                                    }
+                                }
+
+                                ScrollView {
+                                    Layout.fillWidth: true
+                                    Layout.fillHeight: true
+                                    clip: true
+                                    ScrollBar.horizontal.policy: ScrollBar.AsNeeded
+                                    ScrollBar.vertical.policy: ScrollBar.AsNeeded
+
+                                    TextArea {
+                                        text: uiController.resultTableText
+                                        readOnly: true
+                                        selectByMouse: true
+                                        wrapMode: TextEdit.NoWrap
+                                        font.family: "Consolas"
+                                        font.pixelSize: theme.fontBody
+                                        color: theme.textTable
+                                        background: Rectangle {
+                                            color: theme.paperSurface
+                                            border.color: theme.lineSubtle
+                                            radius: theme.radiusSmall
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        PearlSurface {
+                            objectName: "resultChartFigure"
+                            visible: uiController.chartPathsText.length > 0
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: theme.chartPreviewHeight
+                            fillColor: theme.subtleSurface
+
+                            ColumnLayout {
+                                anchors.fill: parent
+                                anchors.margins: theme.spaceSm
+                                spacing: theme.spaceSm
+
+                                Label {
+                                    text: appBootstrap.text("results.figure", appBootstrap.language)
+                                    color: theme.textMuted
+                                    font.pixelSize: theme.fontCaption
+                                    font.italic: true
+                                    Layout.fillWidth: true
+                                }
+
+                                Image {
+                                    source: uiController.chartSourceText
+                                    fillMode: Image.PreserveAspectFit
+                                    Layout.fillWidth: true
+                                    Layout.fillHeight: true
+                                }
+                            }
+                        }
+
+                        Label {
+                            text: appBootstrap.text("results.notes", appBootstrap.language) + ": " + uiController.resultNotesText
+                            visible: uiController.resultNotesText.length > 0
+                            color: theme.warning
+                            font.pixelSize: theme.fontCaption
+                            wrapMode: Text.WordWrap
+                            Layout.fillWidth: true
+                        }
+
+                        Label {
+                            text: appBootstrap.text("results.path", appBootstrap.language) + ": " + uiController.chartPathsText
+                            visible: uiController.chartPathsText.length > 0
+                            color: theme.textSoft
+                            font.pixelSize: theme.fontCaption
+                            wrapMode: Text.WordWrap
+                            Layout.fillWidth: true
+                        }
+
+                        Label {
+                            text: uiController.reportPath
+                            visible: uiController.reportPath.length > 0
+                            color: theme.workspaceBrand
+                            font.pixelSize: theme.fontCaption
+                            wrapMode: Text.WordWrap
+                            Layout.fillWidth: true
+                        }
+                    }
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: theme.spaceSm
+
+                    AppButton {
+                        objectName: "cronbachAlphaExplanationButton"
+                        text: appBootstrap.text("results.explain_cronbach_alpha", appBootstrap.language)
+                        Accessible.name: text
+                        variant: "quiet"
+                        visible: uiController.explainModeEnabled
+                            && uiController.canExplainCronbachAlphaResult
+                        onClicked: {
+                            explainPopover.bodyText = uiController.explainRichText(
+                                "ui.result.cronbach_alpha",
+                                appBootstrap.language
+                            )
+                            explainPopover.open()
+                        }
+                    }
+
+                    Item {
+                        Layout.fillWidth: true
+                    }
                 }
             }
-
-            Button {
-                text: appBootstrap.text("dialog.report.export_word")
-                Accessible.name: appBootstrap.text("dialog.report.export_word")
-                onClicked: reportExportDialog.open()
-            }
-        }
-
-        Label {
-            text: uiController.reportPath
-            visible: uiController.reportPath.length > 0
-            color: "#0B4A43"
-            wrapMode: Text.WordWrap
-            Layout.fillWidth: true
         }
     }
 }

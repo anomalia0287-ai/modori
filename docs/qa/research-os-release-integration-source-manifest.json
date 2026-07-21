@@ -1,0 +1,2611 @@
+{
+  "merge_base": "4e1170c58af35edc20e172f616b51d3464a5a2ef",
+  "release_only": [
+    {
+      "base_blob_oid": null,
+      "path": "design-qa.md",
+      "release_blob_oid": "6c8f352de55343a98dd4e8dc2e55443cb9394610",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/design-audit/2026-07-15-aurora-glass-readiness/01-entry.jpg",
+      "release_blob_oid": "35a599d1d1d8dfa2de04da4746fe5bfc0a8abb87",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/design-audit/2026-07-15-aurora-glass-readiness/02-import.jpg",
+      "release_blob_oid": "425a23181364424a73b160360695cee993241f24",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/design-audit/2026-07-15-aurora-glass-readiness/03-work.jpg",
+      "release_blob_oid": "3b21af8c11affc7cb85eb15ac85c9a47b1faca25",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/design-audit/2026-07-15-aurora-glass-readiness/04-results.jpg",
+      "release_blob_oid": "8b8f0d2d69a740c81fd05113a05bedb52e8f8cd1",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/design-audit/2026-07-15-aurora-glass-readiness/05-transform.jpg",
+      "release_blob_oid": "a54da2def923c454ff3ebea3a4925a8b78dc682f",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/design-audit/2026-07-15-aurora-glass-readiness/06-report-export.jpg",
+      "release_blob_oid": "8ba27e2a4226ab68c5c482aad44f68d991a87181",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/design-audit/2026-07-15-aurora-glass-readiness/audit.md",
+      "release_blob_oid": "09bd99794c06b0bc68bfdf217b218ab8f6ef542f",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/design-audit/2026-07-15-cream-nacre-implementation/01-entry.png",
+      "release_blob_oid": "5d8b3beb7ad46261750c35f160a92dfdb6147d2c",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/design-audit/2026-07-15-cream-nacre-implementation/02-import.png",
+      "release_blob_oid": "2c16d729642cfe9c0a166f9c3bc8f81a17aeadf0",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/design-audit/2026-07-15-cream-nacre-implementation/03-work-empty.png",
+      "release_blob_oid": "63d89cb4edf33f1fdb79d2a2f80982de328b6da3",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/design-audit/2026-07-15-cream-nacre-implementation/04-results-latest.png",
+      "release_blob_oid": "34cfda200337454df625f6921ea04761c0a86524",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/design-audit/2026-07-15-cream-nacre-implementation/05-results-wide.png",
+      "release_blob_oid": "b9d0ea3c22794abf81cdf0c72488c17954322a4b",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/design-audit/2026-07-15-cream-nacre-implementation/06-transform.png",
+      "release_blob_oid": "4f62324ea64bf3a9b09eb3424c38cac67b108f39",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/design-audit/2026-07-15-cream-nacre-implementation/07-report-export.png",
+      "release_blob_oid": "df24472d76d07a8d061830441128699b15dd4377",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/design-audit/2026-07-15-cream-nacre-implementation/08-direct-default.png",
+      "release_blob_oid": "63d89cb4edf33f1fdb79d2a2f80982de328b6da3",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/design-audit/2026-07-15-cream-nacre-implementation/09-guided-experimental.png",
+      "release_blob_oid": "11f2b7aaf355cac3e3864682f39d2f56e4883a97",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/design-audit/2026-07-15-cream-nacre-implementation/10-guided-prepared-unconfirmed.png",
+      "release_blob_oid": "ae02ac5d50e88f3d12fc581ce3485bb860fdfb78",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/design-audit/2026-07-15-cream-nacre-implementation/11-guided-confirmed.png",
+      "release_blob_oid": "a2e44f7c2f1b03f31f82e2d11c4276b540fc9401",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/design-audit/2026-07-15-cream-nacre-implementation/12-reduced-effects.png",
+      "release_blob_oid": "075422f30c97b2e9cd67c3f5f0bddb77d5c8727e",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/design-audit/2026-07-15-cream-nacre-implementation/13-variable.png",
+      "release_blob_oid": "f726965d775f10c242a51ea621a5843d28b30217",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/design-audit/2026-07-15-cream-nacre-implementation/14-guided-supported-candidate.png",
+      "release_blob_oid": "5503e61533af7a5f67b5540c7b44eaf99f1e9885",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/design-audit/2026-07-15-cream-nacre-implementation/audit.md",
+      "release_blob_oid": "a89e4a5900b343fb50a6a9bc806ac2b46561053b",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/design-audit/2026-07-17-aurora-glass-final/comparison-entry.png",
+      "release_blob_oid": "4d3ec92898fefcac93aad4b73787815a0b79bf85",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/design-audit/2026-07-17-aurora-glass-final/comparison-import-dialog.png",
+      "release_blob_oid": "26e2a8e70f7f63c6ad31d251bcad18c87da0c3a6",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/design-audit/2026-07-17-aurora-glass-final/comparison-manual-list.png",
+      "release_blob_oid": "c9a5c7d0cd3f4f444c585c55673572c8b3ad4747",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/design-audit/2026-07-17-aurora-glass-final/entry.png",
+      "release_blob_oid": "a5205efb5c284811993031dab68bc2d312b1666e",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/design-audit/2026-07-17-aurora-glass-final/import-dialog-scrolled.png",
+      "release_blob_oid": "8d7c2917c01f82edd36cd2fc47be5d77a0c1450a",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/design-audit/2026-07-17-aurora-glass-final/import-dialog.png",
+      "release_blob_oid": "1b18e4447abe7ea2bb2f1f6fb175b6ac8bf5a1d0",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/design-audit/2026-07-17-aurora-glass-final/loading.png",
+      "release_blob_oid": "a9226e7b5203568164193c5ad1e31616d82e2a94",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/design-audit/2026-07-17-aurora-glass-final/work-manual-top.png",
+      "release_blob_oid": "b04f636bf6a2584162a6b4fc2c29b9f2672ef964",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": "2f61b1d1f3500acbcdbaca98a85f86c39cb80bc3",
+      "path": "docs/specs/release-readiness-checklist.md",
+      "release_blob_oid": "28b471a8f3f8b80bdf6207f679e4b8935d5c05e8",
+      "research_blob_oid": "2f61b1d1f3500acbcdbaca98a85f86c39cb80bc3"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/superpowers/handoffs/2026-07-11-current-head-release-verification-handoff.md",
+      "release_blob_oid": "ae87590236f52e75ec2cadc4455300674644d515",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/superpowers/handoffs/2026-07-12-internal-windows-installer-handoff.md",
+      "release_blob_oid": "2dd18466de8c845ff7e8e6ae6941231fff41320f",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/superpowers/handoffs/2026-07-16-modori-owner-directives-and-visual-polish-handoff.md",
+      "release_blob_oid": "3a0bc56bea7be1db06890d25e26eeead36432263",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/superpowers/plans/2026-07-11-current-head-release-verification.md",
+      "release_blob_oid": "93eb5ff4a173a7ff32160c72d88f087394e0b8a5",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/superpowers/plans/2026-07-12-internal-windows-installer.md",
+      "release_blob_oid": "dada7a04262a28a655fde0168c808f1c9a065427",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/superpowers/plans/2026-07-15-compact-control-correction.md",
+      "release_blob_oid": "9751d0ee869a65a2b54af6309aa15269bfc498b6",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/superpowers/plans/2026-07-15-cream-nacre-qml-redesign.md",
+      "release_blob_oid": "2205fc95a202cb20e37580a38ac880ac6feb185a",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/superpowers/plans/2026-07-16-aurora-glass-brand-header-implementation.md",
+      "release_blob_oid": "cf2e5cf91c7975a1e1be74e76a394dd62b7b5c58",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/superpowers/plans/2026-07-16-full-bleed-bronze-reconciliation-implementation.md",
+      "release_blob_oid": "a14cd730962ee8eda22ed6ee5fb1d2c5c6d15b28",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/superpowers/plans/2026-07-16-grid-scroll-and-splash-implementation.md",
+      "release_blob_oid": "4c4a09efcc7549c04df7f34072521bae7a78ccdd",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/superpowers/plans/2026-07-16-ivory-tiffany-rose-bronze-implementation.md",
+      "release_blob_oid": "857a4ce90af488221b25099edc8344e63c5477fa",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/superpowers/plans/2026-07-16-quiet-boundary-tiffany-header-implementation.md",
+      "release_blob_oid": "605d111bc6af66abdf9ccb7396ad5bba65ff5b72",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/superpowers/plans/2026-07-17-aurora-glass-finalization.md",
+      "release_blob_oid": "40b38d1dff45c903d6da5db779b2942319182f7a",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/superpowers/specs/2026-07-12-internal-windows-installer-design.md",
+      "release_blob_oid": "c58319ff0ddca9d3ed4211f4e57a7df94f8df540",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/superpowers/specs/2026-07-15-cream-nacre-qml-redesign-design.md",
+      "release_blob_oid": "36bd8643ad8292c1c0db04a942d5fa1ba9b3cd60",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/superpowers/specs/2026-07-15-guided-surface-reconciliation.md",
+      "release_blob_oid": "c82eaec9d19f43c0ce33fc7f4e84207dc64d9393",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/superpowers/specs/2026-07-16-aurora-glass-brand-header-design.md",
+      "release_blob_oid": "73dd6828ee7d78189210f95b3ae07f3df177da65",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/superpowers/specs/2026-07-16-full-bleed-bronze-reconciliation-design.md",
+      "release_blob_oid": "30b23f13caf421c508c82529508db9b7667ff14c",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/superpowers/specs/2026-07-16-grid-scroll-and-splash-design.md",
+      "release_blob_oid": "0eaaefb34e229ec202f755815ce2aa0b83ce1e2a",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/superpowers/specs/2026-07-16-ivory-tiffany-rose-bronze-design.md",
+      "release_blob_oid": "f04f3e6cdccb3a0857bf90dfb354cba9b6fd188c",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/superpowers/specs/2026-07-16-quiet-boundary-tiffany-header-design.md",
+      "release_blob_oid": "398ace51db16152c9dd27f95d6479e784931c203",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "installer/modori.iss",
+      "release_blob_oid": "5882f8c56ab032f99330afaeaedfdb619b65dcab",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "scripts/build_installer.py",
+      "release_blob_oid": "0228af39ee7a3f07c73f06a238144b17d2f73693",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "scripts/installer_contract.py",
+      "release_blob_oid": "d15955f5c186bafea7d04e61397734517a3d0854",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "scripts/installer_smoke.py",
+      "release_blob_oid": "a0f4e174180721574355eadd59c9866d75ec9ab8",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": "a627f8968fbbbb6ccaf4f538ade3adedf988c6ea",
+      "path": "scripts/package_launch_smoke.py",
+      "release_blob_oid": "171cee078bfa84d67efd7113aea34194bec4ab91",
+      "research_blob_oid": "a627f8968fbbbb6ccaf4f538ade3adedf988c6ea"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "scripts/package_smoke_contract.py",
+      "release_blob_oid": "e86fc86e2fc708ebda213d8be025c20f533376d6",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": "4e9704c9bb83ef372d4a916f9d2cbe3657b6e4a0",
+      "path": "src/modori/ui/data_transform_controller.py",
+      "release_blob_oid": "0418cad2364f2b84c57e942dda7156085746de37",
+      "research_blob_oid": "4e9704c9bb83ef372d4a916f9d2cbe3657b6e4a0"
+    },
+    {
+      "base_blob_oid": "97cf1c54b11dfdf552863f7b9b0620da96fc9032",
+      "path": "src/modori/ui/importing.py",
+      "release_blob_oid": "40eaacebc09e080a2150f738367d7d30ff620be4",
+      "research_blob_oid": "97cf1c54b11dfdf552863f7b9b0620da96fc9032"
+    },
+    {
+      "base_blob_oid": "3f65f8b51538039f6b38b1f9632bc8131977a5d4",
+      "path": "src/modori/ui/models.py",
+      "release_blob_oid": "3d284949c678e7f64ca28d01edae94f062ce6996",
+      "research_blob_oid": "3f65f8b51538039f6b38b1f9632bc8131977a5d4"
+    },
+    {
+      "base_blob_oid": "e241806447ab156949a5f5267ff5f5a6fa0d95ca",
+      "path": "src/modori/ui/qml/Main.qml",
+      "release_blob_oid": "2e2f08d551bb6fdf0b10f203ca8b94e76cfd48d8",
+      "research_blob_oid": "e241806447ab156949a5f5267ff5f5a6fa0d95ca"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/ui/qml/assets/fonts/OFL.txt",
+      "release_blob_oid": "05bac32870a9d6dc957d742f7d0b497c0cf50e3f",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/ui/qml/assets/fonts/Parisienne-Regular.ttf",
+      "release_blob_oid": "ef2db74405c54336aab8add251e8ad9948b6c2d3",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/ui/qml/assets/icons/LUCIDE-LICENSE.txt",
+      "release_blob_oid": "718bb3f0e44153809972abed31839375804bf652",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/ui/qml/assets/icons/check.svg",
+      "release_blob_oid": "b21c70963540c68afb6fb92e973f6d964829de47",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/ui/qml/assets/icons/chevron-down.svg",
+      "release_blob_oid": "2f4a2962c3a3597eaada8de4821085d148256faa",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/ui/qml/assets/icons/chevron-up.svg",
+      "release_blob_oid": "24f8d3c61c10f08d26ceab3663726d9baadd5dec",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/ui/qml/assets/icons/settings.svg",
+      "release_blob_oid": "4c6263af909841a3911f41a385021778eacba736",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/ui/qml/components/AppButton.qml",
+      "release_blob_oid": "99c9a8381feeaa2e82dad218afce7b863808630c",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/ui/qml/components/AppCheckBox.qml",
+      "release_blob_oid": "5a60955fece1e3bd127987e11a02b76a36d1c1de",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/ui/qml/components/AppComboBox.qml",
+      "release_blob_oid": "fe9118dcc70d6aa1d59caf88b1a1b85aa026a89b",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/ui/qml/components/AppGroupBox.qml",
+      "release_blob_oid": "7f917fde14c224c7adc1a3486e6c601d8eb9acaa",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/ui/qml/components/AppIconButton.qml",
+      "release_blob_oid": "0c8d87b23bae6bbe6ee4e59f74a0bdfac755b26c",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/ui/qml/components/AppRadioButton.qml",
+      "release_blob_oid": "d3d85dd33eb7de96144e543ae29ca7c73e273702",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/ui/qml/components/AppScrollBar.qml",
+      "release_blob_oid": "9a74f60ec7f131f82985b43551d88bc45e9a4fa2",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/ui/qml/components/AppSpinBox.qml",
+      "release_blob_oid": "c2586488991c4b4feec6f18b6f33e657ee375654",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/ui/qml/components/AppTextField.qml",
+      "release_blob_oid": "d91a002c0f42aac5ca12ce7eaf3ae0838fbb2252",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/ui/qml/components/AuroraGlassSurface.qml",
+      "release_blob_oid": "9df14b6b071d7166803b2f92dff986b233845c9e",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/ui/qml/components/BrandWordmark.qml",
+      "release_blob_oid": "ba873d2f50c31f0bda25757b71dd247f065a0732",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": "504efb9cbd552fc85d827c82f44621f8a4525330",
+      "path": "src/modori/ui/qml/components/DataTable.qml",
+      "release_blob_oid": "5d8ec27f5a1db0c9605b45311cc6952d4bb0e8d1",
+      "research_blob_oid": "504efb9cbd552fc85d827c82f44621f8a4525330"
+    },
+    {
+      "base_blob_oid": "016419e1f00f55d4457d66891a3893c7030642c9",
+      "path": "src/modori/ui/qml/components/ExplainPopover.qml",
+      "release_blob_oid": "22cef30f5a3ccf1dd4c9b9ff9f4c55ce0db1b53f",
+      "research_blob_oid": "016419e1f00f55d4457d66891a3893c7030642c9"
+    },
+    {
+      "base_blob_oid": "7f2e8495c79512395ab55f3539d7aadebc2d7a31",
+      "path": "src/modori/ui/qml/components/LoadingOverlay.qml",
+      "release_blob_oid": "886c7091f875d899c4070bd9c5e454606d417895",
+      "research_blob_oid": "7f2e8495c79512395ab55f3539d7aadebc2d7a31"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/ui/qml/components/ModeChoiceButton.qml",
+      "release_blob_oid": "4b98d548e429f4630c56a97b0bb1affee78e79c7",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/ui/qml/components/ModeSegment.qml",
+      "release_blob_oid": "69d0f9b9a1f1de85a2bffe6478c077b50a162221",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/ui/qml/components/PearlSurface.qml",
+      "release_blob_oid": "0290ca1b8a791f770c29ffbbb8321f4701bcfea6",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/ui/qml/components/PreferenceSwitch.qml",
+      "release_blob_oid": "da425db11048129de6bc87aff7ea141353d273c5",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": "3eb8f3951bfca4206228c146cfde2e8268cad6a3",
+      "path": "src/modori/ui/qml/components/ResultsPanel.qml",
+      "release_blob_oid": "ac8dfb2b90015183d5133f16e7f04cb738443724",
+      "research_blob_oid": "3eb8f3951bfca4206228c146cfde2e8268cad6a3"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/ui/qml/components/StateBadge.qml",
+      "release_blob_oid": "3ec126abcdccfe49d2eebc4af4762902653e2c92",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": "baf0644077b6af85f5dc8c75e99911d171f6f46f",
+      "path": "src/modori/ui/qml/components/TransformPanel.qml",
+      "release_blob_oid": "2d6b7f4c97190fa34145fc7e10080081d20f9812",
+      "research_blob_oid": "baf0644077b6af85f5dc8c75e99911d171f6f46f"
+    },
+    {
+      "base_blob_oid": "a55be7c39bdc5032874e6b2477e2cf19cb9feee5",
+      "path": "src/modori/ui/qml/components/VariableTable.qml",
+      "release_blob_oid": "d5bbbafb98516bf7820c37e50c3339ab83b1fa73",
+      "research_blob_oid": "a55be7c39bdc5032874e6b2477e2cf19cb9feee5"
+    },
+    {
+      "base_blob_oid": "fcad2c4cddbbf31a543bb682b3cc1fa3062ee75f",
+      "path": "src/modori/ui/qml/dialogs/ImportDialog.qml",
+      "release_blob_oid": "bfaf53eb9b836048968660416de5a0d84c670780",
+      "research_blob_oid": "fcad2c4cddbbf31a543bb682b3cc1fa3062ee75f"
+    },
+    {
+      "base_blob_oid": "027ce08ca89484cfaff6f33fcf7c4e6a4e745863",
+      "path": "src/modori/ui/qml/dialogs/ReportExportDialog.qml",
+      "release_blob_oid": "37b4af936e08086bb3c3956e62df8aacc045a383",
+      "research_blob_oid": "027ce08ca89484cfaff6f33fcf7c4e6a4e745863"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/ui/qml/dialogs/ResultDetailDialog.qml",
+      "release_blob_oid": "397266a1b63c482f1f9583c16601bdbf23fb3491",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/ui/qml/dialogs/SettingsDialog.qml",
+      "release_blob_oid": "fba2a9ba38b3e722fffabfa6c15b2f510fa6242a",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": "4cb1d05e0323886349918fddf24ccd233e19b624",
+      "path": "src/modori/ui/qml/screens/EntryScreen.qml",
+      "release_blob_oid": "5e38cf1736baa9fcd0c567b58207b9972d231d64",
+      "research_blob_oid": "4cb1d05e0323886349918fddf24ccd233e19b624"
+    },
+    {
+      "base_blob_oid": "b4161514ddbbeb7278b46d12ff68d8a55db2f706",
+      "path": "src/modori/ui/qml/screens/SplashScreen.qml",
+      "release_blob_oid": "2158eb62daee983b333db47bc3339af74c0d7e40",
+      "research_blob_oid": "b4161514ddbbeb7278b46d12ff68d8a55db2f706"
+    },
+    {
+      "base_blob_oid": "019e5486521876d7ed4fd2b354aa9db7060bcb0e",
+      "path": "src/modori/ui/qml/screens/WorkScreen.qml",
+      "release_blob_oid": "ee82c9058d4f2ddb79c19f1b56e976f13d89d341",
+      "research_blob_oid": "019e5486521876d7ed4fd2b354aa9db7060bcb0e"
+    },
+    {
+      "base_blob_oid": "5351652160b428d4c14537ffc33cd1a60f248c4f",
+      "path": "src/modori/ui/qml/theme/Theme.qml",
+      "release_blob_oid": "e33f71062041a06f332988e0b03d188d289b4a86",
+      "research_blob_oid": "5351652160b428d4c14537ffc33cd1a60f248c4f"
+    },
+    {
+      "base_blob_oid": "da0bc4f415761024727f1555bf67678a1b57af48",
+      "path": "src/modori/ui/report_export.py",
+      "release_blob_oid": "110296ef94b8ec560c448b791ef973017b32b953",
+      "research_blob_oid": "da0bc4f415761024727f1555bf67678a1b57af48"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/ui/selection_provenance_controller.py",
+      "release_blob_oid": "ff35cfc4b699d74274c483b25135cb9706682bf9",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": "e28581a3cf950b4f01665642fe5dcd10668084fb",
+      "path": "src/modori/ui/session.py",
+      "release_blob_oid": "6d77db7fabcbe1b7263c9fcd175ca90a610a3030",
+      "research_blob_oid": "e28581a3cf950b4f01665642fe5dcd10668084fb"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_build_installer_script.py",
+      "release_blob_oid": "6d52c8d6d3d991ee2ddff7e97b9ae3a0a7bb8a1b",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_installer_contract.py",
+      "release_blob_oid": "2e5c768a1000272e80171490623c3c373a7a0e45",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_installer_inno_contract.py",
+      "release_blob_oid": "d4408d6c0a25b5c40944089435e5ed5b33413b37",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_installer_smoke_script.py",
+      "release_blob_oid": "fba70aa4b08eb2b17db89428abe0fd963265dcff",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_package_environment.py",
+      "release_blob_oid": "a750779419aeecee163aaebdd4d9fd7fa3b43cbe",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": "5074f66ffe7b9d886a17b139fb3e3387bc30c138",
+      "path": "tests/test_package_launch_smoke_script.py",
+      "release_blob_oid": "7bdaf55dad3ebf919f7ab016283e5e640230a625",
+      "research_blob_oid": "5074f66ffe7b9d886a17b139fb3e3387bc30c138"
+    },
+    {
+      "base_blob_oid": "3fded779986daf3684e3ce86716db05dcc7439c8",
+      "path": "tests/test_reporting_prose_contracts.py",
+      "release_blob_oid": "31fd81680c776bf387834049d0206a8ddd9895e5",
+      "research_blob_oid": "3fded779986daf3684e3ce86716db05dcc7439c8"
+    },
+    {
+      "base_blob_oid": "320a59c7fd2ac0940cab5e3f3c12062ef9c208f5",
+      "path": "tests/ui/test_commercial_v1_completion_surface.py",
+      "release_blob_oid": "523c00c91f2b6bdcbb01dc6b49bce6336ff07843",
+      "research_blob_oid": "320a59c7fd2ac0940cab5e3f3c12062ef9c208f5"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/ui/test_compact_control_system.py",
+      "release_blob_oid": "3e7530f4cbe703818fc3a332d2b1dcf086250f75",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/ui/test_cream_nacre_visual_system.py",
+      "release_blob_oid": "6dac84cc73407808007c63362f98d5005881b7b8",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": "0760b429670b598f9b6ef16e342faf9f54c53d46",
+      "path": "tests/ui/test_data_transform_controller.py",
+      "release_blob_oid": "b3ddb11495bd0aeffa65ebf57e9b61c99d9f27e3",
+      "research_blob_oid": "0760b429670b598f9b6ef16e342faf9f54c53d46"
+    },
+    {
+      "base_blob_oid": "e8465122200773798c9bbd2a5db103343b18e3cc",
+      "path": "tests/ui/test_data_transform_qml.py",
+      "release_blob_oid": "698b35db976946575aa1fd3241f4f041300d4aca",
+      "research_blob_oid": "e8465122200773798c9bbd2a5db103343b18e3cc"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/ui/test_experimental_guidance_boundary.py",
+      "release_blob_oid": "5a2195f7c14718a56db12bdce109c215f3756dcf",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/ui/test_full_bleed_bronze_reconciliation.py",
+      "release_blob_oid": "e7d609fa9dd7cc4bdef8c51fd572cf08f5acb86e",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": "0d48a53e4928548cff06505690251962f242ca95",
+      "path": "tests/ui/test_import_dialog_flow.py",
+      "release_blob_oid": "757044f1781dd31ac19336802daf0cbce60776cd",
+      "research_blob_oid": "0d48a53e4928548cff06505690251962f242ca95"
+    },
+    {
+      "base_blob_oid": "efb2af7372d198ba3f184d64287c32790d32c390",
+      "path": "tests/ui/test_import_preview_recent_files.py",
+      "release_blob_oid": "0fadd0d34f77ca80da4ab710287aec3199e2f3c4",
+      "research_blob_oid": "efb2af7372d198ba3f184d64287c32790d32c390"
+    },
+    {
+      "base_blob_oid": "49762c5bc9f140f7317359974cc64e49c4c0475d",
+      "path": "tests/ui/test_importing_service.py",
+      "release_blob_oid": "6f6e08a7530808e414675b00e9b7f759043977b7",
+      "research_blob_oid": "49762c5bc9f140f7317359974cc64e49c4c0475d"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/ui/test_ivory_tiffany_brand_system.py",
+      "release_blob_oid": "cf1536edaa5cd9a447d22b8a3c86b5d8eaef8b22",
+      "research_blob_oid": null
+    },
+    {
+      "base_blob_oid": "890ffc1f999e5e04a90a3b89158f6bdfa6f7cb20",
+      "path": "tests/ui/test_models.py",
+      "release_blob_oid": "d781593428d6e66a743c3b1306f0b56cf6d7ec36",
+      "research_blob_oid": "890ffc1f999e5e04a90a3b89158f6bdfa6f7cb20"
+    },
+    {
+      "base_blob_oid": "34cb02bf0b82efcbfd73155dbb7bf5cf775c1809",
+      "path": "tests/ui/test_qml_resources.py",
+      "release_blob_oid": "e4f1505fc359804718455eadd26a8d898921e378",
+      "research_blob_oid": "34cb02bf0b82efcbfd73155dbb7bf5cf775c1809"
+    },
+    {
+      "base_blob_oid": "b50173bd5d2abbd0e9a7b82e960f000aa37de1b5",
+      "path": "tests/ui/test_qml_visual_contract.py",
+      "release_blob_oid": "a0e988bd9595d94152d0ee7439e0f6dd50c69002",
+      "research_blob_oid": "b50173bd5d2abbd0e9a7b82e960f000aa37de1b5"
+    },
+    {
+      "base_blob_oid": "d0bc44d63cf2f9cf79c48ecaa5fae5e974589dde",
+      "path": "tests/ui/test_report_export_service.py",
+      "release_blob_oid": "336659bf2781d2181e65b47c984bfee4a6706a59",
+      "research_blob_oid": "d0bc44d63cf2f9cf79c48ecaa5fae5e974589dde"
+    },
+    {
+      "base_blob_oid": "d6b61dab2e3cf6073f3c0deb428b4d0de1453f22",
+      "path": "tests/ui/test_session.py",
+      "release_blob_oid": "2fb69b1f8d16c35a927f442ef651a6c5a49c1641",
+      "research_blob_oid": "d6b61dab2e3cf6073f3c0deb428b4d0de1453f22"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/ui/test_settings_surface_qml.py",
+      "release_blob_oid": "ef9d38d8fae703a881bacffb84a7094be2c25a2d",
+      "research_blob_oid": null
+    }
+  ],
+  "release_sha": "ca40471297da5f69e90c4519a28ecf0864fd1c08",
+  "research_only": [
+    {
+      "base_blob_oid": null,
+      "path": ".visual-qa/clean-win-vm-payload/experimental-candidate.csv",
+      "release_blob_oid": null,
+      "research_blob_oid": "e35f7e59885f66e7f1fd83ac75afce4c758a815b"
+    },
+    {
+      "base_blob_oid": null,
+      "path": ".visual-qa/clean-win-vm-payload/experimental-configuration.csv",
+      "release_blob_oid": null,
+      "research_blob_oid": "f0c507fa4204626a28fd298d30488d6c87c94707"
+    },
+    {
+      "base_blob_oid": null,
+      "path": ".visual-qa/clean-win-vm-payload/experimental-no-candidate.csv",
+      "release_blob_oid": null,
+      "research_blob_oid": "6158c10700be971a8da84104e99d30635e98263d"
+    },
+    {
+      "base_blob_oid": "9f2fd179ecb9ce5d82caf1a7dc6517fe26d78082",
+      "path": "RUN_ATTACH_PAYLOAD_AS_ADMIN.cmd",
+      "release_blob_oid": "9f2fd179ecb9ce5d82caf1a7dc6517fe26d78082",
+      "research_blob_oid": "3e11d636c388ef151bbaeca9ffd8d0ae08f37cb3"
+    },
+    {
+      "base_blob_oid": "25904c113d29c0a39b5310f3484dafe8914ac8c7",
+      "path": "RUN_CHECK_PAYLOAD_V2_AS_ADMIN.cmd",
+      "release_blob_oid": "25904c113d29c0a39b5310f3484dafe8914ac8c7",
+      "research_blob_oid": "5cebb7ff96f98d51ae503fe8eff1738bb9ce8951"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/qa/analysis-passport-v2-verification.md",
+      "release_blob_oid": null,
+      "research_blob_oid": "fee86c9eb07e827cdd45954f3ddfa06718fdfa9d"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/qa/authority-free-question-rationale-evidence.md",
+      "release_blob_oid": null,
+      "research_blob_oid": "c4bfb9c4ed7c390d8ad37e4fb33a0c29d922ee8e"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/qa/counterfactual-clarification-planner-evidence.md",
+      "release_blob_oid": null,
+      "research_blob_oid": "1e289a1e318b29478d4a7bd295f3723840ebc865"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/qa/experimental-recommendation-release-evidence.md",
+      "release_blob_oid": null,
+      "research_blob_oid": "b09ced6b356f6d54e27ea388883a29fcea738973"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/qa/experimental-recommendation-vm-runbook.md",
+      "release_blob_oid": null,
+      "research_blob_oid": "1900fb8b0d80396dcdb19c4ec7289fbc78c9df17"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/qa/factorial-anova-external-review-brief.md",
+      "release_blob_oid": null,
+      "research_blob_oid": "63fa906b5fc6addfac2d25c802680b6d4ed67155"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/qa/factorial-anova-reference-evidence.md",
+      "release_blob_oid": null,
+      "research_blob_oid": "7ca78394a830ca605b0f59d1f5ce3fd831c2edf7"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/qa/logistic-regression-external-review-brief.md",
+      "release_blob_oid": null,
+      "research_blob_oid": "0c1b51591a60ef13f64e97afca16a50eee011d0a"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/qa/logistic-regression-reference-evidence.md",
+      "release_blob_oid": null,
+      "research_blob_oid": "3855f750c72a613b187ef21b079493fac9e268d0"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/qa/portable-office-benchmark-kit-runbook.md",
+      "release_blob_oid": null,
+      "research_blob_oid": "2de7cb8c7545398efaf52dfa54db07882a2e4060"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/qa/recommendation-benchmark-annotation-guide.md",
+      "release_blob_oid": null,
+      "research_blob_oid": "4ed08cce0a5f95a8bffaae6c104bc117c9aeb466"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/qa/recommendation-benchmark-pilot-runbook.md",
+      "release_blob_oid": null,
+      "research_blob_oid": "4e3b03fb17398d68aa848f320e4a8dfdf56f2eda"
+    },
+    {
+      "base_blob_oid": "bed3b050601e536f650a3c4706d0992e31c0ba7b",
+      "path": "docs/qa/statistics-accuracy-closure-matrix.md",
+      "release_blob_oid": "bed3b050601e536f650a3c4706d0992e31c0ba7b",
+      "research_blob_oid": "d48bbc3437bb2dbbd634438916688cf24215cc34"
+    },
+    {
+      "base_blob_oid": "0e854b97ddc43ed26c89fb82a890b96b0566d200",
+      "path": "docs/qa/statistics-accuracy-ledger.md",
+      "release_blob_oid": "0e854b97ddc43ed26c89fb82a890b96b0566d200",
+      "research_blob_oid": "d9c5ee7430fcb77def5b26fd9c7b3fc21663bd02"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/superpowers/handoffs/2026-07-11-experimental-recommendation-grid-vm-handoff.md",
+      "release_blob_oid": null,
+      "research_blob_oid": "b208b3c70741ec5fa1760ed5140785ae4e3c73d3"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/superpowers/plans/2026-07-10-factorial-anova.md",
+      "release_blob_oid": null,
+      "research_blob_oid": "129a4f0cc02e0074f01bf5745e5fca86c04a5f2e"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/superpowers/plans/2026-07-10-logistic-regression.md",
+      "release_blob_oid": null,
+      "research_blob_oid": "0626eea9c64a6cd464ef27ca469c349789e2e16b"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/superpowers/plans/2026-07-10-recommendation-benchmark-pilot.md",
+      "release_blob_oid": null,
+      "research_blob_oid": "f38f3816a1bb7a748678f6beb31f5c36cc92b4ea"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/superpowers/plans/2026-07-11-data-grid-interaction-hardening.md",
+      "release_blob_oid": null,
+      "research_blob_oid": "478cdeef2df5379af1f0f6495335f26141f0e4e1"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/superpowers/plans/2026-07-11-experimental-recommendation-boundary.md",
+      "release_blob_oid": null,
+      "research_blob_oid": "4ecd1a7971ae4845e41fa743c15e2748167862a6"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/superpowers/plans/2026-07-12-decision-ledger-import-quarantine.md",
+      "release_blob_oid": null,
+      "research_blob_oid": "9b9a406b689020cbec3b14ff9ef719c28963f476"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/superpowers/plans/2026-07-12-evidence-bundle-resource-preflight.md",
+      "release_blob_oid": null,
+      "research_blob_oid": "fe70d095e322256c7ee692efcf64d1f3bdee0e77"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/superpowers/plans/2026-07-12-evidence-carrying-clarification-transitions.md",
+      "release_blob_oid": null,
+      "research_blob_oid": "7ae663b8e69c4b518db27ac584731798890bbdf7"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/superpowers/plans/2026-07-12-office-benchmark-performance-recovery.md",
+      "release_blob_oid": null,
+      "research_blob_oid": "f7137c0eb721eed00afd802e82daee2d66020809"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/superpowers/plans/2026-07-12-portable-office-benchmark-kit.md",
+      "release_blob_oid": null,
+      "research_blob_oid": "688dc187feb238c18848acda06b246349000ed0c"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/superpowers/plans/2026-07-12-research-os-c1-foundation.md",
+      "release_blob_oid": null,
+      "research_blob_oid": "4edc18aa0a457dab1d0503dae0f7c5f156313cd0"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/superpowers/plans/2026-07-12-research-os-passport-clarification.md",
+      "release_blob_oid": null,
+      "research_blob_oid": "243622cac45bbbb1157aa6037d19add644adac91"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/superpowers/plans/2026-07-15-analysis-passport-v2-fresh-replan.md",
+      "release_blob_oid": null,
+      "research_blob_oid": "28e2ff5f5ae995eb5256f5fbe562d4a4e27f691a"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/superpowers/plans/2026-07-15-risk-bounded-counterfactual-clarification-planner.md",
+      "release_blob_oid": null,
+      "research_blob_oid": "e789fd6af74fda8f8c278a14a727a8adc601988c"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/superpowers/plans/2026-07-16-authority-free-question-rationale.md",
+      "release_blob_oid": null,
+      "research_blob_oid": "fb16c67084cd28b764000e9073dfdbe0f73b565b"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/superpowers/plans/2026-07-16-research-os-release-integration.md",
+      "release_blob_oid": null,
+      "research_blob_oid": "3edcb3ed0bc89c3f6d31258eba2a05cca327d8e9"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/superpowers/specs/2026-07-10-factorial-anova-design.md",
+      "release_blob_oid": null,
+      "research_blob_oid": "c5911ca8ff61ddfd965e8ba986c80358c116294c"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/superpowers/specs/2026-07-10-logistic-regression-design.md",
+      "release_blob_oid": null,
+      "research_blob_oid": "2a94424abdf594f29b413268cd570bdcb71b9a7e"
+    },
+    {
+      "base_blob_oid": "f834720c37493305e5c6be6111122ab6bfe0c160",
+      "path": "docs/superpowers/specs/2026-07-10-semantic-profiling-recommendation-memory-design.md",
+      "release_blob_oid": "f834720c37493305e5c6be6111122ab6bfe0c160",
+      "research_blob_oid": "ab2aacb9964059f5bac81b63c375b97778479220"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/superpowers/specs/2026-07-11-data-grid-interaction-hardening-design.md",
+      "release_blob_oid": null,
+      "research_blob_oid": "882cb8bc2cf6cb71925e0421c8116b17065f2411"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/superpowers/specs/2026-07-12-decision-ledger-import-quarantine-design.md",
+      "release_blob_oid": null,
+      "research_blob_oid": "92d1056d42b8858c31312e5f2c06f5f2a2dc55a0"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/superpowers/specs/2026-07-12-evidence-bundle-resource-preflight-design.md",
+      "release_blob_oid": null,
+      "research_blob_oid": "60748dbb265925fba4227dbe1c2b81bd93e710b7"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/superpowers/specs/2026-07-12-evidence-carrying-clarification-transition-design.md",
+      "release_blob_oid": null,
+      "research_blob_oid": "20534d17638b9b3a8b5eb815ff78abb56908f833"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/superpowers/specs/2026-07-12-office-benchmark-performance-recovery-design.md",
+      "release_blob_oid": null,
+      "research_blob_oid": "f739d99eb6c400f895fcd7daf8b72f594466e103"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/superpowers/specs/2026-07-12-portable-office-benchmark-kit-design.md",
+      "release_blob_oid": null,
+      "research_blob_oid": "77997294927584ec7c0b28c84f57eb995af82f33"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/superpowers/specs/2026-07-12-research-os-method-space-c1-design.md",
+      "release_blob_oid": null,
+      "research_blob_oid": "93770ff00d27b0a87dccbcc45a9a0789c5607824"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/superpowers/specs/2026-07-15-analysis-passport-v2-explicit-migration-design.md",
+      "release_blob_oid": null,
+      "research_blob_oid": "84b50bac78e21b5fdec133e8d4888258bbbee88d"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/superpowers/specs/2026-07-15-risk-bounded-counterfactual-clarification-planner-design.md",
+      "release_blob_oid": null,
+      "research_blob_oid": "af7a4e1d4478d39b44135c6e7782493356332123"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/superpowers/specs/2026-07-16-authority-free-question-rationale-design.md",
+      "release_blob_oid": null,
+      "research_blob_oid": "bebfcadf0e79604f490d7a1a030ce70acfeac66e"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/superpowers/specs/2026-07-16-contribution-credits-design.md",
+      "release_blob_oid": null,
+      "research_blob_oid": "65cdf63d2269e5692ba55655aa00ad2005559e26"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/superpowers/specs/2026-07-16-dual-key-ui-visual-finish-design.md",
+      "release_blob_oid": null,
+      "research_blob_oid": "1fdeadeae16363b67550d870a5102723f39a0c2f"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/superpowers/specs/2026-07-16-research-os-release-integration-design.md",
+      "release_blob_oid": null,
+      "research_blob_oid": "88697cc7dd84b861110b3125a3d30c60a9a34aaf"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "library/entries/anova-factorial.yaml",
+      "release_blob_oid": null,
+      "research_blob_oid": "ffcf65f178acdc444a7ca8af2b97d357db5fa180"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "library/entries/brier-score.yaml",
+      "release_blob_oid": null,
+      "research_blob_oid": "f63dc26092b6a64bcd7efec81b88e44a1b2001eb"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "library/entries/interaction-gated-simple-effects.yaml",
+      "release_blob_oid": null,
+      "research_blob_oid": "dd0a0decaf5f39db5dbcca5239b31b1ff7b5600c"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "library/entries/model-likelihood-ratio.yaml",
+      "release_blob_oid": null,
+      "research_blob_oid": "568b0a7843f93fe329554887207042c9ae7250a9"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "library/entries/odds-ratio.yaml",
+      "release_blob_oid": null,
+      "research_blob_oid": "54d251c841a34e30fdb88bf05df5882320479936"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "library/entries/type-iii-equal-cell-weight.yaml",
+      "release_blob_oid": null,
+      "research_blob_oid": "e618e4dfa5e2a593a91c456cb9fcad6554404fa1"
+    },
+    {
+      "base_blob_oid": "a820ba1821e03d1371da7b5187184fd99a86bbce",
+      "path": "scripts/attach_modori_payload_disk.ps1",
+      "release_blob_oid": "a820ba1821e03d1371da7b5187184fd99a86bbce",
+      "research_blob_oid": "75d11ddfa71d619339bf74cca4d63e0c5f2a3d8c"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "scripts/benchmark_counterfactual_clarification.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "d01858208942e461e8d3e1bb2a3b9b952cb02a54"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "scripts/benchmark_research_memory.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "aea8bfc2a5995cbc44ff370d52c3e1ffd2d76f0a"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "scripts/build_office_research_memory_kit.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "e9fd7d549275ac77a00db6caf86ff12d4ba486f4"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "scripts/build_recommendation_pilot.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "719bb8c9a0013b0c71c87e447425c9ef5b64d5e1"
+    },
+    {
+      "base_blob_oid": "5dceebb138a13fcc1a2e140a26b5b62c0641629a",
+      "path": "scripts/check_modori_payload_v2.ps1",
+      "release_blob_oid": "5dceebb138a13fcc1a2e140a26b5b62c0641629a",
+      "research_blob_oid": "11be23badd45e1856dacb8c45a292ac4793a8d49"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "scripts/check_product_wording.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "5f173d12b8a5f1c676101d1d7fd8f0062be6b9d4"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "scripts/office_benchmark_kit/README-KO.txt",
+      "release_blob_oid": null,
+      "research_blob_oid": "e527ca007e64cc98c68bbd16d6c26f76aea01c09"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "scripts/office_benchmark_kit/RUN-MODORI-BENCHMARK.cmd.in",
+      "release_blob_oid": null,
+      "research_blob_oid": "413456b3ab6f8df25ac7c5a3749753843d65120e"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "scripts/office_benchmark_kit/VERIFY-AND-RUN.ps1.in",
+      "release_blob_oid": null,
+      "research_blob_oid": "33b108434dd985d890d6fe569accd384b58cae0d"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "scripts/office_research_memory_kit.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "fd1b01a4d5719f3aa98a428a50bfe6819ffc9bb5"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "scripts/recommendation_benchmark.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "7d5aba85ec861f60c0b9cbda8d9b91de8523e82e"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "scripts/run_constrained_research_memory_benchmark.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "0f3a770e7a5d1041d3dbf3f32d64af0d6e948c3a"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "scripts/run_office_research_memory_benchmark.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "cc8974440bc6a4be3922f01002a9c279a74f0e6c"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "scripts/verify_office_research_memory_kit.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "35f18f73343662237a45d078f344c65e80ba3977"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "scripts/verify_release_integration.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "ce032513868a1c0f67e99acb750b7b4c46fe99ea"
+    },
+    {
+      "base_blob_oid": "34757eefd590a0a2077a832c00d9213d4fc34bd9",
+      "path": "src/modori/analysis_catalog.py",
+      "release_blob_oid": "34757eefd590a0a2077a832c00d9213d4fc34bd9",
+      "research_blob_oid": "e58aab18a74fbb27f328a473b442609463e9add3"
+    },
+    {
+      "base_blob_oid": "407f89069c86072e9889b81a4f655e4b00bd5388",
+      "path": "src/modori/ancova_recommendation.py",
+      "release_blob_oid": "407f89069c86072e9889b81a4f655e4b00bd5388",
+      "research_blob_oid": "f00679ea051772f626c25c1592b85a3b65266922"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/anova_factorial_recommendation.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "ef67463bb24006fc5c2d83e030014418f901d5e3"
+    },
+    {
+      "base_blob_oid": "c66ed5727fb35d7d0eb89738dbe5495c52f3c605",
+      "path": "src/modori/anova_oneway_recommendation.py",
+      "release_blob_oid": "c66ed5727fb35d7d0eb89738dbe5495c52f3c605",
+      "research_blob_oid": "08b6cccfdb62c54cf86e26a60bf5209d05307a46"
+    },
+    {
+      "base_blob_oid": "245c7c7bfa5ab0b6bcc86f64788b6533aacc962b",
+      "path": "src/modori/compare_groups_recommendation.py",
+      "release_blob_oid": "245c7c7bfa5ab0b6bcc86f64788b6533aacc962b",
+      "research_blob_oid": "f77404a91f0ed274e4b04e25af519c4efc50fc6b"
+    },
+    {
+      "base_blob_oid": "6dd4a5f77d681721ba479fcc060383ba9feb7922",
+      "path": "src/modori/correlation_recommendation.py",
+      "release_blob_oid": "6dd4a5f77d681721ba479fcc060383ba9feb7922",
+      "research_blob_oid": "b2f0dc258220e0294d5d8e93eb4fb3a9093fbe47"
+    },
+    {
+      "base_blob_oid": "d56f70767f6d925a1f2e5dedca40ca570efe8031",
+      "path": "src/modori/descriptives_table1_recommendation.py",
+      "release_blob_oid": "d56f70767f6d925a1f2e5dedca40ca570efe8031",
+      "research_blob_oid": "937712f9850a556112d4d5cb1915c4826d59c620"
+    },
+    {
+      "base_blob_oid": "dbb1a842cb3d29db6593e0c15018b9fda162f4f6",
+      "path": "src/modori/factor_pca_recommendation.py",
+      "release_blob_oid": "dbb1a842cb3d29db6593e0c15018b9fda162f4f6",
+      "research_blob_oid": "1b6ddc3adac5bbbaac50ac2edd2c286716f2b096"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/factorial_anova_numerics.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "84a9354236414b13f35ebb94c37c971218df4f41"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/factorial_anova_reporting.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "a04a282e4665ccd00842ae4d6048822baed70294"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/factorial_anova_results.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "4f8b039852a63e9c8e4a892e0fe5cbebede5cd4c"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/factorial_anova_selection.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "a6739100a4945a09b3c68cec2e3698ca7a294ebb"
+    },
+    {
+      "base_blob_oid": "724c09f00413d1615629971c7efd1b2f53dc53aa",
+      "path": "src/modori/frequency_crosstab_recommendation.py",
+      "release_blob_oid": "724c09f00413d1615629971c7efd1b2f53dc53aa",
+      "research_blob_oid": "4d80137735b606f3e5396163ff7643f1d9196c76"
+    },
+    {
+      "base_blob_oid": "c466a82fa8b578afcffc30483846cb0a8ce12a23",
+      "path": "src/modori/friedman_recommendation.py",
+      "release_blob_oid": "c466a82fa8b578afcffc30483846cb0a8ce12a23",
+      "research_blob_oid": "8c3d2f93b8d0cde5a2f18b7f8dcf5f8d6cc2d38a"
+    },
+    {
+      "base_blob_oid": "c85b0aa32e51d515b4b296b3f017f3cc3cf6b238",
+      "path": "src/modori/knowledge/registry.py",
+      "release_blob_oid": "c85b0aa32e51d515b4b296b3f017f3cc3cf6b238",
+      "research_blob_oid": "e10aa007e28da0143083623d644019a41a1ae812"
+    },
+    {
+      "base_blob_oid": "58ad83115da6f42c0cae51602710901d9e9bdd07",
+      "path": "src/modori/kruskal_wallis_recommendation.py",
+      "release_blob_oid": "58ad83115da6f42c0cae51602710901d9e9bdd07",
+      "research_blob_oid": "271c5a0a98e0c04cd5df75c9d936d2f8b89b2389"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/logistic_numerics.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "96b13891011aafac53e5461479e23dea2b4db403"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/logistic_regression_recommendation.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "8526fb4bbc030ddfde90f22816b88caefee251b1"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/logistic_regression_reporting.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "d034df2d238c23c1f89bae83a87a4ad883d39fff"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/logistic_regression_results.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "7fcf83533748d84519daf919a346434aa92a2def"
+    },
+    {
+      "base_blob_oid": "bcbfe4b8b6ff97d3b8a569c1052d48b9d77eecd2",
+      "path": "src/modori/mediation_recommendation.py",
+      "release_blob_oid": "bcbfe4b8b6ff97d3b8a569c1052d48b9d77eecd2",
+      "research_blob_oid": "457ac762d9ce31e155d34a80f7e13ccfd654a159"
+    },
+    {
+      "base_blob_oid": "26dff3732f45efb3689e934e238e60d066c6a880",
+      "path": "src/modori/moderated_mediation_recommendation.py",
+      "release_blob_oid": "26dff3732f45efb3689e934e238e60d066c6a880",
+      "research_blob_oid": "4e9c41755739187a5c0f4b68fe2f10dda676b4e2"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/recommendation_baseline.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "f175c29520c73738c468119ee01d6891622968eb"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/recommendation_benchmark.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "518f1d20521300882a10ca4f537c05abf2639575"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/recommendation_benchmark_io.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "48287e3f7672f49b03a67afafa96d8174d67a90f"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/recommendation_policy.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "fa1cd6b2df40985a9ab5000f68d79d4601dc6884"
+    },
+    {
+      "base_blob_oid": "936fa9c990742e2fd8dbd55e356ff7a9a6c419fc",
+      "path": "src/modori/recommendations.py",
+      "release_blob_oid": "936fa9c990742e2fd8dbd55e356ff7a9a6c419fc",
+      "research_blob_oid": "bbd578554fdb00254c1f682d03d30180c4c98265"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/regression_design.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "fb216fbe883fe965888fffa2726d58d028e9c218"
+    },
+    {
+      "base_blob_oid": "b736d85020868bcc8ae05eed183852526ffb1729",
+      "path": "src/modori/regression_ols_recommendation.py",
+      "release_blob_oid": "b736d85020868bcc8ae05eed183852526ffb1729",
+      "research_blob_oid": "bd3b9cff93a4c15751808266f6c8115ec2d53c95"
+    },
+    {
+      "base_blob_oid": "d34e5866be1751d4ca02ae95527f48daac9fdb44",
+      "path": "src/modori/reliability_recommendation.py",
+      "release_blob_oid": "d34e5866be1751d4ca02ae95527f48daac9fdb44",
+      "research_blob_oid": "2584fc46906874e176cdae84af538529fc53558b"
+    },
+    {
+      "base_blob_oid": "94062410fef9148a419d824bb4207712688a27c8",
+      "path": "src/modori/repeated_measures_anova_recommendation.py",
+      "release_blob_oid": "94062410fef9148a419d824bb4207712688a27c8",
+      "research_blob_oid": "4494764d38ab922673f377b2d55b1b79e1ad2072"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/research_memory/__init__.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "96eedb0ae2c0ebc21357bc71c3fe7ce0efb836ed"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/research_memory/canonical.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "db39c41cdc3809dc0f5f7b937ef5ce8f7bdaca2d"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/research_memory/evidence_bundle.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "c023e2c8f56892ab5f64516261b6d685d967ac71"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/research_memory/ledger_contracts.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "a1af8887e6feaf9fd73ee393117109ecfcd0fd19"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/research_memory/ledger_store.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "2880aced662d5280c140371df39d49db8752fe18"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/research_memory/passport_state.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "df3a5a60f9ed594b552e248a5917819fcdac0371"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/research_memory/promotion.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "a3bc9d2769cb56e6e6675b387e70795308a7baf8"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/research_memory/quarantine.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "74aec4ddb770eb02544f171dba0ed4f84d7a4506"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/research_memory/question_rationale.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "b8d7dac08e5fc601e5caeebaaebe920c5f10ce90"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/research_os/__init__.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "21a6a422a324b70883ede1ba32f6cb89b7d9d1a0"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/research_os/clarification.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "2c50695ea1219a93bac7cf1df65a255a47bac6e6"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/research_os/contracts.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "debc4713ef0987fbd103808b3a8d956aad9c6c39"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/research_os/counterfactual_planner.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "b32d7c2f791ffbba97caf4dbc5b4ae73f317445e"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/research_os/decision_evidence.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "83bba3864b08ae5f4e9b66578806e144d287c5af"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/research_os/method_space.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "9191b59f3499044f601f1172d6a525092bc2ff19"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/research_os/p1_catalog.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "f86ca5f04c962a2531e7c67ab7d6c20e324933d2"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/research_os/p1_clarifications.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "989fc421b7ccf2e05906b032006b79d0b55c6bce"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/research_os/passport.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "8c2cfb3eb647d5a3d225576b2cca3b26beabf42f"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/research_os/passport_audit.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "479322a70d90828938b0f214577649e080618558"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/research_os/resolver.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "2983a07e5db3cee60d24c604445b3dcae56376f9"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/research_os/service.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "2d3d706a0a6363d0d01dabbe111fd2b66980cebf"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/research_os/transition.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "46ae868af7dc9287fc903c848c777469259f520c"
+    },
+    {
+      "base_blob_oid": "c2fdb501f66b91a817d8ca9d7fdb48255d5f64da",
+      "path": "src/modori/statistics_numerics.py",
+      "release_blob_oid": "c2fdb501f66b91a817d8ca9d7fdb48255d5f64da",
+      "research_blob_oid": "89aab514fd8055d592dcb27d5d2c0476c53aa5a3"
+    },
+    {
+      "base_blob_oid": "3ba9bcb1ce76fe6e52bc129a586e918c8eb0d8d0",
+      "path": "src/modori/steps/__init__.py",
+      "release_blob_oid": "3ba9bcb1ce76fe6e52bc129a586e918c8eb0d8d0",
+      "research_blob_oid": "b4dac38e9b6c9ed1f3529f424c5667dfd8ff5d19"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/steps/anova_factorial.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "8e05c6315bb5cabf915b797b2c4b692e1db21c72"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/steps/logistic_regression.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "9ad5fe4a433491bacd3974c7d7c8e769300d44bb"
+    },
+    {
+      "base_blob_oid": "5117ef1699eba952d8a0b0dd0ebcb197e9c8b31f",
+      "path": "src/modori/steps/regression.py",
+      "release_blob_oid": "5117ef1699eba952d8a0b0dd0ebcb197e9c8b31f",
+      "research_blob_oid": "dab021636fbc4e92d073e302ddc89f5c2c054c1f"
+    },
+    {
+      "base_blob_oid": "295a27321a6a4685962c76ec796cf91f2b1cba3a",
+      "path": "src/modori/ui/analysis_editor.py",
+      "release_blob_oid": "295a27321a6a4685962c76ec796cf91f2b1cba3a",
+      "research_blob_oid": "efca8e58010ad9361bfb1c6e5a17160db14016f7"
+    },
+    {
+      "base_blob_oid": "8531a5c8a63f6ab6b1d7fece584e24761f8aa7ba",
+      "path": "src/modori/ui/analysis_selection_controller.py",
+      "release_blob_oid": "8531a5c8a63f6ab6b1d7fece584e24761f8aa7ba",
+      "research_blob_oid": "cd50fee222e2b8d6118b33938124b4023b906c22"
+    },
+    {
+      "base_blob_oid": "cc2e5c2a024f683644b036a3f513639aee894204",
+      "path": "src/modori/ui/commands.py",
+      "release_blob_oid": "cc2e5c2a024f683644b036a3f513639aee894204",
+      "research_blob_oid": "ec0c842ca33837c5746d8503f77ad001751c56fe"
+    },
+    {
+      "base_blob_oid": "5798e6203f94cffda56ce0efc50abe7819b61739",
+      "path": "src/modori/ui/metadata_editor.py",
+      "release_blob_oid": "5798e6203f94cffda56ce0efc50abe7819b61739",
+      "research_blob_oid": "82d0bf14898a82fedaf787b6ac1feeb8f9fc623e"
+    },
+    {
+      "base_blob_oid": "1f111f627d145b992251d3c24c7c4359b2d1e691",
+      "path": "src/modori/ui/pipeline_ops.py",
+      "release_blob_oid": "1f111f627d145b992251d3c24c7c4359b2d1e691",
+      "research_blob_oid": "b2ef36b99407e06f707865390740713d4af860ba"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/ui/question_rationale_presenter.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "e5faa1c9aee338b76b098e3e0766bbea2576f1a2"
+    },
+    {
+      "base_blob_oid": "9d5728fa414b601b001bef9003c946caebd4c210",
+      "path": "src/modori/ui/result_validation.py",
+      "release_blob_oid": "9d5728fa414b601b001bef9003c946caebd4c210",
+      "research_blob_oid": "2bcd91579f6a331dc4f646275121b4a357166bf3"
+    },
+    {
+      "base_blob_oid": "7ad284c7c1656ad7f7f04d88caa9df244665a6f4",
+      "path": "src/modori/ui/results.py",
+      "release_blob_oid": "7ad284c7c1656ad7f7f04d88caa9df244665a6f4",
+      "research_blob_oid": "0cf67dc87a092e38a14038cccc1a05c6db9ea4ae"
+    },
+    {
+      "base_blob_oid": "a3ed1e9838c99156cb2ad72e6ffbe39befad2a18",
+      "path": "src/modori/ui/service_contracts.py",
+      "release_blob_oid": "a3ed1e9838c99156cb2ad72e6ffbe39befad2a18",
+      "research_blob_oid": "f95639461917d3d53e1ea4386d0ca10e3a8cbf05"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/ui/value_tokens.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "e2028f7a95a24fd787a7d183440dd216c5b1e04b"
+    },
+    {
+      "base_blob_oid": "370e99c6b5f0b42f89233ac947a63dc47d148265",
+      "path": "src/modori/v1_statistics_smoke.py",
+      "release_blob_oid": "370e99c6b5f0b42f89233ac947a63dc47d148265",
+      "research_blob_oid": "aed9864428ea6c57d6cdb679df773ac7bd34a70d"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "src/modori/value_tokens.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "92dc2cc3741d09b1fda858b17e074d256f66307a"
+    },
+    {
+      "base_blob_oid": "8cfc1fdc97ca90a4b8c207a256e4c54187afb976",
+      "path": "tests/fixtures/README.md",
+      "release_blob_oid": "8cfc1fdc97ca90a4b8c207a256e4c54187afb976",
+      "research_blob_oid": "d684df98f8f4cadf52d8be8c57797e94dc16daea"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/fixtures/factorial_anova/balanced-2x3.csv",
+      "release_blob_oid": null,
+      "research_blob_oid": "2f9c97d235662cc2b939d32466a70583da80d569"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/fixtures/factorial_anova/moderate-offset-2x3.csv",
+      "release_blob_oid": null,
+      "research_blob_oid": "168398600ff2e0c7562537252ae71be720d0170b"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/fixtures/factorial_anova/reference-metadata.json",
+      "release_blob_oid": null,
+      "research_blob_oid": "13fa5d75e453f45b77fa4d12c30f3341c29fba2b"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/fixtures/factorial_anova/unbalanced-2x3.csv",
+      "release_blob_oid": null,
+      "research_blob_oid": "f93e16dc3257f925bf5b0abe1777ec6a86d55581"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/fixtures/logistic_regression/categorical.csv",
+      "release_blob_oid": null,
+      "research_blob_oid": "f24ace3c5144bcb03a4da726fd7aad8631e5113b"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/fixtures/logistic_regression/continuous.csv",
+      "release_blob_oid": null,
+      "research_blob_oid": "d90ec554022bf92c46aae0a92a99a230179b34e2"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/fixtures/logistic_regression/reference-metadata.json",
+      "release_blob_oid": null,
+      "research_blob_oid": "7ad6e6c5a8293d032d5648f55a48cb4c469ef226"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/fixtures/recommendation_benchmark/manifest.jsonl",
+      "release_blob_oid": null,
+      "research_blob_oid": "c684d426f5cb086c98f2f5f72b4ea650a0cdd061"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/fixtures/recommendation_benchmark/public/LICENSE-TERMS.md",
+      "release_blob_oid": null,
+      "research_blob_oid": "744d9354decbd6d1dd1c99a3765bc5a70ecd93b4"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/fixtures/recommendation_benchmark/public/pilot/adjudication.xlsx",
+      "release_blob_oid": null,
+      "research_blob_oid": "de0ce77cc07d31d92676e22e00cfe4ff1c628f88"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/fixtures/recommendation_benchmark/public/pilot/baseline-a-metadata.json",
+      "release_blob_oid": null,
+      "research_blob_oid": "8a17d4a99e9ef89cffe59a38e6be0944f354b16d"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/fixtures/recommendation_benchmark/public/pilot/baseline-a-predictions.jsonl",
+      "release_blob_oid": null,
+      "research_blob_oid": "e84cd74b8dade14adb26b834bfbd02f907c6459a"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/fixtures/recommendation_benchmark/public/pilot/cases.jsonl",
+      "release_blob_oid": null,
+      "research_blob_oid": "bcfa6abe0da33c622574c57d25fdc337698d35ca"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/fixtures/recommendation_benchmark/public/pilot/data/pilot-001-descriptives.csv",
+      "release_blob_oid": null,
+      "research_blob_oid": "7a050964546e54f5c9ce88e7bd0f6820cd4f3efd"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/fixtures/recommendation_benchmark/public/pilot/data/pilot-002-reliability.csv",
+      "release_blob_oid": null,
+      "research_blob_oid": "5d9d6f9bb3c74cb79aae12cf83a4c09006832df9"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/fixtures/recommendation_benchmark/public/pilot/data/pilot-003-two-groups.csv",
+      "release_blob_oid": null,
+      "research_blob_oid": "7d80fa1c68fe5b712980fff4b4471f872e6a1da2"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/fixtures/recommendation_benchmark/public/pilot/data/pilot-004-three-groups.csv",
+      "release_blob_oid": null,
+      "research_blob_oid": "184b8bc2f04cfa5f0b8f88e1ce9874687a08e420"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/fixtures/recommendation_benchmark/public/pilot/data/pilot-005-frequency.csv",
+      "release_blob_oid": null,
+      "research_blob_oid": "94376961250daa3abcb9cd2dc57301a53394f455"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/fixtures/recommendation_benchmark/public/pilot/data/pilot-006-crosstab.csv",
+      "release_blob_oid": null,
+      "research_blob_oid": "4057cba328d38ae9d1b4f222187393bd1008e649"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/fixtures/recommendation_benchmark/public/pilot/data/pilot-007-correlation.csv",
+      "release_blob_oid": null,
+      "research_blob_oid": "48867ee9c440576c83c4f31558ccaf743f3cec32"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/fixtures/recommendation_benchmark/public/pilot/data/pilot-008-regression.csv",
+      "release_blob_oid": null,
+      "research_blob_oid": "3924396a6c356caa600978de026e08eaf6db7fba"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/fixtures/recommendation_benchmark/public/pilot/data/pilot-009-repeated-wide.csv",
+      "release_blob_oid": null,
+      "research_blob_oid": "58136b9fd830bb876b200ab431c0e9712d8689ee"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/fixtures/recommendation_benchmark/public/pilot/data/pilot-010-factor-items.csv",
+      "release_blob_oid": null,
+      "research_blob_oid": "231a1b78e891b5340a66d35e3d6466efd5c77db2"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/fixtures/recommendation_benchmark/public/pilot/data/pilot-011-missing-code.csv",
+      "release_blob_oid": null,
+      "research_blob_oid": "0f35b44b0373d4fc553f5d47fa4c45645ab34679"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/fixtures/recommendation_benchmark/public/pilot/data/pilot-012-admin-id.csv",
+      "release_blob_oid": null,
+      "research_blob_oid": "2458cac06c121312b08754ae62f09bcb4eea7ffd"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/fixtures/recommendation_benchmark/public/pilot/data/pilot-013-aggregate-row.csv",
+      "release_blob_oid": null,
+      "research_blob_oid": "1360bbdbe4ea53d64c29076997656d686bfe4a08"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/fixtures/recommendation_benchmark/public/pilot/data/pilot-014-pairing-ambiguous.csv",
+      "release_blob_oid": null,
+      "research_blob_oid": "ff87da009cb6068c3f17eacf2810075e440b18d9"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/fixtures/recommendation_benchmark/public/pilot/data/pilot-015-mixed-labels.csv",
+      "release_blob_oid": null,
+      "research_blob_oid": "c6f2b3d11c470405384e02c8bbb0b104b6a3b519"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/fixtures/recommendation_benchmark/public/pilot/data/pilot-016-weighted-clustered.csv",
+      "release_blob_oid": null,
+      "research_blob_oid": "272f30c08003017e73a91928504e8627f6884e64"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/fixtures/recommendation_benchmark/public/pilot/data/pilot-017-mediation-intent.csv",
+      "release_blob_oid": null,
+      "research_blob_oid": "4da6d50c51b0b427ec603a04a70a70464d6115ab"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/fixtures/recommendation_benchmark/public/pilot/data/pilot-018-injection-text.csv",
+      "release_blob_oid": null,
+      "research_blob_oid": "5468a07b0e9f7ae629dc1088b677fe724cbd2868"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/fixtures/recommendation_benchmark/public/pilot/data/pilot-019-020-shared.csv",
+      "release_blob_oid": null,
+      "research_blob_oid": "ecb6e2240bad098c64a9a1c66fc03c79d8d999e6"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/fixtures/recommendation_benchmark/public/pilot/reviewer-a.xlsx",
+      "release_blob_oid": null,
+      "research_blob_oid": "1e377f10013d2abe46fbfc52e23c69e941055be0"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/fixtures/recommendation_benchmark/public/pilot/reviewer-b.xlsx",
+      "release_blob_oid": null,
+      "research_blob_oid": "1e377f10013d2abe46fbfc52e23c69e941055be0"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/fixtures/research-memory/README.md",
+      "release_blob_oid": null,
+      "research_blob_oid": "0cfa14b99267367cbe7b26e946f3b26008be3b3c"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/question_rationale_fixtures.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "9838960241542c5c300f2f16c06222837c320538"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/r/factorial_anova_reference.R",
+      "release_blob_oid": null,
+      "research_blob_oid": "46f3033a459d07496a1c005a6fe82fb17e7f8e13"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/r/logistic_regression_reference.R",
+      "release_blob_oid": null,
+      "research_blob_oid": "7baed232f48a3465389f623336203e7881aa505f"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/research_memory_passport_fixtures.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "27a6a8d3a01f55d19d9a2fa12584e01c3e6723fb"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/research_os_v2_fixtures.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "fe424e66ff5cdc1eed0839451001fd18fdb04d08"
+    },
+    {
+      "base_blob_oid": "7e8f15b32f712b751ff0a9c07c5dcd607797b5a4",
+      "path": "tests/test_analysis_catalog.py",
+      "release_blob_oid": "7e8f15b32f712b751ff0a9c07c5dcd607797b5a4",
+      "research_blob_oid": "05598f09b17a1c09dbae56eab36263a220749a42"
+    },
+    {
+      "base_blob_oid": "b12c622b38eff0b69d2c98471cdacf854e7e9f7e",
+      "path": "tests/test_analysis_catalog_module_specs.py",
+      "release_blob_oid": "b12c622b38eff0b69d2c98471cdacf854e7e9f7e",
+      "research_blob_oid": "6a9267e7f6ff25a5b0b8006a35d223011913b382"
+    },
+    {
+      "base_blob_oid": "80cc517ef583def2a2c982d0c3a6cb08478afba6",
+      "path": "tests/test_analysis_module_contract.py",
+      "release_blob_oid": "80cc517ef583def2a2c982d0c3a6cb08478afba6",
+      "research_blob_oid": "84ca44d42db85a42660981dfa0f42c3ce6a8a342"
+    },
+    {
+      "base_blob_oid": "fd21da57e8ed880ac82ca3e35ae6af58388dd67b",
+      "path": "tests/test_ancova_recommendation.py",
+      "release_blob_oid": "fd21da57e8ed880ac82ca3e35ae6af58388dd67b",
+      "research_blob_oid": "52b12678591ce1c1e931dda35045354361875dae"
+    },
+    {
+      "base_blob_oid": "9656a159b8294a60108d7b766e6fbf39f4f15ccf",
+      "path": "tests/test_anova_oneway_recommendation.py",
+      "release_blob_oid": "9656a159b8294a60108d7b766e6fbf39f4f15ccf",
+      "research_blob_oid": "fcd77235f08bdc9d5eae25db930b64228831ccfe"
+    },
+    {
+      "base_blob_oid": "0a68be32ca88860753dac8be8e31b4dd064114dd",
+      "path": "tests/test_clean_vm_payload_script.py",
+      "release_blob_oid": "0a68be32ca88860753dac8be8e31b4dd064114dd",
+      "research_blob_oid": "c3b62d8050cfb4fd4eab96700f79e3bd9da57cb1"
+    },
+    {
+      "base_blob_oid": "58be4ac72b6ef2fb949ff18e9af1f2e7a0cb1636",
+      "path": "tests/test_correlation_recommendation.py",
+      "release_blob_oid": "58be4ac72b6ef2fb949ff18e9af1f2e7a0cb1636",
+      "research_blob_oid": "2bc90253c6a73739450a356681fc8e193f15b651"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_counterfactual_clarification_benchmark.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "92741575801c5e83b121a703457d9b74011cd032"
+    },
+    {
+      "base_blob_oid": "3ec7a3c147e1f2f5d06213fbdb79de3527cd216d",
+      "path": "tests/test_descriptives_table1_recommendation.py",
+      "release_blob_oid": "3ec7a3c147e1f2f5d06213fbdb79de3527cd216d",
+      "research_blob_oid": "416ed130ef63daad5b439a9599f14319c7ec90e6"
+    },
+    {
+      "base_blob_oid": "a807e6a7fc564ba4b835438771410463b45c6ceb",
+      "path": "tests/test_descriptives_table1_step.py",
+      "release_blob_oid": "a807e6a7fc564ba4b835438771410463b45c6ceb",
+      "research_blob_oid": "cf7eec0606b1b0f842ff595456ffee1f20febde8"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_experimental_recommendation_boundary.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "27470c545c93def4d1e9edb3e414d76565e27fb6"
+    },
+    {
+      "base_blob_oid": "9d47338ef7c173b9eb9afbe4d120a11f31cd6d15",
+      "path": "tests/test_factor_pca_recommendation.py",
+      "release_blob_oid": "9d47338ef7c173b9eb9afbe4d120a11f31cd6d15",
+      "research_blob_oid": "bab487d8b27996e4506e6ee1e56cf171bd3e8184"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_factorial_anova_numerics.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "43f763fe47ab185c9f7171c25e0389b5fa877c1d"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_factorial_anova_performance.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "4dd6c5c44b61e0a722159bdfcdb698a6bd94706d"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_factorial_anova_recommendation.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "63e439feaac536e84f292f2fd511ae12f3897c21"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_factorial_anova_references.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "ae2b1ecca431e436084639e28c015635c2c19a6d"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_factorial_anova_reporting.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "e8917f275503b071f4d4e0d17dd9e9351d7c06ce"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_factorial_anova_results.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "2653a731d844dcf389b043c32fc7348014bca964"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_factorial_anova_step.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "d61e80eae5c9c01d2c6bc8dce88db7c812c0e371"
+    },
+    {
+      "base_blob_oid": "517617be9cb4baae460086f90a01c4297a64cd45",
+      "path": "tests/test_frequency_crosstab_recommendation.py",
+      "release_blob_oid": "517617be9cb4baae460086f90a01c4297a64cd45",
+      "research_blob_oid": "05180412cab89c5325571ae9f4de3e71c48db80b"
+    },
+    {
+      "base_blob_oid": "5fd2ac605e0d642fb9be0288a7994e27b696d0b1",
+      "path": "tests/test_knowledge_library.py",
+      "release_blob_oid": "5fd2ac605e0d642fb9be0288a7994e27b696d0b1",
+      "research_blob_oid": "95f0f5c1e545ed69bc45153628e9ebf98d5f0994"
+    },
+    {
+      "base_blob_oid": "620eaebea03e1d810693843a899983500af63259",
+      "path": "tests/test_kruskal_wallis_recommendation.py",
+      "release_blob_oid": "620eaebea03e1d810693843a899983500af63259",
+      "research_blob_oid": "efaa6889ca05ebe5de3387230ac70aed1963f6ff"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_logistic_numerics.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "bcb9b780ce7e3c03a2ff98dc15cda3350cb90f5f"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_logistic_regression_hard_conditions.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "9c34baa6f41355f137f29b0b3ebd387086f911df"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_logistic_regression_metrics.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "8c925a01459b6692094fadc01044f655a5dcc4c6"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_logistic_regression_recommendation.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "541e7e3f5be62ebe0729ad4652bee7cc30240a31"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_logistic_regression_references.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "e06b3c27fabf97db908764b8e21b59c061b0ca8f"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_logistic_regression_reporting.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "ab004ca293979549b59c5e70d779c7943e5f275d"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_logistic_regression_step.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "a8cd5a3d388dbebdf8abc2e1ef2cf68ab0568fe6"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_office_research_memory_kit_architecture.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "84c502addb32049eb16714ed50f5e73555762a53"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_office_research_memory_kit_builder.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "54ded1ca2d841e81aa449242130513da11d6fc44"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_office_research_memory_kit_contract.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "bd799d2049c0440791392d750c3a5bb5007c9cb0"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_office_research_memory_kit_runner.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "0697b6127b30cb66f61ac2d18094589af5df1d7c"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_office_research_memory_kit_verifier.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "71392222d8cb8686446d1ef6664466f37d533f9b"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_product_recommendation_wording.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "8976068be10da4dedba5d954576e9043c40e705b"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_question_rationale_adversarial.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "983e93231b98cd6f86acb1e048ff332afc025090"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_question_rationale_performance.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "e402293f555c9aad69ace1d2c4585ddc19d0ce3d"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_question_rationale_projection.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "87e4080c5da74c9ade6367dc0b5dac88cc59e25e"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_recommendation_baseline.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "89865767ea4d065c4271abb5ceb903a1cc93bb8d"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_recommendation_benchmark.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "a3dbf549741d4bcf3241e6b4477f92a773d3673a"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_recommendation_benchmark_cli.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "ab56c41965a17fb56178e00344d19f3b82033d0d"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_recommendation_benchmark_docs.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "1facd369c9ee6368c880bc7649d7f77e2ff71585"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_recommendation_benchmark_io.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "93daf0b8557220184c30e5036b2daa4b3684ad84"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_recommendation_pilot_fixtures.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "b6c084766973bf989850385bfaca1ad9684e5f29"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_regression_design.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "24d8dc2b10cb08b2b873ed700d1214128eb5230d"
+    },
+    {
+      "base_blob_oid": "b1940445d1ecc1c84deceeeab9fd1d9216643259",
+      "path": "tests/test_report_step.py",
+      "release_blob_oid": "b1940445d1ecc1c84deceeeab9fd1d9216643259",
+      "research_blob_oid": "50b600b1b55ab86a394ced38e06ca04315da0f53"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_research_memory_architecture.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "d9d128890ef9f49e602d8973780fd560bb04ace4"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_research_memory_canonical.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "298db8296583feeb61bd5d971ff72ca758a2fb08"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_research_memory_constrained_benchmark.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "f8f8cc792fd3b605ae780ea12fae802fbe89d986"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_research_memory_crash_recovery.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "eb1c52369ad3a9217d35593a907d9b08c68e0545"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_research_memory_evidence_bundle.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "5dc39e55c434888d700b2e8bb9e714818bebe679"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_research_memory_ledger_contracts.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "6bcc43aedbe21e3a8c1a38a24ccf6e92aa06bc8f"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_research_memory_ledger_store.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "0e46778505810b001de389e0a9021944a9effccb"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_research_memory_passport_state.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "93c1cc4f3cd5abc2b15dc3e6da8bd786124a52b1"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_research_memory_performance.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "18442649dad4ac9e3282c846a766db0f0ca77fc0"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_research_memory_promotion.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "3e757cc023978083b41e83ada831be891373fc64"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_research_memory_quarantine.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "6cb3417b913601dadc931da05ff7399f9de33643"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_research_os_architecture.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "90c73f76c480acaca6c84f55e706636dca295681"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_research_os_clarifications.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "f011e75cd681cfd8945a2289d0edd38bdb8ad0c1"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_research_os_contracts.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "a32b870331a965cd7139c28fdfbca9dfb671b2c9"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_research_os_counterfactual_planner.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "e0dbbbec1fbf539266255220106e847b94296685"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_research_os_decision_evidence.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "49678bee6a3883a30135ca9cb167ac3bb53e1c7e"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_research_os_method_space.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "2d16c281e1ec4114cfbb3384f2ad6afd9b7a3df0"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_research_os_p1_catalog.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "0bdef6692345087fb56a44dfe889a5bcd26b25b6"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_research_os_passport.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "024d966394117b573328e7321105be594a4c7dcc"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_research_os_passport_audit.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "d114ee5c98ead6d9a7006215673d36a1b75454f9"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_research_os_planning.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "518c845533f9fff27b1fa066f5f743b31c1e0bb2"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_research_os_resolver.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "4697548d1320d20a77f9800532f161258fd898c0"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_research_os_service.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "cc65f37828166502fbcf8c4fba251d3c198d336a"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_research_os_transitions.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "126dd2595a6691857f6a18c9e675944583674313"
+    },
+    {
+      "base_blob_oid": "9ee335f49c4caede40b753bc0d21f8a5a0425844",
+      "path": "tests/test_statistics_accuracy_ledger.py",
+      "release_blob_oid": "9ee335f49c4caede40b753bc0d21f8a5a0425844",
+      "research_blob_oid": "13e38690a6efe657ceec0485b8bc6b0d61c0e02b"
+    },
+    {
+      "base_blob_oid": "d9a4e597ccf6f8bf833a06e8802a27c60443f05d",
+      "path": "tests/test_tail_probability_policy.py",
+      "release_blob_oid": "d9a4e597ccf6f8bf833a06e8802a27c60443f05d",
+      "research_blob_oid": "1c237adb75be89d3eee0a3d4271698be74c1ec6e"
+    },
+    {
+      "base_blob_oid": "00b680e257388bc282435bd1af37c0f5d445dd81",
+      "path": "tests/test_v1_statistics_smoke.py",
+      "release_blob_oid": "00b680e257388bc282435bd1af37c0f5d445dd81",
+      "research_blob_oid": "51a5ca5fd59f48cbac32dec76854f5f6c5bac402"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/test_verify_release_integration_script.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "24eb202fea2f201e3239215de84591a025778480"
+    },
+    {
+      "base_blob_oid": "7e7e386fd512234533b51db66015ab6c1b74851d",
+      "path": "tests/ui/test_commands.py",
+      "release_blob_oid": "7e7e386fd512234533b51db66015ab6c1b74851d",
+      "research_blob_oid": "63deca11c26fc53c46ad7c6ed5f24442fd668772"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/ui/test_experimental_recommendation_flow.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "d4a799d4a182d2a9939cfa2d2eff40815a40751b"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/ui/test_factorial_anova_flow.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "abf639fde7678ecbe897f09b662db98b82936543"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/ui/test_logistic_regression_flow.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "e0d1bb482fa7769fd4a20c5e2a8d99065a36318c"
+    },
+    {
+      "base_blob_oid": "7007e8ab95bae8bd6b413fd697ca1099cf8b473c",
+      "path": "tests/ui/test_metadata_editor.py",
+      "release_blob_oid": "7007e8ab95bae8bd6b413fd697ca1099cf8b473c",
+      "research_blob_oid": "eb1a99ecb69ec0f7f8c2ccea6ecc51b455c1fccb"
+    },
+    {
+      "base_blob_oid": "4005249a7843272408a7d0cc9cdbbf098910312a",
+      "path": "tests/ui/test_qml_string_catalog.py",
+      "release_blob_oid": "4005249a7843272408a7d0cc9cdbbf098910312a",
+      "research_blob_oid": "98040e60952335e9fbb524eb9285c053ff1aaf70"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "tests/ui/test_question_rationale_presenter.py",
+      "release_blob_oid": null,
+      "research_blob_oid": "6f081263a7460fd37bb97ef8cfbeb96f2e92a88c"
+    },
+    {
+      "base_blob_oid": "62d34ddf28ac0fbe6b40be825d1f68cf97a18e64",
+      "path": "tests/ui/test_result_binding.py",
+      "release_blob_oid": "62d34ddf28ac0fbe6b40be825d1f68cf97a18e64",
+      "research_blob_oid": "92f0e13ac8d9bfbf2064bc43219837e493e8a31b"
+    },
+    {
+      "base_blob_oid": "32bdf5bd930b79ec93edc14d47ebef57d919add6",
+      "path": "tests/ui/test_run_validation.py",
+      "release_blob_oid": "32bdf5bd930b79ec93edc14d47ebef57d919add6",
+      "research_blob_oid": "130ca9cefe1c5616a5d90e9d4929cade49197895"
+    }
+  ],
+  "research_sha": "247f8f5d80c8045080510cdffa12fe88f1271cbb",
+  "schema_id": "modori.release-integration-source-manifest",
+  "schema_version": 1,
+  "shared": [
+    {
+      "base_blob_oid": "7b563ca53b2cacbeaeacf0bbf8346b51d64285aa",
+      "path": "docs/security/file-operations-audit-2026-06-29.md",
+      "release_blob_oid": "5efca57364547c68cf474743a4baf71429e58b1c",
+      "research_blob_oid": "78ade578566d8c61c8f709d9ca5aae2920939fa1"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "docs/superpowers/specs/2026-07-11-experimental-recommendation-boundary-design.md",
+      "release_blob_oid": "2f26afc5bd0f050f706f2b539406bef9fa284ae0",
+      "research_blob_oid": "1366b44e021e51ffd05a798a748f457da11a0f2e"
+    },
+    {
+      "base_blob_oid": "03bef34db6d2bf43688b0f10857b5596ec5c1a3b",
+      "path": "pyproject.toml",
+      "release_blob_oid": "c0240c8e60cbf1c2edc994f4b6cdb5728268c5da",
+      "research_blob_oid": "05c8955095ef29ce089d8fbeefa0344ba7dd6b8f"
+    },
+    {
+      "base_blob_oid": "7c66eb5952ac2d559c3e2cf73db037ce8d318bb3",
+      "path": "scripts/package_engine_smoke.py",
+      "release_blob_oid": "9d332b018fadae8cb009fc91441ab8d98a1e1272",
+      "research_blob_oid": "a9a52e753d2d5c2b1dc97b7754fa5d43b55afbd3"
+    },
+    {
+      "base_blob_oid": null,
+      "path": "scripts/package_environment.py",
+      "release_blob_oid": "3cc1683fc80028fa0eac05a642a2ffac68170ed7",
+      "research_blob_oid": "a9daea4b1aecc206cb01a5dc7a96524edfc17154"
+    },
+    {
+      "base_blob_oid": "f481eb5875660b2d01887c857e4cc5bef230157e",
+      "path": "scripts/package_public_data_smoke.py",
+      "release_blob_oid": "aa2dd04e22acbe8244f56726b6676a494eba22bc",
+      "research_blob_oid": "04fcb808194fa07b1d01222ad7a443b23cf1694b"
+    },
+    {
+      "base_blob_oid": "570522ff436e49a2a0cdc6674532d029477148f0",
+      "path": "scripts/package_windows.py",
+      "release_blob_oid": "bed3883afa313815af1f2e9f57f3bf7d0eb8ae0e",
+      "research_blob_oid": "26d191ed2e4d12f3f1705dc8ba72c13e91c12b66"
+    },
+    {
+      "base_blob_oid": "96c516777a04dc5114dd2fc7d22f1d8de9182d93",
+      "path": "scripts/quality_gate.py",
+      "release_blob_oid": "3ca9bcfd2c4fde530a0105f53d464e36cbac8256",
+      "research_blob_oid": "72a75b9e995109435bdf9814bb9391076c9b7eb8"
+    },
+    {
+      "base_blob_oid": "6e9b5d90fea4faede65a23f814a134da86b5799c",
+      "path": "src/modori/app.py",
+      "release_blob_oid": "addf0d502c3628d709b91be3ed40c96083104a56",
+      "research_blob_oid": "b70efccfd6a592a7cc05e03b8e60e6a838c87413"
+    },
+    {
+      "base_blob_oid": "cba9b0675c6e9f49ce6f1469562eac64d0a34355",
+      "path": "src/modori/steps/reporting.py",
+      "release_blob_oid": "260e87f62deca4b5a83ef5338bcdf2f4fde9c4c6",
+      "research_blob_oid": "ece28b5cdf5f5bc12107130eab984671ba6e4ff2"
+    },
+    {
+      "base_blob_oid": "ad7145a763a87c11b08cf282b915a056750e81a0",
+      "path": "src/modori/ui/contracts.py",
+      "release_blob_oid": "2c21a871f072848ca6c0aaab25d43568bddcd5a1",
+      "research_blob_oid": "750f129b8c27bdf68e8242843e31c159a23ab8a8"
+    },
+    {
+      "base_blob_oid": "2b62394267ac2247691008170dcb46d31017ee0f",
+      "path": "src/modori/ui/controller.py",
+      "release_blob_oid": "7b69ec76c28b67eba4205274879a30dcd39bce05",
+      "research_blob_oid": "992c2f6cacdd742034c0006c8c7de0fabf69d825"
+    },
+    {
+      "base_blob_oid": "dd7f2b220168de3da5baeb6c612112c94ce38d9c",
+      "path": "src/modori/ui/qml/components/DataGridView.qml",
+      "release_blob_oid": "735b20b4aa4f7929b31d71915a2df5cf4de2461a",
+      "research_blob_oid": "8b23e66b88ab564ae5f78c22d5b7aa7a372bec7b"
+    },
+    {
+      "base_blob_oid": "bcf1c1bc1465e5348efa8013d8c50e9405f7fe59",
+      "path": "src/modori/ui/qml/components/GuideRail.qml",
+      "release_blob_oid": "a15721015fdac3c598d5aaf77fa0bb010df9ac47",
+      "research_blob_oid": "e25ce0a7ea18a9e5a6e203eab4275612aff5c844"
+    },
+    {
+      "base_blob_oid": "fdee36301b1b79d16ae28310dec77636e8a774f0",
+      "path": "src/modori/ui/qml/components/PipelineRail.qml",
+      "release_blob_oid": "1d3b6c3515062949384355366bb2676b64888b9c",
+      "research_blob_oid": "bbae2da16e92f0c4a8d90cce23bffbf82a11740e"
+    },
+    {
+      "base_blob_oid": "9078dcb3abae7c522b160521e393a59083cb7232",
+      "path": "src/modori/ui/recommendation_controller.py",
+      "release_blob_oid": "22eb0470f641e3a952adc8fa8f21f75d2be0b34c",
+      "research_blob_oid": "ef15c07fc6494ee7367c18136e0d336eea899ab8"
+    },
+    {
+      "base_blob_oid": "277e34d724b85837278499f15044e08b025d6c24",
+      "path": "src/modori/ui/run_validation.py",
+      "release_blob_oid": "a59a85387ef4f83c78836a3a5ab4a6e2dc03cb76",
+      "research_blob_oid": "9fcfb9f94ae52d2494d8d589ab64ee249f045a39"
+    },
+    {
+      "base_blob_oid": "f83101efaca0abe20bfd1a9ccf87efb02b3e164c",
+      "path": "src/modori/ui/strings.py",
+      "release_blob_oid": "cb3af21ec9ba8c6cab18dd261483c9e73b6436dd",
+      "research_blob_oid": "b9e19743e67585507a9aa0fa61a5f497ee437960"
+    },
+    {
+      "base_blob_oid": "007a146b62ca627d1855a4c6bd7fff54dd30d9cc",
+      "path": "tests/test_app_engine_smoke.py",
+      "release_blob_oid": "928764caf1d1a99f4273350ddf7647b758bb191a",
+      "research_blob_oid": "e356056968bcfb35dbc30351b7b8ac211a17223a"
+    },
+    {
+      "base_blob_oid": "d90fb4181e5c43731f3a55937ccac6bfe17281b5",
+      "path": "tests/test_file_operation_audit.py",
+      "release_blob_oid": "5c4478142360bfd452a63829829abb3572059480",
+      "research_blob_oid": "e8ccfeec15c0d6b1e82b0ae578573c72bacb3376"
+    },
+    {
+      "base_blob_oid": "2453d4550cb828f16a7281585909e05d20f0b7e4",
+      "path": "tests/test_package_engine_smoke_script.py",
+      "release_blob_oid": "45d6014c338de747c9fd0d888a7ffde089a4c705",
+      "research_blob_oid": "5a43d5a6460cd53baa93a537d674a6ea39ff2305"
+    },
+    {
+      "base_blob_oid": "53dd6ab5995ded5c8dcf13b56cbfcc529895248b",
+      "path": "tests/test_package_public_data_smoke_script.py",
+      "release_blob_oid": "cdec6ced46d5ae4973e574b835f03f70ee7ab911",
+      "research_blob_oid": "aba2b19fc998104925df1e08412e33a02e224c9e"
+    },
+    {
+      "base_blob_oid": "08b1761df92af85bdbb87704b233990a49f939a6",
+      "path": "tests/test_package_windows_script.py",
+      "release_blob_oid": "278260a6e9e994fb674a3834b7b5154572eaaa02",
+      "research_blob_oid": "9e6d3e329f813321f00f26ebaac1f748d98d607d"
+    },
+    {
+      "base_blob_oid": "6d436edc2bdd26de749d82e9c2ae54b1cac90afb",
+      "path": "tests/test_quality_gate_script.py",
+      "release_blob_oid": "c91ad09cde6709713fcac10cbeec1736b42867a8",
+      "research_blob_oid": "29404cabc23b50acdaa9e47257dcfc15d42b167a"
+    },
+    {
+      "base_blob_oid": "2fde27aa477067ed03e878b7515656102fe278c9",
+      "path": "tests/ui/test_controller.py",
+      "release_blob_oid": "8c68c9ee6339f5a9dd5991356569de140f0f7e70",
+      "research_blob_oid": "58a05dc8264e37a8a7ce339d958151375b79cdb8"
+    },
+    {
+      "base_blob_oid": "7544a470dfdf5f6cd2c0bc3bf18119f2957fc8c9",
+      "path": "tests/ui/test_data_grid_qml.py",
+      "release_blob_oid": "8e98dc11a2727e0077eeb3000680e692b3a114b6",
+      "research_blob_oid": "3f4f4ce601c09790d043d0102a019dedb21e2218"
+    },
+    {
+      "base_blob_oid": "dc63bee28edfcea9449f4d626b9d31d187cba3c2",
+      "path": "tests/ui/test_end_to_end_ui_flow.py",
+      "release_blob_oid": "fa0e36b91b8c51b64b07a8b94f69f9628048fb6a",
+      "research_blob_oid": "90dc3932bb941e1923c2a308cb00114f495ad658"
+    },
+    {
+      "base_blob_oid": "90a7fa298317f484e50bfadc51f83fb8be046b98",
+      "path": "tests/ui/test_guided_standard_pipeline_rail.py",
+      "release_blob_oid": "a1bd1bfc9365e94a1a32d0be9f6e58e41318b806",
+      "research_blob_oid": "427f37dd8b2394efc5a6d9e0379b58687f0c2da4"
+    },
+    {
+      "base_blob_oid": "250f220aa81fcca4d9bec18297227cec9e951f8d",
+      "path": "tests/ui/test_guided_standard_variable_selection_flow.py",
+      "release_blob_oid": "c7a4c4137ca379d8f8382b4d9e2c57390e6662ec",
+      "research_blob_oid": "27fdae8899d5c4050634bee3b58351ce9c2f0643"
+    },
+    {
+      "base_blob_oid": "d5678260e7620e44ff2f891c159201104d10ae87",
+      "path": "tests/ui/test_human_operated_qml_flow.py",
+      "release_blob_oid": "da2e9cb4f9e3f8fb1f51ed9bb3860c3901dab4dc",
+      "research_blob_oid": "ae6e7a0d10c454720ceef9985903c9f41e01538b"
+    },
+    {
+      "base_blob_oid": "615bef93674379116031a37ad75b036a49517c42",
+      "path": "tests/ui/test_mode_action_surfaces.py",
+      "release_blob_oid": "376e082e7f06e88718567eafbd573aaa134213b5",
+      "research_blob_oid": "b9370a769b20f9803dc51587af0143eabe504d8d"
+    },
+    {
+      "base_blob_oid": "945c024ce2ee2a0fe04fd4386f2452f648a5c50f",
+      "path": "tests/ui/test_pipeline_ops.py",
+      "release_blob_oid": "98222d42ea6badfb1097ceb30fac295394b5828f",
+      "research_blob_oid": "fa8ff1646bc6ec12390d477605d4f9823405b970"
+    },
+    {
+      "base_blob_oid": "bc610104a00d0e1586fc4a39ced8ae8d2c636b88",
+      "path": "tests/ui/test_qml_runtime_load.py",
+      "release_blob_oid": "ac275fac8ff29f62d50bc4845f0b552d945fcce9",
+      "research_blob_oid": "adde768fe9c5ed6af50dbaeec5a55e7694322c5c"
+    },
+    {
+      "base_blob_oid": "98c7c4176529e9124b9fe97409c49cd2e0ff37c9",
+      "path": "tests/ui/test_recommendations.py",
+      "release_blob_oid": "4b25b6a0699e9984ddec3c5b83f1e95a70efd250",
+      "research_blob_oid": "6dd3b9fbe26a34a1756e1560f3870d3e683c42ba"
+    },
+    {
+      "base_blob_oid": "6409159375c309e5cd67492b15e33146672af72c",
+      "path": "tests/ui/test_result_surface_qml.py",
+      "release_blob_oid": "91837de5e7e17aafdef31f88a0b9c86460f94d22",
+      "research_blob_oid": "0c017d243f7f7d4fd4d761116fdab9cb8cc9c0e7"
+    },
+    {
+      "base_blob_oid": "09fe80dfef9dfca911edddacd0187e410cfc7051",
+      "path": "tests/ui/test_security_privacy.py",
+      "release_blob_oid": "dd00c1a45a2113564345dab3833553232064eecd",
+      "research_blob_oid": "a32da12f0f0a125f06042748fa630958017e9ff2"
+    },
+    {
+      "base_blob_oid": "93b29bfa822ea848d4807c2474c500dc1181f594",
+      "path": "tests/ui/test_smoke_qml.py",
+      "release_blob_oid": "f25d54511cbe9354d3db73da07d7c1ee106576dc",
+      "research_blob_oid": "fccc511ed4fa0365efc6f0e5acb8bf2de472a5ed"
+    },
+    {
+      "base_blob_oid": "f320446c0597a92d0bf0e94502a09c3e0ab49cfe",
+      "path": "tests/ui/test_variable_metadata_editing.py",
+      "release_blob_oid": "02ea1e8e40e4406d4f45afc95f0c38958521fafc",
+      "research_blob_oid": "4ae47c4da28545ab2dac066bbc2594f51140649f"
+    }
+  ]
+}
