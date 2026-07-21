@@ -1,60 +1,47 @@
 1
-00:00:00,000 --> 00:00:06,000
-Before it calculates, Modori asks.
-When the evidence is not enough, it abstains.
+00:00:00,000 --> 00:00:07,100
+Before it calculates, Modori asks. When the evidence is not enough, it abstains.
 
 2
-00:00:06,000 --> 00:00:18,000
-Here is the payoff: a reviewable result from 649 public student records,
-exported to Word locally.
+00:00:07,100 --> 00:00:15,133
+Here is the payoff: a reviewable result from 649 public student records, exported to Word locally.
 
 3
-00:00:18,000 --> 00:00:30,000
-I'm a social-science student. I built Modori because starting statistical work
-should feel clear, not punishing.
+00:00:15,133 --> 00:00:23,033
+I'm a social-science student. I built Modori because starting statistical work should feel clear, not punishing.
 
 4
-00:00:30,000 --> 00:00:44,000
-This walkthrough uses 649 observed records from UCI Student Performance.
-Modori labels the 30-row preview before loading the full table.
+00:00:23,033 --> 00:00:33,333
+This walkthrough uses 649 observed records from UCI Student Performance. Modori labels the 30-row preview before loading the full table.
 
 5
-00:00:44,000 --> 00:01:02,000
-Before any method appears, I confirm what the variables mean:
-study time is ordinal; final grade is scale. These decisions enter the review trail.
+00:00:33,333 --> 00:00:43,967
+Before any method appears, I confirm what the variables mean: study time is ordinal; final grade is scale. These decisions enter the review trail.
 
 6
-00:01:02,000 --> 00:01:22,000
-I ask whether study time and grades move together, then assign exact roles.
-Modori asks bounded questions about independence, clustering, and weights—and records the answers.
+00:00:43,967 --> 00:00:56,767
+I ask whether study time and grades move together, then assign exact roles. Modori asks bounded questions about independence, clustering, and weights, and records the answers.
 
 7
-00:01:22,000 --> 00:01:38,000
-The reviewable candidate is Spearman correlation. Its association-only boundary,
-variables, missing-data policy, and experimental status remain visible.
+00:00:56,767 --> 00:01:07,267
+The reviewable candidate is Spearman correlation. Its association-only boundary, variables, missing-data policy, and experimental status remain visible.
 
 8
-00:01:38,000 --> 00:01:55,000
-Prepare seals the reviewed configuration but does not calculate. Only this separate
-Run action produces the result: rho point two seven five, p below point zero zero one.
+00:01:07,267 --> 00:01:19,267
+Prepare seals the reviewed configuration but does not calculate. Only this separate Run action produces the result: rho point two seven five, p below point zero zero one.
 
 9
-00:01:55,000 --> 00:02:08,000
-A second request asks for a causal effect. Modori does not substitute a convenient method.
-It records that the request is outside the current scope.
+00:01:19,267 --> 00:01:29,633
+A second request asks for a causal effect. Modori does not substitute a convenient method. It records that the request is outside the current scope.
 
 10
-00:02:08,000 --> 00:02:31,000
-During Build Week, Codex with GPT-5.6 helped turn product questions into contracts,
-failing tests, implementation, and Windows verification—from variable meaning and ledger authority
-to Excel recovery, safe Word export, and failure recovery.
+00:01:29,633 --> 00:01:47,067
+During Build Week, Codex with GPT-5.6 helped turn product questions into contracts, failing tests, implementation, and Windows verification, from variable meaning and ledger authority to Excel recovery, safe Word export, and failure recovery.
 
 11
-00:02:31,000 --> 00:02:48,000
-The arithmetic and recommendation boundary are tested separately. External reference checks
-support the calculation layer, while the workflow remains reviewable from data to report.
+00:01:47,067 --> 00:01:58,467
+The arithmetic and recommendation boundary are tested separately. External reference checks support the calculation layer, while the workflow remains reviewable from data to report.
 
 12
-00:02:48,000 --> 00:02:55,000
-Modori asks, abstains, and waits for you to Run.
-Kindness is a system behavior.
+00:01:58,467 --> 00:02:05,033
+Modori asks, abstains, and waits for you to Run. Kindness is a system behavior.

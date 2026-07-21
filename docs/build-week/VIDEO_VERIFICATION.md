@@ -18,48 +18,60 @@ Verified on 2026-07-21 (Asia/Seoul).
 
 ## Final local upload candidate
 
-- File: `.visual-qa/build-week-real-data-candidate-2026-07-21/video/modori-build-week-demo-human-problem-en-175s.mp4`
-- Size: `11,243,615` bytes
-- SHA-256: `bd66d76db468c52caa535bbfccba57cebab2639ab262ae7ce10860e7f1e67189`
-- Duration: exactly `00:02:55.00`
+- File: `.visual-qa/build-week-real-data-candidate-2026-07-21/video/modori-build-week-demo-human-problem-en-paced.mp4`
+- Size: `9,132,762` bytes
+- SHA-256: `901503954cad536c2ea368bb63bb73b8b19fa7df247d6e396f0566987d04d32f`
+- Duration: exactly `00:02:05.03` (`125.033` seconds)
 - Video: H.264 High, 1,920 × 1,080, square pixels, 30 fps, yuv420p
-- Exact video count: `5,250` decoded frames
+- Exact video count: `3,751` decoded frames
 - Audio: AAC-LC, 48 kHz, stereo; FFmpeg `loudnorm` first-pass input
-  measurements are integrated `-15.91 LUFS`, true peak `-1.50 dBTP`, and
-  loudness range `4.90 LU`
+  measurements are integrated `-15.93 LUFS`, true peak `-1.50 dBTP`, and
+  loudness range `2.90 LU`
 - Full video/audio decode: exit 0, no reported decode errors
 
-The 25 visual clips were independently rendered at exactly
-`planned seconds × 30` frames. The render script rejects a timeline that does not
-sum to 175 seconds and rejects any moving excerpt above 1.25×. The final timeline
-uses 1.0× for every moving Modori excerpt; waiting and cursor travel are removed by
-ordinary hard cuts.
+The 25 visual clips were independently rendered at the frame-aligned duration of
+their matching narration cue. The render script probes each rendered utterance,
+removes only the synthesizer's trailing silence, adds a fixed `0.75`-second tail,
+and derives the video and subtitle boundaries from that result. It rejects a final
+timeline at or above three minutes and any moving excerpt above 1.25×. The final
+timeline uses 1.0× for every moving Modori excerpt; waiting and cursor travel are
+removed by ordinary hard cuts.
 
-The black-frame detector reported three `0.167–0.267` second intervals at intentional
-brand-card fades and the dark closing card from `170.000–174.967`. Full-resolution
-inspection confirms that these are designed near-black navy frames with visible
-brand copy, not blank or missing video.
+The black-frame detector reported only three short `0.100–0.333` second intervals at
+intentional brand-card fades near `94.87`, `118.47`, and `124.67` seconds.
+Full-resolution source frames confirm that the surrounding shots are designed
+near-black navy cards with visible copy, not blank or missing video.
+
+The superseded `modori-build-week-demo-human-problem-en-175s.mp4` candidate and its
+SHA-256 `bd66d76db468c52caa535bbfccba57cebab2639ab262ae7ce10860e7f1e67189`
+are withdrawn and must not be uploaded. Its opening cue used a different speech
+rate, and the media gate detected ten silence intervals over 1.25 seconds, with a
+maximum of 7.26 seconds.
 
 ## Script, voice, and subtitles
 
 - Narration text is the exact spoken English meaning in
-  `docs/build-week/DEMO_SCRIPT.md` and the canonical SRT. Punctuation-only dash/comma
-  differences in the local speech script do not change spoken words.
+  `docs/build-week/DEMO_SCRIPT.md` and the canonical SRT. The rendering script loads
+  the same cue text source used by the voice generator.
 - Voice was synthesized locally with the installed Microsoft Zira Desktop voice.
-- All 12 utterances fit their allocated slots. The smallest remaining margins are
-  `0.39` seconds for cues 1 and 12; the longest utterance is cue 10 at `19.00`
-  seconds inside its 23-second slot.
-- Canonical and sidecar SRT files are byte-identical: `2,131` bytes, SHA-256
-  `c04b204fb25b9fd2000deae5725e81618bf59f56da325680440918b0df7881fc`.
-- The SRT contains 12 non-overlapping cues and ends at `00:02:55,000`.
+- All 12 utterances use the single default SAPI rate `0`; per-cue rate overrides are
+  rejected by the pacing test.
+- The synthesizer contributed `0.81–0.92` seconds of trailing silence per raw WAV.
+  That trailing silence was removed before the deterministic tail was added.
+- The actual frame-aligned tail margins are `0.750–0.777` seconds. A full-media
+  `silencedetect` scan at `-40 dB` found a maximum interval of `0.927` seconds and no
+  interval over the enforced `1.25`-second limit.
+- The canonical UTF-8/LF SRT is `2,129` bytes with SHA-256
+  `4115d86f67de91cfe061d7effde485bb64e83ff240a60fe69d70b6788b941c09`.
+- The SRT contains 12 non-overlapping cues and ends at `00:02:05,033`.
 - The MP4 burns only short marketing labels. The complete narration remains in the
   separate SRT for YouTube captions.
 
 ## Motion, framing, and visual audit
 
-- `122` seconds use actual Modori interaction footage, including a fresh isolated
-  causal-request take. `17` seconds show the actual generated Word report. `36`
-  seconds are intentional branded opening, Codex-evidence, and closing cards.
+- The edit combines actual Modori interaction footage, a fresh isolated causal
+  request take, the actual generated Word report, and intentional branded evidence
+  cards. No product footage is accelerated.
 - Product shots preserve all 1,920 source pixels horizontally. Only the 30-pixel
   Windows title bar and 60-pixel taskbar are removed; 45-pixel top/bottom padding
   preserves a 16:9 frame without side cropping or stretching.
@@ -75,14 +87,17 @@ brand copy, not blank or missing video.
   `796f4a3d5c402e00f1383b40e4529d0500d345c13a8449848919903521cef239`.
 - Both Word cutaways use a restrained 1.000 → 1.018 zoom while preserving the result
   content.
-- A 35-frame timeline contact sheet and 13 full-resolution representative frames
-  were inspected after the final render. This review caught and corrected two prior
-  candidates: one stopped at the causal scope notice instead of the final abstention,
-  and one showed the 30-row workbench preview instead of the 649-row data sheet.
+- A 16-frame full-timeline contact sheet and 16 exact gallery candidates were
+  inspected after the paced render. The frames cover result, Word report, import
+  review, 649-row data sheet, Variable Meaning Gate, bounded questions, candidate,
+  Prepare, result, causal abstention, all three engineering cards, report export,
+  and closing card. Earlier review had already rejected candidates that stopped at
+  the causal scope notice or confused the 30-row preview with the 649-row sheet.
 
 ## Codex contribution claim audit
 
-The 02:08–02:31 montage names the demonstrated engineering sequence and boundaries:
+The 01:29.633–01:47.067 montage names the demonstrated engineering sequence and
+boundaries:
 
 1. `SPEC > RED TEST > IMPLEMENTATION > WINDOWS VERIFICATION`
 2. `VARIABLE MEANING GATE`, `PASSPORT + LEDGER`, and `PREPARE > RUN`

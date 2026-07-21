@@ -101,7 +101,7 @@ boundaries and numerical calculations are tested as separate claims.
 - A second causal request ends in an explicit, reviewable abstention instead of a
   substituted analysis.
 - Dataset or metadata drift invalidates stale authority and requires a visible replan.
-- The final 2:55 demo uses 649 released observations, actual Modori interaction, an
+- The final 2:05 demo uses 649 released observations, actual Modori interaction, an
   actual generated Word report, English audio, and a matching 12-cue subtitle file.
 - The final media, package, dataset, report, and source-suite evidence are hash-bound
   and independently rechecked.
@@ -150,17 +150,18 @@ the demonstrated workflow.
 
 ## Recommended Devpost gallery order
 
-Upload these exact verified 1,920 × 1,080 frames from the local evidence directory:
+Upload these exact verified 1,920 × 1,080 frames from
+`.visual-qa/build-week-real-data-candidate-2026-07-21/video/qa/human-problem-paced-final/`:
 
-1. `verified-02-008s.png` — **A result you can review.** 649 public records reach an
+1. `verified-01-result-008s.png` — **A result you can review.** 649 public records reach an
    inspectable Spearman result and local Word export.
-2. `verified-06-055s.png` — **Meaning before method.** The Variable Meaning Gate shows
+2. `verified-05-meaning-gate-042s.png` — **Meaning before method.** The Variable Meaning Gate shows
    exactly what is recorded before a durable recommendation exists.
-3. `verified-09-105s.png` — **Review before calculation.** Confirmation leaves the
+3. `verified-08-prepare-070s.png` — **Review before calculation.** Confirmation leaves the
    result empty; the separate Run button remains the execution boundary.
-4. `verified-10-124s.png` — **Abstention is a product behavior.** A causal request
+4. `verified-10-abstention-087s.png` — **Abstention is a product behavior.** A causal request
    outside the current method space receives an explicit decision basis.
-5. `verified-11-130s.png` — **Built with Codex + GPT-5.6.** Product questions moved
+5. `verified-11-codex-092s.png` — **Built with Codex + GPT-5.6.** Product questions moved
    through specification, red tests, implementation, and Windows verification.
 
 Use image 1 as the cover. These are direct frames from the final hashed MP4, not
