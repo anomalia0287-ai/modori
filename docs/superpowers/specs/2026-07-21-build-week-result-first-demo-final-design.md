@@ -53,7 +53,7 @@ transition tail. The edit must not add dead air to hit a predetermined duration.
 | 00:13-00:26 | Actual Spearman result and the matching editable DOCX report. Label: `649 RELEASED RECORDS → REVIEWABLE RESULT → EDITABLE REPORT`. | **“Here is the payoff: 649 released student records reach a reviewable Spearman result and an editable report. Method, coefficient, p-value, sample size, and exclusions stay visible.”** | “결과부터 보겠습니다. 공개된 학생 기록 649건이 검토 가능한 스피어만 결과와 편집 가능한 보고서로 이어집니다. 분석법, 계수, p값, 표본 수, 제외된 행이 모두 보입니다.” |
 | 00:26-00:38 | Enter Guided Mode, review the labeled 30-row preview, confirm import, and show all 649 rows. Display the required dataset attribution without a third-party logo. | **“Now the path. I open a six-variable, non-identifying view, review the labeled thirty-row preview, then load all 649 records. The data stays on this computer.”** | “이제 그 과정을 보겠습니다. 식별정보가 없는 6개 변수 데이터를 열고, 명확히 표시된 30행 미리보기를 확인한 뒤 649건 전체를 불러옵니다. 데이터는 이 컴퓨터 안에 머뭅니다.” |
 | 00:38-00:54 | Review study time as ordinal and final grade as scale in the Variable Meaning Gate. Show labels, codes, missing rules, and storage type. Label: `MEANING BEFORE METHOD`. | **“Before any method appears, Modori asks what the variables mean. Study time is ordinal; final grade is scale. Labels, value codes, missing rules, and storage type are reviewed first.”** | “어떤 분석법도 제시되기 전에 Modori는 변수의 의미부터 묻습니다. 학습시간은 순서형이고 최종 성적은 척도형입니다. 라벨, 값 코드, 결측 규칙, 저장 형식을 먼저 검토합니다.” |
-| 00:54-01:08 | Select the association task, assign exact outcome and predictor roles, and move through the bounded independence, clustering, and weight questions with their rationale visible. | **“I begin with the research task: do study time and grades move together? I assign exact roles. Modori then asks bounded questions about independence, clustering, and weights instead of guessing.”** | “분석법 이름이 아니라 연구과업에서 시작합니다. 학습시간과 성적이 함께 움직이는지를 묻고 정확한 변수 역할을 지정합니다. Modori는 임의로 추측하지 않고 독립성, 군집, 가중치에 관한 제한된 질문을 합니다.” |
+| 00:54-01:08 | Select the association task, assign exact outcome and predictor roles, and move through the bounded clustering, dependence, and weight questions with their rationale visible. | **“I begin with the research task: do study time and grades move together? I assign exact roles. Modori then asks bounded questions about clustering, dependence, and weights instead of guessing.”** | “분석법 이름이 아니라 연구과업에서 시작합니다. 학습시간과 성적이 함께 움직이는지를 묻고 정확한 변수 역할을 지정합니다. Modori는 임의로 추측하지 않고 군집, 의존 구조, 가중치에 관한 제한된 질문을 합니다.” |
 | 01:08-01:20 | Show the Spearman candidate and exact configuration. Labels: `ASSOCIATION ONLY`, `SPEARMAN`, `PAIRWISE MISSINGNESS`, and one visible experimental status. | **“The candidate is Spearman correlation. Its association-only claim, experimental status, variables, missing-data policy, and exact parameters remain visible. Nothing is silently selected or run.”** | “후보는 스피어만 상관분석입니다. 연관성에 한정된 주장 범위, 실험적 상태, 변수, 결측 처리 정책과 정확한 파라미터가 계속 보입니다. 어떤 것도 몰래 선택되거나 실행되지 않습니다.” |
 | 01:20-01:39 | Choose Prepare, inspect the exact configuration, confirm it, hold briefly on the empty result, then click the separately enabled Run and reveal the result. | **“Prepare exposes the configuration and keeps the result empty. Confirmation authorizes without calculating. Only the separate Run produces rho zero point two seven five, with p below point zero zero one.”** | “Prepare는 구성을 보여주고 결과를 비워 둡니다. 확인은 계산 없이 구성을 승인합니다. 별도의 Run을 선택해야만 로 0.275, p값 0.001 미만의 결과가 생성됩니다.” |
 | 01:39-01:51 | Label `SECOND REQUEST`, choose causal-effect intent in a fresh task, and show the causal-abstention title, explanation, and decision basis. | **“For a causal-effect request, Modori gives a clear scope decision. It records the request instead of substituting a convenient analysis. Abstention is a product behavior.”** | “인과효과를 요청하면 Modori는 명확한 범위 결정을 내립니다. 편리한 다른 분석으로 바꾸지 않고 원래 요청을 기록합니다. 기권은 제품의 실제 행동입니다.” |
@@ -84,8 +84,17 @@ how both were used.
 
 ## Motion, pacing, audio, and typography contract
 
-- Use one Microsoft Zira Desktop SAPI rate `0` for every spoken cue. Per-cue speech
-  acceleration or deceleration is prohibited.
+- Prefer one locally synthesized Kokoro ONNX English voice at one fixed global
+  speed for every spoken cue. Dependency and model downloads may use the network,
+  but narration synthesis must run on this computer. Record the package version,
+  voice name, model and voice-data hashes, and selected global speed.
+- Bound the local-neural-voice trial to installation plus a representative
+  pronunciation/duration sample. If installation, licensing, pronunciation,
+  decoding, or final-duration gates fail, fall back to the already verified
+  Microsoft Zira Desktop SAPI voice at rate `0`. Do not use `edge-tts`: it calls
+  Microsoft Edge's online TTS service and therefore is not a local-synthesis
+  replacement. Per-cue speech acceleration or deceleration is prohibited in both
+  paths.
 - Trim only synthesizer trailing silence. Add a measured 0.6-0.8 second transition
   tail after each utterance; reject any detected silence interval over 1.25 seconds.
 - Product motion remains at 1.0x. Waiting, native pickers, and irrelevant cursor
@@ -118,6 +127,10 @@ how both were used.
   are prohibited.
 - Codex and GPT-5.6 are described as development collaborators. The video does not
   imply that a generative model performs the released statistical calculation.
+- Every current release-facing document, subtitle, and video card uses the single
+  final source-suite result `3,393 passed, 5 skipped`. A different historical
+  Office-benchmark gate remains scoped to its dated runbook and must not appear in
+  the current submission story.
 - No competitor price screen, currency conversion, third-party logo, copyrighted
   music, stock footage, private identity, private path, notification, API key,
   account name, or unrelated application appears.
@@ -129,8 +142,9 @@ how both were used.
    audio-derived editing; no duration padding is permitted.
 2. Result is visible by 00:03, and every required story beat appears in the order
    above.
-3. All narration cues use one normal voice rate. Full-media silence detection finds
-   no interval longer than 1.25 seconds.
+3. All narration cues use one recorded voice engine, voice name, and fixed global
+   speed or rate. Full-media silence detection finds no interval longer than 1.25
+   seconds.
 4. Every moving Modori excerpt is 1.0x unless a recorded exception at or below 1.25x
    is necessary; the segment audit records the exact maximum.
 5. H.264 High-compatible video is 1,920 × 1,080, square pixels, constant 30 fps, with

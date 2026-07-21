@@ -19,7 +19,7 @@ The automated audit uses `examples/build-week-demo/student-study-and-grades.csv`
 5. open Research OS, answer that the question is noncausal, and choose rank co-movement;
 6. assign Final grade as outcome and Weekly study time as focal predictor through the actual QML role fields;
 7. review the exact labels, measures, and value labels in the Variable Meaning Gate before a durable recommendation exists;
-8. answer the three committed clarification IDs for dependence, weight use, and clustering;
+8. answer the three committed clarification IDs for clustering, dependence, and weight use;
 9. review the Spearman rank-correlation candidate and its association-only claim boundary;
 10. invoke Prepare and review the sealed method and variable pair;
 11. confirm the preparation and verify that no analysis result exists yet;
@@ -142,3 +142,8 @@ Accepted screenshots are stored under `.visual-qa/build-week-real-data-candidate
 Verified here: source code, production QML component, production controller/import/report paths, isolated local ledger, decoded passport provenance, independent numerical reference, fresh wheel, fresh one-folder executable, package smokes, direct Windows interaction, error recovery, generated Word structure, and the visible Microsoft Word page.
 
 Not verified here: the final edited 2:55 recording, its exact subtitle synchronization, YouTube upload visibility, or the external submission form. Those are submission operations, not product-function claims, and must be checked against the canonical recording script before publication.
+
+Post-submission formatting backlog: display finite p-values below `.001` as
+`p < .001` instead of the rounded `0.000`, while preserving the raw numeric p-value
+in result metadata and exports. The submission video must continue to show the
+actual current UI and narrate the value as below `.001`.
