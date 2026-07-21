@@ -20,6 +20,9 @@ import matplotlib.pyplot as plt
 from matplotlib import font_manager
 import pandas as pd
 from docx import Document
+from docx.enum.section import WD_ORIENT
+from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT
+from docx.shared import Inches, Pt
 from scipy import stats
 
 from modori.core import PipelineContext, Step, StepResult
@@ -1127,6 +1130,67 @@ def render_chart(
     raise ValueError(f"Unsupported chart type: {spec.type}")
 
 
+_WIDE_REPORT_COLUMN_COUNT = 7
+_WIDE_REPORT_FONT_SIZE = Pt(8)
+
+
+def _uses_wide_report_layout(tables: dict[str, list[dict[str, str]]]) -> bool:
+    return any(
+        rows and len(rows[0]) >= _WIDE_REPORT_COLUMN_COUNT for rows in tables.values()
+    )
+
+
+def _configure_report_page(document: object, *, wide: bool) -> None:
+    if not wide:
+        return
+    for section in document.sections:
+        section.orientation = WD_ORIENT.LANDSCAPE
+        section.page_width, section.page_height = (
+            section.page_height,
+            section.page_width,
+        )
+        section.left_margin = Inches(0.45)
+        section.right_margin = Inches(0.45)
+        section.top_margin = Inches(0.55)
+        section.bottom_margin = Inches(0.55)
+
+
+def _report_column_weight(column: str, rows: list[dict[str, str]]) -> int:
+    values = [str(column), *(str(row.get(column, "")) for row in rows)]
+    longest = max(len(value) for value in values)
+    normalized = column.casefold()
+    if normalized in {"warnings", "warning", "notes", "note"}:
+        return 28
+    if normalized in {"n", "excluded_n", "df", "p", "p_value", "p_adjusted"}:
+        return max(5, min(longest, 9))
+    if normalized in {"coefficient", "statistic", "method"}:
+        return max(7, min(longest, 11))
+    return max(8, min(longest, 18))
+
+
+def _format_wide_report_table(
+    table: object,
+    *,
+    columns: list[str],
+    rows: list[dict[str, str]],
+    available_width: int,
+) -> None:
+    weights = [_report_column_weight(column, rows) for column in columns]
+    weight_total = sum(weights)
+    table.autofit = False
+    for index, weight in enumerate(weights):
+        width = int(available_width * weight / weight_total)
+        table.columns[index].width = width
+        for cell in table.columns[index].cells:
+            cell.width = width
+            cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.TOP
+            for paragraph in cell.paragraphs:
+                paragraph.paragraph_format.space_after = Pt(0)
+                paragraph.paragraph_format.line_spacing = 1
+                for run in paragraph.runs:
+                    run.font.size = _WIDE_REPORT_FONT_SIZE
+
+
 def write_docx(
     prose: list[str],
     tables: dict[str, list[dict[str, str]]],
@@ -1136,6 +1200,8 @@ def write_docx(
     docx_path = Path(path)
     docx_path.parent.mkdir(parents=True, exist_ok=True)
     document = Document()
+    wide_layout = _uses_wide_report_layout(tables)
+    _configure_report_page(document, wide=wide_layout)
     document.add_heading("APA Report", level=1)
 
     for sentence in prose:
@@ -1154,6 +1220,16 @@ def write_docx(
             cells = table.add_row().cells
             for idx, column in enumerate(columns):
                 cells[idx].text = str(row.get(column, ""))
+        if wide_layout and len(columns) >= _WIDE_REPORT_COLUMN_COUNT:
+            section = document.sections[0]
+            _format_wide_report_table(
+                table,
+                columns=columns,
+                rows=rows,
+                available_width=int(
+                    section.page_width - section.left_margin - section.right_margin
+                ),
+            )
 
     for key, paths in figure_paths.items():
         if not paths:
