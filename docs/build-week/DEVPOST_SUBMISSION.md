@@ -104,7 +104,8 @@ boundaries and numerical calculations are tested as separate claims.
   substituted analysis.
 - Dataset or metadata drift invalidates stale authority and requires a visible replan.
 - The final 2:47 demo uses 649 released observations, actual Modori interaction, an
-  actual generated Word report, English audio, and a matching 12-cue subtitle file.
+  actual generated Word report, English audio, and a matching readability-segmented
+  subtitle file.
 - The final media, package, dataset, report, and source-suite evidence are hash-bound
   and independently rechecked.
 

@@ -31,7 +31,7 @@ Directory:
 | File | Bytes | SHA-256 |
 | --- | ---: | --- |
 | `modori-build-week-final.mp4` | 11,742,736 | `fc25ead3874d38afa99715c616a0c263945d1c156774a06e1b994bc083be104d` |
-| `modori-build-week-final.en.srt` | 2,737 | `c91f660a1fa501b2738c519ecb013f7824589cb4c9cfd18226846b02426cf02e` |
+| `modori-build-week-final.en.srt` | 4,200 | `3db70da4d7e36727c37ebfb74d86d65da68c3c92dae8d36adf0592a89b9b22dd` |
 
 The directory contains exactly these two files. The MP4 and SRT are byte-identical
 to the candidate outputs accepted by the verifier.
@@ -50,8 +50,11 @@ to the candidate outputs accepted by the verifier.
 - black-frame scan: no reported black interval at the 0.5-second gate
 - result reveal: `00:02.500`
 - maximum moving-product speed: `1.0x`
-- subtitle cues: 12 contiguous, non-overlapping UTF-8/LF blocks
+- subtitle cues: 55 contiguous, non-overlapping UTF-8/LF delivery blocks derived
+  without wording changes from the twelve narration cues
 - subtitle endpoint: `00:02:47,167`, within one frame of the media endpoint
+- caption readability gates: at least `1.0` second per block, no more than `84`
+  characters per block, and no more than `22` characters per second
 
 The verifier is
 `.visual-qa/build-week-real-data-candidate-2026-07-21/video/verify-final-demo.ps1`.
@@ -89,6 +92,8 @@ the same engine, voice, and speed; no per-cue acceleration is used.
 | causal abstention hold | 420,175 | `6d93acda40ddae54947fcfe0e88f2927fbd499c2857a244341a256fbafac70e7` |
 | rendered Word report page | 55,100 | `796f4a3d5c402e00f1383b40e4529d0500d345c13a8449848919903521cef239` |
 | exact cue source | 7,496 | `d472ce41502fe3878c48d78f8206dfbb6ced1df4815f3316b40fee610ce8c92d` |
+| YouTube caption map | 5,393 | `44d31ccab5dca84fb5cb10870f0e0328d21620a5998d9300aa33a37d86f27c88` |
+| YouTube caption builder | 4,511 | `2095f8042ac70073c23644b6a818dffe88d2f5d61f20918180475efadaf33096` |
 | deterministic video builder | 23,862 | `2778b84ee77827967a71e6b8a01f762cd319d2104c9aad42c51b8254fb82b3d4` |
 
 ## Original-resolution visual audit
@@ -117,14 +122,17 @@ Verified findings:
 
 ## Rejected intermediates
 
-The acceptance gates rejected and corrected four defects before this hash was
+The acceptance gates rejected and corrected five defects before this handoff was
 accepted:
 
 1. concat output initially contained 4,992 rather than 5,015 video frames;
 2. AAC encoding initially produced `-1.42 dBTP`, above the `-1.5 dBTP` cap;
 3. the first Guided label briefly covered a source frame where Pro was still
    selected; and
-4. the first handoff calculation placed the two files one directory too high.
+4. the first handoff calculation placed the two files one directory too high; and
+5. an actual YouTube preview showed that twelve full-paragraph caption blocks could
+   occupy four lines, so delivery captions were split at measured speech pauses into
+   55 readability-gated blocks without changing the narration wording.
 
 Each owning source was corrected, the complete render or verifier was rerun, and the
 current two-file handoff passed all machine gates. No acceptance threshold was

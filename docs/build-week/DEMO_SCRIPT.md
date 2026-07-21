@@ -41,6 +41,12 @@ transition tail, aligned to 30 fps. The single voice is Kokoro ONNX `af_sarah` a
 global speed `0.92`; no per-cue speed changes are permitted. Product excerpts run
 at `1.0x`; waiting and file-picker footage are removed with hard cuts.
 
+The twelve rows below remain the exact narration master. The YouTube delivery SRT
+splits that unchanged text at measured speech pauses into 55 shorter captions so
+the platform displays no full-paragraph four-line block over the product. Every
+delivery caption is at least 1.0 second, at most 84 characters, and at most 22
+characters per second; the final endpoint remains `00:02:47,167`.
+
 ## Exact shot list, narration, and Korean meaning
 
 | Time | Screen and action | Exact English narration / subtitle | 한국어 의미 |
@@ -89,6 +95,8 @@ at `1.0x`; waiting and file-picker footage are removed with hard cuts.
       Guided selection.
 - [x] Every current release-facing story uses the single final source-suite count.
 - [x] Final handoff directory contains only one MP4 and one matching SRT.
+- [x] YouTube delivery SRT contains 55 frame-aligned readability segments derived
+      without wording changes from the twelve approved narration cues.
 - [x] Owner watched and approved the exact hashed MP4 at normal speed with sound.
 - [ ] YouTube upload is Public and opens in a signed-out browser.
 

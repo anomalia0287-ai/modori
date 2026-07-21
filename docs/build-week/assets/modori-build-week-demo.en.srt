@@ -1,47 +1,219 @@
 1
-00:00:00,000 --> 00:00:13,867
-I majored in sociology and will soon begin graduate school. I wanted an approachable, subscription-free statistics tool—and I want other students to have that same ease. That idea became Modori.
+00:00:00,000 --> 00:00:04,000
+I majored in sociology and will soon begin graduate school.
 
 2
-00:00:13,867 --> 00:00:27,800
-Here is the payoff: 649 released student records reach a reviewable Spearman result and an editable report. Method, coefficient, p-value, sample size, and exclusions stay visible.
+00:00:04,000 --> 00:00:07,933
+I wanted an approachable, subscription-free statistics tool—
 
 3
-00:00:27,800 --> 00:00:40,267
-Now the path. I open a six-variable, non-identifying view, review the labeled thirty-row preview, then load all 649 records. The data stays on this computer.
+00:00:07,933 --> 00:00:10,900
+and I want other students to have that same ease.
 
 4
-00:00:40,267 --> 00:00:53,033
-Before any method appears, Modori asks what the variables mean. Study time is ordinal; final grade is scale. Labels, value codes, missing rules, and storage type are reviewed first.
+00:00:10,900 --> 00:00:13,867
+That idea became Modori.
 
 5
-00:00:53,033 --> 00:01:06,100
-I begin with the research task: do study time and grades move together? I assign exact roles. Modori then asks bounded questions about clustering, dependence, and weights instead of guessing.
+00:00:13,867 --> 00:00:15,200
+Here is the payoff:
 
 6
-00:01:06,100 --> 00:01:20,467
-The candidate is Spearman correlation. Its association-only claim, experimental status, variables, missing-data policy, and exact parameters remain visible. Nothing is silently selected or run.
+00:00:15,200 --> 00:00:20,000
+649 released student records reach a reviewable Spearman result
 
 7
-00:01:20,467 --> 00:01:35,600
-Prepare exposes the configuration and keeps the result empty. Confirmation authorizes without calculating. Only the separate Run produces rho zero point two seven five, with p below point zero zero one.
+00:00:20,000 --> 00:00:21,733
+and an editable report.
 
 8
-00:01:35,600 --> 00:01:47,833
-For a causal-effect request, Modori gives a clear scope decision. It records the request instead of substituting a convenient analysis. Abstention is a product behavior.
+00:00:21,733 --> 00:00:23,700
+Method, coefficient, p-value,
 
 9
-00:01:47,833 --> 00:02:06,900
-With Codex and GPT-5.6, I turned product decisions into contracts, failing tests, implementation, and packaged-app verification. That collaboration established the Variable Meaning Gate, passport-and-ledger authority, and separate Prepare, Confirm, and Run boundaries.
+00:00:23,700 --> 00:00:27,800
+sample size, and exclusions stay visible.
 
 10
-00:02:06,900 --> 00:02:21,433
-That loop also closed real interface failures: recovering a workbook whose first sheet held no data, protecting an existing report during replacement, and replacing a generic failure card with an actionable recovery path.
+00:00:27,800 --> 00:00:28,933
+Now the path.
 
 11
-00:02:21,433 --> 00:02:35,800
-Seven Royal Blue interface commits were integrated path by path across the existing codebase. The source suite passed, while external reference checks supported calculation separately from recommendation boundaries.
+00:00:28,933 --> 00:00:32,133
+I open a six-variable, non-identifying view,
 
 12
-00:02:35,800 --> 00:02:47,167
-Modori turns a research question into a reviewable path, then leaves the final action to the researcher. Kindness is not decoration. It is system behavior.
+00:00:32,133 --> 00:00:34,333
+review the labeled thirty-row preview,
+
+13
+00:00:34,333 --> 00:00:37,467
+then load all 649 records.
+
+14
+00:00:37,467 --> 00:00:40,267
+The data stays on this computer.
+
+15
+00:00:40,267 --> 00:00:44,000
+Before any method appears, Modori asks what the variables mean.
+
+16
+00:00:44,000 --> 00:00:45,867
+Study time is ordinal;
+
+17
+00:00:45,867 --> 00:00:47,667
+final grade is scale.
+
+18
+00:00:47,667 --> 00:00:49,567
+Labels, value codes,
+
+19
+00:00:49,567 --> 00:00:53,033
+missing rules, and storage type are reviewed first.
+
+20
+00:00:53,033 --> 00:00:55,033
+I begin with the research task:
+
+21
+00:00:55,033 --> 00:00:57,667
+do study time and grades move together?
+
+22
+00:00:57,667 --> 00:00:59,700
+I assign exact roles.
+
+23
+00:00:59,700 --> 00:01:03,167
+Modori then asks bounded questions about clustering, dependence,
+
+24
+00:01:03,167 --> 00:01:06,100
+and weights instead of guessing.
+
+25
+00:01:06,100 --> 00:01:08,700
+The candidate is Spearman correlation.
+
+26
+00:01:08,700 --> 00:01:12,333
+Its association-only claim, experimental status,
+
+27
+00:01:12,333 --> 00:01:14,600
+variables, missing-data policy,
+
+28
+00:01:14,600 --> 00:01:17,067
+and exact parameters remain visible.
+
+29
+00:01:17,067 --> 00:01:20,467
+Nothing is silently selected or run.
+
+30
+00:01:20,467 --> 00:01:24,600
+Prepare exposes the configuration and keeps the result empty.
+
+31
+00:01:24,600 --> 00:01:27,867
+Confirmation authorizes without calculating.
+
+32
+00:01:27,867 --> 00:01:32,400
+Only the separate Run produces rho zero point two seven five,
+
+33
+00:01:32,400 --> 00:01:35,600
+with p below point zero zero one.
+
+34
+00:01:35,600 --> 00:01:40,100
+For a causal-effect request, Modori gives a clear scope decision.
+
+35
+00:01:40,100 --> 00:01:44,800
+It records the request instead of substituting a convenient analysis.
+
+36
+00:01:44,800 --> 00:01:47,833
+Abstention is a product behavior.
+
+37
+00:01:47,833 --> 00:01:50,767
+With Codex and GPT-5.6,
+
+38
+00:01:50,767 --> 00:01:53,433
+I turned product decisions into contracts,
+
+39
+00:01:53,433 --> 00:01:57,867
+failing tests, implementation, and packaged-app verification.
+
+40
+00:01:57,867 --> 00:02:01,233
+That collaboration established the Variable Meaning Gate,
+
+41
+00:02:01,233 --> 00:02:03,267
+passport-and-ledger authority,
+
+42
+00:02:03,267 --> 00:02:06,900
+and separate Prepare, Confirm, and Run boundaries.
+
+43
+00:02:06,900 --> 00:02:09,933
+That loop also closed real interface failures:
+
+44
+00:02:09,933 --> 00:02:13,533
+recovering a workbook whose first sheet held no data,
+
+45
+00:02:13,533 --> 00:02:16,600
+protecting an existing report during replacement,
+
+46
+00:02:16,600 --> 00:02:21,433
+and replacing a generic failure card with an actionable recovery path.
+
+47
+00:02:21,433 --> 00:02:24,867
+Seven Royal Blue interface commits were integrated path by path
+
+48
+00:02:24,867 --> 00:02:27,633
+across the existing codebase.
+
+49
+00:02:27,633 --> 00:02:29,600
+The source suite passed,
+
+50
+00:02:29,600 --> 00:02:32,867
+while external reference checks supported calculation
+
+51
+00:02:32,867 --> 00:02:35,800
+separately from recommendation boundaries.
+
+52
+00:02:35,800 --> 00:02:39,500
+Modori turns a research question into a reviewable path,
+
+53
+00:02:39,500 --> 00:02:42,500
+then leaves the final action to the researcher.
+
+54
+00:02:42,500 --> 00:02:44,967
+Kindness is not decoration.
+
+55
+00:02:44,967 --> 00:02:47,167
+It is system behavior.
