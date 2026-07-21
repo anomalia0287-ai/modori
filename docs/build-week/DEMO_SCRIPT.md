@@ -29,8 +29,10 @@ included.
   `663,415` bytes, SHA-256
   `30f17c2ea96128f12786b4593c9d48ea0b103059cc45f72f549784b8862b43fb`
 - derived CSV SHA-256: `e51ebf09f537865aa7353f3b23cfa391e75767783d0061b628c1361eaef4cb0e`
-- demonstrated English Word report: `37,343` bytes, SHA-256
-  `64e6f8ea663b7438be56c4cca5565292e9c70a63e2d4360a6877923fcb075ac6`
+- demonstrated English Word report:
+  `.visual-qa/build-week-real-data-candidate-2026-07-21/reports/report-ca379fd-final.docx`,
+  `37,343` bytes, SHA-256
+  `6343649e5fbf39adf1c212ac2495e8e59e8490494b57b35f562a3e5719651d31`
 - demonstrated result: Spearman `rho = 0.2747118483356099`, two-sided
   `p = 1.060624038270125e-12`, `n = 649`, excluded rows `= 0`
 
@@ -111,32 +113,32 @@ Use this order; do not improvise a different task or method during capture.
 
 ## Recording acceptance gate
 
-- [ ] Runtime is exactly `02:55`, 5,250 frames at constant 30 fps, and the subtitle
+- [x] Runtime is exactly `02:55`, 5,250 frames at constant 30 fps, and the subtitle
       endpoint matches the edit.
-- [ ] Every product shot preserves the full 1,920-pixel source width; neither the
+- [x] Every product shot preserves the full 1,920-pixel source width; neither the
       `MODORI` wordmark nor right-side controls are cropped.
-- [ ] The Word cutaways use the rendered demonstrated DOCX identified above; its
+- [x] The Word cutaways use the rendered demonstrated DOCX identified above; its
       title, complete result row, warning, and interpretation boundary remain
       legible without unrelated application chrome.
-- [ ] The Codex cue names specification, failing tests, implementation, Windows
+- [x] The Codex cue names specification, failing tests, implementation, Windows
       verification, the three authority boundaries, and the three UI-audit fixes
       without implying runtime model use.
-- [ ] Opening and later result shots show the same `rho`, p-value display, `n`, and
+- [x] Opening and later result shots show the same `rho`, p-value display, `n`, and
       excluded-row count.
-- [ ] The import review visibly distinguishes the 30-row preview from the 649-row
-      loaded table.
-- [ ] Variable Meaning Gate, bounded clarification, candidate, exact configuration
+- [x] The import review visibly distinguishes the 30-row preview from the 649-row
+      `Open data sheet` view.
+- [x] Variable Meaning Gate, bounded clarification, candidate, exact configuration
       review, confirmation, separate Run, result, causal abstention, and Word export
       are all visible.
-- [ ] `GUIDED MODE`, the experimental badge, association boundary, `SECOND REQUEST`,
+- [x] `GUIDED MODE`, the experimental badge, association boundary, `SECOND REQUEST`,
       and causal-abstention copy are legible.
-- [ ] No continuous moving source segment exceeds 1.25x speed.
-- [ ] No narration or overlay claims causation, population representativeness,
+- [x] No continuous moving source segment exceeds 1.25x speed.
+- [x] No narration or overlay claims causation, population representativeness,
       universal recommendation validity, expert equivalence, NIST certification of
       Modori, or SPSS superiority.
-- [ ] No private path, name, school, account, notification, session transcript, API
+- [x] No private path, name, school, account, notification, session transcript, API
       key, third-party price/logo screen, or unrelated application appears.
-- [ ] The submitted MP4 burns only short labels; the separate English SRT carries
+- [x] The submitted MP4 burns only short labels; the separate English SRT carries
       the full narration for YouTube captions.
 - [ ] The YouTube upload is Public and opens successfully in a signed-out browser.
 
