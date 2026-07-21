@@ -27,10 +27,12 @@ statistical plan, an explicit Run, and a Word report—without sending the data 
 
 ## Inspiration
 
-Learning statistics should not begin with a wall of method names. For many
-social-science students, the difficult part comes before calculation: translating a
-research question into variable roles, assumptions, and a method that can be
-explained later. I built Modori to make that decision path visible and reviewable.
+I majored in sociology and will soon begin graduate school. I wanted an
+approachable, subscription-free statistics tool, and I want other students to have
+that same ease. Learning statistics should not begin with a wall of method names:
+the difficult part often comes before calculation, when a research question must be
+translated into variable roles, assumptions, and a method that can be explained
+later. I built Modori to make that decision path visible and reviewable.
 
 ## What it does
 
@@ -45,7 +47,7 @@ In the demonstrated Guided Mode path, Modori:
 - imports and reviews a real 649-record UCI Student Performance table;
 - confirms the label, measurement level, value labels, missing codes, and storage
   type of the variables before a durable recommendation is created;
-- records bounded answers about independence, clustering, and weights;
+- records bounded answers about clustering, dependence, and weights;
 - produces a dataset-bound experimental Spearman candidate for an association-only
   question;
 - exposes the exact variables, missing-data policy, and parameters before execution;
@@ -101,7 +103,7 @@ boundaries and numerical calculations are tested as separate claims.
 - A second causal request ends in an explicit, reviewable abstention instead of a
   substituted analysis.
 - Dataset or metadata drift invalidates stale authority and requires a visible replan.
-- The final 2:05 demo uses 649 released observations, actual Modori interaction, an
+- The final 2:47 demo uses 649 released observations, actual Modori interaction, an
   actual generated Word report, English audio, and a matching 12-cue subtitle file.
 - The final media, package, dataset, report, and source-suite evidence are hash-bound
   and independently rechecked.
@@ -151,18 +153,18 @@ the demonstrated workflow.
 ## Recommended Devpost gallery order
 
 Upload these exact verified 1,920 × 1,080 frames from
-`.visual-qa/build-week-real-data-candidate-2026-07-21/video/qa/human-problem-paced-final/`:
+`.visual-qa/build-week-real-data-candidate-2026-07-21/video/qa/final-upload-master/`:
 
-1. `verified-01-result-008s.png` — **A result you can review.** 649 public records reach an
-   inspectable Spearman result and local Word export.
-2. `verified-05-meaning-gate-042s.png` — **Meaning before method.** The Variable Meaning Gate shows
-   exactly what is recorded before a durable recommendation exists.
-3. `verified-08-prepare-070s.png` — **Review before calculation.** Confirmation leaves the
-   result empty; the separate Run button remains the execution boundary.
-4. `verified-10-abstention-087s.png` — **Abstention is a product behavior.** A causal request
+1. `frame-02-result-reveal.png` — **A result you can review.** 649 released records
+   reach an inspectable Spearman result and editable report.
+2. `frame-11-meaning-gate.png` — **Meaning before method.** The Variable Meaning Gate
+   shows exactly what is reviewed before a durable recommendation exists.
+3. `frame-20-confirm-empty.png` — **Review before calculation.** Confirmation leaves
+   the result empty; the separate Run button remains the execution boundary.
+4. `frame-24-abstention.png` — **Abstention is a product behavior.** A causal request
    outside the current method space receives an explicit decision basis.
-5. `verified-11-codex-092s.png` — **Built with Codex + GPT-5.6.** Product questions moved
-   through specification, red tests, implementation, and Windows verification.
+5. `frame-25-codex-contract.png` — **Built with Codex + GPT-5.6.** Product decisions
+   moved through contracts, red tests, implementation, and packaged-app verification.
 
 Use image 1 as the cover. These are direct frames from the final hashed MP4, not
 separately staged mockups.
@@ -172,8 +174,11 @@ separately staged mockups.
 - [ ] Publish the exact current branch without changing the default branch.
 - [ ] Open the branch URL in a signed-out browser and confirm that this README, the
       GPL license, third-party notices, real demo data, and contribution evidence load.
-- [ ] Watch the exact hashed MP4 once at normal speed with sound.
-- [ ] Upload that MP4 to YouTube as **Public** and upload the canonical SRT as English
+- [ ] Watch the exact MP4 whose SHA-256 is
+      `fc25ead3874d38afa99715c616a0c263945d1c156774a06e1b994bc083be104d`
+      once at normal speed with sound.
+- [ ] Upload that MP4 from the two-file `upload-master` directory to YouTube as
+      **Public** and upload the canonical SRT as English
       captions.
 - [ ] Verify the YouTube URL in a signed-out browser.
 - [ ] Run `/feedback` from the primary core-build Codex task and copy its Session ID.

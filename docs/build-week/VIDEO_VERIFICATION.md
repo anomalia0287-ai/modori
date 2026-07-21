@@ -1,159 +1,151 @@
-# Modori Build Week Demo — Local Video Verification
+# Modori Build Week Demo — Final Local Verification
 
 Verified on 2026-07-21 (Asia/Seoul).
 
+Status: **machine gates pass; original-resolution visual review passes; owner audio
+playback and external publication remain open**.
+
 ## Bound product evidence
 
-- Product source-under-test: `ca379fd9bb907eeff04c0be7c1412a2e0f73f11b`
-- Packaged launcher SHA-256:
+- product source-under-test: `ca379fd9bb907eeff04c0be7c1412a2e0f73f11b`
+- current `src` tree: `b9ab6799414f2238cc627a2b79a3e215b758f3e5`
+- current `tests` tree: `f87bd2683e4fd5536c5df205fc85b165de1edfce`
+- packaged launcher SHA-256:
   `f539c9ae698fcc2f7b6cc5a0bc634aa9607a415993ccb4e83d5e8a507770c8d5`
-- Demo CSV SHA-256:
+- demo CSV SHA-256:
   `e51ebf09f537865aa7353f3b23cfa391e75767783d0061b628c1361eaef4cb0e`
-- Generated Word report:
-  `.visual-qa/build-week-real-data-candidate-2026-07-21/reports/report-ca379fd-final.docx`;
-  `37,343` bytes; SHA-256
+- demonstrated Word report: `37,343` bytes, SHA-256
   `6343649e5fbf39adf1c212ac2495e8e59e8490494b57b35f562a3e5719651d31`
-- Demonstrated result: Spearman `rho = 0.2747118483356099`, two-sided
+- demonstrated result: Spearman `rho = 0.2747118483356099`, two-sided
   `p = 1.060624038270125e-12`, `n = 649`, excluded rows `= 0`
+- final source suite: `3,393 passed, 5 skipped in 500.66s`, exit `0`
 
-## Final local upload candidate
+The result is an association in the released records. Current UI displays rounded
+`rho = 0.275` and `p = 0.000`; narration correctly says `p below .001`.
 
-- File: `.visual-qa/build-week-real-data-candidate-2026-07-21/video/modori-build-week-demo-human-problem-en-paced.mp4`
-- Size: `9,132,762` bytes
-- SHA-256: `901503954cad536c2ea368bb63bb73b8b19fa7df247d6e396f0566987d04d32f`
-- Duration: exactly `00:02:05.03` (`125.033` seconds)
-- Video: H.264 High, 1,920 × 1,080, square pixels, 30 fps, yuv420p
-- Exact video count: `3,751` decoded frames
-- Audio: AAC-LC, 48 kHz, stereo; FFmpeg `loudnorm` first-pass input
-  measurements are integrated `-15.93 LUFS`, true peak `-1.50 dBTP`, and
-  loudness range `2.90 LU`
-- Full video/audio decode: exit 0, no reported decode errors
+## Exact two-file handoff
 
-The 25 visual clips were independently rendered at the frame-aligned duration of
-their matching narration cue. The render script probes each rendered utterance,
-removes only the synthesizer's trailing silence, adds a fixed `0.75`-second tail,
-and derives the video and subtitle boundaries from that result. It rejects a final
-timeline at or above three minutes and any moving excerpt above 1.25×. The final
-timeline uses 1.0× for every moving Modori excerpt; waiting and cursor travel are
-removed by ordinary hard cuts.
+Directory:
+`.visual-qa/build-week-real-data-candidate-2026-07-21/upload-master/`
 
-The black-frame detector reported only three short `0.100–0.333` second intervals at
-intentional brand-card fades near `94.87`, `118.47`, and `124.67` seconds.
-Full-resolution source frames confirm that the surrounding shots are designed
-near-black navy cards with visible copy, not blank or missing video.
+| File | Bytes | SHA-256 |
+| --- | ---: | --- |
+| `modori-build-week-final.mp4` | 11,742,736 | `fc25ead3874d38afa99715c616a0c263945d1c156774a06e1b994bc083be104d` |
+| `modori-build-week-final.en.srt` | 2,737 | `c91f660a1fa501b2738c519ecb013f7824589cb4c9cfd18226846b02426cf02e` |
 
-The superseded `modori-build-week-demo-human-problem-en-175s.mp4` candidate and its
-SHA-256 `bd66d76db468c52caa535bbfccba57cebab2639ab262ae7ce10860e7f1e67189`
-are withdrawn and must not be uploaded. Its opening cue used a different speech
-rate, and the media gate detected ten silence intervals over 1.25 seconds, with a
-maximum of 7.26 seconds.
+The directory contains exactly these two files. The MP4 and SRT are byte-identical
+to the candidate outputs accepted by the verifier.
 
-## Script, voice, and subtitles
+## Media gates
 
-- Narration text is the exact spoken English meaning in
-  `docs/build-week/DEMO_SCRIPT.md` and the canonical SRT. The rendering script loads
-  the same cue text source used by the voice generator.
-- Voice was synthesized locally with the installed Microsoft Zira Desktop voice.
-- All 12 utterances use the single default SAPI rate `0`; per-cue rate overrides are
-  rejected by the pacing test.
-- The synthesizer contributed `0.81–0.92` seconds of trailing silence per raw WAV.
-  That trailing silence was removed before the deterministic tail was added.
-- The actual frame-aligned tail margins are `0.750–0.777` seconds. A full-media
-  `silencedetect` scan at `-40 dB` found a maximum interval of `0.927` seconds and no
-  interval over the enforced `1.25`-second limit.
-- The canonical UTF-8/LF SRT is `2,129` bytes with SHA-256
-  `4115d86f67de91cfe061d7effde485bb64e83ff240a60fe69d70b6788b941c09`.
-- The SRT contains 12 non-overlapping cues and ends at `00:02:05,033`.
-- The MP4 burns only short marketing labels. The complete narration remains in the
-  separate SRT for YouTube captions.
+- duration: `167.170` seconds (`00:02:47.170` probe duration)
+- exact video count: `5,015` decoded frames
+- video: H.264 High, yuv420p, 1,920 × 1,080, SAR 1:1, constant 30 fps
+- audio: AAC-LC, 48 kHz, stereo
+- integrated loudness: `-16.12 LUFS`
+- true peak after AAC encoding: `-1.93 dBTP`
+- silence scan: no interval at or above the enforced `1.25` seconds
+- full audio/video decode: exit `0`
+- MP4 atom order: `moov` precedes `mdat` (fast start)
+- black-frame scan: no reported black interval at the 0.5-second gate
+- result reveal: `00:02.500`
+- maximum moving-product speed: `1.0x`
+- subtitle cues: 12 contiguous, non-overlapping UTF-8/LF blocks
+- subtitle endpoint: `00:02:47,167`, within one frame of the media endpoint
 
-## Motion, framing, and visual audit
+The verifier is
+`.visual-qa/build-week-real-data-candidate-2026-07-21/video/verify-final-demo.ps1`.
+Its machine report, probe, loudness scan, silence scan, black scan, frame index,
+contact sheet, and source hashes are retained under
+`.visual-qa/build-week-real-data-candidate-2026-07-21/video/qa/final-upload-master/`.
 
-- The edit combines actual Modori interaction footage, a fresh isolated causal
-  request take, the actual generated Word report, and intentional branded evidence
-  cards. No product footage is accelerated.
-- Product shots preserve all 1,920 source pixels horizontally. Only the 30-pixel
-  Windows title bar and 60-pixel taskbar are removed; 45-pixel top/bottom padding
-  preserves a 16:9 frame without side cropping or stretching.
-- The 30-row import review is followed by the separate `Open data sheet` view whose
-  footer visibly reads `rows 1–17 / 649 · columns 1–6 / 6`.
-- Representative full-resolution frames retain the complete `MODORI` wordmark,
-  mode controls, right-side result panel, and bottom-right Run action.
-- The Word report is rendered from the hashed DOCX through Microsoft Word, not
-  recreated as a mock. Its complete 10-column result row, warning, and interpretation
-  boundary remain legible without Word ribbon or add-in chrome.
-- A fresh Microsoft Word export of that DOCX, rasterized again at 144 dpi, produced
-  a byte-identical `page-1.png` to the frame source used by the edit: SHA-256
-  `796f4a3d5c402e00f1383b40e4529d0500d345c13a8449848919903521cef239`.
-- Both Word cutaways use a restrained 1.000 → 1.018 zoom while preserving the result
-  content.
-- A 16-frame full-timeline contact sheet and 16 exact gallery candidates were
-  inspected after the paced render. The frames cover result, Word report, import
-  review, 649-row data sheet, Variable Meaning Gate, bounded questions, candidate,
-  Prepare, result, causal abstention, all three engineering cards, report export,
-  and closing card. Earlier review had already rejected candidates that stopped at
-  the causal scope notice or confused the 30-row preview with the 649-row sheet.
+## Voice provenance
 
-## Codex contribution claim audit
+- engine: `kokoro-onnx-local`
+- package: `kokoro-onnx 0.5.0`
+- voice: `af_sarah`
+- one global speed: `0.92`
+- narration synthesis network use: `false`
+- wrapper license: MIT
+- model license: Apache-2.0
+- model SHA-256:
+  `7d5df8ecf7d4b1878015a32686053fd0eebe2bc377234608764cc0ef3636a6c5`
+- voice-data SHA-256:
+  `bca610b8308e8d99f32e6fe4197e7ec01679264efed0cac9140fe9c29f1fbf7d`
+- voice manifest SHA-256:
+  `993ffc9b96a9f0ee39871b53cc59832755d74e945031b0db716bee0623963bdb`
+- measured speech: `157.96` seconds
+- fixed post-cue tail: `0.75` seconds, frame-aligned to `0.756–0.777` seconds
 
-The 01:29.633–01:47.067 montage names the demonstrated engineering sequence and
-boundaries:
+No online synthesis endpoint exists in the narration renderer. All twelve cues use
+the same engine, voice, and speed; no per-cue acceleration is used.
 
-1. `SPEC > RED TEST > IMPLEMENTATION > WINDOWS VERIFICATION`
-2. `VARIABLE MEANING GATE`, `PASSPORT + LEDGER`, and `PREPARE > RUN`
-3. `EXCEL RECOVERY`, `SAFE WORD EXPORT`, `FAILURE RECOVERY`, and
-   `3,393 TESTS PASSED`
+## Source media hashes
 
-The narration says Codex with GPT-5.6 helped turn product questions into contracts,
-failing tests, implementation, and Windows verification during Build Week. It does
-not imply that a generative model performs the released statistical calculation.
-The design/code/test/commit evidence is recorded in
-`docs/build-week/CODEX_CONTRIBUTION_EVIDENCE.md`.
+| Source | Bytes | SHA-256 |
+| --- | ---: | --- |
+| successful Guided walkthrough | 37,971,147 | `cea69d367a4cba31a902230ae265b02ec78439cc9f3bf981dff66c5298d89617` |
+| causal request capture | 773,034 | `8ac0134165b50237f8a4fbd799b2258b904a4cfdadb632ac334318b0da817e57` |
+| causal abstention hold | 420,175 | `6d93acda40ddae54947fcfe0e88f2927fbd499c2857a244341a256fbafac70e7` |
+| rendered Word report page | 55,100 | `796f4a3d5c402e00f1383b40e4529d0500d345c13a8449848919903521cef239` |
+| exact cue source | 7,496 | `d472ce41502fe3878c48d78f8206dfbb6ced1df4815f3316b40fee610ce8c92d` |
+| deterministic video builder | 23,862 | `2778b84ee77827967a71e6b8a01f762cd319d2104c9aad42c51b8254fb82b3d4` |
 
-## Fresh final source-suite confirmation
+## Original-resolution visual audit
 
-After the final media packet was rendered, the source-under-test tree was checked
-again on 2026-07-21 with CPython 3.12.10 and the pinned R 4.5.3 runtime. The run used
-isolated application, temporary, and cache roots; `QT_QPA_PLATFORM=offscreen`; a
-700-second hard limit; and BelowNormal process priority.
+Thirty-eight 1,920 × 1,080 frames were inspected across the complete timeline. They
+cover opening, result at 2.5 and 3.0 seconds, editable report, Guided selection,
+30-row import review, 649-row data view, variable metadata, Variable Meaning Gate,
+research task, exact roles, clustering, dependence, weights, experimental candidate,
+exact configuration, Prepare, confirmed empty result, separate Run, result, fresh
+causal request, abstention, every engineering card, closing result, and final card.
 
-The submission source suite excluded the visual-gallery timing test and the
-branch-history integration-ledger validator:
+Verified findings:
 
-```text
-python -m pytest -q -p no:cacheprovider --color=no \
-  --ignore=tests/ui/test_research_flow_visual_gallery.py \
-  --ignore=tests/test_research_os_royal_blue_integration_ledger.py tests
-```
+- full product width remains visible; neither the Modori wordmark nor right-side
+  controls are cropped;
+- Windows title bar and taskbar are removed from the main footage;
+- overlays occupy designed margins rather than covering required controls or values;
+- the result and report agree on method, coefficient, displayed p-value, `n`, and
+  exclusions;
+- the 30-row preview and complete 649-row data view are visibly distinct;
+- questions appear in the actual ledger order: clustering, dependence, weights;
+- successful and causal requests are visibly separate;
+- engineering cards use actual source/test names and the single current suite count;
+- no private identity, private path, notification, account, API key, competitor
+  price/interface, or third-party logo appears.
 
-Result: `3,393 passed, 5 skipped in 500.66s`, exit `0`. The wrapper completed in
-`505.7s`, inside the fixed 700-second limit. The captured stdout log is `3,933`
-bytes with SHA-256
-`19906ee7ff2adeb44ef3b134c09d71cff52ed7a5b2a449e08440f7c859f38267`.
-The source and test trees were unchanged from `ca379fd9bb907eeff04c0be7c1412a2e0f73f11b`.
+## Rejected intermediates
 
-## Visual claim and privacy audit
+The acceptance gates rejected and corrected four defects before this hash was
+accepted:
 
-- Opening and later result shots show the same displayed `rho = 0.275`, `p = 0.000`,
-  `n = 649`, and `excluded_n = 0`. Narration correctly says `p below .001`; it does
-  not describe the p-value as literally zero.
-- Import review, the 649-row data sheet, Variable Meaning Gate, bounded questions,
-  experimental candidate, exact Spearman configuration, confirmation with an empty
-  result, separate Run, result, explicit causal abstention, and Word output are
-  visible.
-- The causal vignette uses a fresh isolated application state and ends on
-  `Causal request abstained`, the no-candidate explanation, and its decision basis.
-- No causation, universal-validity, expert-equivalence, representativeness,
-  NIST-certification, or SPSS-superiority claim is made.
-- Native file-picker footage, desktop taskbar, notifications, account identity,
-  private path, session transcript, API key, and personal recent-file list are absent.
-- The public UCI records shown in the app contain only the six approved demo columns;
-  no private user dataset is used.
+1. concat output initially contained 4,992 rather than 5,015 video frames;
+2. AAC encoding initially produced `-1.42 dBTP`, above the `-1.5 dBTP` cap;
+3. the first Guided label briefly covered a source frame where Pro was still
+   selected; and
+4. the first handoff calculation placed the two files one directory too high.
 
-## Still requiring human or external action
+Each owning source was corrected, the complete render or verifier was rerun, and the
+current two-file handoff passed all machine gates. No acceptance threshold was
+lowered.
 
-- Watch the exact hashed MP4 once at normal speed with sound to judge subjective voice
-  naturalness, pronunciation, and pacing.
-- Upload that exact file as Public and verify the URL in a signed-out browser.
-- Complete the submission form and preserve its confirmation receipt.
+## Claim boundaries
+
+- Seven Royal Blue UI commits, 25 overlapping paths, and 12 predicted text conflicts
+  are presented as integration-ledger facts, not product-performance claims.
+- NIST StRD and R are calculation references; they do not certify Modori or validate
+  every recommendation.
+- Codex and GPT-5.6 are described as development collaborators. The released
+  statistical calculation remains deterministic and local.
+- No claim of causation, universal recommendation validity, expert equivalence,
+  representativeness, or competitor superiority is made.
+
+## Still requiring owner or external action
+
+- Watch the exact hashed MP4 once at normal speed with sound to judge voice
+  naturalness, pronunciation, pacing, and the absence of subjective dead waits.
+- Upload that exact MP4 to YouTube as Public with the matching English SRT.
+- Verify the resulting URL in a signed-out browser.
+- Complete the submission form and preserve the confirmation receipt.
 - Fable 5 external-participant verification remains separate and unclaimed.

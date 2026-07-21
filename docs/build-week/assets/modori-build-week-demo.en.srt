@@ -1,47 +1,47 @@
 1
-00:00:00,000 --> 00:00:07,100
-Before it calculates, Modori asks. When the evidence is not enough, it abstains.
+00:00:00,000 --> 00:00:13,867
+I majored in sociology and will soon begin graduate school. I wanted an approachable, subscription-free statistics tool—and I want other students to have that same ease. That idea became Modori.
 
 2
-00:00:07,100 --> 00:00:15,133
-Here is the payoff: a reviewable result from 649 public student records, exported to Word locally.
+00:00:13,867 --> 00:00:27,800
+Here is the payoff: 649 released student records reach a reviewable Spearman result and an editable report. Method, coefficient, p-value, sample size, and exclusions stay visible.
 
 3
-00:00:15,133 --> 00:00:23,033
-I'm a social-science student. I built Modori because starting statistical work should feel clear, not punishing.
+00:00:27,800 --> 00:00:40,267
+Now the path. I open a six-variable, non-identifying view, review the labeled thirty-row preview, then load all 649 records. The data stays on this computer.
 
 4
-00:00:23,033 --> 00:00:33,333
-This walkthrough uses 649 observed records from UCI Student Performance. Modori labels the 30-row preview before loading the full table.
+00:00:40,267 --> 00:00:53,033
+Before any method appears, Modori asks what the variables mean. Study time is ordinal; final grade is scale. Labels, value codes, missing rules, and storage type are reviewed first.
 
 5
-00:00:33,333 --> 00:00:43,967
-Before any method appears, I confirm what the variables mean: study time is ordinal; final grade is scale. These decisions enter the review trail.
+00:00:53,033 --> 00:01:06,100
+I begin with the research task: do study time and grades move together? I assign exact roles. Modori then asks bounded questions about clustering, dependence, and weights instead of guessing.
 
 6
-00:00:43,967 --> 00:00:56,767
-I ask whether study time and grades move together, then assign exact roles. Modori asks bounded questions about independence, clustering, and weights, and records the answers.
+00:01:06,100 --> 00:01:20,467
+The candidate is Spearman correlation. Its association-only claim, experimental status, variables, missing-data policy, and exact parameters remain visible. Nothing is silently selected or run.
 
 7
-00:00:56,767 --> 00:01:07,267
-The reviewable candidate is Spearman correlation. Its association-only boundary, variables, missing-data policy, and experimental status remain visible.
+00:01:20,467 --> 00:01:35,600
+Prepare exposes the configuration and keeps the result empty. Confirmation authorizes without calculating. Only the separate Run produces rho zero point two seven five, with p below point zero zero one.
 
 8
-00:01:07,267 --> 00:01:19,267
-Prepare seals the reviewed configuration but does not calculate. Only this separate Run action produces the result: rho point two seven five, p below point zero zero one.
+00:01:35,600 --> 00:01:47,833
+For a causal-effect request, Modori gives a clear scope decision. It records the request instead of substituting a convenient analysis. Abstention is a product behavior.
 
 9
-00:01:19,267 --> 00:01:29,633
-A second request asks for a causal effect. Modori does not substitute a convenient method. It records that the request is outside the current scope.
+00:01:47,833 --> 00:02:06,900
+With Codex and GPT-5.6, I turned product decisions into contracts, failing tests, implementation, and packaged-app verification. That collaboration established the Variable Meaning Gate, passport-and-ledger authority, and separate Prepare, Confirm, and Run boundaries.
 
 10
-00:01:29,633 --> 00:01:47,067
-During Build Week, Codex with GPT-5.6 helped turn product questions into contracts, failing tests, implementation, and Windows verification, from variable meaning and ledger authority to Excel recovery, safe Word export, and failure recovery.
+00:02:06,900 --> 00:02:21,433
+That loop also closed real interface failures: recovering a workbook whose first sheet held no data, protecting an existing report during replacement, and replacing a generic failure card with an actionable recovery path.
 
 11
-00:01:47,067 --> 00:01:58,467
-The arithmetic and recommendation boundary are tested separately. External reference checks support the calculation layer, while the workflow remains reviewable from data to report.
+00:02:21,433 --> 00:02:35,800
+Seven Royal Blue interface commits were integrated path by path across the existing codebase. The source suite passed, while external reference checks supported calculation separately from recommendation boundaries.
 
 12
-00:01:58,467 --> 00:02:05,033
-Modori asks, abstains, and waits for you to Run. Kindness is a system behavior.
+00:02:35,800 --> 00:02:47,167
+Modori turns a research question into a reviewable path, then leaves the final action to the researcher. Kindness is not decoration. It is system behavior.
