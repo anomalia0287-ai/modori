@@ -7,9 +7,9 @@ and exports the result to Word locally.
 
 2
 00:00:18,000 --> 00:00:34,000
-Modori existed before Build Week. During the event, Codex with GPT-5.6
-became a high-leverage engineering collaborator for building and testing
-this guided Windows workflow across a large existing codebase.
+During Build Week, Codex with GPT-5.6 helped engineer the Variable Meaning Gate,
+passport-ledger authority, and separate Run. Windows audits produced tested Excel
+recovery, safe Word export, and failure recovery. The suite passed 3,393 tests.
 
 3
 00:00:34,000 --> 00:00:48,000

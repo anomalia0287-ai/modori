@@ -124,13 +124,16 @@ The current real-data closure includes:
   exclusions;
 - an actual-QML import-to-Word-to-replan test;
 - an adjacent Research OS/import/report cohort with 179 passing tests; and
-- a full non-gallery source run with `3387 passed, 5 skipped` under the pinned
+- a full non-gallery source run with `3393 passed, 5 skipped` under the pinned
   R 4.5.3 reference boundary.
 
 The failed first full-run observation and its four individually repaired audit/copy
 contracts are retained alongside the clean rerun. Exact commands, commit identities,
-package hashes, and visual evidence belong in
-[`docs/build-week/VERIFICATION.md`](docs/build-week/VERIFICATION.md).
+package hashes, and product evidence are recorded in
+[`docs/qa/build-week-real-data-research-os-e2e.md`](docs/qa/build-week-real-data-research-os-e2e.md).
+The final local recording has a separate codec, timing, motion, subtitle, hash, and
+privacy audit in
+[`docs/build-week/VIDEO_VERIFICATION.md`](docs/build-week/VIDEO_VERIFICATION.md).
 
 ## Build Week contribution
 
@@ -149,10 +152,13 @@ copy aligned with executable behavior. The result demonstrates AI-assisted softw
 development applied to a difficult, evidence-heavy desktop product—not an AI model
 inserted where deterministic statistics are the better runtime tool.
 
-See [`docs/build-week/BUILD_WEEK_DELTA.md`](docs/build-week/BUILD_WEEK_DELTA.md) for
-the pre-existing/eligible boundary and
-[`docs/build-week/DEVPOST_SUBMISSION.md`](docs/build-week/DEVPOST_SUBMISSION.md) for
-the submission copy.
+Three concrete contribution chains are documented from design decision through code,
+regression test, commit, and full-suite evidence: the Variable Meaning Gate plus
+passport/ledger and separate-Run authority; Excel, Word, and failure-recovery fixes
+found in the real Windows UI; and semantic integration of the seven Royal Blue commits
+without blanket conflict resolution. See
+[`docs/build-week/CODEX_CONTRIBUTION_EVIDENCE.md`](docs/build-week/CODEX_CONTRIBUTION_EVIDENCE.md)
+and the canonical [`docs/build-week/DEMO_SCRIPT.md`](docs/build-week/DEMO_SCRIPT.md).
 
 ## Local data and current boundaries
 
