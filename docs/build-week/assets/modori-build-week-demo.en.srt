@@ -1,65 +1,60 @@
 1
-00:00:00,000 --> 00:00:18,000
-Here is the result first. Across 649 public student records,
-weekly study-time bands and final grades show a modest positive rank association:
-Spearman rho point two seven five. Modori preserves the review trail
-and exports the result to Word locally.
+00:00:00,000 --> 00:00:06,000
+Before it calculates, Modori asks.
+When the evidence is not enough, it abstains.
 
 2
-00:00:18,000 --> 00:00:34,000
-During Build Week, Codex with GPT-5.6 helped engineer the Variable Meaning Gate,
-passport-ledger authority, and separate Run. Windows audits produced tested Excel
-recovery, safe Word export, and failure recovery. The suite passed 3,393 tests.
+00:00:06,000 --> 00:00:18,000
+Here is the payoff: a reviewable result from 649 public student records,
+exported to Word locally.
 
 3
-00:00:34,000 --> 00:00:48,000
-This demonstration uses UCI Student Performance: 649 public observations
-from the Portuguese-language course. The walkthrough focuses on six study
-and school-context fields.
+00:00:18,000 --> 00:00:30,000
+I'm a social-science student. I built Modori because starting statistical work
+should feel clear, not punishing.
 
 4
-00:00:48,000 --> 00:01:03,000
-Modori clearly labels the first 30 rows as a preview sample.
-Confirmation loads the complete 649-row table, while the workspace
-keeps the source data visible for review.
+00:00:30,000 --> 00:00:44,000
+This walkthrough uses 649 observed records from UCI Student Performance.
+Modori labels the 30-row preview before loading the full table.
 
 5
-00:01:03,000 --> 00:01:20,000
-Before proposing a method, Modori asks what each variable means.
-Study time is ordinal with four labeled bands; final grade is scale.
-The gate exposes these meanings and missing-code assumptions for confirmation.
+00:00:44,000 --> 00:01:02,000
+Before any method appears, I confirm what the variables mean:
+study time is ordinal; final grade is scale. These decisions enter the review trail.
 
 6
-00:01:20,000 --> 00:01:38,000
-I frame a noncausal question: do weekly study-time bands and final grades
-tend to move together? Then I assign final grade as the outcome
-and study time as the focal predictor.
+00:01:02,000 --> 00:01:22,000
+I ask whether study time and grades move together, then assign exact roles.
+Modori asks bounded questions about independence, clustering, and weights—and records the answers.
 
 7
-00:01:38,000 --> 00:01:54,000
-Three bounded questions capture clustering, independence, and weight use.
-Their answers become part of the durable decision record
-instead of disappearing behind a single button click.
+00:01:22,000 --> 00:01:38,000
+The reviewable candidate is Spearman correlation. Its association-only boundary,
+variables, missing-data policy, and experimental status remain visible.
 
 8
-00:01:54,000 --> 00:02:12,000
-With ordinal study time and these design answers, Modori produces a reviewable
-Spearman candidate. It shows the association boundary, experimental status,
-exact variables, and pairwise missingness policy.
+00:01:38,000 --> 00:01:55,000
+Prepare seals the reviewed configuration but does not calculate. Only this separate
+Run action produces the result: rho point two seven five, p below point zero zero one.
 
 9
-00:02:12,000 --> 00:02:29,000
-I prepare the candidate by reviewing its exact configuration. Confirmation seals
-the decision and leaves the result empty; the separate Run button makes the
-transition from planning to calculation explicit.
+00:01:55,000 --> 00:02:08,000
+A second request asks for a causal effect. Modori does not substitute a convenient method.
+It records that the request is outside the current scope.
 
 10
-00:02:29,000 --> 00:02:44,000
-Now I choose Run. Modori calculates rho point two seven five,
-a two-sided p-value below point zero zero one, 649 complete pairs,
-and zero excluded rows.
+00:02:08,000 --> 00:02:31,000
+During Build Week, Codex with GPT-5.6 helped turn product questions into contracts,
+failing tests, implementation, and Windows verification—from variable meaning and ledger authority
+to Excel recovery, safe Word export, and failure recovery.
 
 11
-00:02:44,000 --> 00:02:55,000
-Finally, Modori saves an English Word report with the method, evidence,
-and interpretation boundary—ready to review, share, and reproduce.
+00:02:31,000 --> 00:02:48,000
+The arithmetic and recommendation boundary are tested separately. External reference checks
+support the calculation layer, while the workflow remains reviewable from data to report.
+
+12
+00:02:48,000 --> 00:02:55,000
+Modori asks, abstains, and waits for you to Run.
+Kindness is a system behavior.

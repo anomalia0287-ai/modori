@@ -11,10 +11,12 @@ Demo data: `examples/build-week-demo/student-study-and-grades.csv`
 Source: UCI Student Performance, Portuguese-course table, 649 released records,
 CC BY 4.0, DOI `10.24432/C5TG7T`
 
-This is the canonical result-first recording script. The opening result teaser and
-the later end-to-end sequence must come from the same verified data and calculation.
-Normal jump cuts are allowed; the edit must not imply that a cut sequence is an
-uninterrupted timing benchmark.
+This is the canonical human-problem, result-first recording script. The opening
+result teaser and the later end-to-end sequence must come from the same verified
+data and calculation. Normal jump cuts are allowed; the edit must not imply that a
+cut sequence is an uninterrupted timing benchmark. The creator may be identified as
+a social-science student, but no name, school, image, account, or private path is
+included.
 
 ## Candidate bound to this packet
 
@@ -50,40 +52,39 @@ zero. The packaged smokes completed in `7.258 s`, `23.43 s`, and `3.174 s`.
 
 ## Recording construction
 
-Record one complete fresh-state walkthrough from entry to Word export. After that
-run, copy its result-table footage and a clean render of the same generated Word
-report to the first 18 seconds. Use the report render again for the closing frame;
-do not substitute a mock document or expose unrelated Word add-ins. Continue the
-edited story from the entry screen at 00:18. This gives judges the payoff first while
-preserving one traceable dataset, method, and result.
+Use the existing verified successful walkthrough and Word report. Capture only the
+missing causal-abstention vignette from a fresh isolated state. Remove cursor travel
+and waiting with hard cuts. Keep every moving source excerpt at 1.0x whenever
+possible and never exceed 1.25x continuous speed. The first and last cards are
+intentional near-black navy brand frames, not frozen product screens.
 
-Before capture:
+Before capture and rendering:
 
-1. Verify the launcher and CSV hashes above.
-2. Use a new isolated Modori state and copy the CSV into a neutral demo directory.
+1. Verify the launcher, CSV, result, and Word-report hashes above.
+2. Use a new isolated `LOCALAPPDATA` for the causal-abstention capture.
 3. Disable desktop notifications and keep private paths, recent files, account names,
    and unrelated windows outside the capture.
-4. Select `English` and `GUIDED MODE`.
-5. Pause capture for the native file picker and resume at Modori's import review.
-6. Capture at 1080p or higher with text large enough to read without zooming.
-7. Use the canonical subtitle file at
-   `docs/build-week/assets/modori-build-week-demo.en.srt`.
+4. Use English Guided Mode and preserve the full 1,920-pixel product width.
+5. Cut past native file pickers; do not show operating-system chrome or recent files.
+6. Burn only the short labels below. Deliver the complete narration separately as
+   `docs/build-week/assets/modori-build-week-demo.en.srt` for YouTube captions.
 
 ## Shot list, exact narration, and Korean meaning
 
 | Time | Screen and action | Exact English narration / subtitle | 한국어 의미 |
 | --- | --- | --- | --- |
-| 00:00–00:18 | **Result first.** Show the final wide result table with `rho = 0.275`, `p = 0.000`, `n = 649`, and `excluded = 0`; cut briefly to the generated English Word report. | **“Here is the result first. Across 649 public student records, weekly study-time bands and final grades show a modest positive rank association: Spearman rho point two seven five. Modori preserves the review trail and exports the result to Word locally.”** | “결과부터 보여드리겠습니다. 공개된 학생 기록 649건에서 주간 학습시간 구간과 최종 성적 사이에 약한 양의 순위 연관성이 나타났습니다. 스피어만 로는 0.275입니다. Modori는 검토 과정을 보존하고 결과를 로컬에서 Word로 내보냅니다.” |
-| 00:18–00:34 | Keep the Modori entry visible behind three concise contribution cards: `Engineered with Codex + GPT-5.6`; `Meaning Gate · passport/ledger · separate Run`; `Excel recovery · safe Word export · failure recovery · 3,393 tests passed`. | **“During Build Week, Codex with GPT-5.6 helped engineer the Variable Meaning Gate, passport-ledger authority, and separate Run. Windows audits produced tested Excel recovery, safe Word export, and failure recovery. The suite passed 3,393 tests.”** | “Build Week 기간에 Codex와 GPT-5.6은 Variable Meaning Gate, passport/ledger 권한, 별도 Run 경계를 설계·구현·시험하는 데 기여했습니다. Windows UI 감사에서 발견한 문제는 Excel 복구, 안전한 Word 내보내기, 실패 회복의 테스트된 수정으로 이어졌고, 검증 스위트에서 3,393개 테스트가 통과했습니다.” |
-| 00:34–00:48 | Select `English`, choose `GUIDED MODE`, and click `Open data file`. Jump-cut past the native picker. | **“This demonstration uses UCI Student Performance: 649 public observations from the Portuguese-language course. The walkthrough focuses on six study and school-context fields.”** | “이 데모는 UCI Student Performance의 포르투갈어 과목에서 공개된 실제 관측 기록 649건을 사용합니다. 데모에서는 학습 및 학교 맥락 변수 6개에 집중합니다.” |
-| 00:48–01:03 | Import review. Hold on `Preview sample: 30 rows · 6 variables`, the header evidence, and the full-load explanation; confirm and show the populated table. | **“Modori clearly labels the first 30 rows as a preview sample. Confirmation loads the complete 649-row table, while the workspace keeps the source data visible for review.”** | “Modori는 처음 30행이 미리보기 표본임을 명확히 표시합니다. 가져오기를 확인하면 649행 전체가 로드되고, 작업 공간에서 원본 데이터를 검토할 수 있습니다.” |
-| 01:03–01:20 | Set `Weekly study time` to ordinal with four value labels and `Final grade` to scale. Open Research OS and hold on both Variable Meaning Gate cards. | **“Before proposing a method, Modori asks what each variable means. Study time is ordinal with four labeled bands; final grade is scale. The gate exposes these meanings and missing-code assumptions for confirmation.”** | “방법 후보를 제안하기 전에 Modori는 각 변수가 무엇을 뜻하는지 확인합니다. 학습시간은 네 개의 값 라벨을 가진 순서형 변수이고 최종 성적은 척도형입니다. 이 게이트는 변수 의미와 결측 코드 가정을 확인할 수 있게 보여줍니다.” |
-| 01:20–01:38 | Choose the noncausal boundary and `Rank-based co-movement`. Assign `Final grade` as outcome and `Weekly study time` as focal predictor. | **“I frame a noncausal question: do weekly study-time bands and final grades tend to move together? Then I assign final grade as the outcome and study time as the focal predictor.”** | “비인과적 질문을 설정합니다. 주간 학습시간 구간과 최종 성적이 함께 움직이는 경향이 있는가? 이후 최종 성적을 결과 역할로, 학습시간을 핵심 예측 역할로 지정합니다.” |
-| 01:38–01:54 | Confirm the Variable Meaning Gate. Show the three bounded questions about clustering, independence, and weight use, using concise jump cuts between answers. | **“Three bounded questions capture clustering, independence, and weight use. Their answers become part of the durable decision record instead of disappearing behind a single button click.”** | “군집 여부, 독립성, 가중치 사용을 세 개의 제한된 질문으로 확인합니다. 답변은 한 번의 클릭 뒤에 사라지지 않고 지속 가능한 의사결정 기록의 일부가 됩니다.” |
-| 01:54–02:12 | Hold on the rank-based candidate, association-only claim boundary, experimental badge, then open `Review configuration` to expose the exact Spearman settings. | **“With ordinal study time and these design answers, Modori produces a reviewable Spearman candidate. It shows the association boundary, experimental status, exact variables, and pairwise missingness policy.”** | “순서형 학습시간과 연구설계 답변을 바탕으로 Modori는 검토 가능한 스피어만 후보를 만듭니다. 연관성 해석 범위, 실험적 상태, 정확한 변수, 쌍별 결측 처리 방식을 보여줍니다.” |
-| 02:12–02:29 | Review the exact configuration and click `Confirm this configuration`. Hold while the result area is still empty and the separate `Run` action becomes available. | **“I prepare the candidate by reviewing its exact configuration. Confirmation seals the decision and leaves the result empty; the separate Run button makes the transition from planning to calculation explicit.”** | “정확한 구성을 검토하여 후보를 준비합니다. 확인은 결정을 봉인하지만 결과는 비워 두며, 별도의 Run 버튼이 계획에서 계산으로 넘어가는 전환을 명확히 합니다.” |
-| 02:29–02:44 | Click the separately enabled `Run`; open the wide result table and keep all four reported quantities legible. | **“Now I choose Run. Modori calculates rho point two seven five, a two-sided p-value below point zero zero one, 649 complete pairs, and zero excluded rows.”** | “이제 Run을 선택합니다. Modori는 로 0.275, 양측 p값 0.001 미만, 완전한 쌍 649개, 제외된 행 0개를 계산합니다.” |
-| 02:44–02:55 | Open Report, choose English, click `Save to Word`, show the saved confirmation, and finish on the report title and result table. | **“Finally, Modori saves an English Word report with the method, evidence, and interpretation boundary—ready to review, share, and reproduce.”** | “마지막으로 Modori는 방법, 근거, 해석 범위를 담은 영문 Word 보고서를 저장합니다. 검토하고 공유하며 재현할 수 있는 결과물입니다.” |
+| 00:00–00:06 | Near-black navy card. Reveal `MODORI`, then `ASKS BEFORE IT CALCULATES` and `ABSTAINS WHEN EVIDENCE IS NOT ENOUGH`. | **“Before it calculates, Modori asks. When the evidence is not enough, it abstains.”** | “Modori는 계산하기 전에 묻습니다. 근거가 충분하지 않으면 기권합니다.” |
+| 00:06–00:18 | Show the verified result table, then the matching English Word report. Label: `649 PUBLIC RECORDS → REVIEWABLE RESULT → WORD`. | **“Here is the payoff: a reviewable result from 649 public student records, exported to Word locally.”** | “결과부터 보겠습니다. 공개된 학생 기록 649건에서 검토 가능한 결과를 만들고 로컬에서 Word로 내보냈습니다.” |
+| 00:18–00:30 | Actively choose English, Guided Mode, and Open data file. Cut past the native picker. | **“I'm a social-science student. I built Modori because starting statistical work should feel clear, not punishing.”** | “저는 사회과학도입니다. 통계 작업의 시작은 괴로운 일이 아니라 명확한 과정이어야 한다고 생각해 Modori를 만들었습니다.” |
+| 00:30–00:44 | Show import review and the 30-row preview label, confirm, then show the complete 649-row table. | **“This walkthrough uses 649 observed records from UCI Student Performance. Modori labels the 30-row preview before loading the full table.”** | “이 데모는 UCI Student Performance의 실제 관측 기록 649건을 사용합니다. Modori는 전체 표를 불러오기 전에 30행 미리보기를 명확히 표시합니다.” |
+| 00:44–01:02 | Set study time to ordinal, final grade to scale, open Research OS, and hold both Variable Meaning Gate cards. | **“Before any method appears, I confirm what the variables mean: study time is ordinal; final grade is scale. These decisions enter the review trail.”** | “방법이 나타나기 전에 변수의 의미를 확인합니다. 학습시간은 순서형이고 최종 성적은 척도형이며, 이 결정은 검토 기록에 들어갑니다.” |
+| 01:02–01:22 | Choose the noncausal association task, assign exact outcome/predictor roles, and show bounded independence, clustering, and weight questions. | **“I ask whether study time and grades move together, then assign exact roles. Modori asks bounded questions about independence, clustering, and weights—and records the answers.”** | “학습시간과 성적이 함께 움직이는지 묻고 정확한 역할을 지정합니다. Modori는 독립성, 군집, 가중치에 관한 제한된 질문을 하고 답을 기록합니다.” |
+| 01:22–01:38 | Show the candidate and exact configuration. Labels: `ASSOCIATION ONLY`, `SPEARMAN`, `PAIRWISE MISSINGNESS`. | **“The reviewable candidate is Spearman correlation. Its association-only boundary, variables, missing-data policy, and experimental status remain visible.”** | “검토 가능한 후보는 스피어만 상관입니다. 연관성 한정 경계, 변수, 결측 처리 정책, 실험적 상태가 계속 보입니다.” |
+| 01:38–01:55 | Prepare/confirm; hold on the empty result; reveal and click the separate Run button; show the verified result. | **“Prepare seals the reviewed configuration but does not calculate. Only this separate Run action produces the result: rho point two seven five, p below point zero zero one.”** | “Prepare는 검토된 구성을 봉인하지만 계산하지 않습니다. 별도의 Run 동작을 해야만 로 0.275, p값 0.001 미만의 결과가 생성됩니다.” |
+| 01:55–02:08 | Label `SECOND REQUEST`, choose causal-effect intent, and show the resulting causal abstention. | **“A second request asks for a causal effect. Modori does not substitute a convenient method. It records that the request is outside the current scope.”** | “두 번째 요청은 인과 효과를 요구합니다. Modori는 편리한 다른 방법으로 몰래 바꾸지 않고 현재 범위 밖이라는 기권을 기록합니다.” |
+| 02:08–02:31 | Privacy-clean evidence montage: `SPEC → RED TEST → IMPLEMENTATION → WINDOWS VERIFICATION`, followed by the three boundary groups. | **“During Build Week, Codex with GPT-5.6 helped turn product questions into contracts, failing tests, implementation, and Windows verification—from variable meaning and ledger authority to Excel recovery, safe Word export, and failure recovery.”** | “Build Week 동안 Codex와 GPT-5.6은 제품 질문을 계약, 실패 테스트, 구현, Windows 검증으로 전환하는 데 기여했습니다. 변수 의미와 ledger 권한부터 Excel 복구, 안전한 Word 내보내기, 실패 복구까지 포함합니다.” |
+| 02:31–02:48 | Save/show the verified English Word report. Caption: `3,393 passed · NIST StRD checks · R cross-engine anchors`. | **“The arithmetic and recommendation boundary are tested separately. External reference checks support the calculation layer, while the workflow remains reviewable from data to report.”** | “계산 정확성과 추천 경계는 분리해서 시험합니다. 외부 기준 검사는 계산 계층을 뒷받침하고, 데이터에서 보고서까지의 과정은 검토 가능하게 남습니다.” |
+| 02:48–02:55 | Near-black closing card: `MODORI ASKS · ABSTAINS · WAITS FOR RUN`, `Kindness is a system behavior.`, and the repository URL. | **“Modori asks, abstains, and waits for you to Run. Kindness is a system behavior.”** | “Modori는 묻고, 기권하며, 사용자가 Run하기를 기다립니다. 친절은 장식이 아니라 시스템의 행동입니다.” |
 
 ## Operator click sheet
 
@@ -105,29 +106,38 @@ Use this order; do not improvise a different task or method during capture.
     `missing_policy: pairwise`, and `p_adjust: none` → `Confirm this configuration`.
 11. Show that no result exists yet; click the separately enabled `Run`.
 12. Open the wide result table → Report → English → `Save to Word`.
+13. Start a visibly separate second task → choose causal-effect intent → retain the
+    causal request → hold on the causal-abstention state.
 
 ## Recording acceptance gate
 
-- [x] Runtime is `02:55` or shorter and the subtitle endpoint matches the edit.
-- [x] Every product shot preserves the full 1,920-pixel source width; neither the
+- [ ] Runtime is exactly `02:55`, 5,250 frames at constant 30 fps, and the subtitle
+      endpoint matches the edit.
+- [ ] Every product shot preserves the full 1,920-pixel source width; neither the
       `MODORI` wordmark nor right-side controls are cropped.
-- [x] The two Word cutaways use the rendered demonstrated DOCX identified above;
-      its title, complete 10-column row, warning, and interpretation boundary remain
+- [ ] The Word cutaways use the rendered demonstrated DOCX identified above; its
+      title, complete result row, warning, and interpretation boundary remain
       legible without unrelated application chrome.
-- [x] The Codex cue names the three engineered authority boundaries, the three
-      UI-audit fixes, and `3,393 tests passed` without implying runtime model use.
-- [x] Opening and later result shots show the same `rho`, p-value display, `n`, and
+- [ ] The Codex cue names specification, failing tests, implementation, Windows
+      verification, the three authority boundaries, and the three UI-audit fixes
+      without implying runtime model use.
+- [ ] Opening and later result shots show the same `rho`, p-value display, `n`, and
       excluded-row count.
-- [x] The import review visibly distinguishes the 30-row preview from the 649-row
+- [ ] The import review visibly distinguishes the 30-row preview from the 649-row
       loaded table.
-- [x] Variable Meaning Gate, bounded clarification, candidate, exact configuration
-      review, confirmation, separate Run, result, and Word export are all visible.
-- [x] `GUIDED MODE`, the experimental badge, and the association interpretation
-      boundary are legible.
-- [x] No narration or overlay claims causation, population representativeness,
-      universal recommendation validity, expert equivalence, or SPSS superiority.
-- [x] No private path, account name, notification, session transcript, API key, or
-      unrelated application appears.
+- [ ] Variable Meaning Gate, bounded clarification, candidate, exact configuration
+      review, confirmation, separate Run, result, causal abstention, and Word export
+      are all visible.
+- [ ] `GUIDED MODE`, the experimental badge, association boundary, `SECOND REQUEST`,
+      and causal-abstention copy are legible.
+- [ ] No continuous moving source segment exceeds 1.25x speed.
+- [ ] No narration or overlay claims causation, population representativeness,
+      universal recommendation validity, expert equivalence, NIST certification of
+      Modori, or SPSS superiority.
+- [ ] No private path, name, school, account, notification, session transcript, API
+      key, third-party price/logo screen, or unrelated application appears.
+- [ ] The submitted MP4 burns only short labels; the separate English SRT carries
+      the full narration for YouTube captions.
 - [ ] The YouTube upload is Public and opens successfully in a signed-out browser.
 
 The local candidate's exact hash and codec/frame/privacy audit are recorded in
