@@ -174,7 +174,7 @@ separately staged mockups.
 - [ ] Publish the exact current branch without changing the default branch.
 - [ ] Open the branch URL in a signed-out browser and confirm that this README, the
       GPL license, third-party notices, real demo data, and contribution evidence load.
-- [ ] Watch the exact MP4 whose SHA-256 is
+- [x] Watched and approved the exact MP4 whose SHA-256 is
       `fc25ead3874d38afa99715c616a0c263945d1c156774a06e1b994bc083be104d`
       once at normal speed with sound.
 - [ ] Upload that MP4 from the two-file `upload-master` directory to YouTube as

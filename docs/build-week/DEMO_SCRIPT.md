@@ -89,7 +89,7 @@ at `1.0x`; waiting and file-picker footage are removed with hard cuts.
       Guided selection.
 - [x] Every current release-facing story uses the single final source-suite count.
 - [x] Final handoff directory contains only one MP4 and one matching SRT.
-- [ ] Owner watches the exact hashed MP4 once at normal speed with sound.
+- [x] Owner watched and approved the exact hashed MP4 at normal speed with sound.
 - [ ] YouTube upload is Public and opens in a signed-out browser.
 
 Exact media hashes and the remaining external boundary are recorded in

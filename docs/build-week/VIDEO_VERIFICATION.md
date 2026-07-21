@@ -2,8 +2,8 @@
 
 Verified on 2026-07-21 (Asia/Seoul).
 
-Status: **machine gates pass; original-resolution visual review passes; owner audio
-playback and external publication remain open**.
+Status: **machine gates, original-resolution visual review, and owner audio playback
+pass; external publication remains open**.
 
 ## Bound product evidence
 
@@ -143,8 +143,6 @@ lowered.
 
 ## Still requiring owner or external action
 
-- Watch the exact hashed MP4 once at normal speed with sound to judge voice
-  naturalness, pronunciation, pacing, and the absence of subjective dead waits.
 - Upload that exact MP4 to YouTube as Public with the matching English SRT.
 - Verify the resulting URL in a signed-out browser.
 - Complete the submission form and preserve the confirmation receipt.
