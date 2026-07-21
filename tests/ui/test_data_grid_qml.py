@@ -995,4 +995,4 @@ def test_variable_table_delegates_to_data_grid_and_preserves_selection() -> None
     assert "reduceEffects: uiController.reduceEffects" in qml
     assert "selectedKey: root.selectedVariableKey" in qml
     assert "onCellActivated" in qml
-    assert "root.selectVariable(variableKey, measureValue)" in qml
+    assert "root.selectVariable(row, variableKey, measureValue)" in qml

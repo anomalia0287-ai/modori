@@ -158,6 +158,61 @@ def test_data_grid_view_qml_loads_without_runtime_errors() -> None:
         qInstallMessageHandler(previous_handler)
 
 
+def test_loaded_variable_editor_commits_value_labels_through_visible_controls(
+    tmp_path,
+) -> None:
+    data_path = tmp_path / "study-time.csv"
+    data_path.write_text(
+        "weekly_study_time_band,score\n1,10\n2,11\n3,12\n4,13\n",
+        encoding="utf-8",
+    )
+    controller = UiController(reduce_effects=True)
+    assert controller.openDataFilePath(str(data_path)) is True
+    engine, root, messages = _load_main_with_warnings(controller)
+    app = _app()
+
+    try:
+        editor = root.findChild(QObject, "variableMetadataEditor")
+        label_field = root.findChild(QObject, "variableLabelField")
+        value_labels_field = root.findChild(QObject, "variableValueLabelsField")
+        missing_codes_field = root.findChild(QObject, "variableMissingCodesField")
+        apply_button = root.findChild(QObject, "variableMetadataApplyButton")
+        assert editor is not None
+        assert label_field is not None
+        assert value_labels_field is not None
+        assert missing_codes_field is not None
+        assert apply_button is not None
+
+        editor.setProperty("selectedVariableKey", "weekly_study_time_band")
+        label_field.setProperty("text", "Weekly study time")
+        value_labels_field.setProperty(
+            "text",
+            "1=Under 2 hours; 2=2 to 5 hours; 3=5 to 10 hours; 4=Over 10 hours",
+        )
+        missing_codes_field.setProperty("text", "")
+        app.processEvents()
+        assert apply_button.property("enabled") is True
+
+        apply_button.clicked.emit()
+        app.processEvents()
+
+        variable = controller.pipeline.current_dataset.variables[
+            "weekly_study_time_band"
+        ]
+        assert variable.label == "Weekly study time"
+        assert variable.value_labels == {
+            1.0: "Under 2 hours",
+            2.0: "2 to 5 hours",
+            3.0: "5 to 10 hours",
+            4.0: "Over 10 hours",
+        }
+        assert _significant_warnings(messages) == []
+    finally:
+        root.deleteLater()
+        app.processEvents()
+        del engine
+
+
 @pytest.mark.parametrize("reduce_effects", [False, True])
 def test_splash_qml_loads_without_runtime_errors(reduce_effects: bool) -> None:
     app = _app()

@@ -49,12 +49,13 @@ def test_data_table_shows_source_protection_notice() -> None:
     assert "transform.source_protected" in data_table
 
 
-def test_variable_table_exposes_label_and_missing_code_controls() -> None:
+def test_variable_table_exposes_label_value_label_and_missing_code_controls() -> None:
     variable_table = qml_text("components/VariableTable.qml")
 
     assert "variable.label_placeholder" in variable_table
+    assert "variable.value_labels_placeholder" in variable_table
     assert "variable.missing_codes_placeholder" in variable_table
-    assert "uiController.updateVariableMetadataFromText" in variable_table
+    assert "uiController.updateVariableMetadataFieldsFromText" in variable_table
 
 
 def test_variable_editor_clears_the_work_tab_divider() -> None:

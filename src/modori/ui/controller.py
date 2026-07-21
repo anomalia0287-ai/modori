@@ -153,6 +153,7 @@ class UiController(
         )
         self.stepsModel = self._pipeline_state.steps_model
         self._data_model = None
+        self._data_sheet_model = None
         self._variable_model = None
         self._data_view_notice = ""
         self._recommendation_state = empty_recommendation_state()
@@ -418,10 +419,12 @@ class UiController(
         self._result_state.clear()
         self.resultsModel = self._result_state.results_model
         self._data_model = None
+        self._data_sheet_model = None
         self._variable_model = None
         self._data_view_notice = ""
         if load_result.path is not None:
             self._bind_import_preview_models(load_result.path, options)
+        self._refresh_data_sheet_model()
         self._last_error = ""
         self._last_message = load_result.command.message_ko
         self._report_path = ""
@@ -649,5 +652,7 @@ class UiController(
             return
         models = models_for_dataset(current_dataset, language=self._ui_language)
         self._data_model = models.data_model
+        self._data_sheet_model = models.data_model
+        self.dataSheetModelChanged.emit()
         self._variable_model = models.variable_model
         self._data_view_notice = models.notice

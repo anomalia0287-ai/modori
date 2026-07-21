@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+import re
 from typing import Any
 
 from PySide6.QtCore import Slot
@@ -20,9 +21,47 @@ class DataTransformControllerMixin:
         label: str,
         missing_codes_text: str,
     ) -> bool:
+        return self._update_variable_metadata_fields_from_text(
+            variable_key,
+            label,
+            "",
+            missing_codes_text,
+        )
+
+    @Slot(str, str, str, str, result=bool)
+    def updateVariableMetadataFieldsFromText(
+        self,
+        variable_key: str,
+        label: str,
+        value_labels_text: str,
+        missing_codes_text: str,
+    ) -> bool:
+        return self._update_variable_metadata_fields_from_text(
+            variable_key,
+            label,
+            value_labels_text,
+            missing_codes_text,
+        )
+
+    def _update_variable_metadata_fields_from_text(
+        self,
+        variable_key: str,
+        label: str,
+        value_labels_text: str,
+        missing_codes_text: str,
+    ) -> bool:
         patch: dict[str, object] = {}
         if label.strip():
             patch["label"] = label.strip()
+        if value_labels_text.strip():
+            try:
+                patch["value_labels"] = _parse_value_labels_text(value_labels_text)
+            except ValueError:
+                self._command_error(
+                    "값 라벨은 1=낮음; 2=높음 형식이어야 합니다.",
+                    "invalid_metadata_patch",
+                )
+                return False
         if missing_codes_text.strip():
             try:
                 patch["missing_codes"] = [
@@ -241,6 +280,29 @@ def _parse_mapping_text(mapping_text: str) -> dict[str, str]:
             raise ValueError("mapping")
         mapping[old_value] = new_value
     return mapping
+
+
+def _parse_value_labels_text(value_labels_text: str) -> dict[float, str]:
+    value_labels: dict[float, str] = {}
+    for raw_entry in re.split(r"[;\r\n]+", value_labels_text):
+        entry = raw_entry.strip()
+        if not entry:
+            continue
+        if "=" not in entry:
+            raise ValueError("value_labels")
+        raw_value, raw_label = (part.strip() for part in entry.split("=", maxsplit=1))
+        if not raw_value or not raw_label:
+            raise ValueError("value_labels")
+        try:
+            value = float(raw_value)
+        except ValueError as exc:
+            raise ValueError("value_labels") from exc
+        if value != value or abs(value) == float("inf") or value in value_labels:
+            raise ValueError("value_labels")
+        value_labels[value] = raw_label
+    if not value_labels:
+        raise ValueError("value_labels")
+    return value_labels
 
 
 def _parse_recode_rows(rows: list) -> tuple[dict[str, str], list[str]]:

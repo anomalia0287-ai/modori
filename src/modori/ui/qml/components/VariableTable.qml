@@ -5,6 +5,7 @@ import "../theme"
 
 Item {
     id: root
+    objectName: "variableMetadataEditor"
     property string selectedVariableKey: ""
     property var measureValues: ["nominal", "ordinal", "scale"]
 
@@ -30,11 +31,31 @@ Item {
         return root.measureValues[index]
     }
 
-    function selectVariable(variableKey, measureValue) {
+    function tableValue(row, column) {
+        var tableModel = uiController.variableModel
+        if (!tableModel || row < 0 || column < 0
+                || row >= tableModel.rowCount() || column >= tableModel.columnCount()) {
+            return ""
+        }
+        var value = tableModel.data(tableModel.index(row, column), Qt.DisplayRole)
+        return value === undefined || value === null ? "" : String(value)
+    }
+
+    function selectVariable(row, variableKey, measureValue) {
         root.selectedVariableKey = variableKey
         measureBox.currentIndex = root.measureIndex(measureValue)
-        labelField.text = ""
-        missingCodesField.text = ""
+        labelField.text = root.tableValue(row, 1)
+        valueLabelsField.text = root.tableValue(row, 3)
+        missingCodesField.text = root.tableValue(row, 4)
+    }
+
+    function applySelectedMetadata() {
+        return uiController.updateVariableMetadataFieldsFromText(
+            root.selectedVariableKey,
+            labelField.text,
+            valueLabelsField.text,
+            missingCodesField.text
+        )
     }
 
     ColumnLayout {
@@ -82,6 +103,7 @@ Item {
 
             AppTextField {
                 id: labelField
+                objectName: "variableLabelField"
                 Layout.fillWidth: true
                 placeholderText: appBootstrap.text("variable.label_placeholder", appBootstrap.language)
                 Accessible.name: appBootstrap.text("variable.label_placeholder", appBootstrap.language)
@@ -89,18 +111,38 @@ Item {
             }
 
             AppTextField {
+                id: valueLabelsField
+                objectName: "variableValueLabelsField"
+                Layout.fillWidth: true
+                placeholderText: appBootstrap.text("variable.value_labels_placeholder", appBootstrap.language)
+                Accessible.name: appBootstrap.text("variable.value_labels_placeholder", appBootstrap.language)
+                selectByMouse: true
+            }
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: theme.spaceSm
+
+            AppTextField {
                 id: missingCodesField
-                Layout.preferredWidth: theme.fieldWidthMedium
+                objectName: "variableMissingCodesField"
+                Layout.fillWidth: true
                 placeholderText: appBootstrap.text("variable.missing_codes_placeholder", appBootstrap.language)
                 Accessible.name: appBootstrap.text("variable.missing_codes_placeholder", appBootstrap.language)
                 selectByMouse: true
             }
 
             AppButton {
+                objectName: "variableMetadataApplyButton"
                 text: appBootstrap.text("variable.metadata_apply", appBootstrap.language)
                 Accessible.name: appBootstrap.text("variable.metadata_apply", appBootstrap.language)
-                enabled: root.selectedVariableKey.length > 0 && uiController.status !== "running" && (root.hasText(labelField.text) || root.hasText(missingCodesField.text))
-                onClicked: uiController.updateVariableMetadataFromText(root.selectedVariableKey, labelField.text, missingCodesField.text)
+                enabled: root.selectedVariableKey.length > 0
+                    && uiController.status !== "running"
+                    && (root.hasText(labelField.text)
+                        || root.hasText(valueLabelsField.text)
+                        || root.hasText(missingCodesField.text))
+                onClicked: root.applySelectedMetadata()
             }
         }
 
@@ -115,7 +157,7 @@ Item {
             emptyText: appBootstrap.text("data.grid_empty", appBootstrap.language)
             onCellActivated: function(row, column, variableKey, measureValue) {
                 if (variableKey.length > 0) {
-                    root.selectVariable(variableKey, measureValue)
+                    root.selectVariable(row, variableKey, measureValue)
                 }
             }
         }

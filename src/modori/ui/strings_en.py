@@ -223,6 +223,7 @@ UI_STRINGS_EN = {
     "variable.measure_ordinal": "Ordinal",
     "variable.measure_scale": "Scale",
     "variable.metadata_apply": "Update properties",
+    "variable.value_labels_placeholder": "Value labels: 1=Low; 2=High",
     "variable.missing_codes_placeholder": "Missing codes: 9, 99",
     "work.analysis": "Run analysis again",
     "work.analysis_run": "Run analysis",

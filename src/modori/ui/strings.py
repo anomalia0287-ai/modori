@@ -343,6 +343,7 @@ UI_STRINGS_KO = {
     "variable.measure_ordinal": "순서형",
     "variable.measure_scale": "연속형",
     "variable.metadata_apply": "속성 변경",
+    "variable.value_labels_placeholder": "값 라벨: 1=낮음; 2=높음",
     "variable.missing_codes_placeholder": "결측 코드: 9, 99",
     "work.analysis": "분석 다시 실행",
     "work.analysis_run": "분석 실행",

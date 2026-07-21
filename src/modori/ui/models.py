@@ -146,7 +146,7 @@ def variable_records_from_dataset(dataset: object) -> list[VariableRecord]:
                 key=str(key),
                 label=str(getattr(variable, "label", "") or ""),
                 measure=str(measure),
-                value_labels=", ".join(
+                value_labels="; ".join(
                     f"{float(label_key)}={label_value}"
                     for label_key, label_value in value_labels.items()
                 ),

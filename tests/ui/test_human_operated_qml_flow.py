@@ -165,13 +165,13 @@ def test_work_header_actions_are_connected_to_real_user_flows() -> None:
     assert "onClicked: root.dataSheetRequested()" in work
 
 
-def test_detached_data_sheet_window_reuses_data_grid_without_independent_state() -> None:
+def test_detached_data_sheet_window_uses_complete_current_dataset_model() -> None:
     main = qml_text("Main.qml")
 
     assert "Window {" in main
     assert "id: dataSheetWindow" in main
     assert "DataGridView" in main
-    assert "model: uiController.dataModel" in main
+    assert "model: uiController.dataSheetModel" in main
     assert "work.data_sheet_window" in main
 
 

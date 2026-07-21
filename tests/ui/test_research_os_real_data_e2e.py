@@ -88,26 +88,23 @@ def test_english_guided_qml_real_data_flow_is_numerically_and_ledger_bound(
     assert imported_dataset is not None
     assert len(imported_dataset.df) == 649
 
-    assert host.updateVariableMetadata(
+    assert host.changeVariableMeasure("weekly_study_time_band", "ordinal") is True
+    assert host.updateVariableMetadataFieldsFromText(
         "weekly_study_time_band",
-        {
-            "label": "Weekly study time",
-            "measure": "ordinal",
-            "value_labels": {
-                "1": "Under 2 hours",
-                "2": "2 to 5 hours",
-                "3": "5 to 10 hours",
-                "4": "Over 10 hours",
-            },
-        },
-    ).ok
-    assert host.updateVariableMetadata(
+        "Weekly study time",
+        (
+            "1=Under 2 hours; 2=2 to 5 hours; "
+            "3=5 to 10 hours; 4=Over 10 hours"
+        ),
+        "",
+    ) is True
+    assert host.changeVariableMeasure("final_grade", "scale") is True
+    assert host.updateVariableMetadataFieldsFromText(
         "final_grade",
-        {
-            "label": "Final grade",
-            "measure": "scale",
-        },
-    ).ok
+        "Final grade",
+        "",
+        "",
+    ) is True
 
     flow = host.researchFlow
     engine, panel = _load_panel(flow)

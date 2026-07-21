@@ -204,6 +204,71 @@ def test_controller_maps_missing_codes_to_engine_missing_values(tmp_path) -> Non
     assert compute_frame["group"].isna().tolist() == [False, True]
 
 
+def test_controller_parses_visible_value_label_editor_text(tmp_path) -> None:
+    data_path = tmp_path / "study-time.csv"
+    pd.DataFrame(
+        {"weekly_study_time_band": [1, 2, 3, 4], "score": [10, 11, 12, 13]}
+    ).to_csv(data_path, index=False)
+    pipeline = Pipeline(Dataset.empty())
+    pipeline.add(
+        ImportStep(
+            id="import",
+            title="Import CSV",
+            params={"path": str(data_path), "file_type": "csv"},
+        )
+    )
+    pipeline.recompute(dirty_from=None)
+    controller = UiController(pipeline=pipeline)
+
+    ok = controller.updateVariableMetadataFieldsFromText(
+        "weekly_study_time_band",
+        "Weekly study time",
+        (
+            "1=Under 2 hours; 2=2 to 5 hours; "
+            "3=5 to 10 hours; 4=Over 10 hours"
+        ),
+        "",
+    )
+
+    assert ok is True
+    variable = pipeline.current_dataset.variables["weekly_study_time_band"]
+    assert variable.label == "Weekly study time"
+    assert variable.value_labels == {
+        1.0: "Under 2 hours",
+        2.0: "2 to 5 hours",
+        3.0: "5 to 10 hours",
+        4.0: "Over 10 hours",
+    }
+
+
+def test_controller_rejects_malformed_visible_value_label_text(tmp_path) -> None:
+    data_path = tmp_path / "study-time.csv"
+    _write_csv(data_path)
+    pipeline = Pipeline(Dataset.empty())
+    pipeline.add(
+        ImportStep(
+            id="import",
+            title="Import CSV",
+            params={"path": str(data_path), "file_type": "csv"},
+        )
+    )
+    pipeline.recompute(dirty_from=None)
+    controller = UiController(pipeline=pipeline)
+
+    ok = controller.updateVariableMetadataFieldsFromText(
+        "group",
+        "",
+        "1 Control; 2=Treatment",
+        "",
+    )
+
+    assert ok is False
+    assert controller.lastError == (
+        "값 라벨은 1=낮음; 2=높음 형식이어야 합니다."
+    )
+    assert pipeline.current_dataset.variables["group"].value_labels == {}
+
+
 def test_metadata_edit_invalidates_experimental_recommendation_preparation(
     tmp_path,
 ) -> None:
@@ -357,15 +422,29 @@ def test_variable_table_exposes_measure_editing_action() -> None:
     assert qml.count("AppButton {") >= 2
 
 
+def test_variable_table_exposes_and_prefills_value_label_editor() -> None:
+    qml = Path("src/modori/ui/qml/components/VariableTable.qml").read_text(
+        encoding="utf-8"
+    )
+
+    assert 'objectName: "variableMetadataEditor"' in qml
+    assert 'objectName: "variableValueLabelsField"' in qml
+    assert "variable.value_labels_placeholder" in qml
+    assert "function tableValue(row, column)" in qml
+    assert "valueLabelsField.text = root.tableValue(row, 3)" in qml
+    assert "missingCodesField.text = root.tableValue(row, 4)" in qml
+    assert "uiController.updateVariableMetadataFieldsFromText(" in qml
+
+
 def test_variable_table_selects_row_as_measure_edit_target() -> None:
     qml = Path("src/modori/ui/qml/components/VariableTable.qml").read_text(encoding="utf-8")
 
     assert "property string selectedVariableKey" in qml
-    assert "function selectVariable(variableKey, measureValue)" in qml
+    assert "function selectVariable(row, variableKey, measureValue)" in qml
     assert "DataGridView" in qml
     assert "selectedKey: root.selectedVariableKey" in qml
     assert "onCellActivated" in qml
-    assert "root.selectVariable(variableKey, measureValue)" in qml
+    assert "root.selectVariable(row, variableKey, measureValue)" in qml
     assert "readOnly: true" in qml
     assert "uiController.changeVariableMeasure(" in qml
     assert "root.selectedVariableKey," in qml

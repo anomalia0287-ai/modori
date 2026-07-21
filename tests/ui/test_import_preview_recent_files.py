@@ -177,6 +177,30 @@ def test_confirm_import_binds_preview_models_before_analysis_runs(tmp_path) -> N
     assert controller.resultSummary == ""
 
 
+def test_confirm_import_keeps_preview_bounded_but_detached_sheet_complete(
+    tmp_path,
+) -> None:
+    from modori.ui.controller import UiController
+
+    data_path = tmp_path / "many-rows.csv"
+    data_path.write_text(
+        "group,score\n"
+        + "\n".join(f"{index % 4 + 1},{index}" for index in range(65))
+        + "\n",
+        encoding="utf-8",
+    )
+    controller = UiController()
+
+    assert controller.previewDataFilePath(str(data_path)) is True
+    assert controller.confirmPendingImport() is True
+
+    assert controller.dataModel is not None
+    assert controller.dataModel.rowCount() == 30
+    assert controller.dataSheetModel is not None
+    assert controller.dataSheetModel.rowCount() == 65
+    assert controller.dataSheetModel.columnCount() == 2
+
+
 def test_confirm_import_keeps_public_data_warning_visible_in_data_notice(tmp_path) -> None:
     from modori.ui.controller import UiController
 
@@ -414,6 +438,33 @@ def test_import_flow_supports_duplicate_row_exclusion(tmp_path) -> None:
     import_step = controller.pipeline.steps[0]
     assert import_step.params["drop_duplicate_rows"] is True
     assert len(controller.pipeline.current_dataset.df) == 2
+
+
+def test_english_import_preview_localizes_duplicate_row_warning(tmp_path) -> None:
+    import re
+
+    from modori.ui.controller import UiController
+
+    data_path = tmp_path / "dupes.csv"
+    data_path.write_text(
+        "group,score\n1,10\n1,10\n2,20\n",
+        encoding="utf-8",
+    )
+    controller = UiController()
+    assert controller.setUiLanguage("en") is True
+
+    assert controller.previewDataFilePath(str(data_path)) is True
+
+    assert "Completely identical duplicate rows detected: 1." in (
+        controller.importPreviewText
+    )
+    assert re.search(r"[가-힣]", controller.importPreviewText) is None
+
+    assert controller.confirmPendingImport() is True
+    assert "Completely identical duplicate rows detected: 1." in (
+        controller.dataViewNotice
+    )
+    assert re.search(r"[가-힣]", controller.dataViewNotice) is None
 
 
 def test_confirm_import_persists_selected_columns_from_preview(tmp_path) -> None:

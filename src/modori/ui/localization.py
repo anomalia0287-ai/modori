@@ -66,7 +66,23 @@ UI_MESSAGE_EN: Mapping[str, str] = {
     ),
     "결측 처리 기준을 확인해 주세요.": "Review the missing-value handling rule.",
     "결측 코드는 숫자 목록이어야 합니다.": "Missing-value codes must be a list of numbers.",
+    "값 라벨은 1=낮음; 2=높음 형식이어야 합니다.": (
+        "Value labels must use the format 1=Low; 2=High."
+    ),
     "변경할 속성이 없습니다.": "There are no properties to update.",
+    "구형 Excel(.xls) 파일은 현재 지원하지 않습니다. Excel에서 .xlsx 또는 .csv로 저장한 뒤 다시 열어 주세요.": (
+        "Legacy Excel (.xls) files are not supported. Save the file as .xlsx or .csv in Excel, then open it again."
+    ),
+    "사용자 지정 표 레이아웃을 적용했습니다.": "The custom table layout was applied.",
+    "지정한 표 레이아웃을 적용할 수 없습니다. 헤더 행과 데이터 시작 행을 확인해 주세요.": (
+        "The specified table layout could not be applied. Check the header row and data start row."
+    ),
+    "지정한 시트를 찾지 못했습니다. 시트 이름을 확인해 주세요.": (
+        "The specified sheet could not be found. Check the sheet name."
+    ),
+    "표 헤더를 자동으로 찾지 못했습니다. 가져오기 창에서 헤더 행을 지정해 주세요.": (
+        "The table header could not be detected automatically. Specify the header row in the import window."
+    ),
     "통일할 값 제안이 없습니다.": "There are no value-unification suggestions.",
     "값 수정 규칙은 기존값=새값 형식이어야 합니다.": (
         "Value-editing rules must use the old=value format."
@@ -391,6 +407,37 @@ def localize_message(message: object, language: str) -> str:
     if exact is not None:
         return exact
     patterns = (
+        (
+            r"^완전히 동일한 중복 행 (\d+)개를 감지했습니다\. 필요한 경우 가져오기 창에서 제외할 수 있습니다\.$",
+            r"Completely identical duplicate rows detected: \1. You can exclude them in the import window if needed.",
+        ),
+        (
+            r"^중복 행 (\d+)개를 제외했습니다\.$",
+            r"Duplicate rows excluded: \1.",
+        ),
+        (
+            r"^집계/합계 행 (\d+)개를 감지했습니다\. 필요한 경우 가져오기 창에서 제외할 수 있습니다\.$",
+            r"Aggregate or total rows detected: \1. You can exclude them in the import window if needed.",
+        ),
+        (
+            r"^집계/합계 행 (\d+)개를 제외했습니다\.$",
+            r"Aggregate or total rows excluded: \1.",
+        ),
+        (
+            r"^표 헤더 앞의 안내 행 (\d+)개를 건너뛰었습니다\.$",
+            r"Introductory rows skipped before the table header: \1.",
+        ),
+        (r"^CSV 구분자: 탭$", r"CSV delimiter: tab"),
+        (r"^CSV 구분자: (.+)$", r"CSV delimiter: \1"),
+        (r"^빈 열 (\d+)개를 제외했습니다\.$", r"Blank columns excluded: \1."),
+        (
+            r"^빈 헤더 (\d+)개를 column_N 형식으로 바꿨습니다\.$",
+            r"Blank headers renamed using the column_N format: \1.",
+        ),
+        (
+            r"^중복 열 이름 (\d+)개를 고유한 이름으로 바꿨습니다\.$",
+            r"Duplicate column names made unique: \1.",
+        ),
         (r"^알 수 없는 변수입니다: (.+)$", r"Unknown variable: \1"),
         (
             r"^패치 종류가 일치하지 않습니다: (.+)$",

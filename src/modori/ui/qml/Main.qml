@@ -129,7 +129,7 @@ ApplicationWindow {
             }
 
             DataGridView {
-                model: uiController.dataModel
+                model: uiController.dataSheetModel
                 reduceEffects: root.reduceEffects
                 cellWidth: theme.tableCellWidth
                 cellHeight: theme.tableCellHeight

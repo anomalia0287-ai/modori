@@ -3,15 +3,21 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from PySide6.QtCore import Slot
+from PySide6.QtCore import Property, QObject, Signal, Slot
 
 from modori.table_io import TableLayoutOverride
 from modori.ui.contracts import ImportOptions
 from modori.ui.paths import local_path_from_qml
-from modori.ui.preview_models import models_for_table_preview
+from modori.ui.preview_models import models_for_dataset, models_for_table_preview
 
 
 class ImportLayoutControllerMixin:
+    dataSheetModelChanged = Signal()
+
+    @Property(QObject, notify=dataSheetModelChanged)
+    def dataSheetModel(self) -> QObject | None:
+        return self._data_sheet_model
+
     @Slot(str, result=bool)
     def previewDataFilePath(self, path: str) -> bool:
         local_path = local_path_from_qml(path)
@@ -145,6 +151,18 @@ class ImportLayoutControllerMixin:
         self._variable_model = models.variable_model
         self._data_view_notice = models.notice
         return True
+
+    def _refresh_data_sheet_model(self) -> None:
+        current_dataset = self._services.pipeline_ops.current_dataset()
+        if current_dataset is None:
+            self._data_sheet_model = None
+            self.dataSheetModelChanged.emit()
+            return
+        self._data_sheet_model = models_for_dataset(
+            current_dataset,
+            language=self._ui_language,
+        ).data_model
+        self.dataSheetModelChanged.emit()
 
 
 def _table_layout_params(raw: dict[str, Any] | None) -> dict[str, Any] | None:
